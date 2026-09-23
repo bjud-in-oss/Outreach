@@ -1,19 +1,18 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIV TICKET
-### [AKTIV] TCK-001: INITIALISERA OUTREACH SAMORDNINGSMOTOR (FAS 1: MASTER-SKAL & PLANERING 1a -> 3c)
-- **Status**: PÅGÅENDE (Fas 1 - Steg 3c inväntar Token Gate)
+### [AKTIV] TCK-001: INITIALISERA OUTREACH SAMORDNINGSMOTOR (FAS 2: VERKSTÄLLANDE & TDD)
+- **Status**: FAS 2 EXEKVERING (Godkänd via OUTREACH-COORD-TCK001-TOKEN)
 - **Mål**:
-  - Etablera master-skal, arkitekturkontroller och logistik.
-  - Generera grundläggande verifieringsskript (`scripts/verify-architecture.js`, `scripts/drivers/ts.js`).
-  - Upprätta CloudEvents-kompatibelt `EventEnvelopeSchema` i `src/shared/contracts/envelope.ts`.
-  - Genomföra hela planeringskedjan (1a till 3c) för FSD-modulerna:
-    - `google_drive_sync`
-    - `mcp_bridge`
-    - `wal_logger`
-    - `gemini_live_swarm`
-    - `scripts/init-drive-workspace.js`
-    - `README.md` (med personligt brev)
+  - Etablera isolerade TDD-tester under `src/__tests__/`.
+  - Implementera FSD-modulerna:
+    - `src/features/google_drive_sync`
+    - `src/features/wal_logger`
+    - `src/features/mcp_bridge`
+    - `src/features/gemini_live_swarm`
+  - Generera `scripts/init-drive-workspace.js`.
+  - Generera `README.md` med personligt brev och fullständig systemdokumentation.
+  - Skapa samordningsmotorns operatörspanel i `src/App.tsx`.
 - **Källkodskällor för migrering**:
   - Master-frö: https://github.com/bjud-in-oss/outreach-template
   - Skarp Drive-skrivning: https://github.com/bjud-in-oss/sandras-historia-2

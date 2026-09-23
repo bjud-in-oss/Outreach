@@ -48,12 +48,23 @@ function runVerification() {
     filesChecked.push('src/shared/contracts/envelope.ts');
   }
 
-  // 4. Fas 1 skydd: Inga FSD-moduler under src/features/ under ren planeringsfas
-  const featuresDir = path.join(ROOT_DIR, 'src', 'features');
-  if (fs.existsSync(featuresDir)) {
-    const featureEntries = fs.readdirSync(featuresDir);
-    if (featureEntries.length > 0) {
-      issues.push(`Fas 1 regelöverträdelse: src/features/ får inte innehålla implementerade moduler förrän Fas 2 (${featureEntries.join(', ')})`);
+  // 4. Fas 2 validering: APPROVAL.md måste finnas och innehålla godkännandekod
+  const approvalPath = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
+  if (fs.existsSync(approvalPath)) {
+    const approvalContent = fs.readFileSync(approvalPath, 'utf8');
+    if (!approvalContent.includes('OUTREACH-COORD-TCK001-TOKEN')) {
+      issues.push('APPROVAL.md innehåller felaktig eller saknad godkännandekod');
+    } else {
+      filesChecked.push('doc/LAST_CYCLE/APPROVAL.md');
+    }
+  } else {
+    // Om APPROVAL inte finns, kontrollera att inga features finns
+    const featuresDir = path.join(ROOT_DIR, 'src', 'features');
+    if (fs.existsSync(featuresDir)) {
+      const featureEntries = fs.readdirSync(featuresDir);
+      if (featureEntries.length > 0) {
+        issues.push(`Fas 1 regelöverträdelse: src/features/ får inte innehålla moduler utan APPROVAL.md`);
+      }
     }
   }
 
