@@ -1,37 +1,40 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIV TICKET
-### [AKTIV] TCK-001: INITIALISERA OUTREACH SAMORDNINGSMOTOR (FAS 2: VERKSTÄLLANDE & TDD)
-- **Status**: FAS 2 EXEKVERING (Godkänd via OUTREACH-COORD-TCK001-TOKEN)
-- **Mål**:
-  - Etablera isolerade TDD-tester under `src/__tests__/`.
-  - Implementera FSD-modulerna:
-    - `src/features/google_drive_sync`
-    - `src/features/wal_logger`
-    - `src/features/mcp_bridge`
-    - `src/features/gemini_live_swarm`
-  - Generera `scripts/init-drive-workspace.js`.
-  - Generera `README.md` med personligt brev och fullständig systemdokumentation.
-  - Skapa samordningsmotorns operatörspanel i `src/App.tsx`.
-- **Källkodskällor för migrering**:
-  - Master-frö: https://github.com/bjud-in-oss/outreach-template
-  - Skarp Drive-skrivning: https://github.com/bjud-in-oss/sandras-historia-2
-  - DriveSync, WAL & Swarm: https://github.com/bjud-in-oss/Ouroboros-Agent
-  - MCP Bridge: https://github.com/bjud-in-oss/agent-test
-- **Infrastrukturkomponenter**:
-  - `doc/TICKETS.md`
-  - `doc/FEATURE_INDEX.json`
-  - `scripts/verify-architecture.js`
-  - `scripts/drivers/ts.js`
-  - `src/shared/contracts/envelope.ts`
+### [AKTIV] TCK-002: SWARM TELEMETRY & REACTIVE STATUS (FAS 1: PLANERING)
+- **Status**: FAS 1 PLANERING (Inväntar godkännande vid Steg 3c)
+- **Mål & Omfång**:
+  - Transformera mönster från referensen https://github.com/bjud-in-oss/Acoustic-Priming-backup:
+    - `TelemetrySidebar`: Real-time insyn i svärmens tillstånd, agentpuls och händelselogg.
+    - `MasterDevelopmentPlan`: Reaktivt styrkort för systemtickets och leveransfaser knutet till `doc/TICKETS.md`.
+    - Händelsestyrd `SwarmEventBus`: Typsäker pub/sub-motor baserad på `EventEnvelope` (`CloudEvents 1.0`).
+  - Etablera isolerade TDD-tester under `src/__tests__/swarm_telemetry.test.ts`.
+- **Kommande Källkodsändringar (Fas 2)**:
+  - `src/features/gemini_live_swarm/bus/swarmEventBus.ts`
+  - `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`
+  - `src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts`
+  - `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`
+  - `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`
+  - `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`
+  - `src/features/gemini_live_swarm/index.ts`
+  - `src/__tests__/swarm_telemetry.test.ts`
+  - `scripts/run-tests.js`
+
+---
+
+## SLUTFÖRDA TICKETS
+### [VERIFIERAD] TCK-001: INITIALISERA OUTREACH SAMORDNINGSMOTOR
+- **Status**: SLUTFÖRD & VERIFIERAD (Kvittohash: `980bc67d`)
+- **Levererat**:
+  - Grundläggande FSD-moduler: `google_drive_sync`, `wal_logger`, `mcp_bridge`, `gemini_live_swarm`.
+  - Isolerade TDD-enhetstester (15/15 godkända).
+  - Scripts: `scripts/init-drive-workspace.js`, `scripts/run-tests.js`.
+  - README.md med filosofiskt personligt brev och systemarkitektur.
+  - Samordningsmotorns operatörspanel i `src/App.tsx`.
 
 ---
 
 ## KOMMANDE TICKETS
-### [VÄNTAR] TCK-002: KÄRNIMPLEMENTERING AV DRIVE SYNC & WAL LOGGER
-- **Fokus**: Exekvera källkod för `src/features/google_drive_sync` och `src/features/wal_logger`.
-- **Artefakter**: `scripts/init-drive-workspace.js`, enhetstester och live-verifiering mot Google Drive.
-
-### [VÄNTAR] TCK-003: MCP BRIDGE & GEMINI LIVE SWARM ORKESTRERING
-- **Fokus**: Exekvera källkod för `src/features/mcp_bridge` och `src/features/gemini_live_swarm`.
-- **Artefakter**: Fullständig dashboard, verktygsanrop via MCP och multi-agent svärmsamordning.
+### [VÄNTAR] TCK-003: MCP BRIDGE & GEMINI LIVE SWARM DJUPINTEGRATION
+- **Fokus**: Exekvera avancerade verktygsanrop via MCP och live WebSocket-baserad orkestrering.
+- **Artefakter**: Externa agentintegrationer, token-ekonomi och automatiserade Drive-leveranser.

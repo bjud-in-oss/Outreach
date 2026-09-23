@@ -1,23 +1,30 @@
-# 2a Avgränsa: Skop, Begränsningar och Säkerhetsbarriärer
+# 2a Avgränsa: Mål, Omfång och Invarianter (TCK-002)
 
-## 1. Fasavgränsning (Fas 1 vs Fas 2)
-- **Fas 1 (Pågående - TCK-001)**:
-  - Skapa master-skal, verifieringsskript (`scripts/verify-architecture.js`, `scripts/drivers/ts.js`), `doc/TICKETS.md`, `doc/FEATURE_INDEX.json` och grundkontrakt `src/shared/contracts/envelope.ts`.
-  - Upprätta komplett planeringsunderlag (1a -> 3c) under `doc/LAST_CYCLE/`.
-  - **Strikt regel**: Inga källkodsmoduler får genereras under `src/features/` i Fas 1.
-  - Stanna vid Steg 3c och invänta Token Gate godkännande (`REQUIRED_TOKEN.txt`).
-- **Fas 2 (TCK-002 & TCK-003)**:
-  - Implementera `google_drive_sync`, `wal_logger`, `mcp_bridge`, `gemini_live_swarm`, `scripts/init-drive-workspace.js` och `README.md`.
-  - Skriva isolerade TDD-enhetstester i `src/__tests__/` innan produktionskod driftsätts.
+## 1. Målavgränsning & Leveransomfång
+Ticket **TCK-002: Swarm Telemetry & Reactive Status** syftar till att etablera en transparent, händelsestyrd observationsyta för multi-agent svärmen i `src/features/gemini_live_swarm/`.
 
-## 2. Säkerhets- och Arkitekturbarriärer
-1. **Google Workspace Autentisering**:
-   - Endast klientbaserad Firebase Auth / GoogleAuthProvider med access token sparad i minnet (`cachedAccessToken`).
-   - Inga tokens i `localStorage` eller `sessionStorage`.
-   - Inga serverbaserade OAuth redirect-flöden (på grund av efemära Cloud Run dev-miljöer).
-2. **Fail Fast och Diagnostik**:
-   - Alla anslutnings-, hårdvaru- och API-fel (t.ex. 401 Token expired, 403 Insufficient Scope, 429 Rate Limit) ska exponeras i klartext i diagnostikgränssnittet direkt utan dolda fallback-lägen.
-3. **Dataintegritet och Destruktiva Operationer**:
-   - Destruktiva operationer i Google Drive (radering eller överskrivning av befintliga filer) kräver explicit användarbekräftelse innan verkställande.
-4. **Resiliens & WAL**:
-   - Inga externa sidoeffekter får initieras utan ett föregående WAL-tillstånd (Write-Ahead). Vid krasch återskapas systemtillståndet genom sekventiell replay.
+### Ingår i omfånget (IN-SCOPE):
+1. **Reaktiv Händelsebuss (`SwarmEventBus`)**:
+   - Pub/sub mönster anpassat för `EventEnvelope` (`CloudEvents 1.0`).
+   - Filtrering på event-prefix (`swarm.*`, `agent.*`, `ticket.*`).
+   - Prestandaoptimerad ringbuffert för de senaste 150 händelserna.
+2. **Telemetrimodell & Hook (`telemetrySchema` & `useSwarmTelemetry`)**:
+   - Zod-schema för aggregerade metrik (agentpuls, aktivitet, latens, tankeström och händelsefördelning).
+   - Hook som kopplar upp komponenter mot bussen och beräknar realtidsstatistik.
+3. **TelemetrySidebar**:
+   - Modern sidopanel/sektion i UI med pulserande status per agent, live händelselogg med sök/filter och CPU/throughput-mätare.
+4. **MasterDevelopmentPlan (Reaktivt Styrkort)**:
+   - Komponent som återspeglar tickets och milstolpar från `doc/TICKETS.md` (TCK-001, TCK-002, TCK-003).
+   - Möjlighet att interaktivt expandera faser, läsa acceptanskriterier och se verifieringsstatus.
+5. **Isolerade TDD-tester (`swarm_telemetry.test.ts`)**:
+   - Enhetstester för pub/sub bussen, händelsevalidering, ringbuffert-rotation och telemetriaggregering.
+
+### Ingår EJ i omfånget (OUT-OF-SCOPE):
+- Byte av AI-modell (fortsatt `@google/genai` med `gemini-2.5-flash`).
+- Ändringar i Google Drive OAuth behörighetsscopar (befintligt Drive-kontrakt förblir intakt).
+- Implementering av extern WebSocket-server (all telemetri strömmar i klientens reaktiva buss i denna fas; WebSocket-backend för multi-operatörer kan läggas till i senare fas).
+
+## 2. Invarianta Arkitekturprinciper
+- **FSD Strikt Domänisolering**: Alla nya komponenter tillhör `src/features/gemini_live_swarm/` och exponeras enbart via `index.ts`.
+- **Fail Fast & Zod-kontrakt**: Inga okontrakterade telemetriobjekt accepteras; om en händelse saknar t.ex. `id` eller `type` kastas ett Zod-valideringsfel direkt.
+- **Transparens & Pedagogisk UI**: Inga dolda bakgrundstillstånd. Operatören ska alltid se exakt vilken agent som tänker, vad den tänker och hur lång tid momentet tog.

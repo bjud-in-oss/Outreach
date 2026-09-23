@@ -1,114 +1,83 @@
-# 2b Modellera: Datastrukturer, Kontrakt och Tillståndsmaskiner
+# 2b Modellera: Datastrukturer, Zod-Scheman och Kontrakt (TCK-002)
 
-## 1. Händelse- och Kontraktsmodellering
+## 1. Zod-Scheman (`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`)
 
-### 1.1 Event Envelope (CloudEvents 1.0)
-Alla händelser paketeras i det exekverbara Zod-schemat i `src/shared/contracts/envelope.ts`:
 ```typescript
-interface EventEnvelope<T = unknown> {
-  id: string;             // UUIDv4
-  source: string;         // e.g., 'outreach/drive-sync' | 'outreach/swarm'
-  type: string;           // e.g., 'drive.file.created' | 'agent.thought.generated'
-  specversion: '1.0';
-  datacontenttype: string;// 'application/json'
-  time: string;           // ISO 8601 UTC
-  data: T;
-  traceparent?: string;   // W3C Trace Context
-  correlationId?: string;
-  metadata?: Record<string, unknown>;
-}
+import { z } from 'zod';
+import { EventEnvelopeSchema } from '../../../shared/contracts/envelope.ts';
+
+/**
+ * Individuell agentmetrik
+ */
+export const AgentTelemetryMetricSchema = z.object({
+  agentId: z.string(),
+  role: z.enum(['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC']),
+  status: z.enum(['IDLE', 'THINKING', 'EXECUTING_TOOL', 'DONE', 'ERROR']),
+  lastThought: z.string().optional(),
+  lastActive: z.string().datetime(),
+  totalEventsEmitted: z.number().int().nonnegative().default(0),
+  averageLatencyMs: z.number().nonnegative().default(0),
+});
+
+export type AgentTelemetryMetric = z.infer<typeof AgentTelemetryMetricSchema>;
+
+/**
+ * Sammanställt telemetritillstånd för hela svärmen
+ */
+export const SwarmTelemetrySnapshotSchema = z.object({
+  activeAgentsCount: z.number().int().nonnegative(),
+  totalEventsCount: z.number().int().nonnegative(),
+  eventsPerMinute: z.number().nonnegative(),
+  agentMetrics: z.record(z.string(), AgentTelemetryMetricSchema),
+  recentEnvelopes: z.array(EventEnvelopeSchema),
+  healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'HALTED']),
+  lastPulseAt: z.string().datetime(),
+});
+
+export type SwarmTelemetrySnapshot = z.infer<typeof SwarmTelemetrySnapshotSchema>;
+
+/**
+ * Styrkort / Master Development Plan schema
+ */
+export const DevelopmentTicketSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.enum(['PLANERING', 'AKTIV', 'VERIFIERAD', 'VÄNTAR']),
+  phase: z.string(),
+  progressPercentage: z.number().min(0).max(100),
+  deliverables: z.array(z.string()),
+  tokenHash: z.string().optional(),
+  verifiedReceiptHash: z.string().optional(),
+});
+
+export type DevelopmentTicket = z.infer<typeof DevelopmentTicketSchema>;
 ```
 
-### 1.2 Write-Ahead Log (WAL) Kontrakt
+## 2. Reaktiv Händelsebuss (`SwarmEventBus`)
+Klassen `SwarmEventBus` definieras som en deterministisk pub/sub-motor:
 ```typescript
-interface WalEntry {
-  sequenceNumber: number;
-  entryHash: string;
-  previousHash: string;
-  timestamp: string;
-  status: 'PENDING' | 'COMMITTED' | 'FAILED' | 'ROLLED_BACK';
-  envelope: EventEnvelope;
-}
-```
+export type SwarmEventHandler = (envelope: EventEnvelope) => void;
 
-### 1.3 Google Drive Workspace Kontrakt
-```typescript
-interface DriveWorkspaceStructure {
-  rootFolderName: string; // 'Outreach_Workspace'
-  subFolders: {
-    campaigns: string;    // 'Campaigns'
-    templates: string;    // 'Templates'
-    logs: string;         // 'Logs'
-    artifacts: string;    // 'Artifacts'
-  };
-}
-
-interface DriveFileOperation {
-  folderId: string;
-  name: string;
-  mimeType: string;
-  content: string | Blob;
-  description?: string;
-}
-```
-
-### 1.4 MCP Bridge Kontrakt (JSON-RPC 2.0)
-```typescript
-interface McpToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: Record<string, unknown>; // JSON Schema
-}
-
-interface McpToolCallRequest {
-  jsonrpc: '2.0';
-  id: string | number;
-  method: 'tools/call';
-  params: {
-    name: string;
-    arguments: Record<string, unknown>;
-  };
-}
-
-interface McpToolCallResponse {
-  jsonrpc: '2.0';
-  id: string | number;
-  result?: {
-    content: Array<{ type: 'text' | 'resource'; text?: string }>;
-    isError?: boolean;
-  };
-  error?: {
-    code: number;
-    message: string;
-    data?: unknown;
-  };
-}
-```
-
-### 1.5 Gemini Live Swarm Kontrakt
-```typescript
-type AgentRole = 'ORCHESTRATOR' | 'RESEARCHER' | 'OUTREACH_WRITER' | 'CRITIC';
-
-interface SwarmAgent {
+export interface SwarmSubscription {
   id: string;
-  role: AgentRole;
-  name: string;
-  systemInstruction: string;
-  status: 'IDLE' | 'PROCESSING' | 'WAITING_FOR_TOOL' | 'ERROR';
+  pattern: string; // t.ex. "swarm.*", "ticket.*", eller "*"
+  handler: SwarmEventHandler;
 }
 
-interface SwarmTask {
-  id: string;
-  campaignTarget: string;
-  objective: string;
-  currentStep: number;
-  totalSteps: number;
-  consensusScore?: number;
-  status: 'PLANNING' | 'IN_PROGRESS' | 'REVIEW' | 'COMPLETED' | 'FAILED';
+export class SwarmEventBus {
+  private subscriptions: Map<string, SwarmSubscription> = new Map();
+  private history: EventEnvelope[] = [];
+  private maxHistorySize = 150;
+
+  public publish(envelope: EventEnvelope): void;
+  public subscribe(pattern: string, handler: SwarmEventHandler): () => void;
+  public getHistory(filterPattern?: string): EventEnvelope[];
+  public clear(): void;
 }
 ```
 
-## 2. Tillståndsövergångar (State Transitions)
-- **Initiering**: `IDLE` -> `DRIVE_AUTHENTICATING` -> `WORKSPACE_READY`
-- **Uppdragsexekvering**: `TASK_SUBMITTED` -> `WAL_ENTRY_LOGGED` -> `SWARM_PROCESSING` -> `TOOL_EXECUTION_MCP` -> `DRIVE_SYNCED` -> `TASK_COMMITTED`
-- **Felhantering**: `FAILURE_DETECTED` -> `WAL_FAIL_FAST_LOGGED` -> `DIAGNOSTIC_ALERT` -> `RECOVERY_REPLAY`
+## 3. Komponentstruktur i Gränssnittet
+- `SwarmDashboard.tsx`: Huvudyta för kampanjer och steg.
+  - Vänster / Mitt: Kampanjinmatning och steg-pipeline (forskning, författande, kritik).
+  - Höger / Sidopanel: `TelemetrySidebar` med live mätare, pulserande status per agent och realtidslogg.
+  - Överliggande Flik / Vy: `MasterDevelopmentPlan` som visar framsteg för TCK-001, TCK-002 och TCK-003 med förankring i `doc/TICKETS.md`.

@@ -1,25 +1,23 @@
-# 2e Syntetisera: Stresstest, Riskanalys och Systemmättnad
+# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-002)
 
-## 1. MÄTTNADSFÖRKLARING
-**MÄTTNAD: JA**
-Alla arkitekturfrågor, kontrakt, beroendekedjor och riskzoner för TCK-001 och efterföljande moduler har analyserats, stresstestats och förlikats.
+## 1. Mättnadsanalys
+- **MÄTTNAD: JA**
+- Samtliga arkitektoniska frågeställningar kring transformationen från *Acoustic-Priming-backup* till `src/features/gemini_live_swarm/` är kartlagda, validerade mot FSD-principerna och formaliserade i Zod-kontrakt.
 
-## 2. Stresstest av Risknoder (State, Contract, Resilience)
+## 2. Sammanfattning av Arkitektoniska Insikter
+1. **Reaktiv Händelsebuss**:
+   - Genom att basera bussen på `EventEnvelope` (`CloudEvents 1.0`) integreras svärmens telemetri friktionsfritt med Write-Ahead Loggen (WAL).
+   - Wildcard-mönster (`swarm.*`, `*`) möjliggör för telemetrisidan att passivt observera all aktivitet utan att agenter behöver veta vem som lyssnar (Loose Coupling).
+2. **TelemetrySidebar**:
+   - Ger operatören omedelbar insikt i svärmens latens, vilka agenter som arbetar eller vilar samt exakt vilken tankeström som produceras.
+   - Visuell Fail-Fast representation: röda varningsbrickor vid avvikande eller kraschade agenttillstånd.
+3. **MasterDevelopmentPlan (Reaktivt Styrkort)**:
+   - Överbryggar klyftan mellan dokumenterad projektstyrning (`doc/TICKETS.md`) och levande körtid.
+   - Operatören kan direkt i gränssnittet inspektera acceptanskriterier, fasstatus och verifieringskvitton (inklusive kvittots SHA-hash).
 
-### 2.1 Risknod: TILLSTÅND (State)
-- **Risk**: Desynkronisering mellan i-minne-tillstånd (Swarm/MCP), lokal WAL-logg och fjärrlagring i Google Drive vid nätverksavbrott eller omladdning av webbläsaren.
-- **Lösning**: Enkelriktat händelseflöde. Google Drive betraktas som "Ultimate Source of Truth" för persistenta dokument och artefakter, medan WAL i webbläsaren / IndexedDB / in-memory agerar som transaktionsbarriär. Inga asynkrona mutationer tillåts utan sekvensnummer i WAL.
-- **Fail-Fast**: Om en versionskonflikt (ETag mismatch) detekteras i Google Drive, pausas svärmoperationen direkt med en tydlig konfliktvarning i UI:t.
-
-### 2.2 Risknod: KONTRAKT (Contract)
-- **Risk**: Formatavvikelser i händelseströmmar mellan agenter, verktygsanrop i MCP och lagrade envelopes i Drive/WAL.
-- **Lösning**: Centraliserat `EventEnvelopeSchema` i `src/shared/contracts/envelope.ts` validerar alla ingående och utgående payloads strikt via Zod. Inga "any"-objekt accepteras vid systemgränserna.
-- **Fail-Fast**: Ogiltiga envelopes avvisas omedelbart vid ingångspunkten med en utförlig ZodValidationError som loggas direkt till diagnostikvyn.
-
-### 2.3 Risknod: RESILIENS & FELTOLERANS (Resilience)
-- **Risk**: Google Drive API rate-limiting (429 Too Many Requests), tillfälliga nätverksavbrott eller token-utgång (401 Unauthorized) mitt under en pågående multi-agent-session.
-- **Lösning**: Exponentiell backoff med jitter vid Drive API-anrop. Automatisk detektering av 401 som triggar tydlig inloggnings-prompt utan att tappa pågående sessionstillstånd (vilket bevaras i minnet och WAL).
-- **Fail-Fast**: Inga tysta misslyckanden. Om ett API-anrop inte kan slutföras efter 3 försök markeras WAL-posten som `FAILED`, och användaren får en åtgärdsbar felrapport i gränssnittet.
-
-## 3. Slutsats
-Systemet har uppnått full arkitektonisk mättnad. Gränssnitt, kontrakt och procedurer är redo att överföras till fil-operativ källkodsspecifikation i Steg 3c.
+## 3. Verifieringsstrategi (TDD)
+- Skapa `src/__tests__/swarm_telemetry.test.ts` som verifierar:
+  1. `SwarmEventBus`: prenumerationer, mönstermatchning, avregistrering (unsubscribe) och ringbuffertens maxstorlek.
+  2. `TelemetrySchema`: validering av giltiga och avvisande av ogiltiga telemetrisnapshots.
+  3. `useSwarmTelemetry`: korrekt aggregering av händelseflöden till metrik per agent.
+- Kör `npm test` och `npm run verify` för att säkerställa att inga regressionsfel introduceras.

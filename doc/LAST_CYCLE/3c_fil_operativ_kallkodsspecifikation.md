@@ -1,107 +1,81 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-001)
+# 3c Fil-operativ Källkodsspecifikation (TCK-002)
 
-Denna specifikation definierar exakt vilka filer, gränssnitt, funktioner och tester som ska skapas under Fas 2 efter godkänd Token Gate.
-
----
-
-## 1. Modulöversikt och Fildistribution
-
-### 1.1 `src/features/google_drive_sync/`
-Hanterar Google Drive API v3-kommunikation, workspace-hierarki, filuppladdning/nedladdning och status.
-- **`api/driveClient.ts`**:
-  - `initGoogleDriveClient(accessToken: string)`
-  - `ensureWorkspaceHierarchy(rootName: string): Promise<DriveWorkspaceFolders>`
-  - `uploadFileMultipart(params: UploadFileParams): Promise<DriveFileMetadata>`
-  - `downloadFile(fileId: string): Promise<string>`
-  - `listWorkspaceFiles(folderId: string): Promise<DriveFileMetadata[]>`
-- **`model/driveStore.ts`**:
-  - Tillstånd för synkronisering, aktiv token, ansluten användare och fillista.
-- **`ui/DriveSyncPanel.tsx`**:
-  - Gränssnittskomponent med "Sign in with Google", status för Workspace-mappar och synkroniseringslogg.
-- **`index.ts`**:
-  - Explicita fasader: `export { GoogleDriveClient, useDriveStore, DriveSyncPanel }`.
+## 1. Översikt över Förändringskedjan
+Följande filer är specificerade för exekvering i Fas 2 så snart godkännandetoken bekräftats:
 
 ---
 
-### 1.2 `src/features/wal_logger/`
-Write-Ahead Logg för deterministisk feltolerans och audit-spårbarhet.
-- **`contracts/walSchema.ts`**:
-  - Zod-schema för `WalEntrySchema` och `WalRecord`.
-- **`engine/walEngine.ts`**:
-  - `appendWalEntry(envelope: EventEnvelope): Promise<WalEntry>`
-  - `commitWalEntry(sequenceNumber: number): Promise<void>`
-  - `failWalEntry(sequenceNumber: number, error: string): Promise<void>`
-  - `getWalHistory(): WalEntry[]`
-- **`replay/walReplay.ts`**:
-  - `replayUncommittedEntries(handler: (entry: WalEntry) => Promise<void>): Promise<ReplayResult>`
-- **`index.ts`**:
-  - Explicita fasader: `export { WalEngine, WalReplayer, WalEntrySchema }`.
+### Fil 1: `src/features/gemini_live_swarm/bus/swarmEventBus.ts` (NY)
+- **Syfte**: Deterministisk händelsebuss med pub/sub baserad på `EventEnvelope` (`CloudEvents 1.0`).
+- **Funktioner**:
+  - `publish(envelope: EventEnvelope): void` - Validerar mot Zod och sänder till matchande prenumeranter samt sparar i ringbuffert.
+  - `subscribe(pattern: string, handler: SwarmEventHandler): () => void` - Registrerar lyssnare med wildcard-stöd (`*`, `swarm.*`, `agent.*`). Returnerar unmount cleanup-funktion.
+  - `getHistory(filterPattern?: string): EventEnvelope[]` - Returnerar de senaste händelserna (max 150 st).
+  - `clear(): void` - Tömmer historik och aktiva prenumeranter.
+  - Global instans: `getGlobalSwarmEventBus()`.
 
 ---
 
-### 1.3 `src/features/mcp_bridge/`
-Model Context Protocol (JSON-RPC 2.0) för standardiserad verktygsexekvering.
-- **`contracts/mcpSchema.ts`**:
-  - Zod-scheman för JSON-RPC meddelanden och tool definitions.
-- **`server/mcpServer.ts`**:
-  - `registerTool(definition: McpToolDefinition, handler: ToolHandler): void`
-  - `handleJsonRpcRequest(request: McpRequest): Promise<McpResponse>`
-- **`tools/driveTools.ts`**:
-  - MCP-verktyg: `drive_create_file`, `drive_search_files`, `drive_read_file`.
-- **`tools/walTools.ts`**:
-  - MCP-verktyg: `wal_query_recent`, `wal_mark_committed`.
-- **`index.ts`**:
-  - Explicita fasader: `export { McpServer, createStandardMcpServer }`.
+### Fil 2: `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` (NY)
+- **Syfte**: Zod-kontrakt för telemetri, agentpuls och systemstyrkort.
+- **Scheman**:
+  - `AgentTelemetryMetricSchema`
+  - `SwarmTelemetrySnapshotSchema`
+  - `DevelopmentTicketSchema`
+  - Typer: `AgentTelemetryMetric`, `SwarmTelemetrySnapshot`, `DevelopmentTicket`.
 
 ---
 
-### 1.4 `src/features/gemini_live_swarm/`
-Multi-agent svärm för distribuerad outreach-orkestrering med moderna `@google/genai`.
-- **`agents/roleDefinitions.ts`**:
-  - Definitioner av agentroller:
-    - `ResearcherAgent`: Samlar in företagsdata och kontext.
-    - `OutreachWriterAgent`: Genererar personliga brev och sekvenser.
-    - `CriticAgent`: Granskar och ger betyg enligt policy och tonläge.
-    - `OrchestratorAgent`: Fördelar uppgifter och sammanställer konsensus.
-- **`coordinator/swarmOrchestrator.ts`**:
-  - `startSwarmCampaign(campaignPlan: CampaignInput): Promise<CampaignResult>`
-  - `coordinateStep(taskId: string): Promise<StepOutcome>`
-- **`session/geminiLiveSession.ts`**:
-  - Hanterar sessioner och anrop till Google GenAI API (Gemini 2.5 Flash).
-- **`ui/SwarmDashboard.tsx`**:
-  - Visualisering av svärmens agenter, pågående tankekedjor och slutresultat.
-- **`index.ts`**:
-  - Explicita fasader: `export { SwarmOrchestrator, SwarmDashboard }`.
+### Fil 3: `src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts` (NY)
+- **Syfte**: React-hook för reaktiv telemetriaggregering.
+- **Funktioner**:
+  - Prenumererar på `swarmEventBus` under komponentens livscykel.
+  - Beräknar ackumulerade värden: händelsetakt (events/min), aktiv agentstatus, genomsnittlig latens, sista tanke.
+  - Returnerar `snapshot: SwarmTelemetrySnapshot` och hjälparfunktioner för filtrering.
 
 ---
 
-### 1.5 `scripts/init-drive-workspace.js`
-Skript för att initiera Google Drive Workspace:
-- Kontrollerar tillgänglig token eller uppmanar till inloggning.
-- Söker efter befintlig `Outreach_Workspace`-rotmapp i Google Drive via API v3.
-- Skapar undermappar: `Campaigns`, `Templates`, `Logs`, `Artifacts`.
-- Skapar en initial metadata-fil `workspace-manifest.json` med versionsnummer och datum.
-- Returnerar en strukturerad JSON-rapport över skapade mapp-ID:n.
+### Fil 4: `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx` (NY)
+- **Syfte**: Högkvalitativ mörk sidopanel för telemetri inspirerad av *Acoustic-Priming-backup*.
+- **Innehåll**:
+  - Rubrik med pulserande hälsostatus (`HEALTHY`, `DEGRADED`).
+  - Metrikkort: Aktiva agenter, händelsetakt, totalt antal envelopes.
+  - Agentgrid: Statusbricka (IDLE, THINKING, DONE), latens och senaste tankeström per specialist (Orchestrator, Researcher, Writer, Critic).
+  - Levande händelseström med filter och tidsstämplar.
 
 ---
 
-### 1.6 `README.md` (inklusive det personliga brevet)
-- Teknisk systemdokumentation och arkitekturöversikt.
-- Instruktioner för att köra applikationen och konfigurera Google Workspace OAuth.
-- **Det personliga brevet**: En pedagogisk och personlig introduktion till varför denna samordningsmotor byggts, dess filosofi om transparens (WAL), samverkan (Swarm) och öppenhet (Drive & MCP).
+### Fil 5: `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` (NY)
+- **Syfte**: Reaktivt styrkort integrerat i samordningspanelen med direkt koppling till `doc/TICKETS.md`.
+- **Innehåll**:
+  - TCK-001 (Verifierad med kvittohash `980bc67d`).
+  - TCK-002 (Aktiv: Swarm Telemetry & Reactive Status).
+  - TCK-003 (Väntar: MCP Bridge & Avancerad Orkestrering).
+  - Förloppsstaplar, acceptanskriterier och verifieringsstatus.
 
 ---
 
-## 2. Testplan (TDD)
-I enlighet med Fas 2-direktiven skapas isolerade enhetstester i `src/__tests__/`:
-1. `src/__tests__/envelope.test.ts`: Validering av `EventEnvelopeSchema` med giltiga/ogiltiga data.
-2. `src/__tests__/wal_logger.test.ts`: Test av append-only sekvensering, commit och återhämtningsreplay.
-3. `src/__tests__/drive_sync.test.ts`: Mockade Drive API v3 anrop, multipart build, felhantering.
-4. `src/__tests__/mcp_bridge.test.ts`: JSON-RPC 2.0 protokollvalidering, felkoder och verktygsanrop.
-5. `src/__tests__/gemini_swarm.test.ts`: Agent-koordinering, rollhantering och sammanställning.
+### Fil 6: `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` (MODIFIERING)
+- **Syfte**: Integrera `TelemetrySidebar` och `MasterDevelopmentPlan` som flikar/sektioner.
+- **Ändring**: Byt ut statisk layout mot en tvåkolumns eller flikbaserad vy där operatören kan växla mellan orkestrering, telemetri och styrkort.
 
 ---
 
-## 3. Token Gate Låsning
-Denna specifikation är nu låst. Inga ändringar i `src/` (bortom grundkontraktet) kommer att genomföras förrän användaren anger godkännandekoden:
-`OUTREACH-COORD-TCK001-TOKEN`
+### Fil 7: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
+- **Syfte**: Exponera alla nya komponenter, scheman och bussen via officiell FSD-fasad.
+
+---
+
+### Fil 8: `src/__tests__/swarm_telemetry.test.ts` (NY)
+- **Syfte**: Isolerade TDD-enhetstester.
+- **Testfall**:
+  1. `SwarmEventBus`: publish och subscribe med wildcard.
+  2. `SwarmEventBus`: korrekt unsubscription utan läckor.
+  3. `SwarmEventBus`: ringbuffertkapacitet (begränsar till max 150 poster).
+  4. `TelemetrySchema`: validering av giltig Snapshot.
+  5. `DevelopmentTicketSchema`: validering av styrkortsobjekt.
+
+---
+
+### Fil 9: `scripts/run-tests.js` (MODIFIERING)
+- **Syfte**: Inkludera `runSwarmTelemetryTests()` i testsviten.
