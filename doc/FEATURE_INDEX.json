@@ -1,0 +1,35 @@
+{
+  "version": "1.0.0",
+  "system": "Outreach Samordningsmotor",
+  "features": {
+    "google_drive_sync": {
+      "path": "src/features/google_drive_sync",
+      "description": "Synkronisering och tvåvägskommunikation med Google Drive workspace, inklusive filhantering och versionshistorik",
+      "source_reference": "https://github.com/bjud-in-oss/sandras-historia-2",
+      "status": "planned"
+    },
+    "mcp_bridge": {
+      "path": "src/features/mcp_bridge",
+      "description": "Model Context Protocol (MCP) integrationsbrygga för externa agenter och verktygsexekvering",
+      "source_reference": "https://github.com/bjud-in-oss/agent-test",
+      "status": "planned"
+    },
+    "wal_logger": {
+      "path": "src/features/wal_logger",
+      "description": "Write-Ahead Logging (WAL) för händelseflöden, feltolerans och oföränderlig audit-spårning",
+      "source_reference": "https://github.com/bjud-in-oss/Ouroboros-Agent",
+      "status": "planned"
+    },
+    "gemini_live_swarm": {
+      "path": "src/features/gemini_live_swarm",
+      "description": "Realtidsorkestrering av multi-agent svärm baserad på Gemini Live API med samordnad problemlösning",
+      "source_reference": "https://github.com/bjud-in-oss/Ouroboros-Agent",
+      "status": "planned"
+    }
+  },
+  "shared": {
+    "contracts": {
+      "envelope": "src/shared/contracts/envelope.ts"
+    }
+  }
+}
