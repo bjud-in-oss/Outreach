@@ -18,7 +18,7 @@ import {
 import { DriveSyncPanel, useDriveStore } from './features/google_drive_sync/index.ts';
 import { WalEngine, WalEntry, WalReplayer } from './features/wal_logger/index.ts';
 import { createStandardMcpServer, McpServer, McpToolDefinition } from './features/mcp_bridge/index.ts';
-import { SwarmOrchestrator, SwarmDashboard, CampaignPlan } from './features/gemini_live_swarm/index.ts';
+import { SwarmOrchestrator, SwarmDashboard, CampaignPlan, getGlobalSwarmEventBus } from './features/gemini_live_swarm/index.ts';
 import { EventEnvelope } from './shared/contracts/envelope.ts';
 
 export default function App() {
@@ -40,6 +40,23 @@ export default function App() {
     setWalEntries(walEngineRef.current.getWalHistory());
     setMcpTools(mcpServerRef.current.getRegisteredTools());
 
+    // Koppla globala SwarmEventBus till WAL
+    const bus = getGlobalSwarmEventBus();
+    const unsubBus = bus.subscribe('*', async (envelope) => {
+      // Skriv till WAL om det inte är en ren WAL-händelse
+      if (!envelope.type.startsWith('wal.')) {
+        try {
+          const entry = await walEngineRef.current.appendWalEntry(envelope);
+          setTimeout(async () => {
+            await walEngineRef.current.commitWalEntry(entry.sequenceNumber);
+            setWalEntries(walEngineRef.current.getWalHistory());
+          }, 300);
+        } catch (err) {
+          console.error('[WAL EventBus Sync Error]', err);
+        }
+      }
+    });
+
     // Lägg till en initial boot-händelse i WAL
     const initialBootEnvelope: EventEnvelope = {
       id: 'boot-evt-1',
@@ -57,6 +74,10 @@ export default function App() {
         setWalEntries(walEngineRef.current.getWalHistory());
       });
     });
+
+    return () => {
+      unsubBus();
+    };
   }, []);
 
   const handleEmitEvent = async (source: string, type: string, data: any) => {
@@ -144,7 +165,7 @@ export default function App() {
                   v1.0.0
                 </span>
                 <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                  TCK-001 AKTIV
+                  TCK-002 VERIFIERAD
                 </span>
               </div>
               <p className="text-xs text-slate-400">Google Workspace • MCP Bridge • WAL Logger • Gemini Live Swarm</p>

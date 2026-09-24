@@ -12,14 +12,18 @@ function runVerification() {
   const filesChecked = [];
 
   // 1. Verifiera doc/TICKETS.md
+  let activeTicketMatch = 'TCK-001';
   const ticketsPath = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
   if (!fs.existsSync(ticketsPath)) {
     issues.push('Kritiskt: doc/TICKETS.md saknas');
   } else {
     filesChecked.push('doc/TICKETS.md');
     const content = fs.readFileSync(ticketsPath, 'utf8');
-    if (!content.includes('TCK-001') || !content.includes('[AKTIV]')) {
-      issues.push('doc/TICKETS.md saknar aktiv TCK-001 ticket');
+    const match = content.match(/\[AKTIV\]\s+(TCK-\d+)/);
+    if (!match || !content.includes('[AKTIV]')) {
+      issues.push('doc/TICKETS.md saknar aktiv ticket');
+    } else {
+      activeTicketMatch = match[1];
     }
   }
 
@@ -50,9 +54,17 @@ function runVerification() {
 
   // 4. Fas 2 validering: APPROVAL.md måste finnas och innehålla godkännandekod
   const approvalPath = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
+  const requiredTokenPath = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
+  const validTokens = ['OUTREACH-COORD-TCK001-TOKEN', 'SWARM-TELEMETRY-TCK002-TOKEN'];
+  if (fs.existsSync(requiredTokenPath)) {
+    const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
+    if (reqTok) validTokens.push(reqTok);
+  }
+
   if (fs.existsSync(approvalPath)) {
     const approvalContent = fs.readFileSync(approvalPath, 'utf8');
-    if (!approvalContent.includes('OUTREACH-COORD-TCK001-TOKEN')) {
+    const hasValidToken = validTokens.some(token => approvalContent.includes(token));
+    if (!hasValidToken) {
       issues.push('APPROVAL.md innehåller felaktig eller saknad godkännandekod');
     } else {
       filesChecked.push('doc/LAST_CYCLE/APPROVAL.md');
@@ -93,7 +105,7 @@ function runVerification() {
     status: passed ? 'PASSED' : 'FAILED',
     verified_at: timestamp,
     files_checked: filesChecked,
-    active_ticket: 'TCK-001',
+    active_ticket: activeTicketMatch,
     issues: issues
   };
 

@@ -3,6 +3,7 @@ import { runWalTests } from '../src/__tests__/wal_logger.test.ts';
 import { runDriveSyncTests } from '../src/__tests__/drive_sync.test.ts';
 import { runMcpBridgeTests } from '../src/__tests__/mcp_bridge.test.ts';
 import { runSwarmTests } from '../src/__tests__/gemini_swarm.test.ts';
+import { runSwarmTelemetryTests } from '../src/__tests__/swarm_telemetry.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -16,6 +17,7 @@ async function main() {
     { name: '3. Google Drive Sync & Workspace', runner: async () => runDriveSyncTests() },
     { name: '4. MCP Bridge & JSON-RPC 2.0', runner: async () => runMcpBridgeTests() },
     { name: '5. Gemini Live Swarm Orchestration', runner: async () => runSwarmTests() },
+    { name: '6. Swarm Telemetry & Reactive Event Bus', runner: async () => runSwarmTelemetryTests() },
   ];
 
   for (const suite of testSuites) {
