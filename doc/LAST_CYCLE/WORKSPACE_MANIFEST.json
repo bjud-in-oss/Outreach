@@ -1,0 +1,14 @@
+{
+  "workspace_name": "Outreach_Workspace",
+  "version": "1.0.0",
+  "initialized_at": "2026-09-23T08:44:57.897Z",
+  "folders": {
+    "root": "sim-folder-root-outreach-workspace",
+    "campaigns": "sim-folder-campaigns",
+    "templates": "sim-folder-templates",
+    "logs": "sim-folder-logs",
+    "artifacts": "sim-folder-artifacts"
+  },
+  "status": "INITIALIZED",
+  "protocol": "EventEnvelope-v1.0"
+}
