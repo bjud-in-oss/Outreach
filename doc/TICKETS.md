@@ -1,7 +1,21 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIV TICKET
-### [AKTIV] TCK-003: MCP BRIDGE & GEMINI LIVE SWARM DJUPINTEGRATION (FAS 1: PLANERING)
+### [AKTIV] TCK-003: STÄDNING & SI v10.0 ARKITEKTURANPASSNING (FAS 2: VERKSTÄLLD & VERIFIERAD)
+- **Status**: SLUTFÖRD & VERIFIERAD (Godkänd via OUTREACH-SI10-TCK003-TOKEN)
+- **Fokus**: Enhetlig kodstandard, Wayfinder-installation, SI v10.0 Agentkrafter och 4:e Seriell Motor.
+- **Levererat**:
+  - Wayfinder-installation under `.agents/skills/wayfinder/SKILL.md`.
+  - Uppdaterad `README.md` med pnpm-stöd, wayfinder-kommando och förklaring av `/wayfinder` mot `doc/TICKETS.md`.
+  - Standardisering av lokala domänbeslut under `src/features/[modul]/doc/DECISIONS.md` samt ADR-004 i `doc/DECISIONS.md`.
+  - SI v10.0 Agentkrafter (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`) och 4:e `SERIELL_MOTOR` i `roleDefinitions.ts`, `telemetrySchema.ts` och `swarmEventBus.ts`.
+  - UI-synkronisering i `SwarmDashboard.tsx`, `TelemetrySidebar.tsx` och `MasterDevelopmentPlan.tsx` med realtidsövervakning och interaktiv jämförelsepanel.
+  - Transient Mikro-E2E testsvit i `src/__tests__/transient_TCK-003.test.ts` (1.7s, <3s).
+
+---
+
+## PLANERAD NÄSTA TICKET
+### [PLANERAD] TCK-004: MCP BRIDGE & GEMINI LIVE SWARM DJUPINTEGRATION
 - **Status**: VÄNTAR PÅ INITIERING
 - **Fokus**: Exekvera avancerade verktygsanrop via MCP och live WebSocket-baserad orkestrering.
 - **Artefakter**: Externa agentintegrationer, token-ekonomi och automatiserade Drive-leveranser.

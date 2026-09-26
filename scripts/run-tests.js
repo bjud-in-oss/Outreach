@@ -4,6 +4,7 @@ import { runDriveSyncTests } from '../src/__tests__/drive_sync.test.ts';
 import { runMcpBridgeTests } from '../src/__tests__/mcp_bridge.test.ts';
 import { runSwarmTests } from '../src/__tests__/gemini_swarm.test.ts';
 import { runSwarmTelemetryTests } from '../src/__tests__/swarm_telemetry.test.ts';
+import { runTransientTCK003Tests } from '../src/__tests__/transient_TCK-003.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -18,6 +19,7 @@ async function main() {
     { name: '4. MCP Bridge & JSON-RPC 2.0', runner: async () => runMcpBridgeTests() },
     { name: '5. Gemini Live Swarm Orchestration', runner: async () => runSwarmTests() },
     { name: '6. Swarm Telemetry & Reactive Event Bus', runner: async () => runSwarmTelemetryTests() },
+    { name: '7. Transient Mikro-E2E (TCK-003 & SI v10.0)', runner: async () => runTransientTCK003Tests() },
   ];
 
   for (const suite of testSuites) {

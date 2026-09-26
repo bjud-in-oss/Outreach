@@ -1,13 +1,13 @@
-# APPROVAL NOTICE (TCK-002)
+# APPROVAL NOTICE (TCK-003)
 
-Token: SWARM-TELEMETRY-TCK002-TOKEN
-Godkänd av användare vid: 2026-09-23T14:44:30
+Token: OUTREACH-SI10-TCK003-TOKEN
+Godkänd av användare vid: 2026-09-26T05:54:25
 Status: GODKÄND FÖR FAS 2 VERKSTÄLLANDE & TDD
-Ticket: TCK-002 (Swarm Telemetry & Reactive Status)
+Ticket: TCK-003 (Samlad Städning & SI v10.0 Arkitekturanpassning)
 Omfång:
-- Reaktiv händelsebuss (`SwarmEventBus`)
-- Telemetri Zod-schema och modeller (`telemetrySchema.ts`)
-- Reaktiv telemetri-hook (`useSwarmTelemetry.ts`)
-- Telemetrivisning (`TelemetrySidebar.tsx`)
-- Reaktivt styrkort (`MasterDevelopmentPlan.tsx`)
-- TDD-enhetstester (`src/__tests__/swarm_telemetry.test.ts`)
+- Wayfinder-installation (`.agents/skills/wayfinder/SKILL.md`) & README-uppdatering
+- Standardisering av Domänbeslut (`src/features/[modul]/doc/DECISIONS.md`) och `doc/DECISIONS.md` (ADR-004)
+- Agentkrafter (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`) och 4:e `SERIELL_MOTOR`
+- Reaktiv UI- & Dashboard-synkronisering med jämförelsepanel
+- Transient Mikro-E2E-test (<3s) i `src/__tests__/transient_TCK-003.test.ts`
+- Arkitektur- och kontraktsverifiering via `pnpm verify`

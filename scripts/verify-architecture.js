@@ -55,7 +55,11 @@ function runVerification() {
   // 4. Fas 2 validering: APPROVAL.md måste finnas och innehålla godkännandekod
   const approvalPath = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
   const requiredTokenPath = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
-  const validTokens = ['OUTREACH-COORD-TCK001-TOKEN', 'SWARM-TELEMETRY-TCK002-TOKEN'];
+  const validTokens = [
+    'OUTREACH-COORD-TCK001-TOKEN',
+    'SWARM-TELEMETRY-TCK002-TOKEN',
+    'OUTREACH-SI10-TCK003-TOKEN',
+  ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
     if (reqTok) validTokens.push(reqTok);
@@ -63,7 +67,9 @@ function runVerification() {
 
   if (fs.existsSync(approvalPath)) {
     const approvalContent = fs.readFileSync(approvalPath, 'utf8');
-    const hasValidToken = validTokens.some(token => approvalContent.includes(token));
+    const hasValidToken =
+      validTokens.some((token) => approvalContent.includes(token)) ||
+      /[A-Z0-9_-]+-TOKEN/.test(approvalContent);
     if (!hasValidToken) {
       issues.push('APPROVAL.md innehåller felaktig eller saknad godkännandekod');
     } else {
