@@ -1,4 +1,8 @@
 import { EventEnvelope, EventEnvelopeSchema } from '../../../shared/contracts/envelope.ts';
+import {
+  SerialExecutionMetric,
+  SerialExecutionMetricSchema,
+} from '../telemetry/telemetrySchema.ts';
 
 export type SwarmEventHandler = (envelope: EventEnvelope) => void;
 
@@ -39,6 +43,31 @@ export class SwarmEventBus {
         }
       }
     }
+  }
+
+  /**
+   * Publicerar seriell exekveringsmetrik (TCK-006) med strikt Zod-validering och CloudEvents-inkapsling.
+   */
+  public publishSerialMetric(metric: SerialExecutionMetric): EventEnvelope {
+    const validated = SerialExecutionMetricSchema.parse(metric);
+    const eventType = validated.isTokenGated
+      ? 'swarm.serial.gate.evaluated'
+      : validated.stageStatus === 'COMPLETED' && validated.currentStage === 'e2e_verify'
+      ? 'swarm.serial.pipeline.completed'
+      : 'swarm.serial.stage.transition';
+
+    const envelope: EventEnvelope = {
+      id: `evt-serial-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      source: 'outreach/swarm/serial_motor',
+      type: eventType,
+      specversion: '1.0',
+      datacontenttype: 'application/json',
+      time: validated.lastTransitionAt || new Date().toISOString(),
+      data: validated,
+    };
+
+    this.publish(envelope);
+    return envelope;
   }
 
   /**

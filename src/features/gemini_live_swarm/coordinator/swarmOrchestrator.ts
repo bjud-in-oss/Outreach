@@ -36,13 +36,20 @@ export class SwarmOrchestrator {
   constructor(session?: GeminiLiveSession) {
     this.session = session || new GeminiLiveSession();
     this.agents = new Map();
-    for (const role of Object.keys(DEFAULT_SWARM_ROLES) as SwarmAgentRole[]) {
-      this.agents.set(role, { ...DEFAULT_SWARM_ROLES[role] });
+    const activeRoles: SwarmAgentRole[] = ['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC'];
+    for (const role of activeRoles) {
+      if (DEFAULT_SWARM_ROLES[role]) {
+        this.agents.set(role, { ...DEFAULT_SWARM_ROLES[role] });
+      }
     }
   }
 
   public getActiveAgents(): SwarmAgentConfig[] {
     return Array.from(this.agents.values());
+  }
+
+  public getSerialEngine(): SwarmAgentConfig {
+    return { ...DEFAULT_SWARM_ROLES.SERIELL_MOTOR };
   }
 
   public createCampaignPlan(input: CampaignInput): CampaignPlan {

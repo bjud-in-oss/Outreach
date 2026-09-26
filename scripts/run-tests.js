@@ -6,6 +6,7 @@ import { runSwarmTests } from '../src/__tests__/gemini_swarm.test.ts';
 import { runSwarmTelemetryTests } from '../src/__tests__/swarm_telemetry.test.ts';
 import { runTransientTCK004Tests } from '../src/__tests__/transient_TCK-004.test.ts';
 import { runTransientTCK005Tests } from '../src/__tests__/transient_TCK-005.test.ts';
+import { runTransientTCK006Tests } from '../src/__tests__/transient_TCK-006.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -22,6 +23,7 @@ async function main() {
     { name: '6. Swarm Telemetry & Reactive Event Bus', runner: async () => runSwarmTelemetryTests() },
     { name: '7. Transient E2E: TCK-004 Wayfinder & SI v10.0', runner: async () => runTransientTCK004Tests() },
     { name: '8. Transient E2E: TCK-005 Standardisering av Domänbeslut', runner: async () => runTransientTCK005Tests() },
+    { name: '9. Transient E2E: TCK-006 Agentkrafter & 4:e Seriell Motor', runner: async () => runTransientTCK006Tests() },
   ];
 
   for (const suite of testSuites) {

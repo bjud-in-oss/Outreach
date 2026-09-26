@@ -13,11 +13,13 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
 
   // Initiera standardmätvärden för standardrollerna
   const initialAgentMetrics: Record<string, AgentTelemetryMetric> = {};
-  for (const roleKey of Object.keys(DEFAULT_SWARM_ROLES) as SwarmAgentRole[]) {
-    const r = DEFAULT_SWARM_ROLES[roleKey];
+  for (const roleKey of Object.keys(DEFAULT_SWARM_ROLES)) {
+    const r = (DEFAULT_SWARM_ROLES as any)[roleKey];
+    if (!r) continue;
     initialAgentMetrics[r.id] = {
       agentId: r.id,
       role: r.role,
+      force: r.force,
       status: 'IDLE',
       lastThought: undefined,
       lastActive: new Date().toISOString(),
@@ -34,6 +36,7 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
     recentEnvelopes: [],
     healthStatus: 'HEALTHY',
     lastPulseAt: new Date().toISOString(),
+    serialExecution: undefined,
   });
 
   const eventTimestampsRef = useRef<number[]>([]);
@@ -62,9 +65,13 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
         const updatedMetrics = { ...prev.agentMetrics };
 
         // Om händelsen kommer från en agent, uppdatera dess mätvärde
-        const roleMatch = envelope.source.match(/outreach\/swarm\/(orchestrator|researcher|writer|critic)/i);
+        const roleMatch = envelope.source.match(/outreach\/swarm\/(orchestrator|researcher|writer|critic|serial_motor)/i);
         if (roleMatch) {
-          const roleKey = roleMatch[1].toUpperCase() as SwarmAgentRole;
+          const matchedName = roleMatch[1].toLowerCase();
+          const roleKey: SwarmAgentRole =
+            matchedName === 'serial_motor'
+              ? 'SERIELL_MOTOR'
+              : (roleMatch[1].toUpperCase() as SwarmAgentRole);
           const agentId = DEFAULT_SWARM_ROLES[roleKey]?.id;
           if (agentId && updatedMetrics[agentId]) {
             const current = updatedMetrics[agentId];
@@ -81,16 +88,29 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
           }
         }
 
+        // Uppdatera seriell metrik vid swarm.serial.*-händelser
+        let updatedSerialExecution = prev.serialExecution;
+        if (envelope.type.startsWith('swarm.serial.') && envelope.data) {
+          try {
+            updatedSerialExecution = envelope.data as any;
+          } catch {
+            // ignorera felaktigt dataformat
+          }
+        }
+
         const newRecent = [envelope, ...prev.recentEnvelopes].slice(0, 30);
 
         const newSnapshot: SwarmTelemetrySnapshot = {
-          activeAgentsCount: Object.values(updatedMetrics).filter((a) => a.status !== 'ERROR').length,
+          activeAgentsCount: Object.values(updatedMetrics).filter(
+            (a) => a.status !== 'ERROR' && a.role !== 'SERIELL_MOTOR'
+          ).length,
           totalEventsCount: prev.totalEventsCount + 1,
           eventsPerMinute: epm,
           agentMetrics: updatedMetrics,
           recentEnvelopes: newRecent,
           healthStatus: 'HEALTHY',
           lastPulseAt: new Date().toISOString(),
+          serialExecution: updatedSerialExecution,
         };
 
         // Validera med Zod

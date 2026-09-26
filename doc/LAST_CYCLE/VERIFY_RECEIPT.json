@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "7e119ba1",
+  "receipt_hash": "4af61d81",
   "status": "PASSED",
-  "verified_at": "2026-09-26T18:42:35.348Z",
+  "verified_at": "2026-09-26T18:49:14.886Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -16,6 +16,7 @@
     "src/__tests__/swarm_telemetry.test.ts",
     "src/__tests__/transient_TCK-004.test.ts",
     "src/__tests__/transient_TCK-005.test.ts",
+    "src/__tests__/transient_TCK-006.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -42,6 +43,6 @@
     "src/features/wal_logger/replay/walReplay.ts",
     "src/main.tsx"
   ],
-  "active_ticket": "TCK-006",
+  "active_ticket": "TCK-007",
   "issues": []
 }
