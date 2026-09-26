@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "4af61d81",
+  "receipt_hash": "ad479632",
   "status": "PASSED",
-  "verified_at": "2026-09-26T18:49:14.886Z",
+  "verified_at": "2026-09-26T18:53:37.518Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",

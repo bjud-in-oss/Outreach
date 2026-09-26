@@ -1,26 +1,27 @@
-# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-006)
+# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-007)
 
 ## 1. Mättnadsanalys
 - **MÄTTNAD: JA**
-- Samtliga arkitektoniska målkonflikter mellan legacy roller (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`) och de nya krafterna (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`) samt etableringen av den 4:e komponenten `SERIELL_MOTOR` har modellerats och harmoniserats. Full bakåtkompatibilitet har säkrats.
+- Samtliga målkonflikter kring gränssnittspresentation, realtidsuppdateringar, reaktiv telemetribindning och SI v10.0:s Token Gate-disciplin har lösts.
+- Komponentstrukturen för `SwarmDashboard.tsx`, `TelemetrySidebar.tsx` och `MasterDevelopmentPlan.tsx` är fullt harmoniserad med de etablerade kontrakten från TCK-006.
 
 ---
 
 ## 2. Syntes av Arkitektoniska Insikter
 
-1. **Agentkrafter vs Exekveringsroller**:
-   - Genom att göra `force` till en förstaklassig dimension i `roleDefinitions.ts` behåller vi befintliga gränssnitt orörda samtidigt som agenterna kan operera under SI v10.0:s filosofiska och funktionella krafter.
-2. **Den 4:e Motorns Roll (SERIELL_MOTOR)**:
-   - Medan de tre krafterna driver problemlösning (följa, vända om, förlikas) är den seriella motorn den deterministiska exekveringsbädden som säkerställer att inga faser hoppas över och att Token Gate respekteras före tillståndsförändringar.
-3. **Zod-integritet**:
-   - `SerialExecutionMetricSchema` och `AgentForceSchema` möjliggör strikt körtidsvalidering av telemetri på `SwarmEventBus`, vilket förbereder systemet för den grafiska övervakningspanelen i TCK-007.
+1. **Realtidsinsyn utan prestandaförlust**:
+   - Genom att använda `useSwarmTelemetry` och dess inbyggda FIFO-ringbuffert förblir sidopanelen och instrumentpanelen reaktiva med 60 FPS utan att belasta Reacts renderingscykel i onödan.
+2. **Kraftbalans i UI**:
+   - Att lyfta fram de 4 krafterna (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`, `SERIELL_MOTOR`) gör arkitekturen självförklarande för användaren: man ser direkt hur den seriella motorn säkerställer ordning medan de tre tankekrafterna samarbetar.
+3. **Strikt Token Gate-separation**:
+   - Fas 1 avslutas här vid Steg 3c. Inga källkodsfiler i `src/` skrivs förrän koden `TCK-007-UI-SERIELL-MOTOR-TOKEN` bekräftas via `pnpm genomfor`.
 
 ---
 
 ## 3. Planerade Åtgärder i Fas 2 (efter Token Gate)
-- Uppdatera `src/features/gemini_live_swarm/agents/roleDefinitions.ts` med krafter och `SERIELL_MOTOR`.
-- Uppdatera `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` med Zod-scheman för krafter och seriell körningsmetrik.
-- Uppdatera `src/features/gemini_live_swarm/bus/swarmEventBus.ts` med metoder/stöd för seriella pipeline-händelser.
-- Uppdatera `src/features/gemini_live_swarm/index.ts` med export av nya kontrakt och funktioner.
-- Skapa transient mikro-E2E-test `src/__tests__/transient_TCK-006.test.ts`.
-- Köra `pnpm verify` och `pnpm test`.
+- Uppdatera `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`.
+- Uppdatera `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`.
+- Uppdatera `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`.
+- Skapa transient mikro-E2E-test `src/__tests__/transient_TCK-007.test.ts`.
+- Exekvera `pnpm test` och `pnpm verify`.
+- Konsolidera testet till långsiktig regressionssvit och stänga TCK-007.
