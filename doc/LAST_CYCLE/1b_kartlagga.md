@@ -1,59 +1,44 @@
-# 1b Kartlägga: Filstrukturer, Gränsytor och Händelsebuss (TCK-002)
+# 1b Kartlägga: Filstrukturer, Gränsytor och Dokumentation (TCK-004)
 
 ## 1. Kartläggning av Befintlig Kodbas och Beröringspunkter
-1. **Domän: `src/features/gemini_live_swarm/`**
-   - Befintliga moduler:
-     - `agents/roleDefinitions.ts`: Definitioner av roller (ORCHESTRATOR, RESEARCHER, OUTREACH_WRITER, CRITIC).
-     - `coordinator/swarmOrchestrator.ts`: Sekvenskörning av kampanjer och manuell emittering av envelopes.
-     - `session/geminiLiveSession.ts`: Gemini SDK wrapper och reservlogik.
-     - `ui/SwarmDashboard.tsx`: Kampanjformulär och stegvisning.
-     - `index.ts`: Officiell domänfasad.
-   - Nya moduler som ska tillföras:
-     - `bus/swarmEventBus.ts`: Central händelsebuss med pub/sub, typade topics och ringbuffert.
-     - `telemetry/telemetrySchema.ts`: Zod-kontrakt för telemetrimätningar och systemstatus.
-     - `telemetry/useSwarmTelemetry.ts`: Hook som aggregerar levande mätvärden (throughput, latens, tankar).
-     - `ui/TelemetrySidebar.tsx`: Reaktiv telemetrivisning med mätare, agentstatus och händelseström.
-     - `ui/MasterDevelopmentPlan.tsx`: Reaktivt styrkort kopplat till `doc/TICKETS.md` och systemfaser.
-2. **Koppling mot Delade Kontrakt: `src/shared/contracts/envelope.ts`**
-   - Använder befintligt `EventEnvelopeSchema` som bärare för alla buss-meddelanden (`swarm.agent.thinking`, `swarm.agent.acted`, `swarm.telemetry.pulse`, `ticket.status.updated`).
-3. **Koppling mot WAL Logger: `src/features/wal_logger/`**
-   - Händelsebussen kan automatiskt spegla kritiska händelser till `WalEngine`, vilket ger automatisk spårbarhet utan extra boilerplate.
-4. **Koppling mot App-rot: `src/App.tsx`**
-   - Infoga `TelemetrySidebar` och `MasterDevelopmentPlan` som tillgängliga vyer/sektioner i operatörspanelen.
+1. **Färdighetskatalog (`.agents/skills/`)**:
+   - `wayfinder`: Installerades under `.agents/skills/wayfinder/SKILL.md`.
+   - `decomposing-tickets`: Etablerades under `.agents/skills/decomposing-tickets/SKILL.md`.
+2. **Systemdokumentation (`README.md`)**:
+   - Befintligt innehåll: Filosofiskt personligt brev, arkitekturöversikt över de fyra grundmodulerna (`google_drive_sync`, `wal_logger`, `mcp_bridge`, `gemini_live_swarm`), grundläggande installationsanvisningar med `npm`.
+   - Brister i nuläget: Saknar instruktioner för SI v10.0: `pnpm planera`, `pnpm genomfor`, Token Gate (`REQUIRED_TOKEN.txt`), `pnpm verify` samt `/wayfinder`-scenariodialoger.
+3. **Körtidsskript (`scripts/` & `package.json`)**:
+   - `package.json` har skripten `planera`, `genomfor`, `verify`, `test`.
+   - `scripts/run-planera.js` hanterar både fri dekomponering och Fas 1-initiering.
+   - `scripts/run-genomfor.js` skyddar `src/` och kräver kryptografisk token-matchning.
 
 ## 2. Intern Riskanalys (Uppföljning och Fördjupning)
-- **Risknod 1: State (Asynkron synkronisering & Race Conditions)**
-  - *Svar*: Bussen hanterar alla prenumerationsanrop synkront i minnet med en deterministisk `Set<Handler>`. Händelser köas sekventiellt så att ordningsföljden (causality) alltid bevaras.
-- **Risknod 2: Contract (Zod-validering & Versionering)**
-  - *Svar*: `TelemetrySchema` definieras strikt med Zod. Om ett händelsekuvert saknar obligatoriska fält avvisas det omedelbart och flaggas i `TelemetrySidebar` som ett rött fel (Fail Fast).
-- **Risknod 3: Resilience (Skärmfrysning vid snabba agenttankar)**
-  - *Svar*: UI-uppdateringar batchas genom standard React 19 microtask-schemaläggning. Telemetrihistoriken har ett tak på 150 händelser med FIFO-rensning.
+- **Risknod 1: State (Versionskoherens mellan README och skript)**
+  - *Svar*: Samtliga kommandoexempel i `README.md` speglar de exakta fälten i `package.json` och den standardiserade `pnpm`-miljön.
+- **Risknod 2: Contract (Token Gate-integritet)**
+  - *Svar*: Dokumentationen beskriver exakt hur `REQUIRED_TOKEN.txt` skapas vid Steg 3c, kontrolleras i chatten och verifieras av `pnpm genomfor [TOKEN]`.
+- **Risknod 3: Resilience (Inga oavsiktliga källkodsändringar)**
+  - *Svar*: TCK-004 rör uteslutande dokumentation och skill-infrastruktur (`Global`), vilket lämnar `src/` helt opåverkad.
 
 ## 3. Planerade Filoperationer
 | Fil | Typ | Syfte |
 |---|---|---|
-| `src/features/gemini_live_swarm/bus/swarmEventBus.ts` | Ny | Reaktiv händelsebuss baserad på `EventEnvelope` |
-| `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` | Ny | Zod-kontrakt för telemetri och styrkort |
-| `src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts` | Ny | React-hook för reaktiv telemetri och aggregering |
-| `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx` | Ny | Reaktiv sidopanel för telemetri och event-ström |
-| `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` | Ny | Reaktivt styrkort baserat på `doc/TICKETS.md` |
-| `src/features/gemini_live_swarm/index.ts` | Modifiering | Exponera nya fasader |
-| `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` | Modifiering | Integrera styrkort och telemetridockning |
-| `src/__tests__/swarm_telemetry.test.ts` | Ny | Isolerade TDD-tester för buss och telemetrikontrakt |
-| `scripts/run-tests.js` | Modifiering | Inkludera de nya testerna |
+| `.agents/skills/wayfinder/SKILL.md` | Befintlig / Verifierad | Bekräfta fullständig Wayfinder-specifikation |
+| `README.md` | Modifiering | Tillföra SI v10.0-rutiner, pnpm-arbetsflöden och /wayfinder-sektion |
+| `doc/TICKETS.md` | Uppföljning | Markera TCK-004 i förberedelse för Fas 2 |
 
 ```json
 {
   "status": "PLANNING_FAS_1",
-  "current_domain": "gemini_live_swarm",
+  "current_domain": "Global",
   "next_step": "2a_avgransa",
-  "ticket_id": "TCK-002",
-  "active_skill": "real-time-and-multi-user",
+  "ticket_id": "TCK-004",
+  "active_skill": "wayfinder",
   "active_vectors": [
-    "reactive_event_bus",
-    "swarm_telemetry",
-    "master_development_plan",
-    "cloud_events_pubsub"
+    "wayfinder_integration",
+    "si_v10_runtime_contracts",
+    "readme_standardization",
+    "pnpm_workflow"
   ]
 }
 ```

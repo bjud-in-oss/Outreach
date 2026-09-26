@@ -1,31 +1,27 @@
-# 1a Förstå: Swarm Telemetry, Reaktiv Händelsebuss & Styrkort (TCK-002)
+# 1a Förstå: Wayfinder-installation & README för SI v10.0 (TCK-004)
 
 ## 1. Målbild & Bakgrund
-I **TCK-001** etablerades Outreach Samordningsmotors grundläggande arkitektur med Google Drive Workspace, Write-Ahead Logging (WAL), MCP-brygga och en grundläggande Gemini Live Swarm. 
+I **TCK-004** integrerar vi färdigheten `wayfinder` och uppdaterar systemets dokumentation i `README.md` för att förankra körtidsreglerna och processkontrakten i **SI v10.0** och **AGENTS.md v10.0**.
 
-I **TCK-002** lyfter vi operatörens insyn och systemets reaktiva förmåga genom att transformera beprövade mönster från referensen **Acoustic-Priming-backup**:
-1. **TelemetrySidebar**: En realtidsövervakning av svärmens interna tillstånd (agentpuls, aktivitet, latens, tankeström och händelseflöde).
-2. **MasterDevelopmentPlan**: Ett reaktivt styrkort för systemtickets och leveransfaser direkt knutet till `doc/TICKETS.md` och arkitekturkvitton.
-3. **Reaktiv Händelsebuss (`swarmEventBus`)**: En typsäker, händelsestyrd pub/sub-motor baserad på `EventEnvelope` (`CloudEvents 1.0`) som orkestrerar kommunikationen mellan svärmens agenter, telemetrin och WAL-loggern.
+Tidigare förlitade sig projektet på manuella instruktioner och fragmenterade körkommandon. Genom att etablera:
+1. **Wayfinder Skill**: Strategisk kartläggning och hantering av besluts-tickets (AFK/HITL) under `.agents/skills/wayfinder/`.
+2. **Standardiserat Körtidsflöde i README.md**: Dokumentera exekveringssekvensen `pnpm planera`, `pnpm planera TCK-XXX`, Token Gate (`REQUIRED_TOKEN.txt`), `pnpm genomfor` samt oberoende arkitekturvalidering (`pnpm verify`).
+3. **Koppling till `/wayfinder`**: Instruktioner för hur operatören eller agenten aktiverar scenariodialoger för att skingra dimma utan att röra källkoden.
 
-## 2. Analys av Migrationsmönster (Acoustic-Priming-backup)
-- **Händelsestyrd Agent-buss (`useAgent` / Event Bus)**:
-  - Tidigare mönster: Komponenter anropade funktioner direkt i ad-hoc state utan standardiserade händelsekontrakt.
-  - Vår transformation: Varje tillståndsändring, agenttanke och verktygsutförande publiceras som ett validerat `EventEnvelope`. Bussen tillåter prenumeranter (telemetri, UI, WAL, tester) att lyssna på specifika mönster (`swarm.*`, `agent.*`, `ticket.*`).
-- **TelemetrySidebar**:
-  - Tidigare mönster: Statisk sidopanel med hårdkodade loggrader.
-  - Vår transformation: Levande, reaktiv telemetrikomponent med realtidsaggregering (aktiva agenter, throughput, tankeström i realtid, feltoleransindikator och filtrerbar händelselogg).
-- **MasterDevelopmentPlan (Reaktivt Styrkort)**:
-  - Tidigare mönster: Hårdkodad text i README eller separata markdown-filer utan koppling till UI.
-  - Vår transformation: Interaktivt styrkort integrerat i samordningspanelen som visualiserar statusen för `doc/TICKETS.md` (TCK-001 slutförd, TCK-002 aktiv, TCK-003 väntande) samt verifieringskvitton och acceptanskriterier.
+## 2. Analys av Migrationsmönster & Standardisering
+- **Wayfinder i SI v10.0-sammanhang**:
+  - Wayfinder används för att särskilja besluts-tickets (Wayfinder scenariofrågor utan kodändring) från bygg-tickets (specifika källkodsändringar under `src/features/`).
+  - Kartan (`wayfinder:map`) utgör ett levande index över fattade beslut och öppna vägval.
+- **README.md som Operatörskontrakt**:
+  - `README.md` måste tydligt förmedla hur utvecklare och agenter interagerar med Outreach Samordningsmotor med de nya `pnpm`-kommandona och Token Gate-spärren.
 
-## 3. Intern Riskanalys (Risknoder)
-- **Risknod 1: State (Tillståndskoherens & Minnesläckor i Reaktiv Buss)**
-  - *Risk*: Om prenumeranter till händelsebussen inte avregistreras vid avmontering av React-komponenter skapas minnesläckor och dubbla händelseutskick.
-  - *Åtgärd*: `swarmEventBus` designas med id-baserad prenumeration och explicit `unsubscribe`-funktion. Hooks (`useSwarmTelemetry`, `useSwarmEventBus`) städar upp i `useEffect`-cleanup.
-- **Risknod 2: Contract (Zod-schema & Kontraktsintegritet)**
-  - *Risk*: Telemetridata och händelsekuvert kan divergera från `EventEnvelopeSchema` och krascha telemetri-parsning.
-  - *Åtgärd*: Alla telemetrihändelser valideras med Zod i domängränsen (`telemetrySchema.ts`). Ogiltiga händelser fångas med Fail Fast och skickas till diagnostikpanelen.
-- **Risknod 3: Resilience (Prestanda vid hög händelseintensitet)**
-  - *Risk*: Svärmens intensiva tankeflöden och stegbyten kan orsaka överdrivna re-renders i operatörsgränssnittet.
-  - *Åtgärd*: Buffring och begränsning av telemetriloggen (t.ex. max 100 senaste händelser i rullande ringbuffert) samt ren tillståndsisolering mellan telemetripanelen och formulärdelarna i `SwarmDashboard`.
+## 3. Intern Riskanalys (GROW-risknoder)
+- **Risknod 1: State (Skill-katalog & Tillstånd i `.agents/skills/`)**
+  - *Risk*: Att wayfinder-installationen misslyckas, skriver över existerande skills, eller att relativa sökvägar till skill-definitioner inte hittas under körtid.
+  - *Teknisk analys & Åtgärd*: Skillen har framgångsrikt installerats och verifierats under `.agents/skills/wayfinder/SKILL.md`. Inga andra skills har påverkats. JIT-laddning i SI v10.0 slår upp skills lokalt i `.agents/skills/`.
+- **Risknod 2: Contract (Wayfinder SKILL.md-kontrakt & CLI-anrop)**
+  - *Risk*: Konflikt mellan Wayfinders besluts-tickets och bygg-tickets i `doc/TICKETS.md`.
+  - *Teknisk analys & Åtgärd*: AGENTS.md v10.0 Regel 1 separerar strikt besluts-tickets (som hålls i Wayfinder-kartan och inte rör källkod) från bygg-tickets i `doc/TICKETS.md` (som knyts 1-till-1 till en FSD-domän under `src/features/`). Denna princip förtydligas uttryckligen i `README.md`.
+- **Risknod 3: Resilience (Feltolerans & Tydlighet vid CLI-anrop)**
+  - *Risk*: Användaren försöker köra `pnpm genomfor` utan giltig token eller kör `pnpm planera` och får otydlig feedback.
+  - *Teknisk analys & Åtgärd*: Det tvåstegsverifierade skriptet `scripts/run-genomfor.js` läser och validerar `doc/LAST_CYCLE/REQUIRED_TOKEN.txt` med strikt felavbrott. `README.md` förses med en felsökningsguide och instruktioner för hur varje steg i Token Gate fungerar.

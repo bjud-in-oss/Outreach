@@ -1,83 +1,40 @@
-# 2b Modellera: Datastrukturer, Zod-Scheman och Kontrakt (TCK-002)
+# 2b Modellera: Dokumentationsstruktur och Arbetsflöden (TCK-004)
 
-## 1. Zod-Scheman (`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`)
+## 1. Dokumentationsmodell för README.md
 
-```typescript
-import { z } from 'zod';
-import { EventEnvelopeSchema } from '../../../shared/contracts/envelope.ts';
+Strukturen i `README.md` utökas med följande standardsektioner:
 
-/**
- * Individuell agentmetrik
- */
-export const AgentTelemetryMetricSchema = z.object({
-  agentId: z.string(),
-  role: z.enum(['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC']),
-  status: z.enum(['IDLE', 'THINKING', 'EXECUTING_TOOL', 'DONE', 'ERROR']),
-  lastThought: z.string().optional(),
-  lastActive: z.string().datetime(),
-  totalEventsEmitted: z.number().int().nonnegative().default(0),
-  averageLatencyMs: z.number().nonnegative().default(0),
-});
+```markdown
+## 🧭 SI v10.0 Utvecklingsrutiner & Autonom Orkestrering
 
-export type AgentTelemetryMetric = z.infer<typeof AgentTelemetryMetricSchema>;
+Samordningsmotorn styrs enligt SI v10.0 och AGENTS.md v10.0 med tvåfasig TDD och strikt Token Gate.
 
-/**
- * Sammanställt telemetritillstånd för hela svärmen
- */
-export const SwarmTelemetrySnapshotSchema = z.object({
-  activeAgentsCount: z.number().int().nonnegative(),
-  totalEventsCount: z.number().int().nonnegative(),
-  eventsPerMinute: z.number().nonnegative(),
-  agentMetrics: z.record(z.string(), AgentTelemetryMetricSchema),
-  recentEnvelopes: z.array(EventEnvelopeSchema),
-  healthStatus: z.enum(['HEALTHY', 'DEGRADED', 'HALTED']),
-  lastPulseAt: z.string().datetime(),
-});
+### 1. Att Följa: Planering & Dekomponering
+- **Planera hela briefen**: `pnpm planera`
+  Läser `PROMPT.md` och dekomponerar automatiskt kraven i enskilda bygg-tickets (1 ticket = 1 FSD-domän) under `doc/TICKETS/`.
+- **Planera specifik ticket**: `pnpm planera TCK-XXX`
+  Kör ett obrutet Fas 1-svep (1a -> 1b -> 2a -> 2b -> 2e -> 3c) under `doc/LAST_CYCLE/`.
 
-export type SwarmTelemetrySnapshot = z.infer<typeof SwarmTelemetrySnapshotSchema>;
+### 2. Att Vända Om: Terminal & Oberoende Validering
+- **Arkitektur- och kontraktskontroll**: `pnpm verify`
+  Kör oberoende validering av alla Zod-kontrakt, FSD-gränser och genererar ett kryptografiskt verifieringskvitto (`doc/LAST_CYCLE/VERIFY_RECEIPT.json`).
+- **Enhetstester**: `pnpm test`
+  Kör isolerade TDD-enhetstester i minnet.
 
-/**
- * Styrkort / Master Development Plan schema
- */
-export const DevelopmentTicketSchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  status: z.enum(['PLANERING', 'AKTIV', 'VERIFIERAD', 'VÄNTAR']),
-  phase: z.string(),
-  progressPercentage: z.number().min(0).max(100),
-  deliverables: z.array(z.string()),
-  tokenHash: z.string().optional(),
-  verifiedReceiptHash: z.string().optional(),
-});
+### 3. Att Förlikas: Token Gate & Verkställande (Fas 2)
+- Vid Steg 3c stannar planeringen. En godkännandekod genereras i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.
+- Operatören bekräftar i chatten eller kör:
+  ```bash
+  pnpm genomfor [REQUIRED_TOKEN]
+  ```
+  Detta låser upp redigering av `src/features/` och initierar transienta mikro-E2E-tester.
 
-export type DevelopmentTicket = z.infer<typeof DevelopmentTicketSchema>;
+### 4. Beslutsstöd via Wayfinder (`/wayfinder`)
+- För oklara, komplexa eller strategiska frågeställningar som inte direkt kräver källkodsändring används färdigheten `wayfinder`.
+- Aktivera scenariodialogen genom att ställa en öppen strategifråga eller ange `/wayfinder`.
+- Wayfinder skapar och underhåller besluts-tickets och kartan över öppna vägval utan att ändra källkod under `src/`.
 ```
 
-## 2. Reaktiv Händelsebuss (`SwarmEventBus`)
-Klassen `SwarmEventBus` definieras som en deterministisk pub/sub-motor:
-```typescript
-export type SwarmEventHandler = (envelope: EventEnvelope) => void;
-
-export interface SwarmSubscription {
-  id: string;
-  pattern: string; // t.ex. "swarm.*", "ticket.*", eller "*"
-  handler: SwarmEventHandler;
-}
-
-export class SwarmEventBus {
-  private subscriptions: Map<string, SwarmSubscription> = new Map();
-  private history: EventEnvelope[] = [];
-  private maxHistorySize = 150;
-
-  public publish(envelope: EventEnvelope): void;
-  public subscribe(pattern: string, handler: SwarmEventHandler): () => void;
-  public getHistory(filterPattern?: string): EventEnvelope[];
-  public clear(): void;
-}
-```
-
-## 3. Komponentstruktur i Gränssnittet
-- `SwarmDashboard.tsx`: Huvudyta för kampanjer och steg.
-  - Vänster / Mitt: Kampanjinmatning och steg-pipeline (forskning, författande, kritik).
-  - Höger / Sidopanel: `TelemetrySidebar` med live mätare, pulserande status per agent och realtidslogg.
-  - Överliggande Flik / Vy: `MasterDevelopmentPlan` som visar framsteg för TCK-001, TCK-002 och TCK-003 med förankring i `doc/TICKETS.md`.
+## 2. Kontraktsregler för Skript och Körbarhet
+- Samtliga kommandon körs transparent via standardiserad `pnpm`-miljö.
+- `package.json` fungerar som kanonisk källa för alla definierade livscykelkommandon.

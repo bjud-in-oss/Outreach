@@ -1,81 +1,28 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-002)
+# 3c Fil-operativ Källkodsspecifikation (TCK-004)
 
 ## 1. Översikt över Förändringskedjan
-Följande filer är specificerade för exekvering i Fas 2 så snart godkännandetoken bekräftats:
+Följande filer är specificerade för Fas 2 så snart godkännandetoken bekräftats:
 
 ---
 
-### Fil 1: `src/features/gemini_live_swarm/bus/swarmEventBus.ts` (NY)
-- **Syfte**: Deterministisk händelsebuss med pub/sub baserad på `EventEnvelope` (`CloudEvents 1.0`).
-- **Funktioner**:
-  - `publish(envelope: EventEnvelope): void` - Validerar mot Zod och sänder till matchande prenumeranter samt sparar i ringbuffert.
-  - `subscribe(pattern: string, handler: SwarmEventHandler): () => void` - Registrerar lyssnare med wildcard-stöd (`*`, `swarm.*`, `agent.*`). Returnerar unmount cleanup-funktion.
-  - `getHistory(filterPattern?: string): EventEnvelope[]` - Returnerar de senaste händelserna (max 150 st).
-  - `clear(): void` - Tömmer historik och aktiva prenumeranter.
-  - Global instans: `getGlobalSwarmEventBus()`.
+### Fil 1: `README.md` (MODIFIERING)
+- **Syfte**: Uppdatera systemets officiella manual med SI v10.0-rutiner, pnpm-kommandon och Wayfinder-integrering.
+- **Specifika ändringar**:
+  1. Uppdatera sektionen **Snabbstart** med `pnpm`-kommandon (`pnpm install`, `pnpm planera`, `pnpm genomfor`, `pnpm verify`, `pnpm test`).
+  2. Tillföra ny sektion **🧭 SI v10.0 Utvecklingsrutiner & Token Gate** som beskriver:
+     - Hur `pnpm planera` och `pnpm planera TCK-XXX` fungerar.
+     - Vad Token Gate innebär och hur `doc/LAST_CYCLE/REQUIRED_TOKEN.txt` används för att låsa upp Fas 2.
+     - Hur oberoende arkitekturvalidering (`pnpm verify`) säkerställer Zod-kontrakt och systeminvarianter.
+  3. Tillföra ny sektion **🧭 Beslutsstöd & Scenariodialoger via Wayfinder (`/wayfinder`)**:
+     - Förklara skillnaderna mellan besluts-tickets (Wayfinder, ingen kodpåverkan) och bygg-tickets i `doc/TICKETS.md`.
+     - Instruktioner för hur `/wayfinder` används vid komplexa strategiska vägval.
 
 ---
 
-### Fil 2: `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` (NY)
-- **Syfte**: Zod-kontrakt för telemetri, agentpuls och systemstyrkort.
-- **Scheman**:
-  - `AgentTelemetryMetricSchema`
-  - `SwarmTelemetrySnapshotSchema`
-  - `DevelopmentTicketSchema`
-  - Typer: `AgentTelemetryMetric`, `SwarmTelemetrySnapshot`, `DevelopmentTicket`.
+### Fil 2: `doc/TICKETS/TCK-004.md` (UPPDATERING I FAS 2)
+- **Syfte**: Markera TCK-004 som verifierad med token `WAYFINDER-README-TCK004-TOKEN` vid slutförd Fas 2.
 
 ---
 
-### Fil 3: `src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts` (NY)
-- **Syfte**: React-hook för reaktiv telemetriaggregering.
-- **Funktioner**:
-  - Prenumererar på `swarmEventBus` under komponentens livscykel.
-  - Beräknar ackumulerade värden: händelsetakt (events/min), aktiv agentstatus, genomsnittlig latens, sista tanke.
-  - Returnerar `snapshot: SwarmTelemetrySnapshot` och hjälparfunktioner för filtrering.
-
----
-
-### Fil 4: `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx` (NY)
-- **Syfte**: Högkvalitativ mörk sidopanel för telemetri inspirerad av *Acoustic-Priming-backup*.
-- **Innehåll**:
-  - Rubrik med pulserande hälsostatus (`HEALTHY`, `DEGRADED`).
-  - Metrikkort: Aktiva agenter, händelsetakt, totalt antal envelopes.
-  - Agentgrid: Statusbricka (IDLE, THINKING, DONE), latens och senaste tankeström per specialist (Orchestrator, Researcher, Writer, Critic).
-  - Levande händelseström med filter och tidsstämplar.
-
----
-
-### Fil 5: `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` (NY)
-- **Syfte**: Reaktivt styrkort integrerat i samordningspanelen med direkt koppling till `doc/TICKETS.md`.
-- **Innehåll**:
-  - TCK-001 (Verifierad med kvittohash `980bc67d`).
-  - TCK-002 (Aktiv: Swarm Telemetry & Reactive Status).
-  - TCK-003 (Väntar: MCP Bridge & Avancerad Orkestrering).
-  - Förloppsstaplar, acceptanskriterier och verifieringsstatus.
-
----
-
-### Fil 6: `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` (MODIFIERING)
-- **Syfte**: Integrera `TelemetrySidebar` och `MasterDevelopmentPlan` som flikar/sektioner.
-- **Ändring**: Byt ut statisk layout mot en tvåkolumns eller flikbaserad vy där operatören kan växla mellan orkestrering, telemetri och styrkort.
-
----
-
-### Fil 7: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
-- **Syfte**: Exponera alla nya komponenter, scheman och bussen via officiell FSD-fasad.
-
----
-
-### Fil 8: `src/__tests__/swarm_telemetry.test.ts` (NY)
-- **Syfte**: Isolerade TDD-enhetstester.
-- **Testfall**:
-  1. `SwarmEventBus`: publish och subscribe med wildcard.
-  2. `SwarmEventBus`: korrekt unsubscription utan läckor.
-  3. `SwarmEventBus`: ringbuffertkapacitet (begränsar till max 150 poster).
-  4. `TelemetrySchema`: validering av giltig Snapshot.
-  5. `DevelopmentTicketSchema`: validering av styrkortsobjekt.
-
----
-
-### Fil 9: `scripts/run-tests.js` (MODIFIERING)
-- **Syfte**: Inkludera `runSwarmTelemetryTests()` i testsviten.
+### Fil 3: Transienta tester & Verifiering
+- **Syfte**: Köra `pnpm verify` för att generera ett uppdaterat arkitekturkvitto i `doc/LAST_CYCLE/VERIFY_RECEIPT.json`.
