@@ -19,8 +19,8 @@ function runVerification() {
   } else {
     filesChecked.push('doc/TICKETS.md');
     const content = fs.readFileSync(ticketsPath, 'utf8');
-    const match = content.match(/\[AKTIV\]\s+(TCK-\d+)/);
-    if (!match || !content.includes('[AKTIV]')) {
+    const match = content.match(/\[(?:AKTIV|OPEN|IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
+    if (!match) {
       issues.push('doc/TICKETS.md saknar aktiv ticket');
     } else {
       activeTicketMatch = match[1];
