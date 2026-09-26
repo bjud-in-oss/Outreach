@@ -10,8 +10,16 @@ function runGenomfor() {
     process.exit(1);
   }
 
-  // 1. Skapa godkännande
-  fs.writeFileSync('doc/LAST_CYCLE/APPROVAL.md', `APPROVED: ${inputToken}\nDATE: ${new Date().toISOString()}`);
+  // 1. Skapa eller uppdatera godkännande
+  let existingApprovals = '';
+  if (fs.existsSync('doc/LAST_CYCLE/APPROVAL.md')) {
+    existingApprovals = fs.readFileSync('doc/LAST_CYCLE/APPROVAL.md', 'utf-8');
+  }
+  const newEntry = `APPROVED: ${inputToken}\nDATE: ${new Date().toISOString()}`;
+  const fullApproval = existingApprovals.includes(inputToken)
+    ? existingApprovals
+    : (existingApprovals ? existingApprovals.trim() + '\n' + newEntry : newEntry);
+  fs.writeFileSync('doc/LAST_CYCLE/APPROVAL.md', fullApproval);
   console.log('[GENOMFÖR] Token verifierad. Redigering fri.');
 
   // 2. Automatiskt Git-flöde vid tillgänglig PAT

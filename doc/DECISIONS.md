@@ -20,3 +20,18 @@
 - **Kontext**: Operatören behöver se systemets aktuella och planerade mognadsgrad direkt i gränssnittet.
 - **Beslut**: Skapa komponenten `MasterDevelopmentPlan` som återspeglar tickets och arkitekturkvitton från `doc/TICKETS.md` och `doc/LAST_CYCLE/VERIFY_RECEIPT.json`.
 - **Konsekvens**: Ökad transparens mellan källkod, planeringsfas och körtid.
+
+## ADR-004: Decentraliserad Domänarkitektur och Lokal ADR-struktur (TCK-005)
+- **Datum**: 2026-09-26
+- **Status**: Beslutat & Implementerat
+- **Kontext**: I takt med att systemet växer blir en monolitisk beslutskatalog oöverskådlig för agenter och utvecklare. Domänspecifika designbeslut hör hemma nära domänens källkod.
+- **Beslut**: Etablera en tvåskiktad beslutshierarki. Övergripande systemarkitektur och principer dokumenteras i `doc/DECISIONS.md`. Domänspecifika arkitekturbeslut placeras lokalt i respektive FSD-moduls `doc/`-katalog: `src/features/[modul]/doc/DECISIONS.md`.
+- **Konsekvens**: Tydlig modularitet, snabb lokal kontextinläsning (JIT) och direkt spårbarhet mellan modulär kod och arkitekturbeslut enligt AGENTS.md v10.0.
+
+## ADR-005: Tvåfasig Exekvering och Token Gate Säkerhetsspärr (TCK-005)
+- **Datum**: 2026-09-26
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Autonoma agenter får inte göra okontrollerade mutationer av källkod under `src/features/` innan planering och syntes nått full mättnad och godkänts.
+- **Beslut**: Tillämpa en strikt tvåfasig process (Fas 1: Planering & Syntes till Steg 3c, Fas 2: Verkställande och TDD) med en kryptografisk Token Gate. Redigering under `src/` är spärrad tills `pnpm genomfor [REQUIRED_TOKEN]` körs och godkännande loggas i `doc/LAST_CYCLE/APPROVAL.md`.
+- **Konsekvens**: Förhindrar hallucinationer och oplanerade filändringar, säkerställer 100% spårbarhet och gör utvecklingscykeln deterministisk och säker.
+

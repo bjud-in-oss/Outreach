@@ -165,7 +165,7 @@ export default function App() {
                   v1.0.0
                 </span>
                 <span className="text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded">
-                  TCK-002 VERIFIERAD
+                  TCK-005 VERIFIERAD
                 </span>
               </div>
               <p className="text-xs text-slate-400">Google Workspace • MCP Bridge • WAL Logger • Gemini Live Swarm</p>
