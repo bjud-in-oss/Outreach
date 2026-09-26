@@ -42,3 +42,17 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
 - **Beslut**: Mappa befintliga roller i `roleDefinitions.ts` till SI v10.0-krafterna, införa `SERIELL_MOTOR` som explicit roll och agentkonfiguration i `DEFAULT_SWARM_ROLES`, definiera `AgentForceSchema` och `SerialExecutionMetricSchema` med Zod-validering i `telemetrySchema.ts`, samt utöka `SwarmEventBus` med `publishSerialMetric` för pub/sub av `swarm.serial.*`-kuvert.
 - **Konsekvens**: Full spårbarhet av seriella fasövergångar, typsäkerhet i körtid med Zod, strikt Token Gate-kompatibilitet och 100% bakåtkompatibilitet för befintliga moduler.
 
+---
+
+## ADR-SWARM-005: UI & Dashboard-övervakning av Seriell Motor och 4 Krafter
+- **Datum**: 2026-09-26
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Efter införandet av den 4:e motorn och SI v10.0-krafterna behövde användargränssnittet (`SwarmDashboard`, `TelemetrySidebar` och `MasterDevelopmentPlan`) uppdateras för att synliggöra de 4 krafterna, visualisera pipelinesteg i realtid och indikera aktiva Token Gate-spärrar.
+- **Beslut**:
+  1. Visa kraft-etiketter på samtliga enheter i `SwarmDashboard` och uppdatera räknaren till "5 Enheter (4 Agenter + Seriell Motor)".
+  2. Implementera en dedikerad interaktiv pipeline-sektion i `SwarmDashboard` för den Seriella Exekveringsmotorn med stegvis indikator (`1a_forsta` till `e2e_verify`), körtidsmätning i ms och Token Gate-spärr.
+  3. Introducera en 4-krafters sammanfattningspanel (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`, `SERIELL_MOTOR`) samt reaktiv `snapshot.serialExecution`-rendering i `TelemetrySidebar`.
+  4. Registrera `TCK-006` och `TCK-007` som verifierade i `MasterDevelopmentPlan`.
+- **Konsekvens**: Transparent realtidsövervakning av agentdynamik och deterministiska fasövergångar med fullständig reaktivitet över `SwarmEventBus`.
+
+

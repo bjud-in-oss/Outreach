@@ -10,19 +10,35 @@ import {
   Activity,
   Layers,
   Radio,
+  Cpu,
+  Workflow,
+  Lock,
+  ArrowRight,
+  RefreshCw,
 } from 'lucide-react';
 import { SwarmOrchestrator, CampaignPlan, SwarmStep } from '../coordinator/swarmOrchestrator.ts';
-import { SwarmAgentRole } from '../agents/roleDefinitions.ts';
+import { SwarmAgentRole, AgentForce } from '../agents/roleDefinitions.ts';
 import { TelemetrySidebar } from './TelemetrySidebar.tsx';
 import { MasterDevelopmentPlan } from './MasterDevelopmentPlan.tsx';
 import { getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
+import { SerialExecutionMetric, SerialStage } from '../telemetry/telemetrySchema.ts';
 
 interface SwarmDashboardProps {
   orchestrator: SwarmOrchestrator;
   onCampaignComplete?: (plan: CampaignPlan) => void;
   onEventEmitted?: (source: string, type: string, data: any) => void;
 }
+
+const SERIAL_PIPELINE_STAGES: { id: SerialStage; label: string }[] = [
+  { id: '1a_forsta', label: '1a Förstå' },
+  { id: '1b_kartlagga', label: '1b Kartlägga' },
+  { id: '2a_avgransa', label: '2a Avgränsa' },
+  { id: '2b_modellera', label: '2b Modellera' },
+  { id: '2e_syntetisera', label: '2e Syntetisera' },
+  { id: '3c_spec', label: '3c Specifikation' },
+  { id: 'e2e_verify', label: 'E2E Verifiera' },
+];
 
 export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
   orchestrator,
@@ -38,8 +54,83 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
   const [activePlan, setActivePlan] = useState<CampaignPlan | null>(null);
   const [isExecuting, setIsExecuting] = useState(false);
+  const [currentSerialStageIndex, setCurrentSerialStageIndex] = useState<number>(5); // 3c_spec som standard vid Gate
+  const [serialMetric, setSerialMetric] = useState<SerialExecutionMetric>({
+    pipelineId: 'pipe-tck-007-init',
+    ticketId: 'TCK-007',
+    stepIndex: 5,
+    totalSteps: 7,
+    currentStage: '3c_spec',
+    stageStatus: 'GATED',
+    durationMs: 1240,
+    isTokenGated: true,
+    requiredTokenHash: 'TCK-007-UI-SERIELL-MOTOR-TOKEN',
+    lastTransitionAt: new Date().toISOString(),
+    activeForce: 'SERIELL_MOTOR',
+  });
+
   const agents = orchestrator.getActiveAgents();
+  const serialMotor = orchestrator.getSerialEngine();
+  const allUnits = [...agents, serialMotor];
   const eventBus = getGlobalSwarmEventBus();
+
+  const getForceBadge = (force?: AgentForce) => {
+    switch (force) {
+      case 'ATT_FORLIKAS':
+        return (
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 font-medium">
+            ATT FÖRLIKAS
+          </span>
+        );
+      case 'ATT_FOLJA':
+        return (
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 font-medium">
+            ATT FÖLJA
+          </span>
+        );
+      case 'ATT_VANDA_OM':
+        return (
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 font-medium">
+            ATT VÄNDA OM
+          </span>
+        );
+      case 'SERIELL_MOTOR':
+        return (
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-medium">
+            SERIELL MOTOR
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const handleSimulateNextStage = () => {
+    const nextIdx = (currentSerialStageIndex + 1) % SERIAL_PIPELINE_STAGES.length;
+    setCurrentSerialStageIndex(nextIdx);
+    const targetStage = SERIAL_PIPELINE_STAGES[nextIdx];
+
+    const isGated = targetStage.id === '3c_spec';
+    const isCompleted = targetStage.id === 'e2e_verify';
+    const status = isGated ? 'GATED' : isCompleted ? 'COMPLETED' : 'RUNNING';
+
+    const newMetric: SerialExecutionMetric = {
+      pipelineId: `pipe-tck007-${Date.now()}`,
+      ticketId: 'TCK-007',
+      stepIndex: nextIdx,
+      totalSteps: SERIAL_PIPELINE_STAGES.length,
+      currentStage: targetStage.id,
+      stageStatus: status,
+      durationMs: Math.round(350 + nextIdx * 180 + Math.random() * 80),
+      isTokenGated: isGated,
+      requiredTokenHash: isGated ? 'TCK-007-UI-SERIELL-MOTOR-TOKEN' : undefined,
+      lastTransitionAt: new Date().toISOString(),
+      activeForce: 'SERIELL_MOTOR',
+    };
+
+    setSerialMetric(newMetric);
+    eventBus.publishSerialMetric(newMetric);
+  };
 
   const handleStartCampaign = async () => {
     setIsExecuting(true);
@@ -134,12 +225,12 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
         <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span>Buss aktiv (TCK-002)</span>
+          <span>Buss aktiv (SI v10.0 • TCK-007)</span>
         </div>
       </div>
 
       {subView === 'plan' ? (
-        <MasterDevelopmentPlan currentReceiptHash="1e9e1478" />
+        <MasterDevelopmentPlan currentReceiptHash="09aea95c" />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Vänster kolumn: Svärmkontroll & Steg (8 kolumner på lg) */}
@@ -157,41 +248,137 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-1.5 text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/20">
-                  <Bot className="w-3.5 h-3.5" />
-                  <span>4 Svärmagenter</span>
+                <div className="flex items-center space-x-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                  <Cpu className="w-3.5 h-3.5" />
+                  <span>5 Enheter (4 Agenter + Seriell Motor)</span>
                 </div>
               </div>
 
-              {/* Agentkort */}
+              {/* Agentkort inklusive kraft-etiketter */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {agents.map((agent) => (
+                {allUnits.map((unit) => (
                   <div
-                    key={agent.id}
-                    className="p-3 bg-slate-950/70 border border-slate-800/80 rounded-xl flex flex-col justify-between"
+                    key={unit.id}
+                    className={`p-3 bg-slate-950/70 border rounded-xl flex flex-col justify-between ${
+                      unit.role === 'SERIELL_MOTOR'
+                        ? 'border-cyan-500/40 ring-1 ring-cyan-500/20'
+                        : 'border-slate-800/80'
+                    }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-semibold text-slate-200">{agent.name}</span>
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            agent.status === 'THINKING'
-                              ? 'bg-amber-400 animate-ping'
-                              : agent.status === 'DONE'
-                              ? 'bg-emerald-400'
-                              : 'bg-slate-600'
-                          }`}
-                        />
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-slate-200">{unit.name}</span>
+                        <div className="flex items-center space-x-2">
+                          {getForceBadge(unit.force)}
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              unit.status === 'THINKING'
+                                ? 'bg-amber-400 animate-ping'
+                                : unit.status === 'DONE'
+                                ? 'bg-emerald-400'
+                                : 'bg-slate-600'
+                            }`}
+                          />
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-400 line-clamp-2">{agent.systemInstruction}</p>
+                      <p className="text-[11px] text-slate-400 line-clamp-2">{unit.systemInstruction}</p>
                     </div>
-                    {agent.currentThought && (
+                    {unit.currentThought && (
                       <div className="mt-2.5 p-2 bg-slate-900 rounded border border-slate-800/60 text-[10px] text-slate-300 italic">
-                        "{agent.currentThought}"
+                        "{unit.currentThought}"
                       </div>
                     )}
                   </div>
                 ))}
+              </div>
+
+              {/* Framträdande sektion: Seriell Exekveringsmotor (4:e Motorn) */}
+              <div className="bg-slate-950/90 p-4 rounded-xl border border-cyan-500/30 space-y-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-lg border border-cyan-500/20">
+                      <Workflow className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center space-x-2">
+                        <span>Seriell Exekveringsmotor (4:e Motorn)</span>
+                        <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
+                          SI v10.0
+                        </span>
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Linjär fasövergång, deterministisk sekvensering och Token Gate-spärr
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleSimulateNextStage}
+                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-medium transition-colors cursor-pointer shadow-sm shadow-cyan-600/20"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Stega Pipeline</span>
+                  </button>
+                </div>
+
+                {/* Linjär pipeline-visualisering */}
+                <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                  <div className="flex items-center justify-between overflow-x-auto pb-1 gap-1">
+                    {SERIAL_PIPELINE_STAGES.map((stg, idx) => {
+                      const isCurrent = idx === currentSerialStageIndex;
+                      const isPast = idx < currentSerialStageIndex;
+                      const isGatedStage = stg.id === '3c_spec';
+
+                      return (
+                        <React.Fragment key={stg.id}>
+                          <div
+                            className={`flex flex-col items-center px-2 py-1.5 rounded-md min-w-[76px] transition-all text-center ${
+                              isCurrent
+                                ? isGatedStage
+                                  ? 'bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold'
+                                  : 'bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold shadow-sm'
+                                : isPast
+                                ? 'bg-slate-800/80 text-emerald-400'
+                                : 'bg-slate-950/60 text-slate-500'
+                            }`}
+                          >
+                            <span className="text-[10px] font-mono leading-tight">{stg.label}</span>
+                            <span className="text-[8px] uppercase tracking-tighter mt-0.5">
+                              {isCurrent ? (isGatedStage ? 'GATED' : 'AKTIV') : isPast ? '✓ KLAR' : 'KÖ'}
+                            </span>
+                          </div>
+
+                          {idx < SERIAL_PIPELINE_STAGES.length - 1 && (
+                            <ArrowRight className="w-3 h-3 text-slate-600 shrink-0 mx-0.5" />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Körtidsmätning & Token Gate Info */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono">
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Aktiv Fas:</span>
+                    <span className="text-cyan-300 font-bold">{serialMetric.currentStage}</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Förfluten Tid:</span>
+                    <span className="text-slate-200">{serialMetric.durationMs} ms</span>
+                  </div>
+                  <div className="p-2.5 bg-slate-900 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Token Gate:</span>
+                    {serialMetric.isTokenGated ? (
+                      <span className="flex items-center space-x-1 text-amber-400 font-bold">
+                        <Lock className="w-3 h-3" />
+                        <span>SPÄRRAD</span>
+                      </span>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">PASSERAD</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Uppdragskonfigurering */}
@@ -296,3 +483,4 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
     </div>
   );
 };
+

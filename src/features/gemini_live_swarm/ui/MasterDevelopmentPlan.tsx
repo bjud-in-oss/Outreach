@@ -18,10 +18,10 @@ interface MasterDevelopmentPlanProps {
 }
 
 export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
-  currentReceiptHash = '1e9e1478',
+  currentReceiptHash = '09aea95c',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-002');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-007');
 
   const tickets: DevelopmentTicket[] = [
     {
@@ -85,9 +85,41 @@ export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
       verifiedReceiptHash: currentReceiptHash,
     },
     {
+      id: 'TCK-006',
+      title: 'Agentkrafter & 4:e Seriell Motor',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'Grundläggande krafter (ATT_FORLIKAS, ATT_FOLJA, ATT_VANDA_OM) i roleDefinitions.ts',
+        '4:e motorn SERIELL_MOTOR i DEFAULT_SWARM_ROLES',
+        'Zod-scheman AgentForceSchema & SerialExecutionMetricSchema',
+        'SwarmEventBus.publishSerialMetric() med CloudEvents 1.0 inkapsling',
+        'ADR-SWARM-004 i doc/DECISIONS.md',
+      ],
+      tokenHash: 'TCK-006-SERIELL-MOTOR-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
+    {
+      id: 'TCK-007',
+      title: 'UI & Dashboard-övervakning av Seriell Motor',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'Visualisering av SI v10.0-krafter på agentkort i SwarmDashboard',
+        'Interaktiv sektion för 4:e Seriell Exekveringsmotor med pipelinesteg',
+        '4-krafters sammanfattningspanel & reaktiv pipeline-telemetri i TelemetrySidebar',
+        'Styrkortsregistrering i MasterDevelopmentPlan (TCK-006 & TCK-007)',
+        'Transient mikro-E2E-verifiering (< 3s i minnet)',
+      ],
+      tokenHash: 'TCK-007-UI-SERIELL-MOTOR-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
+    {
       id: 'TCK-003',
       title: 'MCP Bridge & Gemini Live Swarm Djupintegration',
-      status: 'AKTIV',
+      status: 'VÄNTAR',
       phase: 'Fas 1: Planerad',
       progressPercentage: 10,
       deliverables: [

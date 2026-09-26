@@ -10,9 +10,13 @@ import {
   AlertCircle,
   Cpu,
   RefreshCw,
+  Workflow,
+  Lock,
+  Compass,
 } from 'lucide-react';
 import { useSwarmTelemetry } from '../telemetry/useSwarmTelemetry.ts';
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
+import { AgentForce } from '../agents/roleDefinitions.ts';
 
 interface TelemetrySidebarProps {
   eventBus?: SwarmEventBus;
@@ -31,6 +35,62 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
     return true;
   });
 
+  const getForceBadge = (force?: AgentForce) => {
+    switch (force) {
+      case 'ATT_FORLIKAS':
+        return (
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
+            FÖRLIKAS
+          </span>
+        );
+      case 'ATT_FOLJA':
+        return (
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
+            FÖLJA
+          </span>
+        );
+      case 'ATT_VANDA_OM':
+        return (
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
+            VÄNDA OM
+          </span>
+        );
+      case 'SERIELL_MOTOR':
+        return (
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+            SERIELL
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const formatStage = (stage?: string) => {
+    if (!stage) return 'Inaktiv';
+    switch (stage) {
+      case '1a_forsta':
+        return '1a Förstå';
+      case '1b_kartlagga':
+        return '1b Kartlägga';
+      case '2a_avgransa':
+        return '2a Avgränsa';
+      case '2b_modellera':
+        return '2b Modellera';
+      case '2e_syntetisera':
+        return '2e Syntetisera';
+      case '3c_spec':
+        return '3c Specifikation';
+      case 'e2e_verify':
+        return 'E2E Verifiera';
+      default:
+        return stage;
+    }
+  };
+
+  const totalAgents = Object.values(snapshot.agentMetrics).length;
+  const activeCount = Object.values(snapshot.agentMetrics).filter((a) => a.status !== 'ERROR').length;
+
   return (
     <div
       className={`bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg flex flex-col space-y-4 ${className}`}
@@ -45,7 +105,7 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-100 flex items-center space-x-1.5">
               <span>Swarm Telemetri & Puls</span>
             </h3>
-            <p className="text-[10px] text-slate-400">Reaktiv tillståndsövervakning (CloudEvents 1.0)</p>
+            <p className="text-[10px] text-slate-400">Reaktiv tillståndsövervakning (SI v10.0)</p>
           </div>
         </div>
 
@@ -60,9 +120,11 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
         <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
           <div className="flex items-center space-x-1 text-[10px] text-slate-400 mb-1">
             <Bot className="w-3 h-3 text-purple-400" />
-            <span>Aktiva</span>
+            <span>Enheter</span>
           </div>
-          <div className="text-sm font-bold text-slate-100">{snapshot.activeAgentsCount} / 4</div>
+          <div className="text-sm font-bold text-slate-100">
+            {activeCount} / {totalAgents || 5}
+          </div>
         </div>
 
         <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
@@ -70,7 +132,9 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
             <Zap className="w-3 h-3 text-amber-400" />
             <span>Genomströmning</span>
           </div>
-          <div className="text-sm font-bold text-slate-100">{snapshot.eventsPerMinute} <span className="text-[10px] font-normal text-slate-400">evt/m</span></div>
+          <div className="text-sm font-bold text-slate-100">
+            {snapshot.eventsPerMinute} <span className="text-[10px] font-normal text-slate-400">evt/m</span>
+          </div>
         </div>
 
         <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
@@ -82,10 +146,91 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
         </div>
       </div>
 
-      {/* Agentstatus & Tankeström */}
+      {/* 4-Krafters Sammanfattningspanel (SI v10.0) */}
+      <div className="space-y-1.5">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+          <span className="flex items-center space-x-1">
+            <Compass className="w-3 h-3 text-cyan-400" />
+            <span>Agentdynamik & Krafter</span>
+          </span>
+          <span className="text-[9px] font-mono text-slate-500">4 Motorer</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+          <div className="p-2 bg-slate-950/60 border border-purple-500/20 rounded-lg">
+            <div className="font-semibold text-purple-300">ATT FÖRLIKAS</div>
+            <div className="text-[9px] text-slate-400">Harmonisering & Svärmledning</div>
+          </div>
+          <div className="p-2 bg-slate-950/60 border border-blue-500/20 rounded-lg">
+            <div className="font-semibold text-blue-300">ATT FÖLJA</div>
+            <div className="text-[9px] text-slate-400">Fältanalys & Utkastframdrift</div>
+          </div>
+          <div className="p-2 bg-slate-950/60 border border-amber-500/20 rounded-lg">
+            <div className="font-semibold text-amber-300">ATT VÄNDA OM</div>
+            <div className="text-[9px] text-slate-400">Fail-Fast & Granskning</div>
+          </div>
+          <div className="p-2 bg-slate-950/60 border border-cyan-500/20 rounded-lg">
+            <div className="font-semibold text-cyan-300">SERIELL MOTOR</div>
+            <div className="text-[9px] text-slate-400">Deterministisk Token Gate</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Reaktiv Visualisering av Seriell Exekvering */}
+      <div className="p-2.5 bg-slate-950/80 border border-cyan-500/30 rounded-lg space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-1.5">
+            <Workflow className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wide">
+              Seriell Exekvering
+            </span>
+          </div>
+          {snapshot.serialExecution?.isTokenGated && (
+            <span className="flex items-center space-x-1 text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+              <Lock className="w-2.5 h-2.5" />
+              <span>TOKEN GATE</span>
+            </span>
+          )}
+        </div>
+
+        {snapshot.serialExecution ? (
+          <div className="space-y-1.5 text-xs font-mono">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">Fas:</span>
+              <span className="text-cyan-300 font-bold">
+                {formatStage(snapshot.serialExecution.currentStage)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">Status:</span>
+              <span
+                className={`px-1.5 py-0.2 rounded font-semibold text-[10px] ${
+                  snapshot.serialExecution.stageStatus === 'GATED'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    : snapshot.serialExecution.stageStatus === 'COMPLETED'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                }`}
+              >
+                {snapshot.serialExecution.stageStatus}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-slate-400">Körtid:</span>
+              <span className="text-slate-300">{snapshot.serialExecution.durationMs} ms</span>
+            </div>
+          </div>
+        ) : (
+          <div className="text-[10px] text-slate-500 italic py-1 text-center">
+            Väntar på signal från seriell exekveringsmotor...
+          </div>
+        )}
+      </div>
+
+      {/* Agentstatus & Tankeström (5 Enheter) */}
       <div className="space-y-2">
         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-          <span>Agenttillstånd</span>
+          <span>Enhetsstatus & Puls (5 Enheter)</span>
           <span className="text-[9px] font-mono text-slate-500">Event-driven</span>
         </div>
 
@@ -93,10 +238,15 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
           {Object.values(snapshot.agentMetrics).map((agent) => (
             <div
               key={agent.agentId}
-              className="p-2 bg-slate-950/50 border border-slate-800/60 rounded-lg text-xs flex flex-col space-y-1"
+              className={`p-2 bg-slate-950/50 border rounded-lg text-xs flex flex-col space-y-1 ${
+                agent.role === 'SERIELL_MOTOR' ? 'border-cyan-500/30' : 'border-slate-800/60'
+              }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-200 text-[11px] truncate">{agent.role}</span>
+                <div className="flex items-center space-x-1.5 truncate">
+                  <span className="font-semibold text-slate-200 text-[11px] truncate">{agent.role}</span>
+                  {getForceBadge(agent.force)}
+                </div>
                 <span
                   className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
                     agent.status === 'THINKING'
@@ -114,7 +264,11 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
                   "{agent.lastThought}"
                 </div>
               ) : (
-                <div className="text-[10px] text-slate-600 italic">Väntar på händelse...</div>
+                <div className="text-[10px] text-slate-600 italic">
+                  {agent.totalEventsEmitted > 0
+                    ? `${agent.totalEventsEmitted} händelser bearbetade`
+                    : 'Väntar på händelse...'}
+                </div>
               )}
             </div>
           ))}
@@ -168,3 +322,4 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
     </div>
   );
 };
+
