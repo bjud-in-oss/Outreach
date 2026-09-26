@@ -1,24 +1,32 @@
-# 2a Avgränsa: Mål, Omfång och Invarianter (TCK-004)
+# 2a Avgränsa: Mål, Omfång och Invarianter (TCK-006)
 
 ## 1. Målavgränsning & Leveransomfång
-Ticket **TCK-004: Wayfinder-installation & README för SI v10.0** syftar till att formellt förankra de nya process- och exekveringsrutinerna i Outreach Samordningsmotor.
+Målet med **TCK-006: AGENTKRAFTER & 4:E SERIELL MOTOR I GEMINI_LIVE_SWARM** är att förankra SI v10.0:s krafter och introducera den 4:e seriella motorn på kodnivå i svärmens grundarkitektur.
 
 ### Ingår i omfånget (IN-SCOPE):
-1. **Wayfinder Skill**:
-   - Bekräftelse och verifiering av Matt Pococks `wayfinder` skill under `.agents/skills/wayfinder/`.
-2. **README.md Uppdatering**:
-   - Introducera en tydlig sektion för **SI v10.0 Utvecklingsrutiner & Token Gate**.
-   - Dokumentera kommandona `pnpm planera`, `pnpm planera TCK-XXX`, `pnpm genomfor [TOKEN]`, `pnpm verify` och `pnpm test`.
-   - Dokumentera flödet för `/wayfinder` (hur man initierar en besluts-ticket för att skingra dimma utan kodändring).
-   - Beskriva hur besluts-tickets i Wayfinder skiljer sig från bygg-tickets i `doc/TICKETS.md`.
-3. **Bevara Befintlig Struktur**:
-   - Behålla det personliga brevet och arkitekturöversikten intakt som ett pedagogiskt fundament.
+1. **Agentkrafter & Rollmappning (`roleDefinitions.ts`)**:
+   - Definiera typen `AgentForce = 'ATT_FORLIKAS' | 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'SERIELL_MOTOR'`.
+   - Utöka `SwarmAgentConfig` med fältet `force?: AgentForce`.
+   - Addera `SERIELL_MOTOR` till `DEFAULT_SWARM_ROLES` med dedikerad systeminstruktion och avatar/färgprofil.
+   - Implementera `mapRoleToForce` och `mapForceToRole` för 100% bakåtkompatibilitet.
+2. **Strikta Zod-kontrakt (`telemetrySchema.ts`)**:
+   - Skapa `AgentForceSchema`.
+   - Skapa `SerialStageSchema` och `SerialExecutionMetricSchema`.
+   - Utöka `SwarmTelemetrySnapshotSchema` med valfritt `serialExecution`-fält för att stödja realtidsmetrik för den seriella motorn.
+3. **Eventbuss för Seriell Motor (`swarmEventBus.ts`)**:
+   - Definiera händelsemönster för den seriella motorn (`swarm.serial.*`).
+   - Tillhandahålla hjälpmetod eller mönster för publicering av validerade `SerialExecutionMetric`-kuvert.
+4. **Fasadexport (`index.ts`)**:
+   - Exportera alla nya typer, konstanter och valideringsscheman.
+5. **Transient Mikro-E2E-test (`transient_TCK-006.test.ts`)**:
+   - Konstrueras i Fas 2 och verifierar hela flödet i minnet (< 3s).
 
 ### Ingår EJ i omfånget (OUT-OF-SCOPE):
-- Källkodsändringar under `src/features/` (hanteras i TCK-006 och TCK-007).
-- Skapande av lokala `DECISIONS.md` under `src/features/[modul]/doc/` (tillhör TCK-005).
-- Ändringar i datamodeller eller Zod-kontrakt.
+- Grafiska UI-vyer, dashboards och visuella mätare för den seriella motorn i React (tillhör **TCK-007**).
+- Djupintegration mellan MCP Bridge och Gemini Live Swarm (tillhör **TCK-003**).
+- Källkodsredigering under `src/` under Fas 1 (skyddas av Token Gate).
 
 ## 2. Invarianta Arkitekturprinciper
-- **Noll Källkodspåverkan i Fas 1**: Inga filer under `src/` ändras eller skapas.
-- **Transparens**: Dokumentationen ska ge utvecklaren och operatören exakt förståelse för varför ett Fas 1-svep stannar vid Steg 3c och hur källkoden skyddas fram till `pnpm genomfor`.
+- **100% Typsäkerhet**: Alla typer och scheman måste vara strikta och typvaliderade via Zod.
+- **Bakåtkompatibilitet**: Befintliga tester (`gemini_swarm.test.ts`, `swarm_telemetry.test.ts`) och befintliga UI-komponenter (`SwarmDashboard`, `TelemetrySidebar`) ska fortsätta passera utan ändring.
+- **Token Gate**: Noll skrivning i `src/` förrän användaren godkänt `REQUIRED_TOKEN.txt` och initierat Fas 2.

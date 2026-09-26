@@ -1,8 +1,8 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
+- [IN PROGRESS] TCK-006 | Domän: src/features/gemini_live_swarm/ | Mål: Agentkrafter & 4:e Seriell Motor i gemini_live_swarm | Spec: doc/TICKETS/TCK-006.md
 - [OPEN] TCK-003 | Domän: src/features/mcp_bridge/ | Mål: MCP Bridge & Gemini Live Swarm djupintegration | Spec: doc/TICKETS/TCK-003.md
-- [OPEN] TCK-006 | Domän: src/features/gemini_live_swarm/ | Mål: Agentkrafter & 4:e Seriell Motor i gemini_live_swarm | Spec: doc/TICKETS/TCK-006.md
 - [OPEN] TCK-007 | Domän: src/features/gemini_live_swarm/ | Mål: UI & Dashboard-övervakning av Seriell Motor | Spec: doc/TICKETS/TCK-007.md
 
 ---

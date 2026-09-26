@@ -1,21 +1,26 @@
-# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-005)
+# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-006)
 
 ## 1. Mättnadsanalys
 - **MÄTTNAD: JA**
-- Samtliga målkonflikter och krav avseende ADR-strukturen, domändokumentationen och fördelningen mellan centrala och modulära beslut är analyserade och harmoniserade.
+- Samtliga arkitektoniska målkonflikter mellan legacy roller (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`) och de nya krafterna (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`) samt etableringen av den 4:e komponenten `SERIELL_MOTOR` har modellerats och harmoniserats. Full bakåtkompatibilitet har säkrats.
+
+---
 
 ## 2. Syntes av Arkitektoniska Insikter
-1. **Tvåskiktad Beslutshierarki**:
-   - **Centralt (`doc/DECISIONS.md`)**: Beslut som spänner över flera moduler eller sätter systeminvarianter (CloudEvents, Token Gate-skydd, decentraliserad domänarkitektur).
-   - **Modulärt (`src/features/[modul]/doc/DECISIONS.md`)**: Beslut som avgränsar den specifika domänen (datamodeller, API-anrop, protokoll, interna buffertar).
-2. **Koppling till AGENTS.md v10.0**:
-   - Genomförande av TCK-005 uppfyller direkt Regel 3 i AGENTS.md v10.0:
-     *"Logga principiella systemövergripande beslut i doc/DECISIONS.md. Domänspecifika arkitekturbeslut dokumenteras lokalt i src/features/[modul]/doc/DECISIONS.md."*
-3. **Resiliens & Noll regression**:
-   - Skapandet av dessa Markdown-filer under Fas 2 påverkar varken TypeScript-kompilering, tester eller körtidsbeteende negativt, men höjer auditbarheten för alla autonoma agenter till 100%.
+
+1. **Agentkrafter vs Exekveringsroller**:
+   - Genom att göra `force` till en förstaklassig dimension i `roleDefinitions.ts` behåller vi befintliga gränssnitt orörda samtidigt som agenterna kan operera under SI v10.0:s filosofiska och funktionella krafter.
+2. **Den 4:e Motorns Roll (SERIELL_MOTOR)**:
+   - Medan de tre krafterna driver problemlösning (följa, vända om, förlikas) är den seriella motorn den deterministiska exekveringsbädden som säkerställer att inga faser hoppas över och att Token Gate respekteras före tillståndsförändringar.
+3. **Zod-integritet**:
+   - `SerialExecutionMetricSchema` och `AgentForceSchema` möjliggör strikt körtidsvalidering av telemetri på `SwarmEventBus`, vilket förbereder systemet för den grafiska övervakningspanelen i TCK-007.
+
+---
 
 ## 3. Planerade Åtgärder i Fas 2 (efter Token Gate)
-- Uppdatera `doc/DECISIONS.md` med ADR-004 och ADR-005.
-- Skapa `DECISIONS.md` i de fyra aktiva FSD-modulerna.
-- Skapa transient mikro-E2E-test `src/__tests__/transient_TCK-005.test.ts`.
-- Validera med `pnpm verify` och konsolidera till regressionssviten.
+- Uppdatera `src/features/gemini_live_swarm/agents/roleDefinitions.ts` med krafter och `SERIELL_MOTOR`.
+- Uppdatera `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` med Zod-scheman för krafter och seriell körningsmetrik.
+- Uppdatera `src/features/gemini_live_swarm/bus/swarmEventBus.ts` med metoder/stöd för seriella pipeline-händelser.
+- Uppdatera `src/features/gemini_live_swarm/index.ts` med export av nya kontrakt och funktioner.
+- Skapa transient mikro-E2E-test `src/__tests__/transient_TCK-006.test.ts`.
+- Köra `pnpm verify` och `pnpm test`.

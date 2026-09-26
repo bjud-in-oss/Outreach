@@ -1,55 +1,70 @@
-# 1b Kartlägga: Domänöversikt och Beslutsmatris (TCK-005)
+# 1b Kartlägga: Agentkrafter och Seriell Motor (TCK-006)
 
-## 1. Kartläggning av Moduler och Identifierade Beslut
+## 1. Kartläggning av Källkodsartefakter inom `gemini_live_swarm`
 
-### Modul 1: `src/features/gemini_live_swarm`
-- **Domänansvar**: Realtidsorkestrering av multi-agent svärm baserad på Gemini Live API med samordnad problemlösning.
-- **Identifierade lokala beslut**:
-  - `ADR-SWARM-001: 4-Agent Svärmarkitektur med Rollseparation`: Arkitekt, Ingenjör, Granskare, Integratör.
-  - `ADR-SWARM-002: In-Memory SwarmEventBus med Ringbuffert (150 händelser)`: Truncated FIFO för att förhindra minnesläckor vid långa live-sessioner.
-  - `ADR-SWARM-003: Non-blocking verktygssvar över WebSocket-kabeln`: Automatiskt flöde med BidiGenerateContentToolResponse utan manuell bekräftelse mellan delsteg.
+### Berörda Filer och Beroendekedja
+1. **`src/features/gemini_live_swarm/agents/roleDefinitions.ts`**:
+   - Nuvarande roller: `ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`.
+   - Tillägg:
+     - Typ `AgentForce`: `'ATT_FORLIKAS' | 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'SERIELL_MOTOR'`
+     - Fältet `force?: AgentForce` i `SwarmAgentConfig`.
+     - Ny konfiguration för `SERIELL_MOTOR`:
+       - `id`: `'engine-serial-motor'`
+       - `name`: `'Seriell Exekveringsmotor (Pipeline Engine)'`
+       - `role`: `'SERIELL_MOTOR'` (utökad union för `SwarmAgentRole` eller mapped force)
+       - `force`: `'SERIELL_MOTOR'`
+       - `systemInstruction`: Deterministisk pipelineexekvering med fasövergångar och noll tillståndskonflikter.
+     - Hjälpfunktioner: `mapRoleToForce()`, `mapForceToRole()`.
 
-### Modul 2: `src/features/google_drive_sync`
-- **Domänansvar**: Tvåvägssynkronisering av arbetsytan med Google Drive, hantering av metadata och hierarkiska mappar.
-- **Identifierade lokala beslut**:
-  - `ADR-DRIVE-001: In-Memory Token & Explicit Workspace Hierarchy`: Root-mapp `Outreach_Workspace` med deterministiska submappar (`raw_data`, `processed`, `campaigns`, `audit_logs`).
-  - `ADR-DRIVE-002: Zod-validerat Manifest (`WORKSPACE_MANIFEST.json`)`: Deterministisk spårning av synkade fil-ID:n och hashes.
+2. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`**:
+   - `AgentForceSchema`: `z.enum(['ATT_FORLIKAS', 'ATT_FOLJA', 'ATT_VANDA_OM', 'SERIELL_MOTOR'])`
+   - `SerialStageSchema`: `z.enum(['1a_forsta', '1b_kartlagga', '2a_avgransa', '2b_modellera', '2e_syntetisera', '3c_spec', 'e2e_verify'])`
+   - `SerialExecutionMetricSchema`:
+     - `stepIndex`: `z.number().int().nonnegative()`
+     - `currentStage`: `SerialStageSchema`
+     - `stageStatus`: `z.enum(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'GATED'])`
+     - `durationMs`: `z.number().nonnegative()`
+     - `isTokenGated`: `z.boolean()`
+     - `requiredTokenHash`: `z.string().optional()`
+     - `lastTransitionAt`: `z.string()`
+   - Utökning av `SwarmTelemetrySnapshotSchema`:
+     - Valfritt fält `serialExecution?: SerialExecutionMetricSchema` för telemetriavläsning.
 
-### Modul 3: `src/features/mcp_bridge`
-- **Domänansvar**: Model Context Protocol (MCP) integrationsbrygga för externa agenter och standardiserad verktygsexekvering.
-- **Identifierade lokala beslut**:
-  - `ADR-MCP-001: Strikt JSON-RPC 2.0 Protokollvalidering`: Felkoder (-32600, -32601, -32602) enligt officiell JSON-RPC 2.0-specifikation.
-  - `ADR-MCP-002: Registreringsmönster för Verktygshandlers`: Modulär registrering via `registerTool` med deklarativa Zod-kontrakt.
+3. **`src/features/gemini_live_swarm/bus/swarmEventBus.ts`**:
+   - Stöd för serial-mönster:
+     - `swarm.serial.pipeline.started`
+     - `swarm.serial.step.transition`
+     - `swarm.serial.step.completed`
+     - `swarm.serial.gate.evaluated`
+     - `swarm.serial.pipeline.completed`
+   - Metod i `SwarmEventBus` eller hjälpklass för att publicera strukturerade seriella händelser.
 
-### Modul 4: `src/features/wal_logger`
-- **Domänansvar**: Write-Ahead Logging (WAL) för händelseflöden, feltolerans och oföränderlig audit-spårning.
-- **Identifierade lokala beslut**:
-  - `ADR-WAL-001: Append-Only SHA-256 Verifierad Händelselogg`: Varje post beräknar SHA-256 hash över payload och sekvensnummer.
-  - `ADR-WAL-002: Tvåfasig Commit-cykel (PENDING -> COMMITTED)`: Crash recovery återspelar enbart bekräftade transaktioner.
+4. **`src/features/gemini_live_swarm/index.ts`**:
+   - Exportera alla nya typer och scheman: `AgentForce`, `AgentForceSchema`, `SerialExecutionMetric`, `SerialExecutionMetricSchema`, `SerialStageSchema`, `mapRoleToForce`, `mapForceToRole`.
+
+5. **`src/__tests__/transient_TCK-006.test.ts` (Fas 2)**:
+   - Validerar integrationen i minnet (< 3s):
+     - Agentkrafter och mappning mot roller.
+     - Skapande och exekvering av seriella händelseflöden via `SwarmEventBus`.
+     - Zod-validering av `SerialExecutionMetricSchema` och `SwarmTelemetrySnapshotSchema`.
 
 ---
 
-## 2. Planerad Mappstruktur i Fas 2
-```
-src/features/
-├── gemini_live_swarm/doc/DECISIONS.md
-├── google_drive_sync/doc/DECISIONS.md
-├── mcp_bridge/doc/DECISIONS.md
-└── wal_logger/doc/DECISIONS.md
-```
+## 2. Fas 1 Deklaration
 
 ```json
 {
   "status": "PLANNING_FAS_1",
-  "current_domain": "Global",
+  "current_domain": "src/features/gemini_live_swarm/",
   "next_step": "2e_syntetisera",
-  "ticket_id": "TCK-005",
-  "active_skill": "wayfinder",
+  "ticket_id": "TCK-006",
+  "active_skill": "gemini-live-api-dev",
   "active_vectors": [
-    "adr_standardization",
-    "domain_documentation",
-    "agentes_rule_3_compliance",
-    "token_gate_protection"
+    "agent_forces_mapping",
+    "serial_motor_engine",
+    "telemetry_zod_contracts",
+    "event_bus_pipeline_events",
+    "backward_compatibility"
   ]
 }
 ```
