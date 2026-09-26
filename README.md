@@ -72,13 +72,13 @@ Ett autonomt, distribuerat och händelsestyrt samordningssystem för automatiser
   - `wal_query_recent`: Hämta och granska transaktioner.
   - `outreach_evaluate_tone`: Kvalitetsgranskning av utkast.
 
-### 4. Gemini Live Swarm & SI v10.0 Agentkrafter (`src/features/gemini_live_swarm`)
-- Drivs av `@google/genai` (Gemini 2.5 Flash) och reaktiv händelsebuss (`SwarmEventBus`).
-- Strukturerad kring de tre samverkande kärnkrafterna och den 4:e linjära exekveringsmotorn:
-  - **`ATT_FORLIKAS` (Orkestratör & Dörrvakt / Wayfinder 1a)**: Beslutsarkitekt som hanterar Wayfinder-orientering, sammanfogar insikter i 2e (MÄTTNAD: JA), låser kontrakt vid 3c (Token Gate) och skyddar källkoden.
-  - **`ATT_FOLJA` (Skapare & Exekutör / Teknisk orientering)**: Drivande kraft som karterar FSD-moduler och exekverar domänlogik linjärt från 1a till 3c i ett obrutet framåtsträvande svep.
-  - **`ATT_VANDA_OM` (Granskare / Intern riskanalys & Mikro-E2E)**: Oberoende bakgrundsgranskare som stresstestar kontrakt, tillämpar Fail Fast och validerar transienta mikro-E2E-tester (<3s).
-  - **`SERIELL_MOTOR` (Fristående linjär SI v10.0-motor)**: Helautomatiserad motor som kör hela kedjan 1a -> 1b -> 2e -> 3c -> 4 linjärt i ett obrutet svep och rapporterar telemetri i realtid.
+### 4. Gemini Live Swarm (`src/features/gemini_live_swarm`)
+- Drivs av `@google/genai` (Gemini 2.5 Flash).
+- Multi-agent pipeline med 4 roller:
+  - **Orchestrator**: Samordning, stegplanering och konsensus.
+  - **Researcher**: Marknads- och målgruppsanalys.
+  - **Outreach Writer**: Personlig brevsyntes.
+  - **Critic**: Etik-, GDPR- och relevansgranskning med kvalitetsbetyg.
 
 ---
 
@@ -86,49 +86,26 @@ Ett autonomt, distribuerat och händelsestyrt samordningssystem för automatiser
 
 ### Förutsättningar
 - Node.js >= 18
-- pnpm (eller npm)
 - Google AI Studio API-nyckel (`GEMINI_API_KEY`)
 - (Valfritt för skarp Google Drive synk) Google Workspace OAuth Access Token
 
-### Installation med pnpm & Wayfinder
+### Snabbstart
 ```bash
-# 1. Installera beroenden med pnpm (rekommenderat) eller npm
-pnpm install
-# (eller npm install)
+# 1. Installera beroenden
+npm install
 
-# 2. Installera Matt Pococks Wayfinder-skill för besluts- och ticket-orientering
-npx skills@latest add mattpocock/skills --skill=wayfinder -y
+# 2. Kör arkitektur- och kontraktsvalidering
+npm run verify
 
-# 3. Kör arkitektur- och kontraktsvalidering
-pnpm verify
-# (eller npm run verify)
+# 3. Kör isolerade TDD-enhetstester
+npm test
 
-# 4. Kör isolerade TDD-enhetstester (< 3s)
-pnpm test
-# (eller npm test)
-
-# 5. Initiera Google Drive Workspace lokalt
+# 4. Initiera Google Drive Workspace lokalt
 node scripts/init-drive-workspace.js
 
-# 6. Starta utvecklingsservern
-pnpm dev
-# (eller npm run dev)
+# 5. Starta utvecklingsservern
+npm run dev
 ```
-
----
-
-## 🧭 Wayfinder & Beslutsstyrning (`doc/TICKETS.md`)
-
-Systemet tillämpar **Matt Pococks Wayfinder-metod** under Steg 1a (Dubbel Orientering):
-
-1. **Vid oklara eller övergripande önskemål utan ticket-kod (`TCK-XXX`)**:
-   - `/wayfinder`-läget aktiveras under kraften `ATT_FORLIKAS`.
-   - Scenariofrågor ställs på svenska, antaganden klargörs och dimma skingras utan att källkoden under `src/` rörs.
-   - Avgränsade bygg-tickets med tydlig definition-of-done registreras i `doc/TICKETS.md`.
-2. **Vid aktiv ticket-kod (`TCK-XXX`)**:
-   - Teknisk orientering tar vid via `ATT_FOLJA`.
-   - Moduler karteras i `src/features/` och processkedjan drivs fram till Token Gate (Steg 3c).
-   - Realtidsstatus och arkitekturkvitton synkroniseras mot `MasterDevelopmentPlan` i gränssnittet.
 
 ---
 

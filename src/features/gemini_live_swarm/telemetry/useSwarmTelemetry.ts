@@ -6,24 +6,18 @@ import {
   SwarmTelemetrySnapshotSchema,
 } from './telemetrySchema.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
-import {
-  DEFAULT_SWARM_ROLES,
-  SwarmAgentRole,
-  getActiveAgentKrafter,
-  getSerialMotorAgent,
-} from '../agents/roleDefinitions.ts';
+import { DEFAULT_SWARM_ROLES, SwarmAgentRole } from '../agents/roleDefinitions.ts';
 
 export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
   const bus = eventBus || getGlobalSwarmEventBus();
 
-  // Initiera mätvärden för de 3 aktiva krafterna samt seriell motor
+  // Initiera standardmätvärden för standardrollerna
   const initialAgentMetrics: Record<string, AgentTelemetryMetric> = {};
-  const primaryAgents = [...getActiveAgentKrafter(), getSerialMotorAgent()];
-
-  for (const agent of primaryAgents) {
-    initialAgentMetrics[agent.id] = {
-      agentId: agent.id,
-      role: agent.role,
+  for (const roleKey of Object.keys(DEFAULT_SWARM_ROLES) as SwarmAgentRole[]) {
+    const r = DEFAULT_SWARM_ROLES[roleKey];
+    initialAgentMetrics[r.id] = {
+      agentId: r.id,
+      role: r.role,
       status: 'IDLE',
       lastThought: undefined,
       lastActive: new Date().toISOString(),
@@ -40,7 +34,6 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
     recentEnvelopes: [],
     healthStatus: 'HEALTHY',
     lastPulseAt: new Date().toISOString(),
-    activeEngine: 'KRAFTER_TRIAD',
   });
 
   const eventTimestampsRef = useRef<number[]>([]);
@@ -52,7 +45,7 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
       setSnapshot((prev) => ({
         ...prev,
         totalEventsCount: history.length,
-        recentEnvelopes: history.slice(-30).reverse(),
+        recentEnvelopes: history.slice(-20).reverse(),
       }));
     }
 
@@ -68,48 +61,27 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
       setSnapshot((prev) => {
         const updatedMetrics = { ...prev.agentMetrics };
 
-        // Matchning av källa mot krafter eller seriell motor
-        let targetAgentId: string | null = null;
-        const sourceLower = envelope.source.toLowerCase();
+        // Om händelsen kommer från en agent, uppdatera dess mätvärde
+        const roleMatch = envelope.source.match(/outreach\/swarm\/(orchestrator|researcher|writer|critic)/i);
+        if (roleMatch) {
+          const roleKey = roleMatch[1].toUpperCase() as SwarmAgentRole;
+          const agentId = DEFAULT_SWARM_ROLES[roleKey]?.id;
+          if (agentId && updatedMetrics[agentId]) {
+            const current = updatedMetrics[agentId];
+            const isThinking = envelope.type.includes('thinking') || envelope.type.includes('started');
+            const isDone = envelope.type.includes('completed');
 
-        if (sourceLower.includes('att_forlikas') || sourceLower.includes('orchestrator')) {
-          targetAgentId = DEFAULT_SWARM_ROLES.ATT_FORLIKAS.id;
-        } else if (sourceLower.includes('att_folja') || sourceLower.includes('researcher') || sourceLower.includes('writer')) {
-          targetAgentId = DEFAULT_SWARM_ROLES.ATT_FOLJA.id;
-        } else if (sourceLower.includes('att_vanda_om') || sourceLower.includes('critic')) {
-          targetAgentId = DEFAULT_SWARM_ROLES.ATT_VANDA_OM.id;
-        } else if (sourceLower.includes('seriell_motor')) {
-          targetAgentId = DEFAULT_SWARM_ROLES.SERIELL_MOTOR.id;
+            updatedMetrics[agentId] = {
+              ...current,
+              status: isThinking ? 'THINKING' : isDone ? 'DONE' : current.status,
+              lastThought: (envelope.data as any)?.summary || (envelope.data as any)?.thought || current.lastThought,
+              lastActive: envelope.time,
+              totalEventsEmitted: current.totalEventsEmitted + 1,
+            };
+          }
         }
 
-        if (targetAgentId && updatedMetrics[targetAgentId]) {
-          const current = updatedMetrics[targetAgentId];
-          const isThinking =
-            envelope.type.includes('thinking') ||
-            envelope.type.includes('started') ||
-            envelope.type.includes('running');
-          const isDone = envelope.type.includes('completed') || envelope.type.includes('verified');
-          const isError = envelope.type.includes('failed') || envelope.type.includes('error');
-
-          const dataObj = envelope.data as Record<string, any> | undefined;
-          const extractedThought =
-            dataObj?.thought ||
-            dataObj?.summary ||
-            dataObj?.stepOutput ||
-            (dataObj?.phase ? `Exekverar Fas ${dataObj.phase}` : undefined);
-
-          updatedMetrics[targetAgentId] = {
-            ...current,
-            status: isError ? 'ERROR' : isThinking ? 'THINKING' : isDone ? 'DONE' : current.status,
-            lastThought: extractedThought || current.lastThought,
-            lastActive: envelope.time,
-            totalEventsEmitted: current.totalEventsEmitted + 1,
-            phase: dataObj?.phase || current.phase,
-          };
-        }
-
-        const newRecent = [envelope, ...prev.recentEnvelopes].slice(0, 35);
-        const isSeriell = envelope.type.includes('seriell_motor');
+        const newRecent = [envelope, ...prev.recentEnvelopes].slice(0, 30);
 
         const newSnapshot: SwarmTelemetrySnapshot = {
           activeAgentsCount: Object.values(updatedMetrics).filter((a) => a.status !== 'ERROR').length,
@@ -119,9 +91,9 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
           recentEnvelopes: newRecent,
           healthStatus: 'HEALTHY',
           lastPulseAt: new Date().toISOString(),
-          activeEngine: isSeriell ? 'SERIELL_MOTOR' : prev.activeEngine,
         };
 
+        // Validera med Zod
         try {
           return SwarmTelemetrySnapshotSchema.parse(newSnapshot);
         } catch (validationErr) {
@@ -138,6 +110,6 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
 
   return {
     snapshot,
-    clearHistory: () => bus.clear(),
+    eventBus: bus,
   };
 }

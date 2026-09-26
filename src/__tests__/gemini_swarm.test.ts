@@ -1,51 +1,27 @@
 import { SwarmOrchestrator } from '../features/gemini_live_swarm/coordinator/swarmOrchestrator.ts';
-import {
-  DEFAULT_SWARM_ROLES,
-  getActiveAgentKrafter,
-  getSerialMotorAgent,
-} from '../features/gemini_live_swarm/agents/roleDefinitions.ts';
+import { DEFAULT_SWARM_ROLES } from '../features/gemini_live_swarm/agents/roleDefinitions.ts';
 
 export async function runSwarmTests(): Promise<{ name: string; passed: boolean; error?: string }[]> {
   const results = [];
 
-  // Test 1: Roller är korrekt konfigurerade inklusive krafter och seriell motor
+  // Test 1: Roller är korrekt konfigurerade
   try {
     const roles = Object.keys(DEFAULT_SWARM_ROLES);
-    const hasKrafter = ['ATT_FORLIKAS', 'ATT_FOLJA', 'ATT_VANDA_OM', 'SERIELL_MOTOR'].every((r) =>
+    const hasAll = ['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC'].every((r) =>
       roles.includes(r)
     );
-    const hasLegacy = ['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC'].every((r) =>
-      roles.includes(r)
-    );
-    results.push({
-      name: 'Swarm roles definition includes SI v10.0 krafter and legacy aliases',
-      passed: hasKrafter && hasLegacy,
-    });
+    results.push({ name: 'Swarm roles definition includes all 4 standard agents', passed: hasAll });
   } catch (err) {
-    results.push({
-      name: 'Swarm roles definition includes SI v10.0 krafter and legacy aliases',
-      passed: false,
-      error: String(err),
-    });
+    results.push({ name: 'Swarm roles definition includes all 4 standard agents', passed: false, error: String(err) });
   }
 
-  // Test 2: Swarm orkestrator initialiseras med de 3 aktiva krafterna och seriell motor
+  // Test 2: Swarm orkestrator initialiseras med default-agenter
   try {
     const orchestrator = new SwarmOrchestrator();
-    const activeKrafter = orchestrator.getActiveAgents();
-    const serialMotor = orchestrator.getSerialMotor();
-    const allAgents = orchestrator.getAllAgents();
-    const passed = activeKrafter.length === 3 && serialMotor.role === 'SERIELL_MOTOR' && allAgents.length === 4;
-    results.push({
-      name: 'Swarm orchestrator initializes 3 active krafter and 4th serial motor',
-      passed,
-    });
+    const agents = orchestrator.getActiveAgents();
+    results.push({ name: 'Swarm orchestrator initializes 4 active agent instances', passed: agents.length === 4 });
   } catch (err) {
-    results.push({
-      name: 'Swarm orchestrator initializes 3 active krafter and 4th serial motor',
-      passed: false,
-      error: String(err),
-    });
+    results.push({ name: 'Swarm orchestrator initializes 4 active agent instances', passed: false, error: String(err) });
   }
 
   // Test 3: Planering av kampanj skapar strukturerade faser
