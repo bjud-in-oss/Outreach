@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- Inga aktiva tickets för närvarande (Full mognad uppnådd).
+- [OPEN] TCK-011 | Domän: src/features/gemini_live_swarm/ | Mål: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet | Spec: doc/TICKETS/TCK-011.md
 
 ---
 

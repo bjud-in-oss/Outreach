@@ -1,28 +1,49 @@
-# 1b Kartlägga: Gemini Live Session Streaming & WebSocket Integration (TCK-010)
+# 1b Kartlägga: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet (TCK-011)
 
 ## 1. Kartläggning av Källkodsartefakter inom `gemini_live_swarm`
 
 ### Kärnkomponenter och Beröringspunkter
 
-1. **`src/features/gemini_live_swarm/session/geminiLiveSession.ts`**:
-   - Nuvarande implementation: Innehåller `GoogleGenAI` wrapper med `generateContent` samt statisk deterministisk fallback.
-   - Förändringsbehov: Utöka med `gemini-3.8-live` anslutningshantering över WebSockets via `@google/genai` (`ai.live.connect`), metoder för realtidsinmatning (`sendRealtimeText`, `sendRealtimeAudio`), händelselyssnare och deterministisk strömningsfallback för in-memory testning.
+1. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`**:
+   - Nuvarande läge: Innehåller scheman för `AgentForce`, `SerialExecutionMetric`, `SwarmTelemetrySnapshot`, `LiveSessionStatus`, `LiveStreamChunk`.
+   - Förändringsbehov: Inför `AudioOutputStateSchema` och `AudioOutputState`:
+     ```typescript
+     export const AudioOutputStateSchema = z.object({
+       isMuted: z.boolean(),
+       activeSpeakerUnitId: z.string().optional(),
+       activeForce: AgentForceSchema.optional(),
+       triggerReason: z.enum(['NAME_INVOCATION', 'TOKEN_GATE', 'MANUAL_UNMUTE', 'DEFAULT_SILENCE']).optional(),
+       lastChangedAt: z.string(),
+     });
+     ```
+   - Utöka `SwarmTelemetrySnapshotSchema` med fältet `audioOutput: AudioOutputStateSchema.optional()`.
 
-2. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`**:
-   - Nuvarande implementation: Innehåller scheman för `AgentForce`, `SerialExecutionMetric`, `SwarmTelemetrySnapshot`.
-   - Förändringsbehov: Komplettera med `LiveSessionStatusSchema`, `LiveStreamChunkSchema` och CloudEvents-typer för strömning.
+2. **`src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts`**:
+   - Nuvarande läge: Hanterar prenumeration på `*` och uppdaterar `agentMetrics`, `serialExecution` och händelseström.
+   - Förändringsbehov:
+     - Implementera automatisk tyst röstspärr som standard (`isMuted: true`).
+     - Lyssna på `swarm.audio.state.changed` samt analysera inkommande användartext och röstinmatning efter namnanrop på de 4 försoningsenheterna via `detectUnitInvocation`.
+     - Lyssna på `swarm.serial.*` händelser: Om `stageStatus === 'GATED'` eller `currentStage === '3c_spec'`, aktivera automatiskt högtalaren med anledning `TOKEN_GATE` och enhet `unit-seriell-motor`.
+     - Exponera hjälpfunktioner: `setManualMute(muted: boolean)`, `triggerVoiceByInvocation(text: string)`.
 
 3. **`src/features/gemini_live_swarm/bus/swarmEventBus.ts`**:
-   - Nuvarande implementation: Reaktiv pub/sub-buss med 150-elementers ringbuffert och `publishSerialMetric`.
-   - Förändringsbehov: Tillhandahålla bekvämlighetsmetod `publishLiveStreamEvent` för typad distribution av strömningshändelser till gränssnittet.
+   - Nuvarande läge: Reaktiv event-buss med `publish`, `publishLiveEvent`, `publishSerialMetric`.
+   - Förändringsbehov:
+     - Tillhandahåll `publishAudioState(audioState: AudioOutputState): EventEnvelope`.
 
-4. **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts`**:
-   - Nuvarande implementation: Exekverar kampanjsteg för de försonande enheterna.
-   - Förändringsbehov: Reaktiv koppling till sessionsströmmen så att realtidstranskribering och delutkast distribueras direkt till de 4 enheterna under körning.
+4. **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`**:
+   - Nuvarande läge: Visar de 4 enheterna, live status och seriell motor.
+   - Förändringsbehov:
+     - Lägg till en ljudstatus-indikator (t.ex. `VolumeX` / `Volume2` ikon) i gränssnittet som tydligt visar:
+       - "Tyst röstspärr aktiv (Bakgrundskörning i tystnad)"
+       - "Högtalare öppen: [Enhetsnamn] via namnanrop"
+       - "Högtalare öppen: Att försonas (ensam agent) vid Token Gate"
+     - Ge användaren en manuell knapp för att slå på/av ljud vid behov.
 
-5. **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` & `TelemetrySidebar.tsx`**:
-   - Nuvarande implementation: Visar de 4 försoningsenheterna ("Att följa Guds son", "Att vända om till Gud", "Att förlikas med Gud", "Att försonas (ensam agent)").
-   - Förändringsbehov: Reagera på strömningshändelser och visa realtidspuls/ljudströmning i gränssnittet.
-
-6. **`src/__tests__/transient_TCK-010.test.ts` (Ny testfil i Fas 2)**:
-   - Transient mikro-E2E-test som validerar anslutning, strömning av text och ljud, CloudEvents-distribution och reaktiv konsumtion hos de 4 försoningsenheterna.
+5. **`src/__tests__/transient_TCK-011.test.ts` (Ny testfil i Fas 2)**:
+   - Validerar att:
+     1. Ljudutgången förblir tyst (`isMuted: true`) under flerstegskörningar.
+     2. Namnanrop ("Att följa Guds son", "Att vända om", "Att förlikas", "Att försonas") öppnar högtalaren för rätt enhet.
+     3. Token Gate (Steg 3c) automatiskt triggar högtalaren för "Att försonas (ensam agent)".
+     4. Återställning till tystnad fungerar deterministiskt.
+     5. Exekveras på < 3s i minnet.

@@ -2,14 +2,14 @@ Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva 
 
 ---
 
-AKTIVT UPPDRAG: TCK-010
-Titel: Gemini Live Session Streaming & WebSocket Integration
+AKTIVT UPPDRAG: TCK-011
+Titel: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet
 Domän: src/features/gemini_live_swarm/
-Active Skills: gemini-live-api-dev, gemini-api-dev
+Active Skills: gemini-live-api-dev
 
-Mål för TCK-010:
-1. Använd 'gemini-live-api-dev' och 'gemini-api-dev' för att färdigställa dubbelriktad strömning av ljud och text i `geminiLiveSession.ts`.
-2. Publicera sessionshändelser reaktivt via `swarmEventBus` till de 4 försoningsenheterna i gränssnittet ("Att följa Guds son", "Att vända om till Gud", "Att förlikas med Gud", "Att försonas (ensam agent)").
-3. Skapa transient test `src/__tests__/transient_TCK-010.test.ts` och verifiera hela sviten med `pnpm verify`.
+Mål för TCK-011:
+1. Implementera logik i `useSwarmTelemetry.ts` och `SwarmDashboard.tsx` som håller ljudutgången helt tyst under tysta flerstegskörningar.
+2. Öppna högtalarkanalen enbart vid direkt namnanrop på en enhet eller när "Att försonas (ensam agent)" når Token Gate (Steg 3c).
+3. Skapa transient test `src/__tests__/transient_TCK-011.test.ts` som verifierar tyst körtid och röst-triggers i minnet (< 3s) och bekräfta med `pnpm verify`.
 
 Driv det obrutna Fas 1-svepet under doc/LAST_CYCLE/ och stanna vid Token Gate.
