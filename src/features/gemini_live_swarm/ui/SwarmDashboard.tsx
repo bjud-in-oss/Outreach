@@ -15,9 +15,11 @@ import {
   Lock,
   ArrowRight,
   RefreshCw,
+  Compass,
+  Heart,
 } from 'lucide-react';
 import { SwarmOrchestrator, CampaignPlan, SwarmStep } from '../coordinator/swarmOrchestrator.ts';
-import { SwarmAgentRole, AgentForce } from '../agents/roleDefinitions.ts';
+import { SwarmAgentRole, AgentForce, SEMANTIC_INVARIANT } from '../agents/roleDefinitions.ts';
 import { TelemetrySidebar } from './TelemetrySidebar.tsx';
 import { MasterDevelopmentPlan } from './MasterDevelopmentPlan.tsx';
 import { getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
@@ -196,6 +198,43 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Kompass & Högsta Syfte: Semantiskt Ankare & Försoningskrafter (TCK-008) */}
+      <div className="bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/30 rounded-xl p-4 shadow-md space-y-3">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 bg-purple-500/10 text-purple-400 rounded-lg border border-purple-500/20">
+              <Compass className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-200 flex items-center space-x-2">
+                <span>Kompass & Högsta Syfte</span>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono">
+                  Mognadsmodell v10.0
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-300 font-serif italic mt-0.5">
+                "{SEMANTIC_INVARIANT}"
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 border-t border-purple-500/20 text-xs">
+          <div className="p-2 rounded bg-slate-950/60 border border-blue-500/20">
+            <span className="font-semibold text-blue-300 text-[11px]">1. Att Följa</span>
+            <p className="text-[10px] text-slate-400 mt-0.5">Själv vara lösningen för närhet genom empatisk kontakt och analys.</p>
+          </div>
+          <div className="p-2 rounded bg-slate-950/60 border border-amber-500/20">
+            <span className="font-semibold text-amber-300 text-[11px]">2. Att Vända Om</span>
+            <p className="text-[10px] text-slate-400 mt-0.5">Inåtriktad ödmjukhet och transformation; Fail-Fast för äkthet.</p>
+          </div>
+          <div className="p-2 rounded bg-slate-950/60 border border-purple-500/20">
+            <span className="font-semibold text-purple-300 text-[11px]">3. Att Förlikas</span>
+            <p className="text-[10px] text-slate-400 mt-0.5">Hålla 2+ samtida perspektiv varma för att hela klyftor och sluta cykeln.</p>
+          </div>
+        </div>
+      </div>
+
       {/* Sub-view väljare */}
       <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5">
         <div className="flex items-center space-x-2">
@@ -225,7 +264,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
         <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span>Buss aktiv (SI v10.0 • TCK-007)</span>
+          <span>Buss aktiv (SI v10.0 • TCK-008)</span>
         </div>
       </div>
 
@@ -266,7 +305,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-semibold text-slate-200">{unit.name}</span>
                         <div className="flex items-center space-x-2">
                           {getForceBadge(unit.force)}
@@ -281,6 +320,12 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                           />
                         </div>
                       </div>
+                      {unit.forceTitle && (
+                        <div className="text-[10px] font-medium text-purple-300/90 mb-1.5 flex items-center space-x-1">
+                          <span>✦</span>
+                          <span>{unit.forceTitle}</span>
+                        </div>
+                      )}
                       <p className="text-[11px] text-slate-400 line-clamp-2">{unit.systemInstruction}</p>
                     </div>
                     {unit.currentThought && (

@@ -21,7 +21,7 @@ export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
   currentReceiptHash = '09aea95c',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-007');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-008');
 
   const tickets: DevelopmentTicket[] = [
     {
@@ -114,6 +114,22 @@ export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
         'Transient mikro-E2E-verifiering (< 3s i minnet)',
       ],
       tokenHash: 'TCK-007-UI-SERIELL-MOTOR-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
+    {
+      id: 'TCK-008',
+      title: 'Förankring av Mognadsmodellen & Försoningskrafterna i Källkod och UI',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'SEMANTIC_INVARIANT etablerat i roleDefinitions.ts, AGENTS.md och doc/SI_v10.0.md',
+        '3 vägar till försoning (Att Följa, Att Vända Om, Att Förlikas) + Seriell Motor',
+        'Kompass & Högsta Syfte banner i SwarmDashboard',
+        'Uppdaterade försoningstitlar och förklarande etiketter i TelemetrySidebar',
+        'Transient mikro-E2E-verifiering i transient_TCK-008.test.ts (< 3s i minnet)',
+      ],
+      tokenHash: 'TCK-008-FORSONINGSKRAFTER-TOKEN',
       verifiedReceiptHash: currentReceiptHash,
     },
     {

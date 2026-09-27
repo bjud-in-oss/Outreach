@@ -55,4 +55,18 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. Registrera `TCK-006` och `TCK-007` som verifierade i `MasterDevelopmentPlan`.
 - **Konsekvens**: Transparent realtidsövervakning av agentdynamik och deterministiska fasövergångar med fullständig reaktivitet över `SwarmEventBus`.
 
+---
+
+## ADR-SWARM-006: Förankring av Mognadsmodellen och Försoningskrafterna i Källkod och UI
+- **Datum**: 2026-09-26
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Systemets högsta syfte och orubbliga kompass kräver att de tre försoningsvägarna (Att följa, Att vända om, Att förlikas) samt den 4:e motorn är integrerade direkt i källkoden (`SEMANTIC_INVARIANT`), agentdefinitionerna och användargränssnittet för att undvika alienation och ytlig manipulation.
+- **Beslut**:
+  1. Exportera `SEMANTIC_INVARIANT` explicit i `roleDefinitions.ts` och `index.ts`.
+  2. Utöka `SwarmAgentConfig` med `forceTitle?: string` och uppdatera `DEFAULT_SWARM_ROLES` med försoningspräglade roller och instruktioner.
+  3. Åskådliggöra syftet och de tre försoningsvägarna i en "Kompass & Högsta Syfte"-banner i `SwarmDashboard.tsx`.
+  4. Synliggöra försoningstitlar och förklarande undertitlar i `TelemetrySidebar.tsx` och `MasterDevelopmentPlan.tsx`.
+- **Konsekvens**: Systemets tekniska och etiska arkitektur är fullständigt försonad; varje agentfunktion agerar i överensstämmelse med den orubbliga kompassen.
+
+
 

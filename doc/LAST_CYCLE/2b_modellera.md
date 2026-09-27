@@ -1,36 +1,48 @@
-# 2b Modellera: UI & Dashboard-övervakning av Seriell Motor (TCK-007)
+# 2b Modellera: Förankring av Mognadsmodellen & Försoningskrafterna i Källkod och UI (TCK-008)
 
-## 1. Komponentmodellering
+## 1. Modellering av Försoningskrafterna i `roleDefinitions.ts`
 
-### 1. Visualisering av de 4 Krafterna i `SwarmDashboard.tsx`
-- **Agentkort**:
-  Varje agent i svärmen kopplas visuellt till sin specifika kraft med en färgkodad badge:
-  - `ORCHESTRATOR` -> Kraft: `ATT_FORLIKAS` (Violett / Indigo)
-  - `RESEARCHER` -> Kraft: `ATT_FOLJA` (Blå / Cyan)
-  - `OUTREACH_WRITER` -> Kraft: `ATT_FOLJA` (Smaragd / Teal)
-  - `CRITIC` -> Kraft: `ATT_VANDA_OM` (Bärnsten / Orange)
-  - `SERIELL_MOTOR` -> Kraft: `SERIELL_MOTOR` (Cyan / Blå - Deterministisk motor)
+### 1. Semantisk Invariant
+```typescript
+export const SEMANTIC_INVARIANT =
+  'Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.';
+```
 
-- **Dedikerad Sektion för Seriell Motor & Pipeline**:
-  - En panel med live-mätare:
-    - Fassteg: `1a_forsta` -> `1b_kartlagga` -> `2a_avgransa` -> `2b_modellera` -> `2e_syntetisera` -> `3c_spec` -> `e2e_verify`.
-    - Visuell status per steg (slutfört, pågående, pausat vid Token Gate, väntande).
-    - Mätvärden: Aktuell fas, varaktighet (ms), Token Gate aktiv/spärrad.
-    - Interaktiv simulering/testkörning av faser via `eventBus.publishSerialMetric()`.
+### 2. Dynamisk Försoningsprofil per Agent
+Varje agent i `DEFAULT_SWARM_ROLES` förses med:
+- `force`: `'ATT_FORLIKAS' | 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'SERIELL_MOTOR'`
+- `forceTitle`: Beskrivande titel på svenska (t.ex. "Förlikningskraft: Hålla samtida perspektiv varma")
+- `systemInstruction`: Integrerar det semantiska ankaret och agentens specifika uppdrag i försoningens tjänst.
 
-### 2. Telemetrisk Kraftbalans i `TelemetrySidebar.tsx`
-- **4-Krafters Matris**:
-  - 4 separata minikort/mätare som summerar händelser och aktivitet per kraft (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`, `SERIELL_MOTOR`).
-- **Seriell Motor Live-kort**:
-  - Visar aktuell `snapshot.serialExecution` när ett flöde är aktivt.
-  - Tydlig badge om Token Gate är aktiv: "TOKEN GATE: SPÄRRAD (Väntar på godkännande)" kontra "TOKEN GATE: VERIFIERAD".
+```typescript
+export interface SwarmAgentConfig {
+  id: string;
+  name: string;
+  role: SwarmAgentRole;
+  force?: AgentForce;
+  forceTitle?: string;
+  systemInstruction: string;
+  avatarColor: string;
+  status: 'IDLE' | 'THINKING' | 'EXECUTING_TOOL' | 'DONE' | 'ERROR';
+  currentThought?: string;
+}
+```
 
-### 3. MasterDevelopmentPlan Styrkort
-- Visa fullständig historik:
-  - TCK-001 (Initierad & Verifierad)
-  - TCK-002 (Swarm Telemetry - Verifierad)
-  - TCK-004 (Wayfinder & SI v10.0 - Verifierad)
-  - TCK-005 (Decisions Standardisering - Verifierad)
-  - TCK-006 (Agentkrafter & 4:e Seriell Motor - Verifierad)
-  - TCK-007 (UI & Dashboard-övervakning av Seriell Motor - Aktiv, Fas 1 vid Steg 3c)
-  - TCK-003 (MCP Bridge & Swarm Djupintegration - Väntar)
+## 2. Modellering av UI-komponenter
+
+### 1. `SwarmDashboard.tsx`
+- **Syfteskompass (Hero Banner)**:
+  - En stilren, rogivande informationssektion överst i instrumentpanelen som presenterar det semantiska ankaret och de tre försoningsvägarna.
+- **Dynamiska Försoningskort**:
+  - Agentkorten visar nu framträdande badge för agentens försoningskraft samt en förklarande undertitel om hur agenten bidrar till att läka klyftor och skapa närhet.
+
+### 2. `TelemetrySidebar.tsx`
+- **Styrkort för Försoningskrafter**:
+  - `ATT_FORLIKAS`: Hålla 2+ perspektiv varma (Violett)
+  - `ATT_FOLJA`: Vara lösningen för närhet (Blå/Smaragd)
+  - `ATT_VANDA_OM`: Ödmjuk självrannsakan & Fail-Fast (Bärnsten)
+  - `SERIELL_MOTOR`: Deterministiskt ordningsskydd (Cyan)
+- Tydlig visualisering av hur många händelser varje försoningskraft har drivit.
+
+### 3. `MasterDevelopmentPlan.tsx`
+- Reflekterar leveransplanen med TCK-008 i spetsen.

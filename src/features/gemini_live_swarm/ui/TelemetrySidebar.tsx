@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useSwarmTelemetry } from '../telemetry/useSwarmTelemetry.ts';
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
-import { AgentForce } from '../agents/roleDefinitions.ts';
+import { AgentForce, DEFAULT_SWARM_ROLES } from '../agents/roleDefinitions.ts';
 
 interface TelemetrySidebarProps {
   eventBus?: SwarmEventBus;
@@ -159,19 +159,19 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
         <div className="grid grid-cols-2 gap-1.5 text-[10px]">
           <div className="p-2 bg-slate-950/60 border border-purple-500/20 rounded-lg">
             <div className="font-semibold text-purple-300">ATT FÖRLIKAS</div>
-            <div className="text-[9px] text-slate-400">Harmonisering & Svärmledning</div>
+            <div className="text-[9px] text-slate-400">Hålla 2+ samtida perspektiv varma</div>
           </div>
           <div className="p-2 bg-slate-950/60 border border-blue-500/20 rounded-lg">
             <div className="font-semibold text-blue-300">ATT FÖLJA</div>
-            <div className="text-[9px] text-slate-400">Fältanalys & Utkastframdrift</div>
+            <div className="text-[9px] text-slate-400">Själv vara lösningen för närhet</div>
           </div>
           <div className="p-2 bg-slate-950/60 border border-amber-500/20 rounded-lg">
             <div className="font-semibold text-amber-300">ATT VÄNDA OM</div>
-            <div className="text-[9px] text-slate-400">Fail-Fast & Granskning</div>
+            <div className="text-[9px] text-slate-400">Inåtriktad ödmjukhet & Fail-Fast</div>
           </div>
           <div className="p-2 bg-slate-950/60 border border-cyan-500/20 rounded-lg">
             <div className="font-semibold text-cyan-300">SERIELL MOTOR</div>
-            <div className="text-[9px] text-slate-400">Deterministisk Token Gate</div>
+            <div className="text-[9px] text-slate-400">Deterministisk ordning & skydd</div>
           </div>
         </div>
       </div>
@@ -244,7 +244,9 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-1.5 truncate">
-                  <span className="font-semibold text-slate-200 text-[11px] truncate">{agent.role}</span>
+                  <span className="font-semibold text-slate-200 text-[11px] truncate">
+                    {DEFAULT_SWARM_ROLES[agent.role]?.name || agent.role}
+                  </span>
                   {getForceBadge(agent.force)}
                 </div>
                 <span

@@ -1,6 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
+- [AKTIV] TCK-008 | Domän: src/features/gemini_live_swarm/ | Mål: Förankring av Mognadsmodellen & Försoningskrafterna i Källkod och UI | Spec: doc/TICKETS/TCK-008.md
 - [OPEN] TCK-003 | Domän: src/features/mcp_bridge/ | Mål: MCP Bridge & Gemini Live Swarm djupintegration | Spec: doc/TICKETS/TCK-003.md
 
 ---

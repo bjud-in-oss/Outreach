@@ -1,27 +1,29 @@
-# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-007)
+# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-008)
 
 ## 1. Mättnadsanalys
 - **MÄTTNAD: JA**
-- Samtliga målkonflikter kring gränssnittspresentation, realtidsuppdateringar, reaktiv telemetribindning och SI v10.0:s Token Gate-disciplin har lösts.
-- Komponentstrukturen för `SwarmDashboard.tsx`, `TelemetrySidebar.tsx` och `MasterDevelopmentPlan.tsx` är fullt harmoniserad med de etablerade kontrakten från TCK-006.
+- Samtliga målkonflikter mellan teknisk precision, strikta arkitekturregler och det etiska, orubbliga semantiska ankaret har lösts harmoniskt.
+- Gränssnittsdesignen i `SwarmDashboard.tsx` och `TelemetrySidebar.tsx` lyfter fram försoningsprinciperna på ett värdigt och transparent sätt utan att störa arbetsflödet för operatören.
+- Typdefinitioner och kontrakt i `roleDefinitions.ts` förblir 100% bakåtkompatibla samtidigt som de berikas med det etiska ankaret.
 
 ---
 
 ## 2. Syntes av Arkitektoniska Insikter
 
-1. **Realtidsinsyn utan prestandaförlust**:
-   - Genom att använda `useSwarmTelemetry` och dess inbyggda FIFO-ringbuffert förblir sidopanelen och instrumentpanelen reaktiva med 60 FPS utan att belasta Reacts renderingscykel i onödan.
-2. **Kraftbalans i UI**:
-   - Att lyfta fram de 4 krafterna (`ATT_FORLIKAS`, `ATT_FOLJA`, `ATT_VANDA_OM`, `SERIELL_MOTOR`) gör arkitekturen självförklarande för användaren: man ser direkt hur den seriella motorn säkerställer ordning medan de tre tankekrafterna samarbetar.
+1. **Semantiskt Skydd mot Urvattning**:
+   - Genom att förankra texten ordagrant i systemdokumentation (`AGENTS.md`, `SI_v10.0.md`), i källkodskonstanter (`roleDefinitions.ts`) och i användargränssnittet förhindras urvattning av agenternas syfte över framtida utvecklingscykler.
+2. **Dynamiska Försoningskrafter vs Mekaniska Roller**:
+   - När agenterna ses som försoningskrafter (Att följa, Att vända om, Att förlikas) skapas ett samarbetsklimat där fel inte döljs utan möts med ödmjukhet (Fail-Fast), kontakt skapas med genuin omsorg, och syntes sker genom att hålla samtida perspektiv varma.
 3. **Strikt Token Gate-separation**:
-   - Fas 1 avslutas här vid Steg 3c. Inga källkodsfiler i `src/` skrivs förrän koden `TCK-007-UI-SERIELL-MOTOR-TOKEN` bekräftas via `pnpm genomfor`.
+   - Fas 1 avslutas här vid Steg 3c. Inga filer under `src/` ändras förrän godkännandekoden i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt` bekräftats av användaren via `pnpm genomfor`.
 
 ---
 
 ## 3. Planerade Åtgärder i Fas 2 (efter Token Gate)
+- Uppdatera `src/features/gemini_live_swarm/agents/roleDefinitions.ts`.
 - Uppdatera `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`.
 - Uppdatera `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`.
 - Uppdatera `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`.
-- Skapa transient mikro-E2E-test `src/__tests__/transient_TCK-007.test.ts`.
-- Exekvera `pnpm test` och `pnpm verify`.
-- Konsolidera testet till långsiktig regressionssvit och stänga TCK-007.
+- Skapa transient mikro-E2E-test `src/__tests__/transient_TCK-008.test.ts`.
+- Köra `pnpm test` och `pnpm verify`.
+- Konsolidera testet till regressionssviten och stänga TCK-008 i `doc/TICKETS.md`.
