@@ -10,11 +10,11 @@ export interface AgentThoughtResponse {
 
 export class GeminiLiveSession {
   private aiClient: GoogleGenAI | null = null;
-  private modelName = 'gemini-2.5-flash';
+  private modelName = 'gemini-3.8-flash';
 
   constructor(apiKey?: string) {
     const key = apiKey || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
-    if (key && key !== 'MY_GEMINI_API_KEY') {
+    if (key && key !== 'MY_GEMINI_API_KEY' && key !== 'in-memory-test') {
       try {
         this.aiClient = new GoogleGenAI({ apiKey: key });
       } catch (e) {

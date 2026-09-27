@@ -5,6 +5,7 @@ import {
 } from '../agents/roleDefinitions.ts';
 import { GeminiLiveSession } from '../session/geminiLiveSession.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
+import { McpSwarmBridge } from '../../mcp_bridge/orchestrator/mcpSwarmBridge.ts';
 
 export interface CampaignInput {
   title: string;
@@ -32,9 +33,11 @@ export interface CampaignPlan {
 export class SwarmOrchestrator {
   private units: Map<ReconciliationForce, ReconciliationUnitConfig>;
   private session: GeminiLiveSession;
+  private mcpBridge?: McpSwarmBridge;
 
-  constructor(session?: GeminiLiveSession) {
+  constructor(session?: GeminiLiveSession, mcpBridge?: McpSwarmBridge) {
     this.session = session || new GeminiLiveSession();
+    this.mcpBridge = mcpBridge;
     this.units = new Map();
     const activeForces: ReconciliationForce[] = ['ATT_FOLJA', 'ATT_VANDA_OM', 'ATT_FORLIKAS'];
     for (const force of activeForces) {
@@ -42,6 +45,14 @@ export class SwarmOrchestrator {
         this.units.set(force, { ...RECONCILIATION_UNITS[force] });
       }
     }
+  }
+
+  public getMcpBridge(): McpSwarmBridge | undefined {
+    return this.mcpBridge;
+  }
+
+  public setMcpBridge(bridge: McpSwarmBridge): void {
+    this.mcpBridge = bridge;
   }
 
   public getActiveAgents(): ReconciliationUnitConfig[] {
@@ -128,9 +139,32 @@ export class SwarmOrchestrator {
 
       if (step.agentRole === 'ATT_FOLJA') {
         plan.finalDraft = turnResult.content;
+        if (this.mcpBridge) {
+          const mcpResult = await this.mcpBridge.executeTool('drive_create_file', {
+            fileName: `Kampanj_${plan.input.title.replace(/\s+/g, '_')}.md`,
+            folder: 'Campaigns',
+            content: turnResult.content,
+          });
+          sharedContext += `\n[MCP Verktygsrespons (drive_create_file)]: Sparad i Google Drive (NON_BLOCKING).\n`;
+          if (mcpResult.envelope) {
+            onEnvelopeGenerated?.(mcpResult.envelope);
+          }
+        }
       }
-      if (step.agentRole === 'ATT_VANDA_OM' && turnResult.score) {
-        plan.consensusScore = turnResult.score;
+      if (step.agentRole === 'ATT_VANDA_OM') {
+        if (turnResult.score) {
+          plan.consensusScore = turnResult.score;
+        }
+        if (this.mcpBridge) {
+          const evalResult = await this.mcpBridge.executeTool('outreach_evaluate_tone', {
+            draftText: plan.finalDraft || turnResult.content,
+            recipientProfile: plan.input.targetAudience,
+          });
+          sharedContext += `\n[MCP Verktygsrespons (outreach_evaluate_tone)]: Granskning genomförd.\n`;
+          if (evalResult.envelope) {
+            onEnvelopeGenerated?.(evalResult.envelope);
+          }
+        }
       }
 
       onStepUpdate?.(step, i);

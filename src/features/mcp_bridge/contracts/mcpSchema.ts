@@ -44,3 +44,32 @@ export const McpResponseSchema = z.object({
 });
 
 export type McpResponse = z.infer<typeof McpResponseSchema>;
+
+/**
+ * Gemini Live WebSocket Bidi Tool Execution Schemas (TCK-003)
+ * Spec: Gemini 3.8 Live API Asynchronous Function Calling
+ */
+export const BidiFunctionCallSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  args: z.record(z.string(), z.unknown()),
+});
+
+export type BidiFunctionCall = z.infer<typeof BidiFunctionCallSchema>;
+
+export const BidiFunctionResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  response: z.object({
+    output: z.union([z.record(z.string(), z.unknown()), z.string(), z.array(z.unknown())]),
+  }),
+});
+
+export type BidiFunctionResponse = z.infer<typeof BidiFunctionResponseSchema>;
+
+export const BidiGenerateContentToolResponseSchema = z.object({
+  functionResponses: z.array(BidiFunctionResponseSchema),
+  behavior: z.literal('NON_BLOCKING'),
+});
+
+export type BidiGenerateContentToolResponse = z.infer<typeof BidiGenerateContentToolResponseSchema>;

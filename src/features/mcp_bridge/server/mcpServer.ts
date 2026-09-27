@@ -4,6 +4,10 @@ import {
   McpResponse,
   McpRequestSchema,
 } from '../contracts/mcpSchema.ts';
+import { GoogleDriveClient } from '../../google_drive_sync/api/driveClient.ts';
+import { WalEngine } from '../../wal_logger/engine/walEngine.ts';
+import { DriveToolsDefinitions, createDriveToolHandlers } from '../tools/driveTools.ts';
+import { WalToolsDefinitions, createWalToolHandlers } from '../tools/walTools.ts';
 
 export type ToolHandler = (args: Record<string, any>) => Promise<{
   content: Array<{ type: 'text' | 'resource'; text?: string }>;
@@ -19,6 +23,10 @@ export class McpServer {
 
   public getRegisteredTools(): McpToolDefinition[] {
     return Array.from(this.tools.values()).map((t) => t.definition);
+  }
+
+  public hasTool(name: string): boolean {
+    return this.tools.has(name);
   }
 
   public async handleJsonRpcRequest(rawRequest: unknown): Promise<McpResponse> {
@@ -120,7 +128,7 @@ export function createStandardMcpServer(): McpServer {
         content: [
           {
             type: 'text',
-            text: `[MCP:drive_create_file] Fil "${args.fileName}" skapad i mappen "${args.folder || 'Campaigns'}". Storlek: ${args.content.length} tecken.`,
+            text: `[MCP:drive_create_file] Fil "${args.fileName}" skapad i mappen "${args.folder || 'Campaigns'}". Storlek: ${args.content?.length || 0} tecken.`,
           },
         ],
       };
@@ -177,6 +185,39 @@ export function createStandardMcpServer(): McpServer {
       };
     }
   );
+
+  return server;
+}
+
+/**
+ * TCK-003 Unified MCP Server
+ * Registrerar verktyg från samtliga delsystem: Drive, WAL och Kvalitetsanalys
+ */
+export function createUnifiedMcpServer(
+  driveClient?: GoogleDriveClient,
+  walEngine?: WalEngine
+): McpServer {
+  const server = createStandardMcpServer();
+
+  // 1. Registrera Drive-verktyg
+  const dc = driveClient || new GoogleDriveClient('sim-unified-drive-token');
+  const driveHandlers = createDriveToolHandlers(dc);
+  for (const def of DriveToolsDefinitions) {
+    const handler = (driveHandlers as any)[def.name];
+    if (handler) {
+      server.registerTool(def, handler);
+    }
+  }
+
+  // 2. Registrera WAL-verktyg
+  const we = walEngine || new WalEngine();
+  const walHandlers = createWalToolHandlers(we);
+  for (const def of WalToolsDefinitions) {
+    const handler = (walHandlers as any)[def.name];
+    if (handler) {
+      server.registerTool(def, handler);
+    }
+  }
 
   return server;
 }

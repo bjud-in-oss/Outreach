@@ -10,6 +10,7 @@ import { runTransientTCK006Tests } from '../src/__tests__/transient_TCK-006.test
 import { runTransientTCK007Tests } from '../src/__tests__/transient_TCK-007.test.ts';
 import { runTransientTCK008Tests } from '../src/__tests__/transient_TCK-008.test.ts';
 import { runTransientTCK009Tests } from '../src/__tests__/transient_TCK-009.test.ts';
+import { runTransientTCK003Tests } from '../src/__tests__/transient_TCK-003.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -30,6 +31,7 @@ async function main() {
     { name: '10. Transient E2E: TCK-007 UI & Dashboard-övervakning av Seriell Motor', runner: async () => runTransientTCK007Tests() },
     { name: '11. Transient E2E: TCK-008 Mognadsmodell & Försoningskrafter', runner: async () => runTransientTCK008Tests() },
     { name: '12. Transient E2E: TCK-009 Konsolidering till 4 Försoningsenheter', runner: async () => runTransientTCK009Tests() },
+    { name: '13. Transient E2E: TCK-003 MCP Bridge & Gemini Live Swarm Djupintegration', runner: async () => runTransientTCK003Tests() },
   ];
 
   for (const suite of testSuites) {

@@ -1,88 +1,73 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-009)
+# 3c Fil-operativ Källkodsspecifikation (TCK-003)
 
 ## 1. Översikt över Förändringskedjan (Fas 2)
 
-Följande filer är specificerade för källkodsändring under Fas 2 så snart godkännandekoden (`TCK-009-FORSONINGSKRAFTER-REFACTOR-TOKEN`) bekräftats via `pnpm genomfor`:
+Följande filer är specificerade för källkodsändring under Fas 2 så snart godkännandekoden (`TCK-003-MCP-SWARM-BRIDGE-TOKEN`) bekräftats via `pnpm genomfor`:
 
 ---
 
-### Fil 1: `src/features/gemini_live_swarm/agents/roleDefinitions.ts` (REFAKTORERING)
+### Fil 1: `src/features/mcp_bridge/contracts/mcpSchema.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Behåll det etiska ankaret oförvanskat:
-     ```typescript
-     export const SEMANTIC_INVARIANT =
-       'Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.';
-     ```
-  2. Receptera bort alla 5 legacy-roller/dubbleringar (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC` etc.).
-  3. Definiera exakt 4 enheter bundna till krafterna i `RECONCILIATION_UNITS`:
-     - `ATT_FOLJA`: `displayName = "Att följa Guds son"`
-     - `ATT_VANDA_OM`: `displayName = "Att vända om till Gud"`
-     - `ATT_FORLIKAS`: `displayName = "Att förlikas med Gud"`
-     - `SERIELL_MOTOR`: `displayName = "Att försonas (ensam agent)"`
-  4. Exportera `ReconciliationUnitConfig` med explicit separation mellan intern `systemInstruction` och extern `userBenefit` / `reachScope`.
+  1. Definiera och exportera Zod-scheman och TypeScript-typer för:
+     - `BidiFunctionCallSchema`: `{ id: z.string(), name: z.string(), args: z.record(z.any()) }`
+     - `BidiFunctionResponseSchema`: `{ id: z.string(), name: z.string(), response: z.object({ output: z.any() }) }`
+     - `BidiGenerateContentToolResponseSchema`: `{ functionResponses: z.array(BidiFunctionResponseSchema), behavior: z.literal('NON_BLOCKING') }`
+  2. Exportera typerna `BidiFunctionCall`, `BidiFunctionResponse`, `BidiGenerateContentToolResponse`.
 
 ---
 
-### Fil 2: `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` & `useSwarmTelemetry.ts` (REFAKTORERING)
+### Fil 2: `src/features/mcp_bridge/server/mcpServer.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Uppdatera Zod-scheman för `ReconciliationForceSchema` och `ReconciliationStateSchema`.
-  2. Uppdatera telemetriberäkningen så att standardantalet enheter är **4** (minskat från 5).
-  3. Initiera `agentMetrics` från de 4 enheterna i `RECONCILIATION_UNITS`.
+  1. Implementera fabriken `createUnifiedMcpServer(driveClient?: GoogleDriveClient, walEngine?: WalEngine): McpServer`.
+  2. Registrera verktyg från samtliga källor:
+     - Drive: `drive_save_draft`, `drive_list_templates`, `drive_create_file`
+     - WAL: `wal_get_stats`, `wal_query_recent`
+     - Granskning: `outreach_evaluate_tone`
+  3. Säkerställ strikt JSON-RPC 2.0 Fail-Fast felhantering.
 
 ---
 
-### Fil 3: `src/features/gemini_live_swarm/bus/swarmEventBus.ts` (REFAKTORERING)
+### Fil 3: `src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts` (NY FIL I FAS 2)
 - **Förändringar**:
-  1. Standardisera källor på de 4 försoningsenheterna: `outreach/swarm/att_folja`, `outreach/swarm/att_vanda_om`, `outreach/swarm/att_forlikas`, `outreach/swarm/seriell_motor`.
+  1. Skapa klassen `McpSwarmBridge` med beroenden till `McpServer` och `SwarmEventBus`.
+  2. Implementera metoden `executeTool(toolName, toolArgs, toolCallId?)`.
+  3. Publicera CloudEvents 1.0 händelser:
+     - `mcp.tool.execution.started`
+     - `mcp.tool.execution.completed` / `mcp.tool.execution.failed`
+  4. Skapa och returnera `BidiGenerateContentToolResponse` med `behavior: 'NON_BLOCKING'`.
 
 ---
 
-### Fil 4: `src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts` & `session/geminiLiveSession.ts` (REFAKTORERING)
+### Fil 4: `src/features/mcp_bridge/index.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Orkestrera kampanjen med de 4 enheterna direkt via försoningskrafterna utan legacy-roller.
-  2. Fallback-logik i sessionen kopplad till de 4 krafterna.
+  1. Exportera `McpSwarmBridge` och relaterade typer.
+  2. Exportera `createUnifiedMcpServer`.
+  3. Exportera Bidi WebSocket-scheman och typer.
 
 ---
 
-### Fil 5: `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` (OMSKRIVNING)
+### Fil 5: `src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Minska översikten från 5 till exakt 4 enhetskort.
-  2. Använd exakt de föreskrivna namnen på skärmen:
-     - **"Att följa Guds son"**
-     - **"Att vända om till Gud"**
-     - **"Att förlikas med Gud"**
-     - **"Att försonas (ensam agent)"**
-  3. Ta bort råa interna prompttexter; visa ren användarnytta och överbryggande funktioner.
+  1. Injicera valfri instans av `McpSwarmBridge` i `SwarmOrchestrator`.
+  2. Tillåt verktygsexekvering under kampanjsteg (t.ex. anropa `drive_save_draft` när `ATT_FOLJA` skapar ett utkast, och anropa `outreach_evaluate_tone` när `ATT_VANDA_OM` granskar).
+  3. Spara genererade verktygssvar i delad kontext och bifoga CloudEvents.
 
 ---
 
-### Fil 6: `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx` (OMSKRIVNING)
+### Fil 6: `src/features/mcp_bridge/doc/DECISIONS.md` (MODIFIERING)
 - **Förändringar**:
-  1. Uppdatera telemetripresentationen till exakt 4 enheter.
-  2. KPI-kort för enheter visar aktiva av 4.
-  3. Visa exakt de 4 föreskrivna namnen på skärmen.
+  1. Dokumentera **ADR-MCP-003: Djupintegration med Gemini Live Swarm och NON_BLOCKING WebSocket-exekvering**.
 
 ---
 
-### Fil 7: `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` (UPPDATERING)
-- **Förändringar**:
-  1. Markera TCK-008 som `VERIFIERAD` (100%).
-  2. Markera TCK-009 som `AKTIV` i Fas 1 vid Steg 3c Token Gate (50%).
-
----
-
-### Fil 8: `src/__tests__/transient_TCK-009.test.ts` (NY TRANSIENT TESTFIL I FAS 2)
+### Fil 7: `src/__tests__/transient_TCK-003.test.ts` (NY TRANSIENT TESTFIL I FAS 2)
 - **Testomfång** (< 3s i minnet):
-  1. Verifiera att det finns exakt 4 försoningsenheter i källkoden.
-  2. Verifiera att de fyra visningsnamnen är exakt:
-     - "Att följa Guds son"
-     - "Att vända om till Gud"
-     - "Att förlikas med Gud"
-     - "Att försonas (ensam agent)"
-  3. Verifiera att inga legacy-roller finns kvar i de primära domänobjekten.
-  4. Verifiera att `SEMANTIC_INVARIANT` är ordagrant intakt som intern kompass.
+  1. Validera att `createUnifiedMcpServer()` registrerar samtliga 6 verktyg från Drive och WAL.
+  2. Validera att `McpSwarmBridge.executeTool()` exekverar verktyget och returnerar `BidiGenerateContentToolResponse` med `behavior: 'NON_BLOCKING'`.
+  3. Validera att `SwarmEventBus` tar emot händelserna `mcp.tool.execution.started` och `mcp.tool.execution.completed`.
+  4. Validera att `SwarmOrchestrator` kan köra kampanjflödet med automatisk verktygsexekvering.
 
 ---
 
-### Fil 9: `doc/TICKETS.md` & `doc/TICKETS/TCK-009.md` (UPPDATERING I FAS 2)
+### Fil 8: `doc/TICKETS.md` & `doc/TICKETS/TCK-003.md` (UPPDATERING I FAS 2)
 - Uppdatera status till `[VERIFIERAD]` när Fas 2 slutförts och testerna passerat.

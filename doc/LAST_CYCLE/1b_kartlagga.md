@@ -1,45 +1,41 @@
-# 1b Kartlägga: Konsolidering till 4 Försoningsenheter & UI-renodling (TCK-009)
+# 1b Kartlägga: MCP Bridge & Gemini Live Swarm djupintegration (TCK-003)
 
-## 1. Kartläggning av Källkodsartefakter inom `gemini_live_swarm`
+## 1. Kartläggning av Källkodsartefakter inom `mcp_bridge` och `gemini_live_swarm`
 
 ### Berörda Filer och Beroendekedja
 
-1. **`src/features/gemini_live_swarm/agents/roleDefinitions.ts`**:
-   - Ta bort alla 5 legacy-roller/dubbleringar (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`, samt gamla alias).
-   - Definiera exakt 4 enheter bundna till krafterna:
-     - `ATT_FOLJA`: Visningsnamn **"Att följa Guds son"**
-     - `ATT_VANDA_OM`: Visningsnamn **"Att vända om till Gud"**
-     - `ATT_FORLIKAS`: Visningsnamn **"Att förlikas med Gud"**
-     - `SERIELL_MOTOR`: Visningsnamn **"Att försonas (ensam agent)"** (ersätter "Seriell Motor" i UI)
-   - Bevara `SEMANTIC_INVARIANT` ordagrant internt som agenternas etiska kompass i `systemInstruction`.
+1. **`src/features/mcp_bridge/contracts/mcpSchema.ts`**:
+   - Komplettera med typ- och Zod-definitioner för Gemini Live WebSocket verktygsprotokoll:
+     - `BidiToolCall`: Anrop från Gemini Live WebSocket (`functionCalls`).
+     - `BidiToolResponse`: Svar till WebSocket-kabeln (`functionResponses`) med `behavior: 'NON_BLOCKING'`.
 
-2. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` & `useSwarmTelemetry.ts`**:
-   - Uppdatera telemetrin från 5 till 4 enheter.
-   - Primära fält: `force: ReconciliationForceSchema` och `reconciliationState: ReconciliationStateSchema`.
-   - Ta bort legacy-roller från Zod-scheman.
+2. **`src/features/mcp_bridge/server/mcpServer.ts`**:
+   - Integrera GoogleDriveClient och WalEngine i en fullfjädrad MCP-serverfabrik: `createUnifiedMcpServer()`.
+   - Registrera standardverktyg: `drive_save_draft`, `drive_list_templates`, `wal_get_stats`, `wal_query_recent`, `outreach_evaluate_tone`.
 
-3. **`src/features/gemini_live_swarm/bus/swarmEventBus.ts`**:
-   - Standardisera händelsekällor och mönster till de 4 krafterna: `outreach/swarm/att_folja`, `outreach/swarm/att_vanda_om`, `outreach/swarm/att_forlikas`, `outreach/swarm/seriell_motor`.
+3. **`src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts` (NY KOMPONENT I FAS 2)**:
+   - Skapa en dedikerad bryggadapter `McpSwarmBridge` som:
+     - Tar emot verktygsanrop från svärmen eller WebSocket-kabeln.
+     - Exekverar anropet via MCP JSON-RPC 2.0.
+     - Genererar `BidiGenerateContentToolResponse` med `behavior: 'NON_BLOCKING'`.
+     - Publicerar händelser till `SwarmEventBus` (`mcp.tool.execution.started`, `mcp.tool.execution.completed`) i form av CloudEvents 1.0.
 
-4. **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts` & `session/geminiLiveSession.ts`**:
-   - Anpassa orkestreringen så att den hanterar de 4 enheterna direkt via försoningskrafterna utan legacy-roller.
-   - Fallback-generering i `GeminiLiveSession` anpassas till krafterna.
+4. **`src/features/mcp_bridge/index.ts`**:
+   - Exportera `McpSwarmBridge`, `createUnifiedMcpServer`, och WebSocket-kontrakt.
 
-5. **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` & `ui/TelemetrySidebar.tsx`**:
-   - Minska översikten från 5 till exakt 4 enheter.
-   - Använd exakt dessa fyra visningsnamn på skärmen:
-     - "Att följa Guds son"
-     - "Att vända om till Gud"
-     - "Att förlikas med Gud"
-     - "Att försonas (ensam agent)"
-   - Dölj råa interna systeminstruktioner/prompttexter från UI och visa pedagogisk användarnytta och räckvidd.
+5. **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts`**:
+   - Möjliggör injektion av `McpSwarmBridge` i `SwarmOrchestrator`.
+   - Låt försoningsenheterna anropa MCP-verktyg deterministiskt vid behov och inkludera resultatet i delad kontext.
 
-6. **`src/__tests__/transient_TCK-009.test.ts` (Fas 2 transient mikro-E2E-test)**:
-   - Verifiera att exakt 4 enheter finns definierade.
-   - Validera att de 4 exakta visningsnamnen återfinns i konfigurationen.
-   - Validera att inga legacy-roller finns kvar i domänobjekten.
-   - Validera att `SEMANTIC_INVARIANT` finns ordagrant i koden.
-   - Körtid under 3 sekunder i minnet.
+6. **`src/features/mcp_bridge/doc/DECISIONS.md`**:
+   - Dokumentera arkitekturbeslut **ADR-MCP-003: Djupintegration med Gemini Live Swarm och NON_BLOCKING WebSocket-exekvering**.
+
+7. **`src/__tests__/transient_TCK-003.test.ts` (Fas 2 transient mikro-E2E-test)**:
+   - Validera:
+     1. Att unified MCP-server har alla registrerade Drive- och WAL-verktyg.
+     2. Att `McpSwarmBridge` exekverar verktygsanrop och genererar korrekta `NON_BLOCKING` tool responses.
+     3. Att CloudEvents publiceras till `SwarmEventBus`.
+     4. Körtid under 3 sekunder i minnet.
 
 ---
 
@@ -48,16 +44,16 @@
 ```json
 {
   "status": "PLANNING_FAS_1",
-  "current_domain": "src/features/gemini_live_swarm/",
+  "current_domain": "src/features/mcp_bridge/",
   "next_step": "2e_syntetisera",
-  "ticket_id": "TCK-009",
+  "ticket_id": "TCK-003",
   "active_skill": "gemini-live-api-dev",
   "active_vectors": [
-    "consolidate_to_4_reconciliation_units",
-    "exact_4_ui_display_names",
-    "remove_5_legacy_roles",
-    "preserve_semantic_invariant_verbatim",
-    "transient_e2e_tck009_verification"
+    "mcp_unified_server_drive_wal",
+    "bidi_websocket_non_blocking_tool_response",
+    "mcp_swarm_bridge_event_bus",
+    "swarm_orchestrator_tool_integration",
+    "transient_e2e_tck003_verification"
   ]
 }
 ```

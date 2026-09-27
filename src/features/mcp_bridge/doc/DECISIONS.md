@@ -19,3 +19,16 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för MCP-bryggan och
 - **Kontext**: När nya funktioner tillkommer i Outreach Samordningsmotor (t.ex. Drive-operationer, WAL-frågor eller Svärmstyrning) måste de kunna exponeras som MCP-verktyg utan att kärnservern sväller.
 - **Beslut**: Implementera ett pluggbart registeringsgränssnitt i `McpServer` där verktygsdefinitioner (`McpToolDefinition`) registreras med sitt JSON-schema och en associerad exekverings-handler.
 - **Konsekvens**: Hög modularitet, ren separation mellan protokollhantering och domänspecifik affärslogik.
+
+---
+
+## ADR-MCP-003: Djupintegration med Gemini Live Swarm och NON_BLOCKING WebSocket-exekvering
+- **Datum**: 2026-09-27
+- **Status**: Beslutat & Implementerat (TCK-003)
+- **Kontext**: Autonom fleragentorkestrering kräver att agenter kan anropa MCP-verktyg (Google Drive, WAL-logg, Kvalitetsgranskning) utan att blockera Gemini Live WebSocket-kabeln eller kräva manuell användarinteraktion mellan stegen.
+- **Beslut**:
+  1. Skapa `McpSwarmBridge` som integrerar `createUnifiedMcpServer()` med `SwarmEventBus`.
+  2. Implementera asynkron verktygsexekvering som returnerar `BidiGenerateContentToolResponse` med `behavior: 'NON_BLOCKING'`.
+  3. Publicera CloudEvents 1.0 händelser (`mcp.tool.execution.started`, `mcp.tool.execution.completed`) för full telemetrisk spårbarhet.
+  4. Injicera bryggan i `SwarmOrchestrator` så att enheterna *Att följa Guds son* och *Att vända om till Gud* autonomt kan persistera utkast och granska tonfall.
+- **Konsekvens**: Oavbruten autonom verktygsexekvering över WebSocket-kabeln med full händelsespårbarhet och noll UI-blockering.
