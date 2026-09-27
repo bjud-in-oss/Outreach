@@ -1,38 +1,43 @@
-# 1b Kartlägga: Förankring av Mognadsmodellen & Försoningskrafterna i Källkod och UI (TCK-008)
+# 1b Kartlägga: Djup Refaktorering av Försoningskrafterna (Kodstruktur & UI-separation) (TCK-009)
 
 ## 1. Kartläggning av Källkodsartefakter inom `gemini_live_swarm`
 
 ### Berörda Filer och Beroendekedja
+
 1. **`src/features/gemini_live_swarm/agents/roleDefinitions.ts`**:
-   - Inbädda den orubbliga inledningstexten som en konstant `SEMANTIC_INVARIANT`.
-   - Omdefiniera `DEFAULT_SWARM_ROLES` med försoningsprinciperna som bärande kompass i `systemInstruction` och namn:
-     - `ORCHESTRATOR`: **Förlikaren (Att Förlikas)** — Håller 2+ samtida perspektiv varma för att hela klyftor och skapa harmoniserad konsensus.
-     - `RESEARCHER`: **Sökaren efter Närhet (Att Följa)** — Är själv lösningen för närhet genom att kartlägga genuina kontaktpunkter och förstå mottagarens verklighet.
-     - `OUTREACH_WRITER`: **Relationsbyggaren (Att Följa)** — Formulerar omsorgsfull, värdedriven dialog på pedagogisk svenska som skapar genuin kontakt.
-     - `CRITIC`: **Självrannsakaren (Att Vända Om)** — Inåtriktad ödmjukhet och transformation; rensar bort ytlighet, manipulation och spam via Fail-Fast.
-     - `SERIELL_MOTOR`: **Det Orubbliga Ramverket (Seriell Motor)** — Deterministisk sekvensering och Token Gate-disciplin som skyddar processens integritet.
+   - Ersätt gamla legacy-roller (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`) med de fyra primära försoningsenheterna:
+     - `ATT_FOLJA`: Närhetsöverbryggaren (själv vara lösningen för närhet).
+     - `ATT_VANDA_OM`: Kvalitetsrefaktoreringen (inåtriktad ödmjukhet & transformation, Fail-Fast).
+     - `ATT_FORLIKAS`: Konsensus- och syntesmotorn (hålla 2+ samtida perspektiv varma).
+     - `SERIELL_MOTOR`: Det orubbliga ramverket (deterministisk sekvensering och ordningsskydd).
+   - Skapa Zod-schema och typ `ReconciliationUnitConfig` med explicit separation mellan intern `systemInstruction` (med det oförvanskade `SEMANTIC_INVARIANT`) och extern presentationstitel/beskrivning.
 
-2. **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`**:
-   - Lägg till en framträdande "Kompass & Syfte"-banner som visar systemets semantiska ankare.
-   - Ersätt statiska yrkesroll-etiketter med dynamiska försoningskrafter på alla agentkort.
-   - Visa försoningskraftens kärnuppdrag på varje kort.
+2. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`**:
+   - Refaktorera `AgentTelemetryMetricSchema` så att `force: AgentForceSchema` och `reconciliationState` är primära fält i stället för legacy-roller.
+   - Definiera `ReconciliationStateSchema = z.enum(['SOKER_NARHET', 'INATRIKTAD_OMVANDELSE', 'SAMTIDA_FORSONING', 'DETERMINISTISKT_RAMVERK', 'IDLE'])`.
 
-3. **`src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`**:
-   - Uppdatera kraft-panelen så att de tre försoningsvägarna och seriell motor visualiseras med deras etiska funktion:
-     - `ATT_FORLIKAS` (Samtida perspektiv)
-     - `ATT_FOLJA` (Lösning för närhet)
-     - `ATT_VANDA_OM` (Ödmjuk transformation)
-     - `SERIELL_MOTOR` (Deterministiskt skydd)
+3. **`src/features/gemini_live_swarm/bus/swarmEventBus.ts`**:
+   - Uppdatera publiceringsmönster och källor till att följa krafterna (`outreach/swarm/att_folja`, `outreach/swarm/att_vanda_om`, `outreach/swarm/att_forlikas`, `outreach/swarm/seriell_motor`).
 
-4. **`src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`**:
-   - Registrera `TCK-007` som `VERIFIERAD` och `TCK-008` som `AKTIV` (Fas 1 vid Steg 3c).
-   - Inkludera mognadsmodellen och försoningskrafternas integration i leveransplanen.
+4. **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts` & `session/geminiLiveSession.ts`**:
+   - Uppdatera kampanjstegen så att de styrs av krafterna `ATT_FOLJA`, `ATT_VANDA_OM` och `ATT_FORLIKAS`.
+   - Ta bort legacy-switchar i fallback-syntesen och ersätt med logik driven av försoningskrafternas inriktning.
 
-5. **`src/__tests__/transient_TCK-008.test.ts` (Fas 2 transient mikro-E2E-test)**:
-   - Skapa snabbt minnestest (< 3s) som verifierar:
-     - Förekomst och ordagrann korrekthet för det semantiska ankaret i `roleDefinitions.ts`.
-     - Att samtliga agenters roller och systeminstruktioner reflekterar försoningsprinciperna.
-     - Att UI-komponenter och metrik återger de dynamiska försoningskrafterna.
+5. **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` & `ui/TelemetrySidebar.tsx`**:
+   - Fullständig UI-sanering: Ta bort råa interna prompttexter och systeminstruktioner från gränssnittet.
+   - Presentera enheterna med pedagogiska koncept och affärsnytta:
+     - *Linjär Framåtöverbryggare* (Behovsanalys och direkt dialog)
+     - *Inåtriktad Refaktorering* (Självrannsakande kvalitetskontroll utan brus)
+     - *Samtida Försonare* (Syntes som harmoniserar motstridiga perspektiv)
+     - *Seriellt Processkydd* (Deterministiskt exekveringsskydd med Token Gate)
+
+6. **`src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`**:
+   - Registrera TCK-009 som aktiv ticket och uppdatera status för tidigare avslutade ärenden.
+
+7. **`src/__tests__/transient_TCK-009.test.ts` (Fas 2 transient mikro-E2E-test)**:
+   - Verifiera att inga legacy-roller (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`) förekommer i domänmodellen eller telemetriobjekten.
+   - Validera att `SEMANTIC_INVARIANT` bevaras i källkoden men hålls dold i användargränssnittet.
+   - Körtid under 3 sekunder i minnet.
 
 ---
 
@@ -43,14 +48,14 @@
   "status": "PLANNING_FAS_1",
   "current_domain": "src/features/gemini_live_swarm/",
   "next_step": "2e_syntetisera",
-  "ticket_id": "TCK-008",
+  "ticket_id": "TCK-009",
   "active_skill": "gemini-live-api-dev",
   "active_vectors": [
-    "semantic_invariant_anchoring",
-    "reconciliation_forces_role_definitions",
-    "dynamic_forces_ui_dashboard",
-    "telemetry_sidebar_forces_labels",
-    "transient_e2e_tck008_verification"
+    "deep_reconciliation_domain_model",
+    "telemetry_schema_force_first",
+    "ui_internal_prompt_separation",
+    "orchestrator_forces_pipeline",
+    "transient_e2e_tck009_verification"
   ]
 }
 ```

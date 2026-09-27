@@ -1,14 +1,15 @@
-# 2a Avgränsa: Förankring av Mognadsmodellen & Försoningskrafterna i Källkod och UI (TCK-008)
+# 2a Avgränsa: Djup Refaktorering av Försoningskrafterna (Kodstruktur & UI-separation) (TCK-009)
 
 ## 1. Avgränsningsmatris
 
-| Område | Ingår i TCK-008 | Ingår INTE (Avgränsat) | Motivering |
+| Område | Ingår i TCK-009 | Ingår INTE (Avgränsat) | Motivering |
 | :--- | :--- | :--- | :--- |
-| **Domän** | `src/features/gemini_live_swarm/` | Övriga domäner (`drive`, `mcp`, `wal`) | 1 ticket = 1 domän enligt AGENTS.md |
-| **Semantiskt Ankare** | Ordagrann förankring i dokumentation, kod och UI | Ändringar av tekniska krav i SI v10.0 eller verify-architecture | Texten är en oföränderlig semantisk invariant |
-| **Källkodsfiler** | `roleDefinitions.ts`, `SwarmDashboard.tsx`, `TelemetrySidebar.tsx`, `MasterDevelopmentPlan.tsx` | Ändringar i `envelope.ts` eller externa protokoll | Inga ändringar av nätverksprotokoll krävs |
+| **Domän** | `src/features/gemini_live_swarm/` | Övriga domäner (`google_drive_sync`, `mcp_bridge`, `wal_logger`) | 1 ticket = 1 domän enligt AGENTS.md |
+| **Domänmodell** | Ersättning av legacy-nycklar (`ORCHESTRATOR`, etc.) med `ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS`, `SERIELL_MOTOR` | Ändringar av externa protokoll (`envelope.ts`) | CloudEvents envelope bibehålls som gemensam transport |
+| **UI-separation** | Separera interna prompttexter från UI; exponera ren pedagogisk användarnytta | Omskrivning av grundläggande designsystem eller CSS-konfig | Tailwind CSS och UI-komponentstruktur bibehålls |
+| **Internt Ankare** | Ordagrann bevarande av `SEMANTIC_INVARIANT` i källkoden som agentens interna prompt | Borttagning eller förändring av invariantens ordalydelse | Det semantiska ankaret är oföränderligt och absolut |
 | **Fas-spärr** | Fas 1: Fullständig specifikation under `doc/LAST_CYCLE/` | Ändringar under `src/` före godkännandetoken | Strikt respekt för Token Gate (Steg 3c) |
 
 ## 2. Arkitektonisk Avgränsning
-- Agentkrafterna ska behålla bakåtkompatibilitet med befintliga gränssnitt och tester (`mapRoleToForce`, `mapForceToRole`).
-- Försoningsprinciperna berikar agenternas identitet, instruktioner och visning utan att bryta eventbussens kontrakt eller serialiseringslogik.
+- Källkodsändringar under Fas 2 begränsas strikt till `src/features/gemini_live_swarm/` och tillhörande tester under `src/__tests__/`.
+- Bakåtkompatibilitet garanteras genom deterministisk mappning om gamla händelser mot förmodan påträffas i bufferten, men den aktiva domänmodellen kastar helt av sig arvet från de gamla rollerna.
