@@ -44,7 +44,7 @@ export class GeminiLiveSession {
               role: 'user',
               parts: [
                 {
-                  text: `Du agerar som rollen: ${params.role}.\nInstruktion: ${params.systemInstruction}\n\nKontext:\n${params.context || 'Ingen'}\n\nUppdrag:\n${params.prompt}`,
+                  text: `Du agerar som försoningskraften: ${params.role}.\nInstruktion: ${params.systemInstruction}\n\nKontext:\n${params.context || 'Ingen'}\n\nUppdrag:\n${params.prompt}`,
                 },
               ],
             },
@@ -62,39 +62,36 @@ export class GeminiLiveSession {
       }
     }
 
-    // Högkvalitativ deterministisk reservsyntes baserad på roll
+    // Högkvalitativ deterministisk reservsyntes baserad på försoningskraft
     return this.generateDeterministicFallback(params.role, params.prompt);
   }
 
   private generateDeterministicFallback(role: string, prompt: string): AgentThoughtResponse {
     switch (role) {
+      case 'ATT_FOLJA':
       case 'RESEARCHER':
-        return {
-          agentRole: 'RESEARCHER',
-          thought: 'Identifierar verksamhetsbehov, kontaktpersoner och gemensamma integrationsmöjligheter.',
-          content: `Analysrapport för "${prompt}":\n- Primär utmaning: Manuell administration och fragmenterade verktygskedjor.\n- Strategisk ingång: Autonom orkestrering direkt i befintligt Google Drive Workspace med revisionslogg.\n- Kontaktvinkel: Öppen dialog kring mätbar tidsbesparing och ökad leveranskvalitet.`,
-          suggestedTools: ['mcp:drive_search_files'],
-        };
       case 'OUTREACH_WRITER':
         return {
-          agentRole: 'OUTREACH_WRITER',
-          thought: 'Strukturerar ett värdedrivet, personligt och respektfullt meddelande på pedagogisk svenska.',
-          content: `Hej,\n\nJag såg ert fokus på skalbar automation och ville dela en konkret observation från vårt arbete med samordningsmotorer för Google Workspace.\n\nGenom att kombinera händelsestyrd loggning (WAL) och direkta agentflöden i Drive minskar ledtiden för komplexa uppdrag avsevärt utan att förlora kontrollen över datan.\n\nVore du öppen för ett kort, förutsättningslöst samtal kring hur detta kan tillämpas hos er?\n\nVänliga hälsningar,\nOutreach Samordningsmotor`,
-          suggestedTools: ['mcp:drive_save_draft'],
+          agentRole: 'ATT_FOLJA',
+          thought: 'Identifierar verkliga verksamhetsbehov och förbereder personlig, värdedriven dialog.',
+          content: `Analys och kontaktunderlag för "${prompt}":\n- Primär utmaning: Fragmenterade verktygskedjor och manuell administration.\n- Lösning för närhet: Autonom orkestrering direkt i Google Drive Workspace med revisionslogg.\n- Kontaktvinkel: Värdedriven dialog kring mätbar tidsbesparing och ökad samverkan.`,
+          suggestedTools: ['mcp:drive_search_files'],
         };
+      case 'ATT_VANDA_OM':
       case 'CRITIC':
         return {
-          agentRole: 'CRITIC',
-          thought: 'Granskar tonläge, relevans och frånvaro av klichéer och buzzwords.',
-          content: 'Kvalitetsgranskning godkänd:\n- Tydlighet: 9.6/10\n- Genuinitet: 9.2/10\n- Policyefterlevnad: 100% GDPR- och Workspace-kompatibel.\nInga spam-mönster identifierade. Rekommenderas för leverans.',
+          agentRole: 'ATT_VANDA_OM',
+          thought: 'Granskar utkast mot etisk kompass och tillämpar Fail-Fast för att eliminera ytlighet och manipulation.',
+          content: 'Kvalitetsgranskning godkänd:\n- Tydlighet: 9.6/10\n- Genuinitet: 9.4/10\n- Policyefterlevnad: 100% GDPR- och Workspace-kompatibel.\nInga spam- eller manipulationsmönster identifierade. Godkänd för vidare syntes.',
           score: 9.5,
         };
+      case 'ATT_FORLIKAS':
       case 'ORCHESTRATOR':
       default:
         return {
-          agentRole: 'ORCHESTRATOR',
-          thought: 'Sammanställer faser, kontrollerar WAL-status och förbereder godkännande.',
-          content: 'Svärmkonsensus uppnådd. Samtliga delmoment granskade och verifierade. Redo för skrivning till Google Drive.',
+          agentRole: 'ATT_FORLIKAS',
+          thought: 'Håller samtida perspektiv varma, balanserar motstridiga ståndpunkter och förbereder slutkonsensus.',
+          content: 'Försonande konsensus uppnådd. Samtliga delmoment granskade och harmoniserade till en helhet. Redo för leverans.',
         };
     }
   }

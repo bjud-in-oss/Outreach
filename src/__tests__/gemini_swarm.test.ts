@@ -1,27 +1,42 @@
 import { SwarmOrchestrator } from '../features/gemini_live_swarm/coordinator/swarmOrchestrator.ts';
-import { DEFAULT_SWARM_ROLES } from '../features/gemini_live_swarm/agents/roleDefinitions.ts';
+import { RECONCILIATION_UNITS } from '../features/gemini_live_swarm/agents/roleDefinitions.ts';
 
 export async function runSwarmTests(): Promise<{ name: string; passed: boolean; error?: string }[]> {
   const results = [];
 
-  // Test 1: Roller är korrekt konfigurerade
+  // Test 1: De 4 försoningsenheterna är korrekt konfigurerade utan legacy-roller
   try {
-    const roles = Object.keys(DEFAULT_SWARM_ROLES);
-    const hasAll = ['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC'].every((r) =>
-      roles.includes(r)
+    const units = Object.keys(RECONCILIATION_UNITS);
+    const hasAll = ['ATT_FOLJA', 'ATT_VANDA_OM', 'ATT_FORLIKAS', 'SERIELL_MOTOR'].every((u) =>
+      units.includes(u)
     );
-    results.push({ name: 'Swarm roles definition includes all 4 standard agents', passed: hasAll });
+    const isExactly4 = units.length === 4;
+    results.push({
+      name: 'Reconciliation units definition includes all 4 units and no legacy roles',
+      passed: hasAll && isExactly4,
+    });
   } catch (err) {
-    results.push({ name: 'Swarm roles definition includes all 4 standard agents', passed: false, error: String(err) });
+    results.push({
+      name: 'Reconciliation units definition includes all 4 units and no legacy roles',
+      passed: false,
+      error: String(err),
+    });
   }
 
-  // Test 2: Swarm orkestrator initialiseras med default-agenter
+  // Test 2: Swarm orkestrator initialiseras med 4 enheter
   try {
     const orchestrator = new SwarmOrchestrator();
-    const agents = orchestrator.getActiveAgents();
-    results.push({ name: 'Swarm orchestrator initializes 4 active agent instances', passed: agents.length === 4 });
+    const allUnits = orchestrator.getAllUnits();
+    results.push({
+      name: 'Swarm orchestrator initializes exactly 4 reconciliation units',
+      passed: allUnits.length === 4,
+    });
   } catch (err) {
-    results.push({ name: 'Swarm orchestrator initializes 4 active agent instances', passed: false, error: String(err) });
+    results.push({
+      name: 'Swarm orchestrator initializes exactly 4 reconciliation units',
+      passed: false,
+      error: String(err),
+    });
   }
 
   // Test 3: Planering av kampanj skapar strukturerade faser

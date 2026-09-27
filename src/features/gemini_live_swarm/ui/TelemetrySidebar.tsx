@@ -4,19 +4,13 @@ import {
   Bot,
   Zap,
   Radio,
-  Clock,
   Filter,
-  CheckCircle2,
-  AlertCircle,
-  Cpu,
-  RefreshCw,
   Workflow,
-  Lock,
   Compass,
 } from 'lucide-react';
 import { useSwarmTelemetry } from '../telemetry/useSwarmTelemetry.ts';
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
-import { AgentForce, DEFAULT_SWARM_ROLES } from '../agents/roleDefinitions.ts';
+import { ReconciliationForce, RECONCILIATION_UNITS } from '../agents/roleDefinitions.ts';
 
 interface TelemetrySidebarProps {
   eventBus?: SwarmEventBus;
@@ -35,30 +29,30 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
     return true;
   });
 
-  const getForceBadge = (force?: AgentForce) => {
+  const getForceBadge = (force?: ReconciliationForce) => {
     switch (force) {
       case 'ATT_FORLIKAS':
         return (
           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
-            FÖRLIKAS
+            ATT FÖRLIKAS
           </span>
         );
       case 'ATT_FOLJA':
         return (
           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">
-            FÖLJA
+            ATT FÖLJA
           </span>
         );
       case 'ATT_VANDA_OM':
         return (
           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-            VÄNDA OM
+            ATT VÄNDA OM
           </span>
         );
       case 'SERIELL_MOTOR':
         return (
           <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-            SERIELL
+            SERIELL MOTOR
           </span>
         );
       default:
@@ -88,7 +82,6 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
     }
   };
 
-  const totalAgents = Object.values(snapshot.agentMetrics).length;
   const activeCount = Object.values(snapshot.agentMetrics).filter((a) => a.status !== 'ERROR').length;
 
   return (
@@ -115,7 +108,7 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
         </div>
       </div>
 
-      {/* KPI-kort */}
+      {/* KPI-kort (4 Enheter) */}
       <div className="grid grid-cols-3 gap-2">
         <div className="p-2.5 bg-slate-950/70 border border-slate-800/80 rounded-lg">
           <div className="flex items-center space-x-1 text-[10px] text-slate-400 mb-1">
@@ -123,7 +116,7 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
             <span>Enheter</span>
           </div>
           <div className="text-sm font-bold text-slate-100">
-            {activeCount} / {totalAgents || 5}
+            {activeCount} / 4
           </div>
         </div>
 
@@ -146,48 +139,47 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
         </div>
       </div>
 
-      {/* 4-Krafters Sammanfattningspanel (SI v10.0) */}
+      {/* Agentdynamik & Krafter: 4 Försoningsenheter Panel */}
       <div className="space-y-1.5">
         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
           <span className="flex items-center space-x-1">
             <Compass className="w-3 h-3 text-cyan-400" />
             <span>Agentdynamik & Krafter</span>
           </span>
-          <span className="text-[9px] font-mono text-slate-500">4 Motorer</span>
+          <span className="text-[9px] font-mono text-slate-500">4 Enheter</span>
         </div>
 
         <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-          <div className="p-2 bg-slate-950/60 border border-purple-500/20 rounded-lg">
-            <div className="font-semibold text-purple-300">ATT FÖRLIKAS</div>
-            <div className="text-[9px] text-slate-400">Hålla 2+ samtida perspektiv varma</div>
-          </div>
           <div className="p-2 bg-slate-950/60 border border-blue-500/20 rounded-lg">
-            <div className="font-semibold text-blue-300">ATT FÖLJA</div>
-            <div className="text-[9px] text-slate-400">Själv vara lösningen för närhet</div>
+            <div className="font-semibold text-blue-300">Att följa Guds son</div>
+            <div className="text-[9px] text-slate-400">Själv vara lösningen för närhet (ATT FÖLJA)</div>
           </div>
           <div className="p-2 bg-slate-950/60 border border-amber-500/20 rounded-lg">
-            <div className="font-semibold text-amber-300">ATT VÄNDA OM</div>
-            <div className="text-[9px] text-slate-400">Inåtriktad ödmjukhet & Fail-Fast</div>
+            <div className="font-semibold text-amber-300">Att vända om till Gud</div>
+            <div className="text-[9px] text-slate-400">Inåtriktad ödmjukhet & Fail-Fast (ATT VÄNDA OM)</div>
+          </div>
+          <div className="p-2 bg-slate-950/60 border border-purple-500/20 rounded-lg">
+            <div className="font-semibold text-purple-300">Att förlikas med Gud</div>
+            <div className="text-[9px] text-slate-400">Hålla 2+ samtida perspektiv varma (ATT FÖRLIKAS)</div>
           </div>
           <div className="p-2 bg-slate-950/60 border border-cyan-500/20 rounded-lg">
-            <div className="font-semibold text-cyan-300">SERIELL MOTOR</div>
-            <div className="text-[9px] text-slate-400">Deterministisk ordning & skydd</div>
+            <div className="font-semibold text-cyan-300">Att försonas (ensam agent)</div>
+            <div className="text-[9px] text-slate-400">Deterministisk ordning & skydd (SERIELL MOTOR)</div>
           </div>
         </div>
       </div>
 
-      {/* Reaktiv Visualisering av Seriell Exekvering */}
+      {/* Seriell Exekvering / Att försonas (ensam agent) */}
       <div className="p-2.5 bg-slate-950/80 border border-cyan-500/30 rounded-lg space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
             <Workflow className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wide">
-              Seriell Exekvering
+              Seriell Exekvering • Att försonas (ensam agent)
             </span>
           </div>
           {snapshot.serialExecution?.isTokenGated && (
             <span className="flex items-center space-x-1 text-[9px] px-1.5 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
-              <Lock className="w-2.5 h-2.5" />
               <span>TOKEN GATE</span>
             </span>
           )}
@@ -222,58 +214,63 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
           </div>
         ) : (
           <div className="text-[10px] text-slate-500 italic py-1 text-center">
-            Väntar på signal från seriell exekveringsmotor...
+            Väntar på signal från enheten...
           </div>
         )}
       </div>
 
-      {/* Agentstatus & Tankeström (5 Enheter) */}
+      {/* Enhetsstatus & Puls (Exakt 4 Enheter) */}
       <div className="space-y-2">
         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
-          <span>Enhetsstatus & Puls (5 Enheter)</span>
+          <span>Enhetsstatus & Puls (4 Enheter)</span>
           <span className="text-[9px] font-mono text-slate-500">Event-driven</span>
         </div>
 
         <div className="space-y-1.5">
-          {Object.values(snapshot.agentMetrics).map((agent) => (
-            <div
-              key={agent.agentId}
-              className={`p-2 bg-slate-950/50 border rounded-lg text-xs flex flex-col space-y-1 ${
-                agent.role === 'SERIELL_MOTOR' ? 'border-cyan-500/30' : 'border-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-1.5 truncate">
-                  <span className="font-semibold text-slate-200 text-[11px] truncate">
-                    {DEFAULT_SWARM_ROLES[agent.role]?.name || agent.role}
+          {Object.values(snapshot.agentMetrics).map((agent) => {
+            const unit = agent.force ? RECONCILIATION_UNITS[agent.force] : undefined;
+            const displayName = unit?.displayName || agent.displayName || agent.agentId;
+
+            return (
+              <div
+                key={agent.agentId}
+                className={`p-2 bg-slate-950/50 border rounded-lg text-xs flex flex-col space-y-1 ${
+                  agent.force === 'SERIELL_MOTOR' ? 'border-cyan-500/30' : 'border-slate-800/60'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1.5 truncate">
+                    <span className="font-semibold text-slate-200 text-[11px] truncate">
+                      {displayName}
+                    </span>
+                    {getForceBadge(agent.force)}
+                  </div>
+                  <span
+                    className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                      agent.status === 'THINKING'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse'
+                        : agent.status === 'DONE'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {agent.status}
                   </span>
-                  {getForceBadge(agent.force)}
                 </div>
-                <span
-                  className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
-                    agent.status === 'THINKING'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse'
-                      : agent.status === 'DONE'
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      : 'bg-slate-800 text-slate-400'
-                  }`}
-                >
-                  {agent.status}
-                </span>
+                {agent.lastThought ? (
+                  <div className="text-[10px] text-slate-400 italic line-clamp-1">
+                    "{agent.lastThought}"
+                  </div>
+                ) : (
+                  <div className="text-[10px] text-slate-600 italic">
+                    {agent.totalEventsEmitted > 0
+                      ? `${agent.totalEventsEmitted} händelser bearbetade`
+                      : 'Väntar på händelse...'}
+                  </div>
+                )}
               </div>
-              {agent.lastThought ? (
-                <div className="text-[10px] text-slate-400 italic line-clamp-1">
-                  "{agent.lastThought}"
-                </div>
-              ) : (
-                <div className="text-[10px] text-slate-600 italic">
-                  {agent.totalEventsEmitted > 0
-                    ? `${agent.totalEventsEmitted} händelser bearbetade`
-                    : 'Väntar på händelse...'}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -324,4 +321,3 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
     </div>
   );
 };
-

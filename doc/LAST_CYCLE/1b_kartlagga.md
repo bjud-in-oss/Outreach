@@ -1,42 +1,44 @@
-# 1b Kartlägga: Djup Refaktorering av Försoningskrafterna (Kodstruktur & UI-separation) (TCK-009)
+# 1b Kartlägga: Konsolidering till 4 Försoningsenheter & UI-renodling (TCK-009)
 
 ## 1. Kartläggning av Källkodsartefakter inom `gemini_live_swarm`
 
 ### Berörda Filer och Beroendekedja
 
 1. **`src/features/gemini_live_swarm/agents/roleDefinitions.ts`**:
-   - Ersätt gamla legacy-roller (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`) med de fyra primära försoningsenheterna:
-     - `ATT_FOLJA`: Närhetsöverbryggaren (själv vara lösningen för närhet).
-     - `ATT_VANDA_OM`: Kvalitetsrefaktoreringen (inåtriktad ödmjukhet & transformation, Fail-Fast).
-     - `ATT_FORLIKAS`: Konsensus- och syntesmotorn (hålla 2+ samtida perspektiv varma).
-     - `SERIELL_MOTOR`: Det orubbliga ramverket (deterministisk sekvensering och ordningsskydd).
-   - Skapa Zod-schema och typ `ReconciliationUnitConfig` med explicit separation mellan intern `systemInstruction` (med det oförvanskade `SEMANTIC_INVARIANT`) och extern presentationstitel/beskrivning.
+   - Ta bort alla 5 legacy-roller/dubbleringar (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`, samt gamla alias).
+   - Definiera exakt 4 enheter bundna till krafterna:
+     - `ATT_FOLJA`: Visningsnamn **"Att följa Guds son"**
+     - `ATT_VANDA_OM`: Visningsnamn **"Att vända om till Gud"**
+     - `ATT_FORLIKAS`: Visningsnamn **"Att förlikas med Gud"**
+     - `SERIELL_MOTOR`: Visningsnamn **"Att försonas (ensam agent)"** (ersätter "Seriell Motor" i UI)
+   - Bevara `SEMANTIC_INVARIANT` ordagrant internt som agenternas etiska kompass i `systemInstruction`.
 
-2. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts`**:
-   - Refaktorera `AgentTelemetryMetricSchema` så att `force: AgentForceSchema` och `reconciliationState` är primära fält i stället för legacy-roller.
-   - Definiera `ReconciliationStateSchema = z.enum(['SOKER_NARHET', 'INATRIKTAD_OMVANDELSE', 'SAMTIDA_FORSONING', 'DETERMINISTISKT_RAMVERK', 'IDLE'])`.
+2. **`src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` & `useSwarmTelemetry.ts`**:
+   - Uppdatera telemetrin från 5 till 4 enheter.
+   - Primära fält: `force: ReconciliationForceSchema` och `reconciliationState: ReconciliationStateSchema`.
+   - Ta bort legacy-roller från Zod-scheman.
 
 3. **`src/features/gemini_live_swarm/bus/swarmEventBus.ts`**:
-   - Uppdatera publiceringsmönster och källor till att följa krafterna (`outreach/swarm/att_folja`, `outreach/swarm/att_vanda_om`, `outreach/swarm/att_forlikas`, `outreach/swarm/seriell_motor`).
+   - Standardisera händelsekällor och mönster till de 4 krafterna: `outreach/swarm/att_folja`, `outreach/swarm/att_vanda_om`, `outreach/swarm/att_forlikas`, `outreach/swarm/seriell_motor`.
 
 4. **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts` & `session/geminiLiveSession.ts`**:
-   - Uppdatera kampanjstegen så att de styrs av krafterna `ATT_FOLJA`, `ATT_VANDA_OM` och `ATT_FORLIKAS`.
-   - Ta bort legacy-switchar i fallback-syntesen och ersätt med logik driven av försoningskrafternas inriktning.
+   - Anpassa orkestreringen så att den hanterar de 4 enheterna direkt via försoningskrafterna utan legacy-roller.
+   - Fallback-generering i `GeminiLiveSession` anpassas till krafterna.
 
 5. **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` & `ui/TelemetrySidebar.tsx`**:
-   - Fullständig UI-sanering: Ta bort råa interna prompttexter och systeminstruktioner från gränssnittet.
-   - Presentera enheterna med pedagogiska koncept och affärsnytta:
-     - *Linjär Framåtöverbryggare* (Behovsanalys och direkt dialog)
-     - *Inåtriktad Refaktorering* (Självrannsakande kvalitetskontroll utan brus)
-     - *Samtida Försonare* (Syntes som harmoniserar motstridiga perspektiv)
-     - *Seriellt Processkydd* (Deterministiskt exekveringsskydd med Token Gate)
+   - Minska översikten från 5 till exakt 4 enheter.
+   - Använd exakt dessa fyra visningsnamn på skärmen:
+     - "Att följa Guds son"
+     - "Att vända om till Gud"
+     - "Att förlikas med Gud"
+     - "Att försonas (ensam agent)"
+   - Dölj råa interna systeminstruktioner/prompttexter från UI och visa pedagogisk användarnytta och räckvidd.
 
-6. **`src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`**:
-   - Registrera TCK-009 som aktiv ticket och uppdatera status för tidigare avslutade ärenden.
-
-7. **`src/__tests__/transient_TCK-009.test.ts` (Fas 2 transient mikro-E2E-test)**:
-   - Verifiera att inga legacy-roller (`ORCHESTRATOR`, `RESEARCHER`, `OUTREACH_WRITER`, `CRITIC`) förekommer i domänmodellen eller telemetriobjekten.
-   - Validera att `SEMANTIC_INVARIANT` bevaras i källkoden men hålls dold i användargränssnittet.
+6. **`src/__tests__/transient_TCK-009.test.ts` (Fas 2 transient mikro-E2E-test)**:
+   - Verifiera att exakt 4 enheter finns definierade.
+   - Validera att de 4 exakta visningsnamnen återfinns i konfigurationen.
+   - Validera att inga legacy-roller finns kvar i domänobjekten.
+   - Validera att `SEMANTIC_INVARIANT` finns ordagrant i koden.
    - Körtid under 3 sekunder i minnet.
 
 ---
@@ -51,10 +53,10 @@
   "ticket_id": "TCK-009",
   "active_skill": "gemini-live-api-dev",
   "active_vectors": [
-    "deep_reconciliation_domain_model",
-    "telemetry_schema_force_first",
-    "ui_internal_prompt_separation",
-    "orchestrator_forces_pipeline",
+    "consolidate_to_4_reconciliation_units",
+    "exact_4_ui_display_names",
+    "remove_5_legacy_roles",
+    "preserve_semantic_invariant_verbatim",
     "transient_e2e_tck009_verification"
   ]
 }

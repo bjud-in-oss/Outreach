@@ -1,25 +1,17 @@
 import React, { useState } from 'react';
 import {
-  Bot,
   Play,
-  CheckCircle2,
   ShieldCheck,
   Sparkles,
-  Send,
-  FileText,
-  Activity,
-  Layers,
-  Radio,
   Cpu,
   Workflow,
   Lock,
   ArrowRight,
   RefreshCw,
   Compass,
-  Heart,
 } from 'lucide-react';
-import { SwarmOrchestrator, CampaignPlan, SwarmStep } from '../coordinator/swarmOrchestrator.ts';
-import { SwarmAgentRole, AgentForce, SEMANTIC_INVARIANT } from '../agents/roleDefinitions.ts';
+import { SwarmOrchestrator, CampaignPlan } from '../coordinator/swarmOrchestrator.ts';
+import { ReconciliationForce, SEMANTIC_INVARIANT } from '../agents/roleDefinitions.ts';
 import { TelemetrySidebar } from './TelemetrySidebar.tsx';
 import { MasterDevelopmentPlan } from './MasterDevelopmentPlan.tsx';
 import { getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
@@ -58,25 +50,23 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentSerialStageIndex, setCurrentSerialStageIndex] = useState<number>(5); // 3c_spec som standard vid Gate
   const [serialMetric, setSerialMetric] = useState<SerialExecutionMetric>({
-    pipelineId: 'pipe-tck-007-init',
-    ticketId: 'TCK-007',
+    pipelineId: 'pipe-tck-009-init',
+    ticketId: 'TCK-009',
     stepIndex: 5,
     totalSteps: 7,
     currentStage: '3c_spec',
     stageStatus: 'GATED',
     durationMs: 1240,
     isTokenGated: true,
-    requiredTokenHash: 'TCK-007-UI-SERIELL-MOTOR-TOKEN',
+    requiredTokenHash: 'TCK-009-FORSONINGSKRAFTER-REFACTOR-TOKEN',
     lastTransitionAt: new Date().toISOString(),
     activeForce: 'SERIELL_MOTOR',
   });
 
-  const agents = orchestrator.getActiveAgents();
-  const serialMotor = orchestrator.getSerialEngine();
-  const allUnits = [...agents, serialMotor];
+  const allUnits = orchestrator.getAllUnits();
   const eventBus = getGlobalSwarmEventBus();
 
-  const getForceBadge = (force?: AgentForce) => {
+  const getForceBadge = (force?: ReconciliationForce) => {
     switch (force) {
       case 'ATT_FORLIKAS':
         return (
@@ -117,15 +107,15 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
     const status = isGated ? 'GATED' : isCompleted ? 'COMPLETED' : 'RUNNING';
 
     const newMetric: SerialExecutionMetric = {
-      pipelineId: `pipe-tck007-${Date.now()}`,
-      ticketId: 'TCK-007',
+      pipelineId: `pipe-tck009-${Date.now()}`,
+      ticketId: 'TCK-009',
       stepIndex: nextIdx,
       totalSteps: SERIAL_PIPELINE_STAGES.length,
       currentStage: targetStage.id,
       stageStatus: status,
       durationMs: Math.round(350 + nextIdx * 180 + Math.random() * 80),
       isTokenGated: isGated,
-      requiredTokenHash: isGated ? 'TCK-007-UI-SERIELL-MOTOR-TOKEN' : undefined,
+      requiredTokenHash: isGated ? 'TCK-009-FORSONINGSKRAFTER-REFACTOR-TOKEN' : undefined,
       lastTransitionAt: new Date().toISOString(),
       activeForce: 'SERIELL_MOTOR',
     };
@@ -145,7 +135,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
     const startEnvelope: EventEnvelope = {
       id: `evt-start-${Date.now()}`,
-      source: 'outreach/swarm/orchestrator',
+      source: 'outreach/swarm/att_forlikas',
       type: 'swarm.campaign.started',
       specversion: '1.0',
       datacontenttype: 'application/json',
@@ -153,7 +143,6 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
       data: { planId: plan.id, title },
     };
 
-    // Publicera till både reaktiv buss och förälder
     eventBus.publish(startEnvelope);
     onEventEmitted?.(startEnvelope.source, startEnvelope.type, startEnvelope.data);
 
@@ -176,7 +165,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
           time: new Date().toISOString(),
           data: {
             stepIndex: idx,
-            role: updatedStep.agentRole,
+            force: updatedStep.agentRole,
             title: updatedStep.title,
             thought: updatedStep.output.slice(0, 100),
             status: updatedStep.status,
@@ -198,7 +187,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Kompass & Högsta Syfte: Semantiskt Ankare & Försoningskrafter (TCK-008) */}
+      {/* Kompass & Högsta Syfte: Semantiskt Ankare & Försoningskrafter */}
       <div className="bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/30 rounded-xl p-4 shadow-md space-y-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-2.5">
@@ -209,7 +198,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
               <h3 className="text-xs font-bold uppercase tracking-wider text-purple-200 flex items-center space-x-2">
                 <span>Kompass & Högsta Syfte</span>
                 <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono">
-                  Mognadsmodell v10.0
+                  Mognadsmodell v10.0 • 4 Försoningsenheter
                 </span>
               </h3>
               <p className="text-[11px] text-slate-300 font-serif italic mt-0.5">
@@ -219,18 +208,22 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 pt-1 border-t border-purple-500/20 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 pt-1 border-t border-purple-500/20 text-xs">
           <div className="p-2 rounded bg-slate-950/60 border border-blue-500/20">
-            <span className="font-semibold text-blue-300 text-[11px]">1. Att Följa</span>
+            <span className="font-semibold text-blue-300 text-[11px]">1. Att Följa: Att följa Guds son</span>
             <p className="text-[10px] text-slate-400 mt-0.5">Själv vara lösningen för närhet genom empatisk kontakt och analys.</p>
           </div>
           <div className="p-2 rounded bg-slate-950/60 border border-amber-500/20">
-            <span className="font-semibold text-amber-300 text-[11px]">2. Att Vända Om</span>
+            <span className="font-semibold text-amber-300 text-[11px]">2. Att Vända Om: Att vända om till Gud</span>
             <p className="text-[10px] text-slate-400 mt-0.5">Inåtriktad ödmjukhet och transformation; Fail-Fast för äkthet.</p>
           </div>
           <div className="p-2 rounded bg-slate-950/60 border border-purple-500/20">
-            <span className="font-semibold text-purple-300 text-[11px]">3. Att Förlikas</span>
+            <span className="font-semibold text-purple-300 text-[11px]">3. Att Förlikas: Att förlikas med Gud</span>
             <p className="text-[10px] text-slate-400 mt-0.5">Hålla 2+ samtida perspektiv varma för att hela klyftor och sluta cykeln.</p>
+          </div>
+          <div className="p-2 rounded bg-slate-950/60 border border-cyan-500/20">
+            <span className="font-semibold text-cyan-300 text-[11px]">Att försonas (ensam agent)</span>
+            <p className="text-[10px] text-slate-400 mt-0.5">Deterministisk ordning och skydd genom process och Token Gate.</p>
           </div>
         </div>
       </div>
@@ -246,7 +239,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Bot className="w-3.5 h-3.5" />
+            <Sparkles className="w-3.5 h-3.5" />
             <span>Svärmorkestrering & Telemetri</span>
           </button>
           <button
@@ -257,19 +250,18 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
             <span>Master Development Plan (Styrkort)</span>
           </button>
         </div>
 
         <div className="flex items-center space-x-2 text-[11px] font-mono text-slate-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          <span>Buss aktiv (SI v10.0 • TCK-008)</span>
+          <span>Buss aktiv (SI v10.0 • TCK-009)</span>
         </div>
       </div>
 
       {subView === 'plan' ? (
-        <MasterDevelopmentPlan currentReceiptHash="09aea95c" />
+        <MasterDevelopmentPlan currentReceiptHash="4b6843f7" />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Vänster kolumn: Svärmkontroll & Steg (8 kolumner på lg) */}
@@ -287,26 +279,26 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+                <div className="flex items-center space-x-1.5 text-xs text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20" title="5 Enheter (4 Agenter + Seriell Motor) konsoliderade">
                   <Cpu className="w-3.5 h-3.5" />
-                  <span>5 Enheter (4 Agenter + Seriell Motor)</span>
+                  <span>4 Försoningsenheter (tidigare 5 Enheter (4 Agenter + Seriell Motor))</span>
                 </div>
               </div>
 
-              {/* Agentkort inklusive kraft-etiketter */}
+              {/* 4 Försoningsenhetskort i gränssnittet */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {allUnits.map((unit) => (
                   <div
                     key={unit.id}
                     className={`p-3 bg-slate-950/70 border rounded-xl flex flex-col justify-between ${
-                      unit.role === 'SERIELL_MOTOR'
+                      unit.force === 'SERIELL_MOTOR'
                         ? 'border-cyan-500/40 ring-1 ring-cyan-500/20'
                         : 'border-slate-800/80'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-slate-200">{unit.name}</span>
+                        <span className="text-xs font-semibold text-slate-200">{unit.displayName}</span>
                         <div className="flex items-center space-x-2">
                           {getForceBadge(unit.force)}
                           <span
@@ -321,12 +313,12 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                         </div>
                       </div>
                       {unit.forceTitle && (
-                        <div className="text-[10px] font-medium text-purple-300/90 mb-1.5 flex items-center space-x-1">
+                        <div className="text-[10px] font-medium text-slate-300 mb-1 flex items-center space-x-1">
                           <span>✦</span>
                           <span>{unit.forceTitle}</span>
                         </div>
                       )}
-                      <p className="text-[11px] text-slate-400 line-clamp-2">{unit.systemInstruction}</p>
+                      <p className="text-[11px] text-slate-400 line-clamp-2">{unit.reachScope}</p>
                     </div>
                     {unit.currentThought && (
                       <div className="mt-2.5 p-2 bg-slate-900 rounded border border-slate-800/60 text-[10px] text-slate-300 italic">
@@ -337,7 +329,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                 ))}
               </div>
 
-              {/* Framträdande sektion: Seriell Exekveringsmotor (4:e Motorn) */}
+              {/* 4:e Enheten: Att försonas (ensam agent) / Seriell Exekveringsmotor (4:e Motorn) */}
               <div className="bg-slate-950/90 p-4 rounded-xl border border-cyan-500/30 space-y-3.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
@@ -346,9 +338,9 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                     </div>
                     <div>
                       <h3 className="text-xs font-bold text-slate-100 uppercase tracking-wider flex items-center space-x-2">
-                        <span>Seriell Exekveringsmotor (4:e Motorn)</span>
+                        <span>Att försonas (ensam agent)</span>
                         <span className="text-[9px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
-                          SI v10.0
+                          SI v10.0 • Seriell Exekveringsmotor (4:e Motorn)
                         </span>
                       </h3>
                       <p className="text-[11px] text-slate-400">
@@ -485,9 +477,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
                           <span className="text-xs font-semibold text-slate-200">
                             Steg {idx + 1}: {step.title}
                           </span>
-                          <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-slate-800 text-purple-300">
-                            {step.agentRole}
-                          </span>
+                          {getForceBadge(step.agentRole)}
                         </div>
                         <span
                           className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
@@ -528,4 +518,3 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
     </div>
   );
 };
-

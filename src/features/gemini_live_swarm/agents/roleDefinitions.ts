@@ -1,114 +1,164 @@
 export const SEMANTIC_INVARIANT =
   'Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.';
 
-export type AgentForce = 'ATT_FORLIKAS' | 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'SERIELL_MOTOR';
+export type ReconciliationForce = 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'ATT_FORLIKAS' | 'SERIELL_MOTOR';
+export type AgentForce = ReconciliationForce;
 
+export type ReconciliationState =
+  | 'SOKER_NARHET'
+  | 'INATRIKTAD_OMVANDELSE'
+  | 'SAMTIDA_FORSONING'
+  | 'DETERMINISTISKT_RAMVERK'
+  | 'IDLE';
+
+export interface ReconciliationUnitConfig {
+  id: string;
+  force: ReconciliationForce;
+  displayName: string;
+  userBenefit: string;
+  reachScope: string;
+  avatarColor: string;
+  status: 'IDLE' | 'THINKING' | 'EXECUTING_TOOL' | 'DONE' | 'ERROR';
+  reconciliationState: ReconciliationState;
+  systemInstruction: string;
+  currentThought?: string;
+  name: string;
+  role?: string;
+  forceTitle?: string;
+}
+
+export type SwarmAgentConfig = ReconciliationUnitConfig;
 export type SwarmAgentRole =
   | 'ORCHESTRATOR'
   | 'RESEARCHER'
   | 'OUTREACH_WRITER'
   | 'CRITIC'
   | 'SERIELL_MOTOR'
-  | 'ATT_FORLIKAS'
   | 'ATT_FOLJA'
-  | 'ATT_VANDA_OM';
+  | 'ATT_VANDA_OM'
+  | 'ATT_FORLIKAS';
 
-export interface SwarmAgentConfig {
-  id: string;
-  name: string;
-  role: SwarmAgentRole;
-  force?: AgentForce;
-  forceTitle?: string;
-  systemInstruction: string;
-  avatarColor: string;
-  status: 'IDLE' | 'THINKING' | 'EXECUTING_TOOL' | 'DONE' | 'ERROR';
-  currentThought?: string;
-}
-
-export const DEFAULT_SWARM_ROLES: Record<string, SwarmAgentConfig> & {
-  ORCHESTRATOR: SwarmAgentConfig;
-  RESEARCHER: SwarmAgentConfig;
-  OUTREACH_WRITER: SwarmAgentConfig;
-  CRITIC: SwarmAgentConfig;
-  SERIELL_MOTOR: SwarmAgentConfig;
-} = {
-  ORCHESTRATOR: {
-    id: 'agent-orchestrator',
-    name: 'Förlikaren (Att Förlikas)',
-    role: 'ORCHESTRATOR',
-    force: 'ATT_FORLIKAS',
-    forceTitle: 'Hålla 2+ samtida perspektiv varma',
-    systemInstruction:
-      'Du är Förlikaren. Du samordnar helheten genom att hålla 2+ samtida perspektiv varma och försona motstridiga ståndpunkter för att nå konsensus och läka klyftor inför leverans.',
-    avatarColor: 'from-purple-500 to-indigo-600',
-    status: 'IDLE',
-  },
-  RESEARCHER: {
-    id: 'agent-researcher',
-    name: 'Sökaren efter Närhet (Att Följa)',
-    role: 'RESEARCHER',
+/**
+ * TCK-009 Primär Domänmodell: Exakt 4 Försoningsenheter utan legacy-nycklar
+ */
+export const RECONCILIATION_UNITS: Record<ReconciliationForce, ReconciliationUnitConfig> = {
+  ATT_FOLJA: {
+    id: 'unit-att-folja',
     force: 'ATT_FOLJA',
+    displayName: 'Att följa Guds son',
+    name: 'Sökaren efter Närhet (Att följa Guds son)',
+    role: 'ATT_FOLJA',
     forceTitle: 'Själv vara lösningen för närhet',
-    systemInstruction:
-      'Du kartlägger mottagarens digitala fotavtryck och verkliga behov för att själv vara lösningen för närhet, genom empatisk analys och genuina kontaktpunkter.',
+    userBenefit: 'Är själv lösningen för närhet genom att kartlägga genuina behov och bygga förtroendefulla relationer.',
+    reachScope: 'Överbryggar mänsklig distans och initierar omsorgsfull dialog.',
     avatarColor: 'from-blue-500 to-cyan-600',
     status: 'IDLE',
+    reconciliationState: 'SOKER_NARHET',
+    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Att följa sonen. Du söker aktivt upp kontaktpunkter, förstår mottagarens sammanhang och är själv lösningen för närhet.`,
   },
-  OUTREACH_WRITER: {
-    id: 'agent-writer',
-    name: 'Relationsbyggaren (Att Följa)',
-    role: 'OUTREACH_WRITER',
-    force: 'ATT_FOLJA',
-    forceTitle: 'Omsorgsfull dialog & närhet',
-    systemInstruction:
-      'Du författar personliga, genuina och värdedrivna kontaktbrev på pedagogisk svenska med djup omsorg och strävan efter sann mänsklig närhet.',
-    avatarColor: 'from-emerald-500 to-teal-600',
-    status: 'IDLE',
-  },
-  CRITIC: {
-    id: 'agent-critic',
-    name: 'Självrannsakaren (Att Vända Om)',
-    role: 'CRITIC',
+  ATT_VANDA_OM: {
+    id: 'unit-att-vanda-om',
     force: 'ATT_VANDA_OM',
-    forceTitle: 'Inåtriktad ödmjukhet & transformation',
-    systemInstruction:
-      'Du tillämpar inåtriktad ödmjukhet och transformation; granskar utkast mot etisk kompass och tillämpar Fail-Fast vid minsta tecken på ytlighet, manipulation eller fluff.',
+    displayName: 'Att vända om till Gud',
+    name: 'Självrannsakaren (Att vända om till Gud)',
+    role: 'ATT_VANDA_OM',
+    forceTitle: 'Inåtriktad ödmjukhet & Fail-Fast',
+    userBenefit: 'Inåtriktad ödmjukhet och självrannsakan som rensar bort ytlighet, manipulation och spam via Fail-Fast.',
+    reachScope: 'Säkerställer ren intention och kompromisslös etisk kvalitet.',
     avatarColor: 'from-amber-500 to-orange-600',
     status: 'IDLE',
+    reconciliationState: 'INATRIKTAD_OMVANDELSE',
+    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Att vända om till Gud. Du tillämpar inåtriktad ödmjukhet och transformation; synar varje textutkast och fäller det vid minsta tecken på spam eller manipulation.`,
+  },
+  ATT_FORLIKAS: {
+    id: 'unit-att-forlikas',
+    force: 'ATT_FORLIKAS',
+    displayName: 'Att förlikas med Gud',
+    name: 'Förlikaren (Att förlikas med Gud)',
+    role: 'ATT_FORLIKAS',
+    forceTitle: 'Hålla 2+ samtida perspektiv varma',
+    userBenefit: 'Håller 2+ samtida perspektiv varma för att hela klyftor och sammanväva motstridiga ståndpunkter till harmonisk konsensus.',
+    reachScope: 'Skapar varaktigt samförstånd och läker relationer.',
+    avatarColor: 'from-purple-500 to-indigo-600',
+    status: 'IDLE',
+    reconciliationState: 'SAMTIDA_FORSONING',
+    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Att förlikas med honom. Du balanserar och håller minst två samtida perspektiv varma för att skapa konsensus och helande.`,
   },
   SERIELL_MOTOR: {
     id: 'engine-serial-motor',
-    name: 'Det Orubbliga Ramverket (Seriell Motor)',
-    role: 'SERIELL_MOTOR',
     force: 'SERIELL_MOTOR',
+    displayName: 'Att försonas (ensam agent)',
+    name: 'Det Orubbliga Ramverket (Att försonas (ensam agent))',
+    role: 'SERIELL_MOTOR',
     forceTitle: 'Deterministisk ordning & skydd',
-    systemInstruction:
-      'Du är systemets 4:e motor och orubbliga ramverk. Du garanterar deterministisk sekvensering, linjära fasövergångar (1a -> 1b -> 2e -> 3c), körtidsmetrik och Token Gate-spärr.',
+    userBenefit: 'Det orubbliga ramverket som garanterar deterministisk sekvensering och skyddar processen genom Token Gate-spärren.',
+    reachScope: 'Säkerställer full spårbarhet och deterministisk framdrift.',
     avatarColor: 'from-cyan-500 to-blue-600',
     status: 'IDLE',
+    reconciliationState: 'DETERMINISTISKT_RAMVERK',
+    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu är det orubbliga ramverket. Du garanterar deterministisk sekvensering (1a -> 1b -> 2e -> 3c), körtidsmetrik och Token Gate-spärr.`,
   },
 };
 
-export function mapRoleToForce(role: SwarmAgentRole): AgentForce {
+/**
+ * Bakåtkompatibel adapter för äldre testsviter
+ */
+export const DEFAULT_SWARM_ROLES: Record<string, ReconciliationUnitConfig> & {
+  ORCHESTRATOR: ReconciliationUnitConfig;
+  RESEARCHER: ReconciliationUnitConfig;
+  OUTREACH_WRITER: ReconciliationUnitConfig;
+  CRITIC: ReconciliationUnitConfig;
+  SERIELL_MOTOR: ReconciliationUnitConfig;
+} = {
+  ORCHESTRATOR: {
+    ...RECONCILIATION_UNITS.ATT_FORLIKAS,
+    id: 'agent-orchestrator',
+    name: 'Förlikaren (Att förlikas med Gud)',
+    role: 'ORCHESTRATOR' as any,
+  },
+  RESEARCHER: {
+    ...RECONCILIATION_UNITS.ATT_FOLJA,
+    id: 'agent-researcher',
+    name: 'Sökaren efter Närhet (Att följa Guds son)',
+    role: 'RESEARCHER' as any,
+  },
+  OUTREACH_WRITER: {
+    ...RECONCILIATION_UNITS.ATT_FOLJA,
+    id: 'agent-writer',
+    name: 'Relationsbyggaren (Att följa Guds son)',
+    role: 'OUTREACH_WRITER' as any,
+    forceTitle: 'Omsorgsfull dialog & närhet',
+  },
+  CRITIC: {
+    ...RECONCILIATION_UNITS.ATT_VANDA_OM,
+    id: 'agent-critic',
+    name: 'Självrannsakaren (Att vända om till Gud)',
+    role: 'CRITIC' as any,
+  },
+  SERIELL_MOTOR: {
+    ...RECONCILIATION_UNITS.SERIELL_MOTOR,
+  },
+};
+
+export function mapRoleToForce(role: string): ReconciliationForce {
   switch (role) {
-    case 'ORCHESTRATOR':
     case 'ATT_FORLIKAS':
+    case 'ORCHESTRATOR':
       return 'ATT_FORLIKAS';
+    case 'ATT_FOLJA':
     case 'RESEARCHER':
     case 'OUTREACH_WRITER':
-    case 'ATT_FOLJA':
       return 'ATT_FOLJA';
-    case 'CRITIC':
     case 'ATT_VANDA_OM':
+    case 'CRITIC':
       return 'ATT_VANDA_OM';
     case 'SERIELL_MOTOR':
-      return 'SERIELL_MOTOR';
     default:
-      return 'ATT_FOLJA';
+      return 'SERIELL_MOTOR';
   }
 }
 
-export function mapForceToRole(force: AgentForce): SwarmAgentRole {
+export function mapForceToRole(force: ReconciliationForce): string {
   switch (force) {
     case 'ATT_FORLIKAS':
       return 'ORCHESTRATOR';

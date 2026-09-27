@@ -1,7 +1,7 @@
 import {
-  DEFAULT_SWARM_ROLES,
-  SwarmAgentConfig,
-  SwarmAgentRole,
+  RECONCILIATION_UNITS,
+  ReconciliationForce,
+  ReconciliationUnitConfig,
 } from '../agents/roleDefinitions.ts';
 import { GeminiLiveSession } from '../session/geminiLiveSession.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
@@ -13,7 +13,7 @@ export interface CampaignInput {
 }
 
 export interface SwarmStep {
-  agentRole: SwarmAgentRole;
+  agentRole: ReconciliationForce;
   title: string;
   output: string;
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
@@ -30,26 +30,33 @@ export interface CampaignPlan {
 }
 
 export class SwarmOrchestrator {
-  private agents: Map<SwarmAgentRole, SwarmAgentConfig>;
+  private units: Map<ReconciliationForce, ReconciliationUnitConfig>;
   private session: GeminiLiveSession;
 
   constructor(session?: GeminiLiveSession) {
     this.session = session || new GeminiLiveSession();
-    this.agents = new Map();
-    const activeRoles: SwarmAgentRole[] = ['ORCHESTRATOR', 'RESEARCHER', 'OUTREACH_WRITER', 'CRITIC'];
-    for (const role of activeRoles) {
-      if (DEFAULT_SWARM_ROLES[role]) {
-        this.agents.set(role, { ...DEFAULT_SWARM_ROLES[role] });
+    this.units = new Map();
+    const activeForces: ReconciliationForce[] = ['ATT_FOLJA', 'ATT_VANDA_OM', 'ATT_FORLIKAS'];
+    for (const force of activeForces) {
+      if (RECONCILIATION_UNITS[force]) {
+        this.units.set(force, { ...RECONCILIATION_UNITS[force] });
       }
     }
   }
 
-  public getActiveAgents(): SwarmAgentConfig[] {
-    return Array.from(this.agents.values());
+  public getActiveAgents(): ReconciliationUnitConfig[] {
+    return Array.from(this.units.values());
   }
 
-  public getSerialEngine(): SwarmAgentConfig {
-    return { ...DEFAULT_SWARM_ROLES.SERIELL_MOTOR };
+  public getSerialEngine(): ReconciliationUnitConfig {
+    return { ...RECONCILIATION_UNITS.SERIELL_MOTOR };
+  }
+
+  public getAllUnits(): ReconciliationUnitConfig[] {
+    return [
+      ...Array.from(this.units.values()),
+      { ...RECONCILIATION_UNITS.SERIELL_MOTOR },
+    ];
   }
 
   public createCampaignPlan(input: CampaignInput): CampaignPlan {
@@ -60,20 +67,20 @@ export class SwarmOrchestrator {
       status: 'READY',
       steps: [
         {
-          agentRole: 'RESEARCHER',
-          title: 'Målgrupps- och kontextanalys',
+          agentRole: 'ATT_FOLJA',
+          title: 'Att följa Guds son: Behovs- och kontaktpunktsanalys',
           output: '',
           status: 'PENDING',
         },
         {
-          agentRole: 'OUTREACH_WRITER',
-          title: 'Framtagning av personligt utkast',
+          agentRole: 'ATT_VANDA_OM',
+          title: 'Att vända om till Gud: Etisk självrannsakan & Fail-Fast',
           output: '',
           status: 'PENDING',
         },
         {
-          agentRole: 'CRITIC',
-          title: 'Kvalitets- och tonlägesgranskning',
+          agentRole: 'ATT_FORLIKAS',
+          title: 'Att förlikas med Gud: Sammanvävande konsensus & helande',
           output: '',
           status: 'PENDING',
         },
@@ -95,15 +102,15 @@ export class SwarmOrchestrator {
       step.status = 'RUNNING';
       onStepUpdate?.(step, i);
 
-      const agent = this.agents.get(step.agentRole);
-      if (agent) {
-        agent.status = 'THINKING';
+      const unit = this.units.get(step.agentRole);
+      if (unit) {
+        unit.status = 'THINKING';
       }
 
-      // Kör AI / GenAI svärmtur
+      // Kör AI / GenAI försoningstur
       const turnResult = await this.session.generateAgentTurn({
         role: step.agentRole,
-        systemInstruction: agent?.systemInstruction || '',
+        systemInstruction: unit?.systemInstruction || '',
         prompt: `${plan.input.title}: ${plan.input.valueProposition}`,
         context: sharedContext,
       });
@@ -112,17 +119,17 @@ export class SwarmOrchestrator {
       step.score = turnResult.score;
       step.status = 'COMPLETED';
 
-      if (agent) {
-        agent.status = 'DONE';
-        agent.currentThought = turnResult.thought;
+      if (unit) {
+        unit.status = 'DONE';
+        unit.currentThought = turnResult.thought;
       }
 
-      sharedContext += `\n--- [Resultat från ${step.agentRole}] ---\n${turnResult.content}\n`;
+      sharedContext += `\n--- [Resultat från ${unit?.displayName || step.agentRole}] ---\n${turnResult.content}\n`;
 
-      if (step.agentRole === 'OUTREACH_WRITER') {
+      if (step.agentRole === 'ATT_FOLJA') {
         plan.finalDraft = turnResult.content;
       }
-      if (step.agentRole === 'CRITIC' && turnResult.score) {
+      if (step.agentRole === 'ATT_VANDA_OM' && turnResult.score) {
         plan.consensusScore = turnResult.score;
       }
 
@@ -138,7 +145,8 @@ export class SwarmOrchestrator {
         time: new Date().toISOString(),
         data: {
           planId: plan.id,
-          role: step.agentRole,
+          force: step.agentRole,
+          displayName: unit?.displayName || step.agentRole,
           title: step.title,
           summary: step.output.slice(0, 120),
           score: step.score,

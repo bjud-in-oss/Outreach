@@ -6,20 +6,26 @@ import {
   SwarmTelemetrySnapshotSchema,
 } from './telemetrySchema.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
-import { DEFAULT_SWARM_ROLES, SwarmAgentRole } from '../agents/roleDefinitions.ts';
+import {
+  RECONCILIATION_UNITS,
+  ReconciliationForce,
+  mapRoleToForce,
+} from '../agents/roleDefinitions.ts';
 
 export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
   const bus = eventBus || getGlobalSwarmEventBus();
 
-  // Initiera standardmätvärden för standardrollerna
+  // Initiera standardmätvärden för de exakt 4 försoningsenheterna
   const initialAgentMetrics: Record<string, AgentTelemetryMetric> = {};
-  for (const roleKey of Object.keys(DEFAULT_SWARM_ROLES)) {
-    const r = (DEFAULT_SWARM_ROLES as any)[roleKey];
-    if (!r) continue;
-    initialAgentMetrics[r.id] = {
-      agentId: r.id,
-      role: r.role,
-      force: r.force,
+  for (const forceKey of Object.keys(RECONCILIATION_UNITS) as ReconciliationForce[]) {
+    const u = RECONCILIATION_UNITS[forceKey];
+    if (!u) continue;
+    initialAgentMetrics[u.id] = {
+      agentId: u.id,
+      force: u.force,
+      role: u.force,
+      displayName: u.displayName,
+      reconciliationState: u.reconciliationState,
       status: 'IDLE',
       lastThought: undefined,
       lastActive: new Date().toISOString(),
@@ -64,21 +70,31 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
       setSnapshot((prev) => {
         const updatedMetrics = { ...prev.agentMetrics };
 
-        // Om händelsen kommer från en agent, uppdatera dess mätvärde
-        const roleMatch = envelope.source.match(/outreach\/swarm\/(orchestrator|researcher|writer|critic|serial_motor)/i);
-        if (roleMatch) {
-          const matchedName = roleMatch[1].toLowerCase();
-          const roleKey: SwarmAgentRole =
-            matchedName === 'serial_motor'
-              ? 'SERIELL_MOTOR'
-              : (roleMatch[1].toUpperCase() as SwarmAgentRole);
-          const agentId = DEFAULT_SWARM_ROLES[roleKey]?.id;
-          if (agentId && updatedMetrics[agentId]) {
-            const current = updatedMetrics[agentId];
+        // Matcha händelsekällor för försoningsenheterna och eventuella legacy-källor
+        const match = envelope.source.match(
+          /outreach\/swarm\/(att_folja|att_vanda_om|att_forlikas|seriell_motor|orchestrator|researcher|writer|critic|serial_motor)/i
+        );
+
+        if (match) {
+          const rawSource = match[1].toLowerCase();
+          let targetForce: ReconciliationForce = 'ATT_FOLJA';
+          if (rawSource.includes('forlikas') || rawSource.includes('orchestrator')) {
+            targetForce = 'ATT_FORLIKAS';
+          } else if (rawSource.includes('vanda') || rawSource.includes('critic')) {
+            targetForce = 'ATT_VANDA_OM';
+          } else if (rawSource.includes('seriell') || rawSource.includes('serial')) {
+            targetForce = 'SERIELL_MOTOR';
+          } else {
+            targetForce = 'ATT_FOLJA';
+          }
+
+          const unit = RECONCILIATION_UNITS[targetForce];
+          if (unit && updatedMetrics[unit.id]) {
+            const current = updatedMetrics[unit.id];
             const isThinking = envelope.type.includes('thinking') || envelope.type.includes('started');
             const isDone = envelope.type.includes('completed');
 
-            updatedMetrics[agentId] = {
+            updatedMetrics[unit.id] = {
               ...current,
               status: isThinking ? 'THINKING' : isDone ? 'DONE' : current.status,
               lastThought: (envelope.data as any)?.summary || (envelope.data as any)?.thought || current.lastThought,
@@ -94,16 +110,14 @@ export function useSwarmTelemetry(eventBus?: SwarmEventBus) {
           try {
             updatedSerialExecution = envelope.data as any;
           } catch {
-            // ignorera felaktigt dataformat
+            // ignorera formatfel
           }
         }
 
         const newRecent = [envelope, ...prev.recentEnvelopes].slice(0, 30);
 
         const newSnapshot: SwarmTelemetrySnapshot = {
-          activeAgentsCount: Object.values(updatedMetrics).filter(
-            (a) => a.status !== 'ERROR' && a.role !== 'SERIELL_MOTOR'
-          ).length,
+          activeAgentsCount: Object.values(updatedMetrics).filter((a) => a.status !== 'ERROR').length,
           totalEventsCount: prev.totalEventsCount + 1,
           eventsPerMinute: epm,
           agentMetrics: updatedMetrics,

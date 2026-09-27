@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { EventEnvelopeSchema } from '../../../shared/contracts/envelope.ts';
 
 /**
- * SI v10.0 Krafter & Seriell Metrik Scheman (TCK-006)
+ * SI v10.0 Krafter & Försoningsscheman (TCK-009)
  */
 export const AgentForceSchema = z.enum([
   'ATT_FORLIKAS',
@@ -11,6 +11,18 @@ export const AgentForceSchema = z.enum([
   'SERIELL_MOTOR',
 ]);
 export type AgentForce = z.infer<typeof AgentForceSchema>;
+
+export const ReconciliationForceSchema = AgentForceSchema;
+export type ReconciliationForce = AgentForce;
+
+export const ReconciliationStateSchema = z.enum([
+  'SOKER_NARHET',
+  'INATRIKTAD_OMVANDELSE',
+  'SAMTIDA_FORSONING',
+  'DETERMINISTISKT_RAMVERK',
+  'IDLE',
+]);
+export type ReconciliationState = z.infer<typeof ReconciliationStateSchema>;
 
 export const SerialStageSchema = z.enum([
   '1a_forsta',
@@ -39,21 +51,14 @@ export const SerialExecutionMetricSchema = z.object({
 export type SerialExecutionMetric = z.infer<typeof SerialExecutionMetricSchema>;
 
 /**
- * Individuell agentmetrik
+ * Individuell telemetrimetrik för en försoningsenhet
  */
 export const AgentTelemetryMetricSchema = z.object({
   agentId: z.string(),
-  role: z.enum([
-    'ORCHESTRATOR',
-    'RESEARCHER',
-    'OUTREACH_WRITER',
-    'CRITIC',
-    'SERIELL_MOTOR',
-    'ATT_FORLIKAS',
-    'ATT_FOLJA',
-    'ATT_VANDA_OM',
-  ]),
   force: AgentForceSchema.optional(),
+  role: z.string().optional(),
+  displayName: z.string().optional(),
+  reconciliationState: ReconciliationStateSchema.optional(),
   status: z.enum(['IDLE', 'THINKING', 'EXECUTING_TOOL', 'DONE', 'ERROR']),
   lastThought: z.string().optional(),
   lastActive: z.string(),
@@ -64,7 +69,7 @@ export const AgentTelemetryMetricSchema = z.object({
 export type AgentTelemetryMetric = z.infer<typeof AgentTelemetryMetricSchema>;
 
 /**
- * Sammanställt telemetritillstånd för hela svärmen
+ * Sammanställt telemetritillstånd för hela svärmen (4 enheter)
  */
 export const SwarmTelemetrySnapshotSchema = z.object({
   activeAgentsCount: z.number().int().nonnegative(),

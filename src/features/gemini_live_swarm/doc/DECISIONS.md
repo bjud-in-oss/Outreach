@@ -68,5 +68,24 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. Synliggöra försoningstitlar och förklarande undertitlar i `TelemetrySidebar.tsx` och `MasterDevelopmentPlan.tsx`.
 - **Konsekvens**: Systemets tekniska och etiska arkitektur är fullständigt försonad; varje agentfunktion agerar i överensstämmelse med den orubbliga kompassen.
 
+---
+
+## ADR-SWARM-007: Konsolidering till 4 Försoningsenheter och UI-renodling
+- **Datum**: 2026-09-27
+- **Status**: Beslutat & Implementerat (TCK-009)
+- **Kontext**: Tidigare arkitektur bibehöll arvroller och duplicerade abstraktioner under huven. TCK-009 konsoliderar hela domänen till exakt 4 försoningsenheter, direkt knutna till krafterna `ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS` och `SERIELL_MOTOR`.
+- **Beslut**:
+  1. Receptbelägga bort de 5 legacy-rollerna ur den primära domänmodellen och ersätta med `RECONCILIATION_UNITS`.
+  2. Minska antalet enheter i UI och telemetri från 5 till 4.
+  3. Exponera exakt fyra föreskrivna visningsnamn på skärmen:
+     - "Att följa Guds son"
+     - "Att vända om till Gud"
+     - "Att förlikas med Gud"
+     - "Att försonas (ensam agent)"
+  4. Hålla `SEMANTIC_INVARIANT` strikt och oförvanskat internt i källkod och promptar, och dölja råa interna promptar från gränssnittet till förmån för pedagogisk användarnytta och räckvidd.
+- **Konsekvens**: Ren 1:1-mappning mellan domänmodell, telemetri och användargränssnitt med fullständig frånvaro av onödig redundans.
+
+
+
 
 
