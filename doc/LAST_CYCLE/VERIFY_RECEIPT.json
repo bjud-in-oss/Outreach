@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "bd3eb450",
+  "receipt_hash": "d02194cb",
   "status": "PASSED",
-  "verified_at": "2026-09-27T16:45:25.674Z",
+  "verified_at": "2026-09-27T18:32:07.602Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -48,6 +48,6 @@
     "src/features/wal_logger/replay/walReplay.ts",
     "src/main.tsx"
   ],
-  "active_ticket": "TCK-003",
+  "active_ticket": "TCK-010",
   "issues": []
 }

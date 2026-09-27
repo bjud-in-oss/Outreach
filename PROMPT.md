@@ -2,13 +2,14 @@ Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva 
 
 ---
 
-AKTIVT UPPDRAG: TCK-003
-Titel: MCP Bridge & Gemini Live Swarm djupintegration
-Domän: src/features/mcp_bridge/
+AKTIVT UPPDRAG: TCK-010
+Titel: Gemini Live Session Streaming & WebSocket Integration
+Domän: src/features/gemini_live_swarm/
+Active Skills: gemini-live-api-dev, gemini-api-dev
 
-Mål för TCK-003:
-1. Koppla ihop MCP-serverns verktyg (driveTools, walTools) med swarmOrchestrator och swarmEventBus.
-2. Säkerställa verktygsexekvering via WebSocket-kabeln med automatiska NON_BLOCKING tool-svar.
-3. Skapa transient test i src/__tests__/transient_TCK-003.test.ts och verifiera med pnpm verify.
+Mål för TCK-010:
+1. Använd 'gemini-live-api-dev' och 'gemini-api-dev' för att färdigställa dubbelriktad strömning av ljud och text i `geminiLiveSession.ts`.
+2. Publicera sessionshändelser reaktivt via `swarmEventBus` till de 4 försoningsenheterna i gränssnittet ("Att följa Guds son", "Att vända om till Gud", "Att förlikas med Gud", "Att försonas (ensam agent)").
+3. Skapa transient test `src/__tests__/transient_TCK-010.test.ts` och verifiera hela sviten med `pnpm verify`.
 
 Driv det obrutna Fas 1-svepet under doc/LAST_CYCLE/ och stanna vid Token Gate.

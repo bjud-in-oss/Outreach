@@ -1,133 +1,44 @@
-# 2b Modellera: MCP Bridge & Gemini Live Swarm djupintegration (TCK-003)
+# 2b Modellera: Gemini Live Session Streaming & WebSocket Integration (TCK-010)
 
-## 1. Modellering av WebSocket-verktygsprotokoll (`mcpSchema.ts`)
+## 1. Domän- och Kontraktsmodellering
 
-### Gemini Live Bidi Tool Kontrakt
-I enlighet med Gemini 3.8 Live API-specifikationen för asynkron verktygsexekvering:
+### 1.1 Live Session Status & Typer
 ```typescript
-export interface BidiFunctionCall {
-  id: string;
-  name: string;
-  args: Record<string, any>;
-}
+export type LiveSessionStatus = 'IDLE' | 'CONNECTING' | 'STREAMING' | 'DISCONNECTED' | 'ERROR';
 
-export interface BidiFunctionResponse {
-  id: string;
-  name: string;
-  response: {
-    output: Record<string, any> | string;
-  };
-}
-
-export interface BidiGenerateContentToolResponse {
-  functionResponses: BidiFunctionResponse[];
-  behavior: 'NON_BLOCKING';
+export interface LiveStreamChunk {
+  streamId: string;
+  sourceRole: 'user' | 'model';
+  force?: 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'ATT_FORLIKAS' | 'SERIELL_MOTOR';
+  textChunk?: string;
+  audioChunkBase64?: string;
+  transcription?: string;
+  isFinal: boolean;
+  timestamp: string;
 }
 ```
 
----
+### 1.2 CloudEvents 1.0 Specifikation för Strömning
+Samtliga strömningshändelser kapslas i `EventEnvelope` kompatibelt med CloudEvents 1.0:
+1. `swarm.live.session.connected`:
+   - `source`: `outreach/gemini_live/session`
+   - `data`: `{ status: 'CONNECTED', model: 'gemini-3.8-live', responseModalities: ['audio', 'text'] }`
+2. `swarm.live.stream.text`:
+   - `source`: `outreach/gemini_live/stream`
+   - `data`: `{ streamId, chunk, force, isFinal }`
+3. `swarm.live.stream.audio`:
+   - `source`: `outreach/gemini_live/audio`
+   - `data`: `{ streamId, mimeType: 'audio/pcm;rate=24000', hasAudio: true }`
+4. `swarm.live.stream.transcription`:
+   - `source`: `outreach/gemini_live/transcription`
+   - `data`: `{ text, isInterim: false, force }`
+5. `swarm.live.session.disconnected`:
+   - `source`: `outreach/gemini_live/session`
+   - `data`: `{ status: 'DISCONNECTED', reason: string }`
 
-## 2. Modellering av `McpSwarmBridge` (`orchestrator/mcpSwarmBridge.ts`)
-
-```typescript
-export interface ToolExecutionResult {
-  toolCallId: string;
-  toolName: string;
-  success: boolean;
-  output: any;
-  error?: string;
-  envelope?: EventEnvelope;
-  bidiResponse: BidiGenerateContentToolResponse;
-}
-
-export class McpSwarmBridge {
-  private mcpServer: McpServer;
-  private eventBus: SwarmEventBus;
-
-  constructor(mcpServer?: McpServer, eventBus?: SwarmEventBus) {
-    this.mcpServer = mcpServer || createUnifiedMcpServer();
-    this.eventBus = eventBus || getGlobalSwarmEventBus();
-  }
-
-  public async executeTool(
-    toolName: string,
-    toolArgs: Record<string, any>,
-    toolCallId?: string
-  ): Promise<ToolExecutionResult> {
-    const id = toolCallId || `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    // 1. Publicera start-händelse
-    this.eventBus.publish({
-      id: `evt-tool-start-${Date.now()}`,
-      source: 'outreach/mcp_bridge',
-      type: 'mcp.tool.execution.started',
-      specversion: '1.0',
-      datacontenttype: 'application/json',
-      time: new Date().toISOString(),
-      data: { toolCallId: id, toolName, args: toolArgs },
-    });
-
-    // 2. Exekvera anrop över MCP JSON-RPC 2.0
-    const mcpResponse = await this.mcpServer.handleJsonRpcRequest({
-      jsonrpc: '2.0',
-      id,
-      method: 'tools/call',
-      params: { name: toolName, arguments: toolArgs },
-    });
-
-    const isError = Boolean(mcpResponse.error);
-    const output = mcpResponse.error ? mcpResponse.error.message : mcpResponse.result;
-
-    // 3. Skapa Bidi NON_BLOCKING tool response för WebSocket-kabeln
-    const bidiResponse: BidiGenerateContentToolResponse = {
-      functionResponses: [
-        {
-          id,
-          name: toolName,
-          response: { output: output as any },
-        },
-      ],
-      behavior: 'NON_BLOCKING',
-    };
-
-    // 4. Publicera sluthändelse
-    const completedEnvelope: EventEnvelope = {
-      id: `evt-tool-complete-${Date.now()}`,
-      source: 'outreach/mcp_bridge',
-      type: isError ? 'mcp.tool.execution.failed' : 'mcp.tool.execution.completed',
-      specversion: '1.0',
-      datacontenttype: 'application/json',
-      time: new Date().toISOString(),
-      data: {
-        toolCallId: id,
-        toolName,
-        success: !isError,
-        output,
-      },
-    };
-    this.eventBus.publish(completedEnvelope);
-
-    return {
-      toolCallId: id,
-      toolName,
-      success: !isError,
-      output,
-      error: mcpResponse.error?.message,
-      envelope: completedEnvelope,
-      bidiResponse,
-    };
-  }
-}
-```
-
----
-
-## 3. Modellering av `createUnifiedMcpServer()`
-
-Binder samman:
-1. `drive_save_draft` (Sparar utkast i Drive)
-2. `drive_list_templates` (Hämtar mallar)
-3. `drive_create_file` (Skapar godtycklig Drive-fil)
-4. `wal_get_stats` (Hämtar transaktionsstatus från WAL)
-5. `wal_query_recent` (Hämtar historik från WAL)
-6. `outreach_evaluate_tone` (Kvalitetsgranskning)
+### 1.3 Försoningsenheternas Reaktivitet
+Varje strömningschunk distribueras reaktivt via `SwarmEventBus` så att gränssnittets 4 enheter uppdaterar sina statusfält:
+- **Att följa Guds son**: Tar emot inkommande behovsanalys och strömmande dialogunderlag.
+- **Att vända om till Gud**: Tar emot transkribering och granskar kontinuerligt mot etiska spam-indikatorer.
+- **Att förlikas med Gud**: Sammanväver strömmande perspektiv och genererar försonande konsensus i realtid.
+- **Att försonas (ensam agent)**: Övervakar linjär framdrift och fasintegritet.

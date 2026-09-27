@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- Inga aktiva tickets för närvarande (Full mognad uppnådd).
+- [OPEN] TCK-010 | Domän: src/features/gemini_live_swarm/ | Mål: Gemini Live Session Streaming & WebSocket Integration | Spec: doc/TICKETS/TCK-010.md
 
 ---
 

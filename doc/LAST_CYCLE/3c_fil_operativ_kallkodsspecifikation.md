@@ -1,73 +1,60 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-003)
+# 3c Fil-operativ Källkodsspecifikation (TCK-010)
 
 ## 1. Översikt över Förändringskedjan (Fas 2)
 
-Följande filer är specificerade för källkodsändring under Fas 2 så snart godkännandekoden (`TCK-003-MCP-SWARM-BRIDGE-TOKEN`) bekräftats via `pnpm genomfor`:
+Följande filer är specificerade för källkodsändring under Fas 2 så snart godkännandekoden (`TCK-010-LIVE-STREAMING-TOKEN`) bekräftats via `pnpm genomfor`:
 
 ---
 
-### Fil 1: `src/features/mcp_bridge/contracts/mcpSchema.ts` (MODIFIERING)
+### Fil 1: `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Definiera och exportera Zod-scheman och TypeScript-typer för:
-     - `BidiFunctionCallSchema`: `{ id: z.string(), name: z.string(), args: z.record(z.any()) }`
-     - `BidiFunctionResponseSchema`: `{ id: z.string(), name: z.string(), response: z.object({ output: z.any() }) }`
-     - `BidiGenerateContentToolResponseSchema`: `{ functionResponses: z.array(BidiFunctionResponseSchema), behavior: z.literal('NON_BLOCKING') }`
-  2. Exportera typerna `BidiFunctionCall`, `BidiFunctionResponse`, `BidiGenerateContentToolResponse`.
+  1. Inför `LiveSessionStatusSchema`: `z.enum(['IDLE', 'CONNECTING', 'STREAMING', 'DISCONNECTED', 'ERROR'])`.
+  2. Inför `LiveStreamChunkSchema`: Validerar `{ streamId, sourceRole, force, textChunk, audioChunkBase64, transcription, isFinal, timestamp }`.
+  3. Exportera typerna `LiveSessionStatus` och `LiveStreamChunk`.
 
 ---
 
-### Fil 2: `src/features/mcp_bridge/server/mcpServer.ts` (MODIFIERING)
+### Fil 2: `src/features/gemini_live_swarm/session/geminiLiveSession.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Implementera fabriken `createUnifiedMcpServer(driveClient?: GoogleDriveClient, walEngine?: WalEngine): McpServer`.
-  2. Registrera verktyg från samtliga källor:
-     - Drive: `drive_save_draft`, `drive_list_templates`, `drive_create_file`
-     - WAL: `wal_get_stats`, `wal_query_recent`
-     - Granskning: `outreach_evaluate_tone`
-  3. Säkerställ strikt JSON-RPC 2.0 Fail-Fast felhantering.
+  1. Lägg till stöd för `gemini-3.8-live` anslutningshantering.
+  2. Implementera metoder:
+     - `connectLive(config?: { responseModalities?: ('audio' | 'text')[] }): Promise<boolean>`
+     - `disconnectLive(): Promise<void>`
+     - `isLiveConnected(): boolean`
+     - `sendRealtimeText(text: string, force?: ReconciliationForce): Promise<void>`
+     - `sendRealtimeAudio(audioChunkBase64: string, mimeType?: string): Promise<void>`
+     - `onStreamChunk(listener: (chunk: LiveStreamChunk) => void): () => void`
+  3. Knyt sessionen till `SwarmEventBus` och publicera CloudEvents (`swarm.live.*`).
+  4. Implementera deterministisk in-memory strömning vid `'in-memory-test'` API-nyckel så att tester körs deterministiskt på < 3s utan externa API-krav.
 
 ---
 
-### Fil 3: `src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts` (NY FIL I FAS 2)
+### Fil 3: `src/features/gemini_live_swarm/bus/swarmEventBus.ts` (MODIFIERING)
 - **Förändringar**:
-  1. Skapa klassen `McpSwarmBridge` med beroenden till `McpServer` och `SwarmEventBus`.
-  2. Implementera metoden `executeTool(toolName, toolArgs, toolCallId?)`.
-  3. Publicera CloudEvents 1.0 händelser:
-     - `mcp.tool.execution.started`
-     - `mcp.tool.execution.completed` / `mcp.tool.execution.failed`
-  4. Skapa och returnera `BidiGenerateContentToolResponse` med `behavior: 'NON_BLOCKING'`.
+  1. Implementera hjälparmetod `publishLiveEvent(type: string, data: Record<string, unknown>): EventEnvelope`.
 
 ---
 
-### Fil 4: `src/features/mcp_bridge/index.ts` (MODIFIERING)
+### Fil 4: `src/features/gemini_live_swarm/doc/DECISIONS.md` (MODIFIERING)
 - **Förändringar**:
-  1. Exportera `McpSwarmBridge` och relaterade typer.
-  2. Exportera `createUnifiedMcpServer`.
-  3. Exportera Bidi WebSocket-scheman och typer.
+  1. Dokumentera **ADR-SWARM-008: Gemini 3.8 Live Dubbelriktad Strömning och Reaktiv Försoningsdistribution**.
 
 ---
 
-### Fil 5: `src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts` (MODIFIERING)
-- **Förändringar**:
-  1. Injicera valfri instans av `McpSwarmBridge` i `SwarmOrchestrator`.
-  2. Tillåt verktygsexekvering under kampanjsteg (t.ex. anropa `drive_save_draft` när `ATT_FOLJA` skapar ett utkast, och anropa `outreach_evaluate_tone` när `ATT_VANDA_OM` granskar).
-  3. Spara genererade verktygssvar i delad kontext och bifoga CloudEvents.
-
----
-
-### Fil 6: `src/features/mcp_bridge/doc/DECISIONS.md` (MODIFIERING)
-- **Förändringar**:
-  1. Dokumentera **ADR-MCP-003: Djupintegration med Gemini Live Swarm och NON_BLOCKING WebSocket-exekvering**.
-
----
-
-### Fil 7: `src/__tests__/transient_TCK-003.test.ts` (NY TRANSIENT TESTFIL I FAS 2)
+### Fil 5: `src/__tests__/transient_TCK-010.test.ts` (NY TRANSIENT TESTFIL I FAS 2)
 - **Testomfång** (< 3s i minnet):
-  1. Validera att `createUnifiedMcpServer()` registrerar samtliga 6 verktyg från Drive och WAL.
-  2. Validera att `McpSwarmBridge.executeTool()` exekverar verktyget och returnerar `BidiGenerateContentToolResponse` med `behavior: 'NON_BLOCKING'`.
-  3. Validera att `SwarmEventBus` tar emot händelserna `mcp.tool.execution.started` och `mcp.tool.execution.completed`.
-  4. Validera att `SwarmOrchestrator` kan köra kampanjflödet med automatisk verktygsexekvering.
+  1. Validera att `LiveSessionStatusSchema` och `LiveStreamChunkSchema` validerar Fail-Fast.
+  2. Validera att `GeminiLiveSession` ansluter och sänder `swarm.live.session.connected`.
+  3. Validera att `sendRealtimeText` och `sendRealtimeAudio` genererar CloudEvents till `SwarmEventBus`.
+  4. Validera att strömningschunks tas emot och kan konsumeras av de 4 försoningsenheterna.
+  5. Validera att `disconnectLive` rensar tillstånd och sänder `swarm.live.session.disconnected`.
 
 ---
 
-### Fil 8: `doc/TICKETS.md` & `doc/TICKETS/TCK-003.md` (UPPDATERING I FAS 2)
-- Uppdatera status till `[VERIFIERAD]` när Fas 2 slutförts och testerna passerat.
+### Fil 6: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (UPPDATERING I FAS 2)
+- Integrera `runTransientTCK010Tests` i testsviten.
+
+---
+
+### Fil 7: `doc/TICKETS.md` & `doc/TICKETS/TCK-010.md` (UPPDATERING I FAS 2)
+- Uppdatera status till `[VERIFIERAD]` efter genomförande.
