@@ -25,6 +25,8 @@ export {
   AgentTelemetryMetricSchema,
   SwarmTelemetrySnapshotSchema,
   DevelopmentTicketSchema,
+  LiveSessionStatusSchema,
+  LiveStreamChunkSchema,
 } from './telemetry/telemetrySchema.ts';
 export type {
   SerialStage,
@@ -32,6 +34,8 @@ export type {
   AgentTelemetryMetric,
   SwarmTelemetrySnapshot,
   DevelopmentTicket,
+  LiveSessionStatus,
+  LiveStreamChunk,
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 

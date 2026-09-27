@@ -17,9 +17,25 @@ export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
   currentReceiptHash = '4b6843f7',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-009');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-010');
 
   const tickets: DevelopmentTicket[] = [
+    {
+      id: 'TCK-010',
+      title: 'Gemini Live Session Streaming & WebSocket Integration',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'Dubbelriktad strömning av text och 16kHz PCM-ljud över WebSockets via Gemini 3.8 Live',
+        'Strikta Zod-scheman för LiveSessionStatus och LiveStreamChunk (Fail-Fast)',
+        'Reaktiv CloudEvents 1.0 distribution (swarm.live.*) till SwarmEventBus',
+        'Direktkoppling till de 4 försoningsenheterna i gränssnittet för levande dialog',
+        'Transient mikro-E2E-verifiering i transient_TCK-010.test.ts (< 3s i minnet)',
+      ],
+      tokenHash: 'TCK-010-LIVE-STREAMING-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
     {
       id: 'TCK-009',
       title: 'Konsolidering till 4 Försoningsenheter & UI-renodling',

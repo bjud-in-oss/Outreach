@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "d02194cb",
+  "receipt_hash": "1a587321",
   "status": "PASSED",
-  "verified_at": "2026-09-27T18:32:07.602Z",
+  "verified_at": "2026-09-27T19:13:56.159Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -21,6 +21,7 @@
     "src/__tests__/transient_TCK-007.test.ts",
     "src/__tests__/transient_TCK-008.test.ts",
     "src/__tests__/transient_TCK-009.test.ts",
+    "src/__tests__/transient_TCK-010.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",

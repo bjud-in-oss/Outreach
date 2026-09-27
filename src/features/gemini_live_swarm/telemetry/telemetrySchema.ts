@@ -99,3 +99,27 @@ export const DevelopmentTicketSchema = z.object({
 });
 
 export type DevelopmentTicket = z.infer<typeof DevelopmentTicketSchema>;
+
+/**
+ * Gemini Live Streaming Schemas (TCK-010)
+ */
+export const LiveSessionStatusSchema = z.enum([
+  'IDLE',
+  'CONNECTING',
+  'STREAMING',
+  'DISCONNECTED',
+  'ERROR',
+]);
+export type LiveSessionStatus = z.infer<typeof LiveSessionStatusSchema>;
+
+export const LiveStreamChunkSchema = z.object({
+  streamId: z.string(),
+  sourceRole: z.enum(['user', 'model']),
+  force: AgentForceSchema.optional(),
+  textChunk: z.string().optional(),
+  audioChunkBase64: z.string().optional(),
+  transcription: z.string().optional(),
+  isFinal: z.boolean(),
+  timestamp: z.string(),
+});
+export type LiveStreamChunk = z.infer<typeof LiveStreamChunkSchema>;

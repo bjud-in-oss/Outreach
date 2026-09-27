@@ -85,6 +85,23 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. Hålla `SEMANTIC_INVARIANT` strikt och oförvanskat internt i källkod och promptar, och dölja råa interna promptar från gränssnittet till förmån för pedagogisk användarnytta och räckvidd.
 - **Konsekvens**: Ren 1:1-mappning mellan domänmodell, telemetri och användargränssnitt med fullständig frånvaro av onödig redundans.
 
+---
+
+## ADR-SWARM-008: Gemini 3.8 Live Dubbelriktad Strömning och Reaktiv Försoningsdistribution
+- **Datum**: 2026-09-27
+- **Status**: Beslutat & Implementerat (TCK-010)
+- **Kontext**: För att fördjupa närheten och skapa en transparent, levande outreach-samordning krävs asynkron realtidsströmning av både text och PCM-ljud över WebSockets, utan att drabbas av blockerande anrop eller ostrukturerad händelsespridning.
+- **Beslut**:
+  1. Uppgradera `GeminiLiveSession` till Gemini 3.8 Live API (`gemini-3.8-live`) med asynkron strömningsinfrastruktur (`connectLive`, `disconnectLive`, `sendRealtimeText`, `sendRealtimeAudio`).
+  2. Typa alla strömningschunks (`LiveStreamChunk`) och sessionstillstånd med strikta Zod-kontrakt i `telemetrySchema.ts`.
+  3. Distribuera samtliga strömningshändelser som CloudEvents 1.0 (`swarm.live.session.*`, `swarm.live.stream.*`) över `SwarmEventBus` direkt till de 4 försoningsenheterna:
+     - *Att följa Guds son*: Tar emot inkommande behov och formulerar levande kontaktutkast.
+     - *Att vända om till Gud*: Granskar transkribering och tillämpar Fail-Fast mot ytlighet.
+     - *Att förlikas med Gud*: Sammanväver perspektiv till försonande konsensus i realtid.
+     - *Att försonas (ensam agent)*: Övervakar linjär framdrift och fasintegritet.
+  4. Garantera deterministisk in-memory strömning vid testsessioner för att säkra < 3s testexekvering utan externa nätverksberoenden.
+- **Konsekvens**: Omedelbar reaktivitet, dubbelriktad ljud/text-strömning och fullständig spårbarhet utan risk för låsningar eller blockerade trådar.
+
 
 
 

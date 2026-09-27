@@ -71,6 +71,28 @@ export class SwarmEventBus {
   }
 
   /**
+   * Publicerar en strömningshändelse för Gemini Live (TCK-010) som CloudEvents 1.0.
+   */
+  public publishLiveEvent(
+    type: string,
+    data: Record<string, unknown>,
+    source = 'outreach/gemini_live/stream'
+  ): EventEnvelope {
+    const envelope: EventEnvelope = {
+      id: `evt-live-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      source,
+      type,
+      specversion: '1.0',
+      datacontenttype: 'application/json',
+      time: new Date().toISOString(),
+      data,
+    };
+
+    this.publish(envelope);
+    return envelope;
+  }
+
+  /**
    * Registrerar en prenumeration med stöd för wildcard (*, swarm.*, osv.)
    * Returnerar en cleanup-funktion för avregistrering.
    */
