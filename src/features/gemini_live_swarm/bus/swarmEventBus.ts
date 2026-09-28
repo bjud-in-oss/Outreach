@@ -2,6 +2,8 @@ import { EventEnvelope, EventEnvelopeSchema } from '../../../shared/contracts/en
 import {
   SerialExecutionMetric,
   SerialExecutionMetricSchema,
+  AudioOutputState,
+  AudioOutputStateSchema,
 } from '../telemetry/telemetrySchema.ts';
 
 export type SwarmEventHandler = (envelope: EventEnvelope) => void;
@@ -86,6 +88,26 @@ export class SwarmEventBus {
       datacontenttype: 'application/json',
       time: new Date().toISOString(),
       data,
+    };
+
+    this.publish(envelope);
+    return envelope;
+  }
+
+  /**
+   * Publicerar uppdatering av röst-/ljudspärrstillstånd (TCK-011) som CloudEvents 1.0.
+   */
+  public publishAudioState(audioState: AudioOutputState): EventEnvelope {
+    AudioOutputStateSchema.parse(audioState);
+
+    const envelope: EventEnvelope = {
+      id: `evt-audio-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+      source: 'outreach/gemini_live/audio_gate',
+      type: 'swarm.audio.state.changed',
+      specversion: '1.0',
+      datacontenttype: 'application/json',
+      time: new Date().toISOString(),
+      data: audioState as unknown as Record<string, unknown>,
     };
 
     this.publish(envelope);

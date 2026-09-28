@@ -27,6 +27,9 @@ export {
   DevelopmentTicketSchema,
   LiveSessionStatusSchema,
   LiveStreamChunkSchema,
+  AudioTriggerReasonSchema,
+  AudioOutputStateSchema,
+  detectUnitInvocation,
 } from './telemetry/telemetrySchema.ts';
 export type {
   SerialStage,
@@ -36,6 +39,9 @@ export type {
   DevelopmentTicket,
   LiveSessionStatus,
   LiveStreamChunk,
+  AudioTriggerReason,
+  AudioOutputState,
+  InvocationMatch,
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 

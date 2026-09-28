@@ -102,6 +102,22 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. Garantera deterministisk in-memory strömning vid testsessioner för att säkra < 3s testexekvering utan externa nätverksberoenden.
 - **Konsekvens**: Omedelbar reaktivitet, dubbelriktad ljud/text-strömning och fullständig spårbarhet utan risk för låsningar eller blockerade trådar.
 
+---
+
+## ADR-SWARM-009: Tyst Röstspärr och Selektiv Namnutlöst Ljudaktivering
+- **Datum**: 2026-09-27
+- **Status**: Beslutat & Implementerat (TCK-011)
+- **Kontext**: Autonoma flerstegskörningar och bakgrundsanalyser genererar riklig telemetri. Om högtalaren/ljudkanalen är öppen konstant skapas auditiv trötthet och störd arbetsro, vilket strider mot systemets högsta syfte (omsorg om människan).
+- **Beslut**:
+  1. Tillämpa en strikt "Tyst Röstspärr" (`isMuted: true` som standard) under autonoma flerstegskörningar (Silent Multistep Execution).
+  2. Öppna högtalarkanalen selektivt enbart vid:
+     - Direkt namnanrop på en av systemets 4 försoningsenheter (detekterat deterministiskt via `detectUnitInvocation`).
+     - Token Gate (Steg 3c_spec), där "Att försonas (ensam agent)" når beslutspunkten och muntligen presenterar systemstatus, användarnytta och godkännandekod.
+  3. Skicka uppdateringar av ljudtillstånd som CloudEvents 1.0 (`swarm.audio.state.changed`) över `SwarmEventBus`.
+  4. Visualisera ljudstatus tydligt i `SwarmDashboard.tsx` med möjlighet till manuell override.
+- **Konsekvens**: Fullständig arbetsro under processering, omedelbar auditiv respons vid tilltal, och tydlig muntlig förankring vid kritiska beslutspunkter.
+
+
 
 
 

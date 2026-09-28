@@ -9,6 +9,8 @@ import {
   ArrowRight,
   RefreshCw,
   Compass,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { SwarmOrchestrator, CampaignPlan } from '../coordinator/swarmOrchestrator.ts';
 import { ReconciliationForce, SEMANTIC_INVARIANT } from '../agents/roleDefinitions.ts';
@@ -17,6 +19,7 @@ import { MasterDevelopmentPlan } from './MasterDevelopmentPlan.tsx';
 import { getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 import { SerialExecutionMetric, SerialStage } from '../telemetry/telemetrySchema.ts';
+import { useSwarmTelemetry } from '../telemetry/useSwarmTelemetry.ts';
 
 interface SwarmDashboardProps {
   orchestrator: SwarmOrchestrator;
@@ -65,6 +68,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
 
   const allUnits = orchestrator.getAllUnits();
   const eventBus = getGlobalSwarmEventBus();
+  const { snapshot, toggleManualMute } = useSwarmTelemetry(eventBus);
 
   const getForceBadge = (force?: ReconciliationForce) => {
     switch (force) {
@@ -228,6 +232,79 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
         </div>
       </div>
 
+      {/* Tyst Röstspärr & Ljudkanal Status (TCK-011) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-md">
+        <div className="flex items-center space-x-3">
+          <div
+            className={`p-2.5 rounded-lg border transition-all ${
+              snapshot.audioOutput?.isMuted
+                ? 'bg-slate-800/80 text-slate-400 border-slate-700'
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 animate-pulse'
+            }`}
+          >
+            {snapshot.audioOutput?.isMuted ? (
+              <VolumeX className="w-5 h-5" />
+            ) : (
+              <Volume2 className="w-5 h-5" />
+            )}
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                Ljudkanal & Röstspärr (TCK-011)
+              </span>
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold ${
+                  snapshot.audioOutput?.isMuted
+                    ? 'bg-slate-800 text-slate-400 border border-slate-700'
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                }`}
+              >
+                {snapshot.audioOutput?.isMuted ? 'TYST RÖSTSPÄRR AKTIV' : 'HÖGTALARE ÖPPEN'}
+              </span>
+              {snapshot.audioOutput?.triggerReason && (
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">
+                  {snapshot.audioOutput.triggerReason}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              {snapshot.audioOutput?.isMuted
+                ? 'Systemet arbetar i total tystnad under flerstegskörningar för att bevara fokus. Röst aktiveras vid direkt namnanrop eller vid Token Gate (Steg 3c).'
+                : `Aktiv talare: ${
+                    snapshot.audioOutput?.activeSpeakerUnitId === 'unit-seriell-motor'
+                      ? 'Att försonas (ensam agent)'
+                      : snapshot.audioOutput?.activeSpeakerUnitId === 'unit-att-folja'
+                      ? 'Att följa Guds son'
+                      : snapshot.audioOutput?.activeSpeakerUnitId === 'unit-att-vanda-om'
+                      ? 'Att vända om till Gud'
+                      : snapshot.audioOutput?.activeSpeakerUnitId === 'unit-att-forlikas'
+                      ? 'Att förlikas med Gud'
+                      : snapshot.audioOutput?.activeSpeakerUnitId || 'Enhet'
+                  } (Orsak: ${snapshot.audioOutput?.triggerReason || 'Aktiverad'})`}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2 w-full md:w-auto justify-end">
+          <button
+            onClick={toggleManualMute}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer border ${
+              snapshot.audioOutput?.isMuted
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                : 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border-amber-500/40'
+            }`}
+          >
+            {snapshot.audioOutput?.isMuted ? (
+              <Volume2 className="w-3.5 h-3.5" />
+            ) : (
+              <VolumeX className="w-3.5 h-3.5" />
+            )}
+            <span>{snapshot.audioOutput?.isMuted ? 'Öppna ljud manuellt' : 'Tysta röstkanal'}</span>
+          </button>
+        </div>
+      </div>
+
       {/* Sub-view väljare */}
       <div className="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5">
         <div className="flex items-center space-x-2">
@@ -261,7 +338,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
       </div>
 
       {subView === 'plan' ? (
-        <MasterDevelopmentPlan currentReceiptHash="4b6843f7" />
+        <MasterDevelopmentPlan currentReceiptHash="750a83cd" />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Vänster kolumn: Svärmkontroll & Steg (8 kolumner på lg) */}

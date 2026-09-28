@@ -14,12 +14,28 @@ interface MasterDevelopmentPlanProps {
 }
 
 export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
-  currentReceiptHash = '4b6843f7',
+  currentReceiptHash = '750a83cd',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-010');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-011');
 
   const tickets: DevelopmentTicket[] = [
+    {
+      id: 'TCK-011',
+      title: 'Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'Tyst röstspärr (Silent Multistep Execution) som standard för auditiv arbetsro',
+        'Strikta Zod-scheman för AudioOutputState och AudioTriggerReason (Fail-Fast)',
+        'Deterministisk namndetektor detectUnitInvocation för de 4 försoningsenheterna',
+        'Automatisk talaktivering vid Token Gate (Steg 3c_spec) för muntlig förankring',
+        'Transient mikro-E2E-verifiering i transient_TCK-011.test.ts (< 3s i minnet)',
+      ],
+      tokenHash: 'TCK-011-SILENT-VOICE-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
     {
       id: 'TCK-010',
       title: 'Gemini Live Session Streaming & WebSocket Integration',
