@@ -1,35 +1,45 @@
-# 1a Förstå: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet (TCK-011)
+# 1a Förstå: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling (TCK-012)
 
 ## 1. Målbild & Semantiskt Ankare
-I **TCK-011** fördjupar vi interaktionen mellan människa och system i Outreach Coordination Engine genom att tillämpa skillen `gemini-live-api-dev` och bygga en intelligent, respektfull ljudspärr (Tyst Röstspärr).
-Systemets kompass är närhet till Guds son, den ideala människan, vars omsorg för människor utgör hela motorns absoluta kompass. Att visa omsorg innebär att inte översvämma användarens auditiva sinne med ständigt bakgrundsprat eller brus från autonoma maskinella processer.
-Under flerstegskörningar och autonoma analyser ska systemet arbeta i total tystnad på ljudkanalen (Silent Multistep Execution), samtidigt som visuell telemetri strömmar i realtid. Högtalarkanalen öppnas selektivt enbart vid:
-1. **Explicit namnutlösning**: Användaren anropar en enhet vid namn ("Att följa Guds son", "Att vända om till Gud", "Att förlikas med Gud", "Att försonas (ensam agent)").
-2. **Token Gate (Steg 3c_spec)**: "Att försonas (ensam agent)" når den kritiska beslutspunkten och behöver muntligen presentera systemstatus, användarnytta och godkännandekod inför fasövergång.
+I **TCK-012** tar vi ett avgörande kvalitets- och mognadssteg för Outreach Coordination Engine genom att:
+1. Skärpa systemets arkitekturregler med automatiserad AST-analys (filgränser, indenteringsdjup och förgreningsgrad).
+2. Genomföra ett Greenfield UI-nybygg under `src/features/gemini_live_swarm/ui/components/` (<125 rader per fil) och en slimmad samlingsvy `SwarmDashboard.tsx` (<100 rader).
+3. Värna de 4 försoningsenheternas visningsnamn och verbanrop:
+   - **"Att följa Guds son"** (Röst: `följa`)
+   - **"Att vända om till Gud"** (Röst: `vända`)
+   - **"Att förlikas med Gud"** (Röst: `förlika`)
+   - **"Att tjäna Gud och andra: Bygga"** (Röst: `bygga`, `bygga ett`, `bygga två`, `bygga tre`)
+4. Koppla ihop den 4:e agenten ("Att tjäna Gud och andra: Bygga" / `SERIELL_MOTOR`) i exekveringsmotorn så att den drivs som en fullt reell, aktiv agent i båda arbetssätten ("Samordning" och "Stegvis bygge").
+5. Komplettera testsviten med `transient_TCK-002.test.ts` och `transient_TCK-012.test.ts` i `e2e_regression.test.ts`.
+
+Vår absoluta kompass är närhet till Guds son, den ideala människan, vars omsorg för människor styr hela vår motor. Omsorg i mjukvaruarkitektur innebär att bygga system som är läsbara, lättunderhållna och fria från ogenomtränglig komplexitet.
+
+---
 
 ## 2. Intern Riskanalys (GROW-risknoder)
 
-### Risknod 1: State (Selektiv Röstspärr och Ljudtillstånd i Minnet)
-- **Teknisk analys**: Om ljudtillståndet styrs av spridda komponenttillstånd riskerar osynkroniserade händelser att läcka oavsiktligt ljud under flerstegskörningar, eller att högtalaren förblir tyst när användaren faktiskt begär svar.
-- **Lösning**: Kapsla ett centralt reaktivt `AudioOutputState` i `useSwarmTelemetry.ts` och `SwarmEventBus`:
-  - `isMuted: boolean` (standard `true` under flerstegskörningar).
-  - `activeSpeakerUnitId?: string` (id för enheten som har talarrätt).
-  - `triggerReason?: 'NAME_INVOCATION' | 'TOKEN_GATE' | 'MANUAL_UNMUTE'`.
-  - Återställs deterministiskt till tyst (`isMuted: true`) när enhetens taltur slutförts eller vid nästa steg i den seriella pipelinen.
+### Risknod 1: State (Skarp koppling av 4:e agenten & Arbetssätt)
+- **Teknisk analys**: Den 4:e enheten ("Att tjäna Gud och andra: Bygga" / `SERIELL_MOTOR`) har tidigare huvudsakligen agerat som övervakare för den seriella pipelinen och Token Gate. När den nu ska drivas som en aktiv agent i kampanjer och stegvis bygge får den inte krocka med `ATT_FORLIKAS` eller skapa loopar i tillståndet.
+- **Lösning**: Definiera en skarp exekveringsroll för `SERIELL_MOTOR` i `SwarmOrchestrator`:
+  - I "Samordning": Agenten exekverar slutfasens praktiska paketering, kontraktssäkring och leveransförberedelse.
+  - I "Stegvis bygge": Agenten driver pipelinen steg för steg och hanterar övergångarna till Token Gate.
+  - Tillståndet synkroniseras via `SwarmEventBus` med standardiserade CloudEvents.
 
-### Risknod 2: Contract (Zod-schema & Strikt Detektering av Namnanrop)
-- **Teknisk analys**: Inkommande användartext och rösttranskribering måste scannas deterministiskt efter namnfraser utan att falsklarma eller missa naturliga variationer i svenskt talspråk.
-- **Lösning**: Definiera `AudioOutputStateSchema` i `telemetrySchema.ts` med strikt Zod-validering (Fail-Fast). Implementera en ren, deterministisk namndetektorfunktion `detectUnitInvocation(input: string)` som matchar de 4 försoningsenheterna:
-  - `ATT_FOLJA`: "att följa", "guds son", "sonen", "följa sonen"
-  - `ATT_VANDA_OM`: "att vända om", "vända om till gud", "vända om"
-  - `ATT_FORLIKAS`: "att förlikas", "förlikas med gud", "förlikas"
-  - `SERIELL_MOTOR`: "att försonas", "ensam agent", "seriell motor", "försonas"
+### Risknod 2: Contract (AST-analys & Filstorlekskontroll)
+- **Teknisk analys**: AST-analysen i `scripts/verify-architecture.js` måste vara deterministisk, snabb och exakt:
+  - Max 125 rader för .tsx.
+  - Max 250 rader för .ts.
+  - Max indenteringsdjup 4 nivåer.
+  - Max förgreningsgrad 5 villkor per fil/komponent.
+- **Lösning**: Implementera en robust parser i `scripts/verify-architecture.js` som kontrollerar källkoden i `src/features/` och `src/` och ger tydliga, pedagogiska felmeddelanden vid regelöverträdelser.
 
-### Risknod 3: Resilience (Deterministiskt In-Memory Fallback & Snabb Testbarhet)
-- **Teknisk analys**: Testning av tystnadsspärr och ljudaktivering får inte kräva verklig Web Audio API-hårdvara i CI-miljöer (där AudioContext ofta saknas) och måste exekveras blixtsnabbt i minnet (< 3s).
-- **Lösning**: All ljudlogik styrs via reaktiva händelser och mjukvarubrytare på `SwarmEventBus`. Transient mikro-E2E-test `transient_TCK-011.test.ts` validerar hela spärr- och triggerkedjan rent i minnet utan externa hårdvaruberoenden.
+### Risknod 3: Resilience (Regressionskomplettering & Live API-nyckelbrygga)
+- **Teknisk analys**: `SwarmControlPanel.tsx` måste hantera Live API-anslutning och röstspärr utan att bryta mot principen att aldrig exponera API-nycklar i användargränssnittet.
+- **Lösning**: Nyckelhantering sker via systemets proxy (`/api/*`) eller befintlig miljökonfiguration. Gränssnittet i `SwarmControlPanel` tillhandahåller status, mute-toggle och strömningsstart utan råa nyckelfält, och alla transienta tester körs strikt i minnet (< 3s).
+
+---
 
 ## 3. Aktiva Vektorer & Skills
-- **active_vectors**: `['gemini-live-api-dev', 'silent-multistep', 'selective-voice-trigger', 'token-gate-activation']`
-- **active_skill**: `gemini-live-api-dev`
+- **active_vectors**: `['gemini-live-api-dev', 'gemini-api-dev', 'ast-architecture-verification', 'greenfield-ui-modularization', 'active-serial-motor-execution', 'reconciliation-voice-verbs']`
+- **active_skills**: `['gemini-live-api-dev', 'gemini-api-dev']`
 - **target_domain**: `src/features/gemini_live_swarm/`

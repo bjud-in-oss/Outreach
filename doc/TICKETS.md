@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- Inga aktiva tickets för närvarande (Full mognad uppnådd).
+- [OPEN] TCK-012 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling | Spec: doc/TICKETS/TCK-012.md
 
 ---
 

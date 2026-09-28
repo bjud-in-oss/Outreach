@@ -2,14 +2,27 @@ Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva 
 
 ---
 
-AKTIVT UPPDRAG: TCK-011
-Titel: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet
+AKTIVT UPPDRAG: TCK-012
+Titel: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling
 Domän: src/features/gemini_live_swarm/
-Active Skills: gemini-live-api-dev
+Active Skills: gemini-live-api-dev, gemini-api-dev
 
-Mål för TCK-011:
-1. Implementera logik i `useSwarmTelemetry.ts` och `SwarmDashboard.tsx` som håller ljudutgången helt tyst under tysta flerstegskörningar.
-2. Öppna högtalarkanalen enbart vid direkt namnanrop på en enhet eller när "Att försonas (ensam agent)" når Token Gate (Steg 3c).
-3. Skapa transient test `src/__tests__/transient_TCK-011.test.ts` som verifierar tyst körtid och röst-triggers i minnet (< 3s) och bekräfta med `pnpm verify`.
+Mål för TCK-012:
+1. Skärp `scripts/verify-architecture.js` med AST-analys:
+   - Filgränser: Max 125 rader för .tsx och max 250 rader för .ts.
+   - Logiska mått: Max indenteringsdjup (4 nivåer) och max förgreningsgrad (5 villkor per fil/komponent).
+2. Greenfield UI-nybygg under `src/features/gemini_live_swarm/ui/components/` (<125 rader per fil):
+   - `SwarmHeader.tsx`: Arbetssätt "Samordning" och "Stegvis bygge".
+   - `SwarmUnitCard.tsx`: Värna de 4 visningsnamnen och verbanropen:
+     * "Att följa Guds son" (Röst: `följa`)
+     * "Att vända om till Gud" (Röst: `vända`)
+     * "Att förlikas med Gud" (Röst: `förlika`)
+     * "Att tjäna Gud och andra: Bygga" (Röst: `bygga`, `bygga ett`, `bygga två`, `bygga tre`)
+   - `SwarmStreamLog.tsx`: Realtids-transkription och fasvisning för "Planera" och "Genomföra".
+   - `SwarmControlPanel.tsx`: Skarp Live API-nyckelbrygga, mute- och interaktionskontroller.
+   - `SwarmDashboard.tsx`: Ren samlingsvy under 100 rader.
+3. Koppla ihop den 4:e agenten ("Att tjäna Gud och andra: Bygga" / `SERIELL_MOTOR`) i exekveringsmotorn så att den drivs som en reell agent i båda arbetssätten.
+4. Inkludera TCK-002 i regressionssviten (`e2e_regression.test.ts`) via `transient_TCK-002.test.ts`.
+5. Skapa transient test `src/__tests__/transient_TCK-012.test.ts` och bekräfta att `pnpm verify` passerar alla tester och spärrar.
 
 Driv det obrutna Fas 1-svepet under doc/LAST_CYCLE/ och stanna vid Token Gate.

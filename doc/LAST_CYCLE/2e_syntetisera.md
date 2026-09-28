@@ -1,24 +1,21 @@
-# 2e Syntetisera: Sammanfogning av Insikter & Mättnadsanalys (TCK-011)
+# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-012)
 
-## 1. Mättnadsanalys
+## 1. Målkonflikter & Lösningar
+
+1. **Konflikt mellan kodmassa och funktionalitet i UI**:
+   - *Problem*: Att ha en monolitisk dashboard skapar svåröverskådlig kod och gör underhåll riskfyllt.
+   - *Lösning*: Greenfield-modularisering i `ui/components/` (<125 rader per fil) och en samlande `SwarmDashboard.tsx` under 100 rader.
+
+2. **Konflikt mellan 4:e agentens passiva övervakning och aktiv exekvering**:
+   - *Problem*: Om 4:e agenten bara är en passiv Token Gate-vakt nyttjas inte dess kraft för praktisk handling och konkret bygge.
+   - *Lösning*: `SERIELL_MOTOR` integreras som ett fullvärdigt fjärde steg ("Att tjäna Gud och andra: Bygga") i kampanjplanen och som motor i stegvis bygge.
+
+3. **Konflikt mellan strikta AST-mått och flexibilitet**:
+   - *Problem*: Strikt kontroll av radantal (<=125 .tsx, <=250 .ts), djup (<=4) och förgreningar (<=5) kan kräva disciplin.
+   - *Lösning*: Komponenterna designas atomärt och funktionsorienterat från första raden, vilket höjer kodkvaliteten markant och eliminerar "code bloat".
+
+---
+
+## 2. Mättnadsförklaring
 - **MÄTTNAD: JA**
-- Samtliga målkonflikter mellan behovet av realtidskommunikation och respekten för användarens arbetsro har lösts.
-- Systemet är som standard helt tyst under flerstegskörningar, men svarar direkt och personligt med röst när en specifik enhet tilltalas eller när Token Gate nås för att inhämta användarens godkännande.
-- Arkitekturen bevarar fullständig testbarhet i minnet (< 3s) utan externa hårdvaruberoenden.
-
-## 2. Syntes av Förändringskedjan (Fas 2 Förberedelse)
-1. **Telemetrikontrakt (`telemetrySchema.ts`)**:
-   - Inför `AudioTriggerReasonSchema`, `AudioOutputStateSchema` och utöka `SwarmTelemetrySnapshotSchema`.
-   - Exportera `detectUnitInvocation` för deterministisk namndetektion.
-2. **Reaktiv Telemetrihook (`useSwarmTelemetry.ts`)**:
-   - Håll `audioOutputState.isMuted: true` som standard under körning.
-   - Reaktivt lyssna på inkommande användarhändelser och matcha mot `detectUnitInvocation`.
-   - Reaktivt lyssna på `swarm.serial.*`: om `currentStage === '3c_spec'` eller `stageStatus === 'GATED'`, aktivera högtalare med `TOKEN_GATE`.
-3. **EventBus Hjälparmetod (`swarmEventBus.ts`)**:
-   - `publishAudioState(state: AudioOutputState): EventEnvelope`.
-4. **Gränssnittskomponent (`SwarmDashboard.tsx`)**:
-   - Lägg till en ljudstatusbanner och volymkontroll som visar aktuell ljudstatus och talande enhet.
-5. **Kvalitetssäkring (`src/__tests__/transient_TCK-011.test.ts`)**:
-   - Validerar tystnadsspärr, namnanrop och Token Gate-aktivering i minnet (< 3s).
-6. **Token Gate Spärr**:
-   - Stopp sker vid Steg 3c. Koden för godkännande lagras i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.
+- Samtliga målkonflikter är lösta. Arkitekturregler, Greenfield-struktur, skarp agentkoppling och regressionssvit är fullt specificerade inför Fas 2.

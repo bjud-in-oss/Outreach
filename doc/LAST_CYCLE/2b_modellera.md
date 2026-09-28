@@ -1,106 +1,51 @@
-# 2b Modellera: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet (TCK-011)
+# 2b Modellera: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling (TCK-012)
 
-## 1. Domän- och Kontraktsmodellering
+## 1. AST- och Strukturmåttsmodellering
 
-### 1.1 AudioOutputState och Zod-kontrakt
-```typescript
-export const AudioTriggerReasonSchema = z.enum([
-  'DEFAULT_SILENCE',
-  'NAME_INVOCATION',
-  'TOKEN_GATE',
-  'MANUAL_UNMUTE',
-]);
-export type AudioTriggerReason = z.infer<typeof AudioTriggerReasonSchema>;
+### 1.1 Regler i `scripts/verify-architecture.js`
+- **Filgränser**:
+  - Max 125 rader för samtliga `.tsx`-filer.
+  - Max 250 rader för samtliga `.ts`-filer.
+- **Indenteringsdjup**:
+  - Max 4 nivåer (1 nivå = 2 mellanslag eller 1 tabulator).
+- **Förgreningsgrad**:
+  - Max 5 logiska förgreningar (`if`, ternary `? :`, `switch`, `&&`, `||`) per komponent eller funktion.
 
-export const AudioOutputStateSchema = z.object({
-  isMuted: z.boolean(),
-  activeSpeakerUnitId: z.string().optional(),
-  activeForce: AgentForceSchema.optional(),
-  triggerReason: AudioTriggerReasonSchema.optional(),
-  lastChangedAt: z.string(),
-});
-export type AudioOutputState = z.infer<typeof AudioOutputStateSchema>;
-```
+---
 
-### 1.2 Namndetektionsfunktion (Deterministic Invocation Matcher)
-```typescript
-export interface InvocationMatch {
-  unitId: string;
-  force: ReconciliationForce;
-  matchedPhrase: string;
-}
+## 2. Enhetsmodellering & 4:e Agentens Skarpa Körning
 
-export function detectUnitInvocation(input: string): InvocationMatch | null {
-  const normalized = input.toLowerCase();
+### 2.1 Visningsnamn & Verbanrop
+1. **`ATT_FOLJA`**:
+   - Visningsnamn: `"Att följa Guds son"`
+   - Röst-verbanrop: `följa`, `att följa`, `guds son`, `sonen`
+2. **`ATT_VANDA_OM`**:
+   - Visningsnamn: `"Att vända om till Gud"`
+   - Röst-verbanrop: `vända`, `att vända`, `vända om`
+3. **`ATT_FORLIKAS`**:
+   - Visningsnamn: `"Att förlikas med Gud"`
+   - Röst-verbanrop: `förlika`, `att förlika`, `förlikas`
+4. **`SERIELL_MOTOR`**:
+   - Visningsnamn: `"Att tjäna Gud och andra: Bygga"`
+   - Röst-verbanrop: `bygga`, `bygga ett`, `bygga två`, `bygga tre`, `tjäna`
 
-  // 1. Att följa Guds son
-  if (
-    normalized.includes('att följa') ||
-    normalized.includes('följa sonen') ||
-    normalized.includes('guds son') ||
-    normalized.includes('sonen')
-  ) {
-    return {
-      unitId: 'unit-att-folja',
-      force: 'ATT_FOLJA',
-      matchedPhrase: 'Att följa Guds son',
-    };
-  }
+### 2.2 Exekveringsmodell i `SwarmOrchestrator`
+I `createCampaignPlan`:
+1. Steg 1: `ATT_FOLJA` (Empatisk behovsanalys & kontaktinriktning).
+2. Steg 2: `ATT_VANDA_OM` (Kritisk äkthetsgranskning & Fail-Fast prövning).
+3. Steg 3: `ATT_FORLIKAS` (Konsensussyntes & perspektivförening).
+4. Steg 4: `SERIELL_MOTOR` (**Att tjäna Gud och andra: Bygga**) – Praktisk leveranskonstruktion, exekvering och förankring.
 
-  // 2. Att vända om till Gud
-  if (
-    normalized.includes('att vända om') ||
-    normalized.includes('vända om') ||
-    normalized.includes('vända om till gud')
-  ) {
-    return {
-      unitId: 'unit-att-vanda-om',
-      force: 'ATT_VANDA_OM',
-      matchedPhrase: 'Att vända om till Gud',
-    };
-  }
+I Stegvis bygge ("Stegvis bygge"):
+- `SERIELL_MOTOR` driver pipelinen genom de 7 diskreta faserna (1a -> 1b -> 2a -> 2b -> 2e -> 3c -> e2e_verify) och aktiverar röst/ljud automatiskt vid Token Gate (Steg 3c).
 
-  // 3. Att förlikas med Gud
-  if (
-    normalized.includes('att förlikas') ||
-    normalized.includes('förlikas med gud') ||
-    normalized.includes('förlikas')
-  ) {
-    return {
-      unitId: 'unit-att-forlikas',
-      force: 'ATT_FORLIKAS',
-      matchedPhrase: 'Att förlikas med Gud',
-    };
-  }
+---
 
-  // 4. Att försonas (ensam agent)
-  if (
-    normalized.includes('att försonas') ||
-    normalized.includes('försonas') ||
-    normalized.includes('ensam agent') ||
-    normalized.includes('seriell motor')
-  ) {
-    return {
-      unitId: 'unit-seriell-motor',
-      force: 'SERIELL_MOTOR',
-      matchedPhrase: 'Att försonas (ensam agent)',
-    };
-  }
+## 3. Greenfield UI Komponentstruktur (< 125 rader per fil)
 
-  return null;
-}
-```
-
-### 1.3 CloudEvents 1.0 Specifikation för Ljudtillstånd
-- **Typ**: `swarm.audio.state.changed`
-- **Källa**: `outreach/gemini_live/audio_gate`
-- **Data**:
-  ```json
-  {
-    "isMuted": false,
-    "activeSpeakerUnitId": "unit-seriell-motor",
-    "activeForce": "SERIELL_MOTOR",
-    "triggerReason": "TOKEN_GATE",
-    "lastChangedAt": "2026-09-27T19:22:00.000Z"
-  }
-  ```
+Under `src/features/gemini_live_swarm/ui/components/`:
+- **`SwarmHeader.tsx`**: Header med kompass, arbetssätt ("Samordning" vs "Stegvis bygge") och övergripande status.
+- **`SwarmUnitCard.tsx`**: Enhetskort med visningsnamn, status, kraftbadge och snabb-knappar för röstverb.
+- **`SwarmStreamLog.tsx`**: Realtids-transkription och fasvisning för "Planera" och "Genomföra".
+- **`SwarmControlPanel.tsx`**: Live API-nyckelbrygga, röstspärr (tyst röstspärr vs öppen högtalare) och interaktionskontroller.
+- **`SwarmDashboard.tsx`**: Slimmad samlingsvy under 100 rader som fogar samman underkomponenterna.
