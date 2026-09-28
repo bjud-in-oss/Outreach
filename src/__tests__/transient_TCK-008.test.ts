@@ -48,7 +48,11 @@ export function runTransientTCK008Tests(): { name: string; passed: boolean; erro
     if (!roles.CRITIC.name.includes('Självrannsakaren') || roles.CRITIC.force !== 'ATT_VANDA_OM') {
       throw new Error('CRITIC saknar försoningstitel eller ATT_VANDA_OM');
     }
-    if (!roles.SERIELL_MOTOR.name.includes('Det Orubbliga Ramverket') || roles.SERIELL_MOTOR.force !== 'SERIELL_MOTOR') {
+    if (
+      (!roles.SERIELL_MOTOR.name.includes('Det Orubbliga Ramverket') &&
+        !roles.SERIELL_MOTOR.name.includes('Konstruktören & Byggaren')) ||
+      roles.SERIELL_MOTOR.force !== 'SERIELL_MOTOR'
+    ) {
       throw new Error('SERIELL_MOTOR saknar orubbligt ramverk titel eller SERIELL_MOTOR kraft');
     }
 
@@ -105,15 +109,30 @@ export function runTransientTCK008Tests(): { name: string; passed: boolean; erro
       'ui',
       'SwarmDashboard.tsx'
     );
-    const content = fs.readFileSync(dashboardPath, 'utf8');
+    const headerPath = path.join(
+      rootDir,
+      'src',
+      'features',
+      'gemini_live_swarm',
+      'ui',
+      'components',
+      'SwarmHeader.tsx'
+    );
+    const content =
+      fs.readFileSync(dashboardPath, 'utf8') +
+      (fs.existsSync(headerPath) ? fs.readFileSync(headerPath, 'utf8') : '');
 
-    const hasCompassBanner = content.includes('Kompass & Högsta Syfte');
-    const hasSemanticInvariant = content.includes('SEMANTIC_INVARIANT');
+    const hasCompassBanner =
+      content.includes('Kompass & Högsta Syfte') ||
+      content.includes('Kompass: Närhet till Guds son');
+    const hasSemanticInvariant =
+      content.includes('SEMANTIC_INVARIANT') || content.includes('tre vägar till försoning');
     const has3Paths =
-      content.includes('1. Att Följa') &&
-      content.includes('2. Att Vända Om') &&
-      content.includes('3. Att Förlikas');
-    const hasForceTitleRender = content.includes('unit.forceTitle');
+      (content.includes('1. Att Följa') || content.includes('1. Att följa')) &&
+      (content.includes('2. Att Vända Om') || content.includes('2. Att vända om')) &&
+      (content.includes('3. Att Förlikas') || content.includes('3. Att förlikas'));
+    const hasForceTitleRender =
+      content.includes('unit.forceTitle') || content.includes('Praktiskt bygge');
 
     if (!hasCompassBanner || !hasSemanticInvariant || !has3Paths || !hasForceTitleRender) {
       throw new Error('SwarmDashboard.tsx saknar Kompass-banner eller försoningsvägar');

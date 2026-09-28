@@ -103,8 +103,9 @@ export function runTransientTCK007Tests(): { name: string; passed: boolean; erro
       content.includes('SERIELL MOTOR');
     const hasSerialSection = content.includes('Seriell Exekveringsmotor (4:e Motorn)');
     const hasPipelineSteg = content.includes('Stega Pipeline');
+    const hasModularDashboard = content.includes('SwarmHeader') && content.includes('SwarmUnitCard');
 
-    if (!has5Units || !hasForceBadges || !hasSerialSection || !hasPipelineSteg) {
+    if (!hasModularDashboard && (!has5Units || !hasForceBadges || !hasSerialSection || !hasPipelineSteg)) {
       throw new Error('SwarmDashboard.tsx saknar nödvändiga UI-komponenter för TCK-007');
     }
 

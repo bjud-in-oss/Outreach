@@ -3,6 +3,7 @@ export type { CampaignInput, CampaignPlan, SwarmStep } from './coordinator/swarm
 export { GeminiLiveSession } from './session/geminiLiveSession.ts';
 export {
   SEMANTIC_INVARIANT,
+  RECONCILIATION_UNITS,
   DEFAULT_SWARM_ROLES,
   mapRoleToForce,
   mapForceToRole,
@@ -45,7 +46,11 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
-// UI Komponenter (TCK-002)
+// UI Komponenter (TCK-002 & TCK-012)
 export { SwarmDashboard } from './ui/SwarmDashboard.tsx';
 export { TelemetrySidebar } from './ui/TelemetrySidebar.tsx';
 export { MasterDevelopmentPlan } from './ui/MasterDevelopmentPlan.tsx';
+export { SwarmHeader } from './ui/components/SwarmHeader.tsx';
+export { SwarmUnitCard } from './ui/components/SwarmUnitCard.tsx';
+export { SwarmStreamLog } from './ui/components/SwarmStreamLog.tsx';
+export { SwarmControlPanel } from './ui/components/SwarmControlPanel.tsx';

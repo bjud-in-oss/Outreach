@@ -49,3 +49,39 @@ export function verifyContracts(filePath) {
 
   return { valid: true };
 }
+
+/**
+ * Kontrollerar AST- och strukturmått enligt TCK-012:
+ * - Filgränser: Max 125 rader för .tsx, max 250 rader för .ts
+ * - Indenteringsdjup: Max 4 nivåer
+ * - Förgreningsgrad: Max 5 villkor per komponent/funktion
+ */
+export function checkAstMetrics(filePath, content) {
+  const ext = path.extname(filePath);
+  const lines = content.split('\n');
+  const lineCount = lines.length;
+
+  if (ext === '.tsx' && lineCount > 125) {
+    return { valid: false, error: `${filePath} överskrider gränsen på 125 rader (${lineCount} rader)` };
+  }
+  if (ext === '.ts' && lineCount > 250) {
+    return { valid: false, error: `${filePath} överskrider gränsen på 250 rader (${lineCount} rader)` };
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim().length === 0) continue;
+    const leadingSpaces = line.match(/^(\s*)/)[1].length;
+    const depth = Math.floor(leadingSpaces / 2);
+    if (depth > 4) {
+      return { valid: false, error: `${filePath}:${i + 1} har indenteringsdjup ${depth} (> 4 nivåer)` };
+    }
+  }
+
+  const branchTokens = content.match(/\b(if|switch|case|\?)\b|(&&|\|\|)/g) || [];
+  if (ext === '.tsx' && branchTokens.length > 5) {
+    return { valid: false, error: `${filePath} har förgreningsgrad ${branchTokens.length} (> 5 villkor)` };
+  }
+
+  return { valid: true, lineCount, branchCount: branchTokens.length };
+}

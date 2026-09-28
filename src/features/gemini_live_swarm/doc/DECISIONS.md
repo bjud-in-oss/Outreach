@@ -117,6 +117,28 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. Visualisera ljudstatus tydligt i `SwarmDashboard.tsx` med möjlighet till manuell override.
 - **Konsekvens**: Fullständig arbetsro under processering, omedelbar auditiv respons vid tilltal, och tydlig muntlig förankring vid kritiska beslutspunkter.
 
+---
+
+## ADR-SWARM-010: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling
+- **Datum**: 2026-09-28
+- **Status**: Beslutat & Implementerat (TCK-012)
+- **Kontext**: Kodbasens UI tenderade att svälla i en monolitisk dashboard och den 4:e enheten fungerade främst som en passiv Token Gate-vakt snarare än en aktiv byggande agent. För att säkra högsta arkitektoniska kvalitet krävdes mekaniska AST-spärrar och en ren Greenfield-modularisering.
+- **Beslut**:
+  1. Skärpa `scripts/verify-architecture.js` och `scripts/drivers/ts.js` med automatiserade AST- och strukturregler:
+     - Filgränser: Max 125 rader för .tsx och max 250 rader för .ts.
+     - Max indenteringsdjup: 4 nivåer.
+     - Max förgreningsgrad: 5 villkor per komponent/funktion.
+  2. Greenfield UI-nybygg under `src/features/gemini_live_swarm/ui/components/` (<125 rader per fil):
+     - `SwarmHeader.tsx`: Arbetssätt "Samordning" och "Stegvis bygge".
+     - `SwarmUnitCard.tsx`: De 4 visningsnamnen och verbanropen (`följa`, `vända`, `förlika`, `bygga`, `bygga ett`, `bygga två`, `bygga tre`).
+     - `SwarmStreamLog.tsx`: Realtids-transkription och fasvisning för "Planera" och "Genomföra".
+     - `SwarmControlPanel.tsx`: Skarp Live API-nyckelbrygga, mute- och interaktionskontroller.
+     - `SwarmDashboard.tsx`: Ren samlingsvy under 100 rader.
+  3. Koppla ihop den 4:e agenten ("Att tjäna Gud och andra: Bygga" / `SERIELL_MOTOR`) som en aktiv agent i `SwarmOrchestrator` som skapar och exekverar leveranskonstruktion i båda arbetssätten.
+  4. Komplettera regressionssviten med `transient_TCK-002.test.ts` och `transient_TCK-012.test.ts` (< 3s i minnet).
+- **Konsekvens**: Fullständig modulär renhet, felfri efterlevnad av fil- och komplexitetsgränser, och en harmoniserad 4-agenters motor med intuitiva verbanrop.
+
+
 
 
 

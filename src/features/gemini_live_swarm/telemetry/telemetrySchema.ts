@@ -81,6 +81,7 @@ export const SwarmTelemetrySnapshotSchema = z.object({
   lastPulseAt: z.string(),
   serialExecution: SerialExecutionMetricSchema.optional(),
   audioOutput: z.lazy(() => AudioOutputStateSchema).optional(),
+  liveSession: z.lazy(() => LiveSessionTelemetrySchema).optional(),
 });
 
 export type SwarmTelemetrySnapshot = z.infer<typeof SwarmTelemetrySnapshotSchema>;
@@ -112,6 +113,14 @@ export const LiveSessionStatusSchema = z.enum([
   'ERROR',
 ]);
 export type LiveSessionStatus = z.infer<typeof LiveSessionStatusSchema>;
+
+export const LiveSessionTelemetrySchema = z.object({
+  status: LiveSessionStatusSchema.default('IDLE'),
+  sessionId: z.string().optional(),
+  lastTranscription: z.string().optional(),
+  connectedAt: z.string().optional(),
+});
+export type LiveSessionTelemetry = z.infer<typeof LiveSessionTelemetrySchema>;
 
 export const LiveStreamChunkSchema = z.object({
   streamId: z.string(),
@@ -152,16 +161,35 @@ export interface InvocationMatch {
 }
 
 /**
- * Deterministisk namndetektor för systemets 4 försoningsenheter (TCK-011)
+ * Deterministisk namndetektor för systemets 4 försoningsenheter (TCK-011 & TCK-012)
  */
 export function detectUnitInvocation(input: string): InvocationMatch | null {
   if (!input) return null;
   const normalized = input.toLowerCase();
 
-  // 1. Att följa Guds son
+  // 4. Att tjäna Gud och andra: Bygga (Röst: bygga, bygga ett, bygga två, bygga tre)
   if (
+    normalized.includes('bygga tre') ||
+    normalized.includes('bygga två') ||
+    normalized.includes('bygga ett') ||
+    normalized.includes('bygga') ||
+    normalized.includes('tjäna') ||
+    normalized.includes('att tjäna') ||
+    normalized.includes('ensam agent') ||
+    normalized.includes('seriell motor') ||
+    normalized.includes('försonas')
+  ) {
+    return {
+      unitId: 'unit-seriell-motor',
+      force: 'SERIELL_MOTOR',
+      matchedPhrase: 'Att tjäna Gud och andra: Bygga',
+    };
+  }
+
+  // 1. Att följa Guds son (Röst: följa)
+  if (
+    normalized.includes('följa') ||
     normalized.includes('att följa') ||
-    normalized.includes('följa sonen') ||
     normalized.includes('guds son') ||
     normalized.includes('sonen')
   ) {
@@ -172,10 +200,10 @@ export function detectUnitInvocation(input: string): InvocationMatch | null {
     };
   }
 
-  // 2. Att vända om till Gud
+  // 2. Att vända om till Gud (Röst: vända)
   if (
-    normalized.includes('att vända om') ||
-    normalized.includes('vända om till gud') ||
+    normalized.includes('vända') ||
+    normalized.includes('att vända') ||
     normalized.includes('vända om')
   ) {
     return {
@@ -185,30 +213,16 @@ export function detectUnitInvocation(input: string): InvocationMatch | null {
     };
   }
 
-  // 3. Att förlikas med Gud
+  // 3. Att förlikas med Gud (Röst: förlika)
   if (
-    normalized.includes('att förlikas') ||
-    normalized.includes('förlikas med gud') ||
+    normalized.includes('förlika') ||
+    normalized.includes('att förlika') ||
     normalized.includes('förlikas')
   ) {
     return {
       unitId: 'unit-att-forlikas',
       force: 'ATT_FORLIKAS',
       matchedPhrase: 'Att förlikas med Gud',
-    };
-  }
-
-  // 4. Att försonas (ensam agent)
-  if (
-    normalized.includes('att försonas') ||
-    normalized.includes('försonas') ||
-    normalized.includes('ensam agent') ||
-    normalized.includes('seriell motor')
-  ) {
-    return {
-      unitId: 'unit-seriell-motor',
-      force: 'SERIELL_MOTOR',
-      matchedPhrase: 'Att försonas (ensam agent)',
     };
   }
 

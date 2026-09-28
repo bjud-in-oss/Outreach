@@ -87,16 +87,16 @@ export const RECONCILIATION_UNITS: Record<ReconciliationForce, ReconciliationUni
   SERIELL_MOTOR: {
     id: 'engine-serial-motor',
     force: 'SERIELL_MOTOR',
-    displayName: 'Att försonas (ensam agent)',
-    name: 'Det Orubbliga Ramverket (Att försonas (ensam agent))',
+    displayName: 'Att tjäna Gud och andra: Bygga',
+    name: 'Konstruktören & Byggaren (Att tjäna Gud och andra: Bygga)',
     role: 'SERIELL_MOTOR',
-    forceTitle: 'Deterministisk ordning & skydd',
-    userBenefit: 'Det orubbliga ramverket som garanterar deterministisk sekvensering och skyddar processen genom Token Gate-spärren.',
-    reachScope: 'Säkerställer full spårbarhet och deterministisk framdrift.',
+    forceTitle: 'Praktisk handling & stegvis bygge',
+    userBenefit: 'Tjänar Gud och medmänniskor genom praktisk handling, konkret leveranskonstruktion och skyddande Token Gate-spärr.',
+    reachScope: 'Omsätter insikter och försoning i konkret byggnation och deterministisk framdrift.',
     avatarColor: 'from-cyan-500 to-blue-600',
     status: 'IDLE',
     reconciliationState: 'DETERMINISTISKT_RAMVERK',
-    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu är det orubbliga ramverket. Du garanterar deterministisk sekvensering (1a -> 1b -> 2e -> 3c), körtidsmetrik och Token Gate-spärr.`,
+    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Att tjäna Gud och andra genom att bygga. Du omsätter omsorg och försoning i praktisk handling, deterministisk konstruktion och säkrad framdrift genom Token Gate.`,
   },
 };
 

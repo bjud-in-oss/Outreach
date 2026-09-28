@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [OPEN] TCK-012 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling | Spec: doc/TICKETS/TCK-012.md
+- Inga aktiva tickets för närvarande (Full mognad uppnådd).
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-012 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling | Spec: doc/TICKETS/TCK-012.md
 - [VERIFIERAD] TCK-011 | Domän: src/features/gemini_live_swarm/ | Mål: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet | Spec: doc/TICKETS/TCK-011.md
 - [VERIFIERAD] TCK-010 | Domän: src/features/gemini_live_swarm/ | Mål: Gemini Live Session Streaming & WebSocket Integration | Spec: doc/TICKETS/TCK-010.md
 - [VERIFIERAD] TCK-003 | Domän: src/features/mcp_bridge/ | Mål: MCP Bridge & Gemini Live Swarm djupintegration | Spec: doc/TICKETS/TCK-003.md

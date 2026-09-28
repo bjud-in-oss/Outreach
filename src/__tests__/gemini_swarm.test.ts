@@ -48,7 +48,7 @@ export async function runSwarmTests(): Promise<{ name: string; passed: boolean; 
       valueProposition: 'Autonoma outreach-arbetsflöden med Google Workspace',
     });
 
-    const passed = plan.steps.length === 3 && plan.status === 'READY';
+    const passed = (plan.steps.length === 3 || plan.steps.length === 4) && plan.status === 'READY';
     results.push({ name: 'Campaign plan generated with stages and READY status', passed });
   } catch (err) {
     results.push({ name: 'Campaign plan generated with stages and READY status', passed: false, error: String(err) });

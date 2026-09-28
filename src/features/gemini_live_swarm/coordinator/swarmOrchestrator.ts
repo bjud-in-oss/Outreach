@@ -39,7 +39,12 @@ export class SwarmOrchestrator {
     this.session = session || new GeminiLiveSession();
     this.mcpBridge = mcpBridge;
     this.units = new Map();
-    const activeForces: ReconciliationForce[] = ['ATT_FOLJA', 'ATT_VANDA_OM', 'ATT_FORLIKAS'];
+    const activeForces: ReconciliationForce[] = [
+      'ATT_FOLJA',
+      'ATT_VANDA_OM',
+      'ATT_FORLIKAS',
+      'SERIELL_MOTOR',
+    ];
     for (const force of activeForces) {
       if (RECONCILIATION_UNITS[force]) {
         this.units.set(force, { ...RECONCILIATION_UNITS[force] });
@@ -60,43 +65,29 @@ export class SwarmOrchestrator {
   }
 
   public getSerialEngine(): ReconciliationUnitConfig {
-    return { ...RECONCILIATION_UNITS.SERIELL_MOTOR };
+    return this.units.get('SERIELL_MOTOR') || { ...RECONCILIATION_UNITS.SERIELL_MOTOR };
   }
 
   public getAllUnits(): ReconciliationUnitConfig[] {
-    return [
-      ...Array.from(this.units.values()),
-      { ...RECONCILIATION_UNITS.SERIELL_MOTOR },
-    ];
+    return Array.from(this.units.values());
   }
 
-  public createCampaignPlan(input: CampaignInput): CampaignPlan {
-    const id = `plan-${Date.now()}`;
-    return {
-      id,
-      input,
-      status: 'READY',
-      steps: [
-        {
-          agentRole: 'ATT_FOLJA',
-          title: 'Att följa Guds son: Behovs- och kontaktpunktsanalys',
-          output: '',
-          status: 'PENDING',
-        },
-        {
-          agentRole: 'ATT_VANDA_OM',
-          title: 'Att vända om till Gud: Etisk självrannsakan & Fail-Fast',
-          output: '',
-          status: 'PENDING',
-        },
-        {
-          agentRole: 'ATT_FORLIKAS',
-          title: 'Att förlikas med Gud: Sammanvävande konsensus & helande',
-          output: '',
-          status: 'PENDING',
-        },
-      ],
-    };
+  public createCampaignPlan(
+    input: CampaignInput,
+    mode: 'SAMORDNING' | 'STEGVIS_BYGGE' = 'SAMORDNING'
+  ): CampaignPlan {
+    const motorTitle = mode === 'STEGVIS_BYGGE'
+      ? 'Att tjäna Gud och andra: Bygga: Stegvis exekvering & fasvalidering'
+      : 'Att tjäna Gud och andra: Bygga: Praktisk leveranskonstruktion';
+
+    const steps: SwarmStep[] = [
+      { agentRole: 'ATT_FOLJA', title: 'Att följa Guds son: Behovs- och kontaktpunktsanalys', output: '', status: 'PENDING' },
+      { agentRole: 'ATT_VANDA_OM', title: 'Att vända om till Gud: Etisk självrannsakan & Fail-Fast', output: '', status: 'PENDING' },
+      { agentRole: 'ATT_FORLIKAS', title: 'Att förlikas med Gud: Sammanvävande konsensus & helande', output: '', status: 'PENDING' },
+      { agentRole: 'SERIELL_MOTOR', title: motorTitle, output: '', status: 'PENDING' },
+    ];
+
+    return { id: `plan-${Date.now()}`, input, steps, status: 'READY' };
   }
 
   public async executeCampaign(
@@ -105,7 +96,6 @@ export class SwarmOrchestrator {
     onEnvelopeGenerated?: (envelope: EventEnvelope) => void
   ): Promise<CampaignPlan> {
     plan.status = 'IN_PROGRESS';
-
     let sharedContext = `Målgrupp: ${plan.input.targetAudience}\nVärdeerbjudande: ${plan.input.valueProposition}\n`;
 
     for (let i = 0; i < plan.steps.length; i++) {
@@ -114,11 +104,8 @@ export class SwarmOrchestrator {
       onStepUpdate?.(step, i);
 
       const unit = this.units.get(step.agentRole);
-      if (unit) {
-        unit.status = 'THINKING';
-      }
+      if (unit) unit.status = 'THINKING';
 
-      // Kör AI / GenAI försoningstur
       const turnResult = await this.session.generateAgentTurn({
         role: step.agentRole,
         systemInstruction: unit?.systemInstruction || '',
@@ -136,40 +123,18 @@ export class SwarmOrchestrator {
       }
 
       sharedContext += `\n--- [Resultat från ${unit?.displayName || step.agentRole}] ---\n${turnResult.content}\n`;
-
-      if (step.agentRole === 'ATT_FOLJA') {
-        plan.finalDraft = turnResult.content;
-        if (this.mcpBridge) {
-          const mcpResult = await this.mcpBridge.executeTool('drive_create_file', {
-            fileName: `Kampanj_${plan.input.title.replace(/\s+/g, '_')}.md`,
-            folder: 'Campaigns',
-            content: turnResult.content,
-          });
-          sharedContext += `\n[MCP Verktygsrespons (drive_create_file)]: Sparad i Google Drive (NON_BLOCKING).\n`;
-          if (mcpResult.envelope) {
-            onEnvelopeGenerated?.(mcpResult.envelope);
-          }
-        }
-      }
-      if (step.agentRole === 'ATT_VANDA_OM') {
-        if (turnResult.score) {
-          plan.consensusScore = turnResult.score;
-        }
-        if (this.mcpBridge) {
-          const evalResult = await this.mcpBridge.executeTool('outreach_evaluate_tone', {
-            draftText: plan.finalDraft || turnResult.content,
-            recipientProfile: plan.input.targetAudience,
-          });
-          sharedContext += `\n[MCP Verktygsrespons (outreach_evaluate_tone)]: Granskning genomförd.\n`;
-          if (evalResult.envelope) {
-            onEnvelopeGenerated?.(evalResult.envelope);
-          }
-        }
-      }
-
+      await this.runMcpStep(step, plan, turnResult, onEnvelopeGenerated);
       onStepUpdate?.(step, i);
 
-      // Skapa CloudEvents envelope
+      const eventData = {
+        planId: plan.id,
+        force: step.agentRole,
+        displayName: unit?.displayName || step.agentRole,
+        title: step.title,
+        summary: step.output.slice(0, 120),
+        score: step.score,
+      };
+
       const envelope: EventEnvelope = {
         id: `evt-step-${i + 1}-${Date.now()}`,
         source: `outreach/swarm/${step.agentRole.toLowerCase()}`,
@@ -177,14 +142,7 @@ export class SwarmOrchestrator {
         specversion: '1.0',
         datacontenttype: 'application/json',
         time: new Date().toISOString(),
-        data: {
-          planId: plan.id,
-          force: step.agentRole,
-          displayName: unit?.displayName || step.agentRole,
-          title: step.title,
-          summary: step.output.slice(0, 120),
-          score: step.score,
-        },
+        data: eventData,
       };
 
       onEnvelopeGenerated?.(envelope);
@@ -192,5 +150,38 @@ export class SwarmOrchestrator {
 
     plan.status = 'COMPLETED';
     return plan;
+  }
+
+  private async runMcpStep(
+    step: SwarmStep,
+    plan: CampaignPlan,
+    turn: { content: string; score?: number },
+    onEnv?: (envelope: EventEnvelope) => void
+  ): Promise<void> {
+    if (!this.mcpBridge) return;
+    if (step.agentRole === 'ATT_FOLJA') {
+      plan.finalDraft = turn.content;
+      const res = await this.mcpBridge.executeTool('drive_create_file', {
+        fileName: `Kampanj_${plan.input.title.replace(/\s+/g, '_')}.md`,
+        folder: 'Campaigns',
+        content: turn.content,
+      });
+      if (res.envelope) onEnv?.(res.envelope);
+    }
+    if (step.agentRole === 'ATT_VANDA_OM') {
+      if (turn.score) plan.consensusScore = turn.score;
+      const res = await this.mcpBridge.executeTool('outreach_evaluate_tone', {
+        draftText: plan.finalDraft || turn.content,
+        recipientProfile: plan.input.targetAudience,
+      });
+      if (res.envelope) onEnv?.(res.envelope);
+    }
+    if (step.agentRole === 'SERIELL_MOTOR') {
+      const res = await this.mcpBridge.executeTool('wal_append_entry', {
+        operation: 'BUILD_DELIVERY_PACKAGE',
+        payload: { planId: plan.id, title: plan.input.title },
+      });
+      if (res.envelope) onEnv?.(res.envelope);
+    }
   }
 }

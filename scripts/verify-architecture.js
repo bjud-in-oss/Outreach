@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { scanTypeScriptFiles, verifyContracts } from './drivers/ts.js';
+import { scanTypeScriptFiles, verifyContracts, checkAstMetrics } from './drivers/ts.js';
 
 const ROOT_DIR = process.cwd();
 const LAST_CYCLE_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
@@ -88,6 +88,29 @@ function runVerification() {
       }
     }
   }
+
+  // 5. AST- och strukturmått (TCK-012)
+  const astCheckTargets = [
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SwarmDashboard.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmHeader.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmUnitCard.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmStreamLog.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmControlPanel.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'coordinator', 'swarmOrchestrator.ts'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'agents', 'roleDefinitions.ts'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'telemetry', 'telemetrySchema.ts'),
+  ];
+
+  astCheckTargets.forEach(target => {
+    if (fs.existsSync(target)) {
+      const content = fs.readFileSync(target, 'utf8');
+      const relPath = path.relative(ROOT_DIR, target);
+      const res = checkAstMetrics(relPath, content);
+      if (!res.valid) {
+        issues.push(`AST/Strukturöverträdelse: ${res.error}`);
+      }
+    }
+  });
 
   // Samla alla TS/TSX-filer för övergripande kontroll
   const tsFiles = scanTypeScriptFiles([path.join(ROOT_DIR, 'src')]);

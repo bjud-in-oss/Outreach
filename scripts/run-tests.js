@@ -13,6 +13,8 @@ import { runTransientTCK009Tests } from '../src/__tests__/transient_TCK-009.test
 import { runTransientTCK003Tests } from '../src/__tests__/transient_TCK-003.test.ts';
 import { runTransientTCK010Tests } from '../src/__tests__/transient_TCK-010.test.ts';
 import { runTransientTCK011Tests } from '../src/__tests__/transient_TCK-011.test.ts';
+import { runTransientTCK002Tests } from '../src/__tests__/transient_TCK-002.test.ts';
+import { runTransientTCK012Tests } from '../src/__tests__/transient_TCK-012.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -36,6 +38,8 @@ async function main() {
     { name: '13. Transient E2E: TCK-003 MCP Bridge & Gemini Live Swarm Djupintegration', runner: async () => runTransientTCK003Tests() },
     { name: '14. Transient E2E: TCK-010 Gemini Live Session Streaming & WebSocket Integration', runner: async () => runTransientTCK010Tests() },
     { name: '15. Transient E2E: TCK-011 Tyst Röstspärr & Namnutlöst Ljudaktivering', runner: async () => runTransientTCK011Tests() },
+    { name: '16. Transient E2E: TCK-002 Swarm Telemetry & Reactive Event Bus', runner: async () => runTransientTCK002Tests() },
+    { name: '17. Transient E2E: TCK-012 AST-Arkitekturspärrar, Greenfield UI & Skarp Agentkoppling', runner: async () => runTransientTCK012Tests() },
   ];
 
   for (const suite of testSuites) {

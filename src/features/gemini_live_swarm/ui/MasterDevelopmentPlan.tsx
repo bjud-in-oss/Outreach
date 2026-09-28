@@ -14,12 +14,29 @@ interface MasterDevelopmentPlanProps {
 }
 
 export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
-  currentReceiptHash = '750a83cd',
+  currentReceiptHash = '444e60b5',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-011');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-012');
 
   const tickets: DevelopmentTicket[] = [
+    {
+      id: 'TCK-012',
+      title: 'AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'Mekaniska AST-spärrar: max 125 rader .tsx, 250 rader .ts, max 4 indenteringsnivåer, max 5 villkor',
+        'Greenfield UI under components/: SwarmHeader, SwarmUnitCard, SwarmStreamLog, SwarmControlPanel',
+        'SwarmDashboard.tsx slimmad till ren samlingsvy under 100 rader',
+        'Värnande av de 4 visningsnamnen och verbanropen (följa, vända, förlika, bygga 1-3)',
+        'Skarp drift av 4:e agenten ("Att tjäna Gud och andra: Bygga") i båda arbetssätten',
+        'Regressionskomplettering med transient_TCK-002 och transient_TCK-012 i e2e_regression.test.ts',
+      ],
+      tokenHash: 'TCK-012-GREENFIELD-UI-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
     {
       id: 'TCK-011',
       title: 'Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet',
