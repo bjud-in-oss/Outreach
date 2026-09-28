@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { scanTypeScriptFiles, verifyContracts, checkAstMetrics } from './drivers/ts.js';
+import { scanTypeScriptFiles, verifyContracts, checkAstMetrics, checkNoProductionMocks } from './drivers/ts.js';
 
 const ROOT_DIR = process.cwd();
 const LAST_CYCLE_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
@@ -112,11 +112,19 @@ function runVerification() {
     }
   });
 
-  // Samla alla TS/TSX-filer för övergripande kontroll
+  // Samla alla TS/TSX-filer för övergripande kontroll och miljöspärr mot mockar
   const tsFiles = scanTypeScriptFiles([path.join(ROOT_DIR, 'src')]);
   tsFiles.forEach(f => {
     const rel = path.relative(ROOT_DIR, f);
     if (!filesChecked.includes(rel)) filesChecked.push(rel);
+
+    if (rel.startsWith(path.join('src', 'features')) || rel.startsWith('src/features/')) {
+      const content = fs.readFileSync(f, 'utf8');
+      const mockCheck = checkNoProductionMocks(rel, content);
+      if (!mockCheck.valid) {
+        issues.push(`Miljöspärr (Förbud mot produktionsmockar): ${mockCheck.error}`);
+      }
+    }
   });
 
   if (!fs.existsSync(LAST_CYCLE_DIR)) {

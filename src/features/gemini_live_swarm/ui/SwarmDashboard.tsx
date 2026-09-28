@@ -50,7 +50,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
         <button onClick={() => setSubView('orchestration')} className={`px-3 py-1 rounded-lg font-semibold ${subView === 'orchestration' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Svärmöversikt</button>
         <button onClick={() => setSubView('plan')} className={`px-3 py-1 rounded-lg font-semibold ${subView === 'plan' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Styrkort & Roadmap</button>
       </div>
-      <span className="text-[11px] font-mono text-emerald-400">SI v10.0 • TCK-012</span>
+      <span className="text-[11px] font-mono text-emerald-400">SI v10.0 • TCK-013</span>
     </div>
   );
 
@@ -62,11 +62,19 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
     </div>
   );
 
+  const diagnosticBanner = snapshot.liveSession?.status === 'HALTED' && (
+    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between">
+      <span>⚠️ Miljöspärr aktiv: GEMINI_API_KEY saknas. Produktionsmockar är blockerade (Fail-Fast). Konfigurera nyckel i Settings &gt; Secrets.</span>
+      <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">HALTED</span>
+    </div>
+  );
+
   const mainArea = subView === 'plan' ? (
-    <MasterDevelopmentPlan currentReceiptHash="444e60b5" />
+    <MasterDevelopmentPlan currentReceiptHash="1ec8772e" />
   ) : (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
       <div className="lg:col-span-8 space-y-5">
+        {diagnosticBanner}
         {unitGrid}
         <SwarmControlPanel audioOutput={snapshot.audioOutput} onToggleMute={toggleManualMute} onSendVoiceVerb={triggerInvocation} onExecuteWork={handleExecute} isExecuting={isExecuting} />
         <SwarmStreamLog currentPhase={currentPhase} transcription={snapshot.liveSession?.lastTranscription} recentEnvelopes={snapshot.recentEnvelopes} onPhaseChange={setCurrentPhase} />

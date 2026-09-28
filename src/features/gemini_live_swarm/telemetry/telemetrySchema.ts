@@ -111,6 +111,7 @@ export const LiveSessionStatusSchema = z.enum([
   'STREAMING',
   'DISCONNECTED',
   'ERROR',
+  'HALTED',
 ]);
 export type LiveSessionStatus = z.infer<typeof LiveSessionStatusSchema>;
 

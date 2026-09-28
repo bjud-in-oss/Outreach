@@ -163,19 +163,19 @@ export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, cl
             <div className="text-[9px] text-slate-400">Hålla 2+ samtida perspektiv varma (ATT FÖRLIKAS)</div>
           </div>
           <div className="p-2 bg-slate-950/60 border border-cyan-500/20 rounded-lg">
-            <div className="font-semibold text-cyan-300">Att försonas (ensam agent)</div>
+            <div className="font-semibold text-cyan-300">{RECONCILIATION_UNITS.SERIELL_MOTOR.displayName}</div>
             <div className="text-[9px] text-slate-400">Deterministisk ordning & skydd (SERIELL MOTOR)</div>
           </div>
         </div>
       </div>
 
-      {/* Seriell Exekvering / Att försonas (ensam agent) */}
+      {/* Seriell Exekvering / Att tjäna Gud och andra: Bygga */}
       <div className="p-2.5 bg-slate-950/80 border border-cyan-500/30 rounded-lg space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1.5">
             <Workflow className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[11px] font-bold text-slate-200 uppercase tracking-wide">
-              Seriell Exekvering • Att försonas (ensam agent)
+              Seriell Exekvering • {RECONCILIATION_UNITS.SERIELL_MOTOR.displayName}
             </span>
           </div>
           {snapshot.serialExecution?.isTokenGated && (

@@ -85,3 +85,36 @@ export function checkAstMetrics(filePath, content) {
 
   return { valid: true, lineCount, branchCount: branchTokens.length };
 }
+
+/**
+ * Kontrollerar att källkod under src/features/ inte innehåller tysta produktionsmockar (TCK-013)
+ */
+export function checkNoProductionMocks(filePath, content) {
+  const normalized = filePath.replace(/\\/g, '/');
+  if (normalized.includes('__tests__') || !normalized.includes('src/features/')) {
+    return { valid: true };
+  }
+
+  const forbiddenPatterns = [
+    { pattern: /\bisTestMode\b/, name: 'isTestMode' },
+    { pattern: /\bgenerateDeterministicFallback\b/, name: 'generateDeterministicFallback' },
+    { pattern: /['"]mock-folder-/, name: 'mock-folder' },
+    { pattern: /['"]mock-file-/, name: 'mock-file' },
+  ];
+
+  const lines = content.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const rule of forbiddenPatterns) {
+      if (rule.pattern.test(line)) {
+        return {
+          valid: false,
+          error: `${filePath}:${i + 1} innehåller otillåten produktionsmock (${rule.name})`,
+        };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+

@@ -114,8 +114,16 @@ export async function runTransientTCK003Tests(): Promise<{ name: string; passed:
   try {
     const bus = new SwarmEventBus();
     const bridge = new McpSwarmBridge(createUnifiedMcpServer(), bus);
-    const session = new GeminiLiveSession('in-memory-test');
-    const orchestrator = new SwarmOrchestrator(session, bridge);
+    const mockSession = {
+      getLiveStatus: () => 'IDLE',
+      generateAgentTurn: async (p: any) => ({
+        agentRole: p.role,
+        thought: 'Testanalys',
+        content: `Kampanjutkast för ${p.role}: Målgrupp och strategi.`,
+        score: 9.5,
+      }),
+    } as unknown as GeminiLiveSession;
+    const orchestrator = new SwarmOrchestrator(mockSession, bridge);
 
     assert(orchestrator.getMcpBridge() === bridge, 'McpBridge är inte korrekt kopplad till orkestratorn');
 

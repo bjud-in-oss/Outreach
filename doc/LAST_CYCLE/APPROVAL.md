@@ -1,24 +1,7 @@
-# APPROVAL TCK-012
+# APPROVAL (TCK-013)
 
-- **Ticket**: TCK-012
-- **Titel**: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling
-- **Godkännandekod**: TCK-012-GREENFIELD-UI-TOKEN
-- **Tidstämpel**: 2026-09-28T18:25:00Z
-- **Godkänd av användaren**: JA
-- **Status**: Fas 2 initierad
-
-## Historiska Godkända Tokens (Regressionsstabilitet)
-- OUTREACH-COORD-TCK001-TOKEN
-- SWARM-TELEMETRY-TCK002-TOKEN
-- WAYFINDER-README-TCK004-TOKEN
-- TCK-005-DECISIONS-STD-TOKEN
-- TCK-005-DECISIONS-TOKEN
-- TCK-006-SERIELL-MOTOR-TOKEN
-- TCK-006-AGENT-KRAFTER-TOKEN
-- TCK-007-UI-SERIELL-MOTOR-TOKEN
-- TCK-007-UI-DASHBOARD-TOKEN
-- TCK-008-FORSONINGSKRAFTER-TOKEN
-- TCK-009-FORSONINGSKRAFTER-REFACTOR-TOKEN
-- TCK-010-LIVE-STREAMING-TOKEN
-- TCK-011-SILENT-VOICE-TOKEN
-
+- **Godkänd Token**: `TCK-013-AUTONOM-HANDOFF-TOKEN`
+- **Godkänd av**: Produktägare via chatt
+- **Godkänd vid**: 2026-09-28T20:14:33Z
+- **Ticket**: TCK-013 (AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet)
+- **Status**: Godkänd för Fas 2 Källkodsändringar

@@ -79,8 +79,7 @@ export class GoogleDriveClient {
    */
   public async ensureFolder(name: string, parentId?: string): Promise<string> {
     if (!this.hasValidToken()) {
-      // Mock-retur för utvecklings- och testsyften om token inte är injicerad
-      return `mock-folder-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+      throw new Error('Google Drive autentisering krävs: Ingen aktiv access token i minnet');
     }
 
     try {
@@ -149,13 +148,7 @@ export class GoogleDriveClient {
     const mimeType = params.mimeType || this.resolveMimeType(params.name);
 
     if (!this.hasValidToken()) {
-      return {
-        id: `mock-file-${Date.now()}`,
-        name: params.name,
-        mimeType,
-        createdTime: new Date().toISOString(),
-        modifiedTime: new Date().toISOString(),
-      };
+      throw new Error('Google Drive autentisering krävs: Ingen aktiv access token i minnet');
     }
 
     const metadata = {
@@ -198,7 +191,7 @@ export class GoogleDriveClient {
    */
   public async listFolderFiles(folderId: string): Promise<DriveFileMetadata[]> {
     if (!this.hasValidToken()) {
-      return [];
+      throw new Error('Google Drive autentisering krävs: Ingen aktiv access token i minnet');
     }
 
     const query = `'${folderId}' in parents and trashed = false`;

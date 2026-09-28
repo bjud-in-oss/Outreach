@@ -15,6 +15,7 @@ import { runTransientTCK010Tests } from '../src/__tests__/transient_TCK-010.test
 import { runTransientTCK011Tests } from '../src/__tests__/transient_TCK-011.test.ts';
 import { runTransientTCK002Tests } from '../src/__tests__/transient_TCK-002.test.ts';
 import { runTransientTCK012Tests } from '../src/__tests__/transient_TCK-012.test.ts';
+import { runTransientTCK013Tests } from '../src/__tests__/transient_TCK-013.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');

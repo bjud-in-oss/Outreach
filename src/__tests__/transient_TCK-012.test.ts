@@ -100,7 +100,16 @@ export async function runTransientTCK012Tests(): Promise<{ name: string; passed:
 
   // Test 3: Skarp koppling av 4:e agenten i SwarmOrchestrator i båda arbetssätten
   try {
-    const orchestrator = new SwarmOrchestrator(new GeminiLiveSession('in-memory-test'));
+    const mockSession = {
+      getLiveStatus: () => 'IDLE',
+      generateAgentTurn: async (p: any) => ({
+        agentRole: p.role,
+        thought: 'Testanalys',
+        content: `Analys och leveranskonstruktion för ${p.role}`,
+        score: 9.5,
+      }),
+    } as unknown as GeminiLiveSession;
+    const orchestrator = new SwarmOrchestrator(mockSession);
     const allUnits = orchestrator.getAllUnits();
     assert(allUnits.length === 4, `Förväntade 4 enheter, fick ${allUnits.length}`);
 

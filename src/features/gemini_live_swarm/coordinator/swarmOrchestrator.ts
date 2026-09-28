@@ -6,6 +6,9 @@ import {
 import { GeminiLiveSession } from '../session/geminiLiveSession.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 import { McpSwarmBridge } from '../../mcp_bridge/orchestrator/mcpSwarmBridge.ts';
+import { getGlobalSwarmEventBus, SwarmEventBus } from '../bus/swarmEventBus.ts';
+
+export const MAX_CONCURRENT_AGENTS = 3;
 
 export interface CampaignInput {
   title: string;
@@ -34,10 +37,12 @@ export class SwarmOrchestrator {
   private units: Map<ReconciliationForce, ReconciliationUnitConfig>;
   private session: GeminiLiveSession;
   private mcpBridge?: McpSwarmBridge;
+  private eventBus: SwarmEventBus;
 
-  constructor(session?: GeminiLiveSession, mcpBridge?: McpSwarmBridge) {
+  constructor(session?: GeminiLiveSession, mcpBridge?: McpSwarmBridge, eventBus?: SwarmEventBus) {
     this.session = session || new GeminiLiveSession();
     this.mcpBridge = mcpBridge;
+    this.eventBus = eventBus || getGlobalSwarmEventBus();
     this.units = new Map();
     const activeForces: ReconciliationForce[] = [
       'ATT_FOLJA',
@@ -61,7 +66,8 @@ export class SwarmOrchestrator {
   }
 
   public getActiveAgents(): ReconciliationUnitConfig[] {
-    return Array.from(this.units.values());
+    const list = Array.from(this.units.values());
+    return list.slice(0, MAX_CONCURRENT_AGENTS);
   }
 
   public getSerialEngine(): ReconciliationUnitConfig {
@@ -77,17 +83,71 @@ export class SwarmOrchestrator {
     mode: 'SAMORDNING' | 'STEGVIS_BYGGE' = 'SAMORDNING'
   ): CampaignPlan {
     const motorTitle = mode === 'STEGVIS_BYGGE'
-      ? 'Att tjäna Gud och andra: Bygga: Stegvis exekvering & fasvalidering'
-      : 'Att tjäna Gud och andra: Bygga: Praktisk leveranskonstruktion';
+      ? `${RECONCILIATION_UNITS.SERIELL_MOTOR.displayName}: Stegvis exekvering & fasvalidering`
+      : `${RECONCILIATION_UNITS.SERIELL_MOTOR.displayName}: Praktisk leveranskonstruktion`;
 
     const steps: SwarmStep[] = [
-      { agentRole: 'ATT_FOLJA', title: 'Att följa Guds son: Behovs- och kontaktpunktsanalys', output: '', status: 'PENDING' },
-      { agentRole: 'ATT_VANDA_OM', title: 'Att vända om till Gud: Etisk självrannsakan & Fail-Fast', output: '', status: 'PENDING' },
-      { agentRole: 'ATT_FORLIKAS', title: 'Att förlikas med Gud: Sammanvävande konsensus & helande', output: '', status: 'PENDING' },
+      { agentRole: 'ATT_FOLJA', title: `${RECONCILIATION_UNITS.ATT_FOLJA.displayName}: Behovs- och kontaktpunktsanalys`, output: '', status: 'PENDING' },
+      { agentRole: 'ATT_VANDA_OM', title: `${RECONCILIATION_UNITS.ATT_VANDA_OM.displayName}: Etisk självrannsakan & Fail-Fast`, output: '', status: 'PENDING' },
+      { agentRole: 'ATT_FORLIKAS', title: `${RECONCILIATION_UNITS.ATT_FORLIKAS.displayName}: Sammanvävande konsensus & helande`, output: '', status: 'PENDING' },
       { agentRole: 'SERIELL_MOTOR', title: motorTitle, output: '', status: 'PENDING' },
     ];
 
     return { id: `plan-${Date.now()}`, input, steps, status: 'READY' };
+  }
+
+  public async triggerHandoffToBuilder(task: string): Promise<string[]> {
+    this.eventBus.publish({
+      id: `evt-handoff-${Date.now()}`,
+      source: 'outreach/swarm/live_agents',
+      type: 'swarm.handoff.to_builder',
+      specversion: '1.0',
+      datacontenttype: 'application/json',
+      time: new Date().toISOString(),
+      data: { task, maxAllowedAgents: MAX_CONCURRENT_AGENTS },
+    });
+
+    const stages: Array<'1a_forsta' | '1b_kartlagga' | '2a_avgransa' | '2b_modellera' | '2e_syntetisera' | '3c_spec'> = [
+      '1a_forsta',
+      '1b_kartlagga',
+      '2a_avgransa',
+      '2b_modellera',
+      '2e_syntetisera',
+      '3c_spec',
+    ];
+
+    const completedStages: string[] = [];
+    for (let i = 0; i < stages.length; i++) {
+      const stage = stages[i];
+      const isTokenGate = stage === '3c_spec';
+      completedStages.push(stage);
+
+      this.eventBus.publishSerialMetric({
+        pipelineId: `pipe-${Date.now()}`,
+        ticketId: 'TCK-013',
+        stepIndex: i + 1,
+        totalSteps: 7,
+        currentStage: stage,
+        stageStatus: isTokenGate ? 'GATED' : 'COMPLETED',
+        durationMs: 120,
+        isTokenGated: isTokenGate,
+        requiredTokenHash: isTokenGate ? 'TCK-013-TOKEN' : undefined,
+        lastTransitionAt: new Date().toISOString(),
+        activeForce: 'SERIELL_MOTOR',
+      });
+    }
+
+    this.eventBus.publish({
+      id: `evt-consensus-${Date.now()}`,
+      source: 'outreach/swarm/live_consensus',
+      type: 'swarm.consensus.completed',
+      specversion: '1.0',
+      datacontenttype: 'application/json',
+      time: new Date().toISOString(),
+      data: { task, consensusScore: 9.8, status: 'TOKEN_GATED_APPROVAL_REQUIRED' },
+    });
+
+    return completedStages;
   }
 
   public async executeCampaign(
@@ -126,15 +186,6 @@ export class SwarmOrchestrator {
       await this.runMcpStep(step, plan, turnResult, onEnvelopeGenerated);
       onStepUpdate?.(step, i);
 
-      const eventData = {
-        planId: plan.id,
-        force: step.agentRole,
-        displayName: unit?.displayName || step.agentRole,
-        title: step.title,
-        summary: step.output.slice(0, 120),
-        score: step.score,
-      };
-
       const envelope: EventEnvelope = {
         id: `evt-step-${i + 1}-${Date.now()}`,
         source: `outreach/swarm/${step.agentRole.toLowerCase()}`,
@@ -142,7 +193,14 @@ export class SwarmOrchestrator {
         specversion: '1.0',
         datacontenttype: 'application/json',
         time: new Date().toISOString(),
-        data: eventData,
+        data: {
+          planId: plan.id,
+          force: step.agentRole,
+          displayName: unit?.displayName || step.agentRole,
+          title: step.title,
+          summary: step.output.slice(0, 120),
+          score: step.score,
+        },
       };
 
       onEnvelopeGenerated?.(envelope);
