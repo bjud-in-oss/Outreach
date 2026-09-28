@@ -1,21 +1,24 @@
-# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-012)
+# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-013)
 
 ## 1. Målkonflikter & Lösningar
 
-1. **Konflikt mellan kodmassa och funktionalitet i UI**:
-   - *Problem*: Att ha en monolitisk dashboard skapar svåröverskådlig kod och gör underhåll riskfyllt.
-   - *Lösning*: Greenfield-modularisering i `ui/components/` (<125 rader per fil) och en samlande `SwarmDashboard.tsx` under 100 rader.
+1. **Konflikt mellan bekväma tysta mockar och arkitektonisk integritet**:
+   - *Problem*: Att ha inbyggda fejkgenereringar (`isTestMode = true`, `generateDeterministicFallback`) i produktionskoden ger falsk trygghet och döljer saknade nycklar eller trasiga nätverkskopplingar.
+   - *Lösning*: Strikt AST-kontroll som förbjuder produktionsmockar i `src/features/`. Klienterna sätter tillståndet omedelbart till `HALTED`/`UNAUTHENTICATED` (Fail-Fast), och användargränssnittet visar en tydlig diagnostikpanel som vägleder användaren till AI Studio Secrets.
 
-2. **Konflikt mellan 4:e agentens passiva övervakning och aktiv exekvering**:
-   - *Problem*: Om 4:e agenten bara är en passiv Token Gate-vakt nyttjas inte dess kraft för praktisk handling och konkret bygge.
-   - *Lösning*: `SERIELL_MOTOR` integreras som ett fullvärdigt fjärde steg ("Att tjäna Gud och andra: Bygga") i kampanjplanen och som motor i stegvis bygge.
+2. **Konflikt mellan autonom handoff-slinga och skyddande Token Gate**:
+   - *Problem*: Om motorn är helt autonom riskerar källkodsmodifieringar att utföras oövervakat. Om motorn kräver manuella klick för varje enskild fas (1a, 1b, osv.) hämmas utvecklingstempot i onödan.
+   - *Lösning*: Bygga-agenten ("Att tjäna Gud och andra: Bygga") är autonom genom Fas 1 (1a -> 1b -> 2a -> 2b -> 2e -> 3c). Vid Steg 3c aktiveras Token Gate, Bygga-agenten pausas och Live-agenterna utför reaktiv konsensusgranskning. Motorn stannar och inväntar produktägarens godkännandekod innan källkoden under `src/` rörs.
 
-3. **Konflikt mellan strikta AST-mått och flexibilitet**:
-   - *Problem*: Strikt kontroll av radantal (<=125 .tsx, <=250 .ts), djup (<=4) och förgreningar (<=5) kan kräva disciplin.
-   - *Lösning*: Komponenterna designas atomärt och funktionsorienterat från första raden, vilket höjer kodkvaliteten markant och eliminerar "code bloat".
+3. **Konflikt mellan svärmens 4 enheter och kapacitetsgränsen på max 3 agenter**:
+   - *Problem*: Hur harmoniseras 4 försoningsenheter med regeln om max 3 samtidiga aktiva agenter?
+   - *Lösning*: Enheterna samkörs i två distinkta moduler:
+     - I Samrådsläget körs de tre Live-agenterna (`ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS`) = 3 agenter.
+     - I Byggläget pausas Live-agenterna och `SERIELL_MOTOR` körs ensam = 1 agent.
+     - Detta garanterar att det aldrig körs fler än 3 agenter samtidigt.
 
 ---
 
 ## 2. Mättnadsförklaring
 - **MÄTTNAD: JA**
-- Samtliga målkonflikter är lösta. Arkitekturregler, Greenfield-struktur, skarp agentkoppling och regressionssvit är fullt specificerade inför Fas 2.
+- Samtliga målkonflikter är lösta. AST-miljöspärr mot mockar, 100% UI-namnharmonisering, kapacitetsspärr på max 3 agenter, autonom handoff-slinga med konsensus vid 3c och transient E2E-test är fullt specificerade inför Fas 2.

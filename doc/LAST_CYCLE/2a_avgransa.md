@@ -1,13 +1,13 @@
-# 2a Avgränsa: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling (TCK-012)
+# 2a Avgränsa: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet (TCK-013)
 
 ## 1. Avgränsningsmatris
 
-| Område | Ingår i TCK-012 | Ingår INTE (Avgränsat) | Motivering |
+| Område | Ingår i TCK-013 | Ingår INTE (Avgränsat) | Motivering |
 | :--- | :--- | :--- | :--- |
-| **Domän** | `src/features/gemini_live_swarm/` | Övriga domäner (`google_drive_sync`, `wal_logger`, `mcp_bridge`) | TCK-012 fokuserar på gränssnittet, AST-spärrarna och svärmens 4 agenter. |
-| **AST-kontroll** | Radantal (<=125 .tsx, <=250 .ts), indenteringsdjup (<=4), förgreningsgrad (<=5) | Extern linters ersättning | Verifieringsskriptet säkrar projektets specifika arkitekturregler snabbt (< 50 ms). |
-| **UI-arkitektur** | Greenfield-komponenter under `ui/components/` samt slimmad `SwarmDashboard.tsx` (<100 rader) | Grafiska bibliotek som ökar bundle-storlek i onödan | Atomära komponenter med Tailwind CSS och Lucide-ikoner. |
-| **Agentdrift** | Samtliga 4 enheter inklusive "Att tjäna Gud och andra: Bygga" drivs som aktiva agenter i båda arbetssätten | Införande av en 5:e eller fler agenter | Systemets 4 krafter och enheter är fullständiga. |
-| **Live API-nyckelbrygga** | Säker anslutningshantering utan UI för API-nycklar | Input-fält för API-nycklar i webbgränssnittet | Systemreglerna förbjuder API-nycklar i användargränssnittet; använd proxyn `/api/*` eller servermiljö. |
-| **Tester** | Transienta in-memory tester `transient_TCK-002` och `transient_TCK-012` | Långsamma nätverkstester | Snabb återkoppling under 3 sekunder i minnet. |
-| **Token Gate** | Fas 1-stopp vid Steg 3c tills godkännandekod ges | Ändringar i `src/` under Fas 1 | Absolut spärr för att skydda källkodens stabilitet. |
+| **Miljöspärr mot mockar** | AST-kontroll i `scripts/` som förbjuder tysta mockar i `src/features/` samt `HALTED`/`UNAUTHENTICATED`-lägen | Förbud mot mockar i `src/__tests__/` | Transienta tester (< 3s) måste kunna köra med isolerade in-memory-fixturer och testdubblar. |
+| **Kapacitetsspärr** | Begränsning till max 3 samtidiga aktiva agenter i `SwarmOrchestrator` | Godtyckligt antal bakgrundsprocesser utan kontroll | Deterministisk exekvering och förutsägbar resursanvändning. |
+| **Handoff & Autonomi** | Autonom stegning 1a -> 3c i Bygga-agenten och konsensusgranskning hos Live-agenter vid Token Gate | Helt oövervakad Fas 2-exekvering utan Token Gate | Mänsklig kontroll och produktägarens godkännandekod (Token Gate) vid Steg 3c är absolut obligatorisk. |
+| **UI-namnharmonisering** | Dynamisk uppslagning av `unit.displayName` i samtliga vyer | Hårdkodade strängar i individuella komponenter | En enda sanningskälla (`roleDefinitions.ts`) eliminerar begreppsförvirring. |
+| **Diagnostikpanel** | Tydlig pedagogisk varning i UI vid saknad nyckel/token | Inmatningsfält för API-nycklar i användargränssnittet | Systemreglerna förbjuder strikt API-nyckelhantering i frontend; Settings > Secrets gäller. |
+| **Testsvit** | Transient mikro-E2E `transient_TCK-013.test.ts` (< 3s i minnet) | Långsamma nätverkstester mot externa molnresurser | Snabb återkoppling och deterministisk CI/CD-pipeline. |
+| **Token Gate** | Fas 1-stopp vid Steg 3c i väntan på godkännandekod | Ändringar i `src/` under Fas 1 | Rör ingen källkod under `src/` innan `pnpm genomfor [REQUIRED_TOKEN]` körs. |

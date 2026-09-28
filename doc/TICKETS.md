@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- Inga aktiva tickets för närvarande (Full mognad uppnådd).
+- [AKTIV] TCK-013 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet | Spec: doc/TICKETS/TCK-013.md
 
 ---
 
