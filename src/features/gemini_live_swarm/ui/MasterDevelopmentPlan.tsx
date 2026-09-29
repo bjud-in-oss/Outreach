@@ -14,12 +14,28 @@ interface MasterDevelopmentPlanProps {
 }
 
 export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
-  currentReceiptHash = '698a4167',
+  currentReceiptHash = 'a258f92a',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-013');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-014');
 
   const tickets: DevelopmentTicket[] = [
+    {
+      id: 'TCK-014',
+      title: 'Åtgärda React Render-State Krock & Röstspår Telemetrisynk',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'Eliminering av setState-anrop och sidoeffekter under render och inuti state updaters',
+        'Separerad eventbusspublicering utanför React reducers och rendercykler',
+        'Stöd för direkt snapshot-prop i TelemetrySidebar.tsx för att eliminera dubbla prenumerationer',
+        'Asynkron händelsesynk och stabil audioOutputRef för röstspår och Token Gate',
+        'Transient mikro-E2E-verifiering i transient_TCK-014.test.ts och regressionssviten',
+      ],
+      tokenHash: 'TCK-014-REACT-STATE-SYNC-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
     {
       id: 'TCK-013',
       title: 'AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet',

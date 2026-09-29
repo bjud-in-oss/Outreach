@@ -11,14 +11,21 @@ import {
 import { useSwarmTelemetry } from '../telemetry/useSwarmTelemetry.ts';
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 import { ReconciliationForce, RECONCILIATION_UNITS } from '../agents/roleDefinitions.ts';
+import { SwarmTelemetrySnapshot } from '../telemetry/telemetrySchema.ts';
 
-interface TelemetrySidebarProps {
+export interface TelemetrySidebarProps {
   eventBus?: SwarmEventBus;
+  snapshot?: SwarmTelemetrySnapshot;
   className?: string;
 }
 
-export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({ eventBus, className = '' }) => {
-  const { snapshot } = useSwarmTelemetry(eventBus);
+export const TelemetrySidebar: React.FC<TelemetrySidebarProps> = ({
+  eventBus,
+  snapshot: propSnapshot,
+  className = '',
+}) => {
+  const { snapshot: hookSnapshot } = useSwarmTelemetry(propSnapshot ? null : eventBus);
+  const snapshot = propSnapshot || hookSnapshot;
   const [filterType, setFilterType] = useState<string>('all');
 
   const filteredEnvelopes = snapshot.recentEnvelopes.filter((env) => {

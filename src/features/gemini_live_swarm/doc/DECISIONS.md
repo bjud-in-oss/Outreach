@@ -152,6 +152,19 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   5. Autonom handoff-slinga: Bygga-agenten stegar sig själv från fas 1a till 3c via `SwarmEventBus`, varpå Live-agenterna återaktiveras för reaktiv konsensusgranskning vid Token Gate (3c).
 - **Konsekvens**: Kompromisslös arkitektonisk ärlighet, tydlig användardiagnostik och deterministisk autonom orkestrering.
 
+---
+
+## ADR-SWARM-012: Enkelriktad Telemetrisynk & Eliminering av setState under Render
+- **Datum**: 2026-09-29
+- **Status**: Beslutat & Implementerat (TCK-014)
+- **Kontext**: Anrop till händelsebussen (`bus.publishAudioState`) inuti React-tillståndsuppdaterare (`setSnapshot(prev => ...)`) eller mitt under rendering ledde till synkrona krockar, renderkaskader och potentiella tävlingstillstånd mellan `SwarmDashboard` och `TelemetrySidebar`.
+- **Beslut**:
+  1. Separera buss-publicering från React-reductions: Händelsebussanrop exekveras asynkront och utanför `setSnapshot`. En intern `audioOutputRef` håller senaste ljudstatus synkroniserad oberoende av React-renderschemaläggning.
+  2. Direkt snapshot-prop i `TelemetrySidebar`: `TelemetrySidebar` accepterar valfri `snapshot`-prop från föräldern. Vid överlämnad snapshot inaktiveras den interna hook-prenumerationen (`eventBus === null`), vilket eliminerar dubbla prenumerationer och parallella omrenderingar.
+  3. Ren reducering: `setSnapshot` förblir en ren funktion utan sidoeffekter (`reduceSnapshot`) och utan fördröjda timers (`setTimeout`).
+- **Konsekvens**: Stabil och deterministisk enkelriktad telemetrisynk, noll krockar i renderslingan och bibehållen omedelbar respons vid röstspårsaktivering och Token Gate.
+
+
 
 
 

@@ -16,6 +16,7 @@ import { runTransientTCK011Tests } from '../src/__tests__/transient_TCK-011.test
 import { runTransientTCK002Tests } from '../src/__tests__/transient_TCK-002.test.ts';
 import { runTransientTCK012Tests } from '../src/__tests__/transient_TCK-012.test.ts';
 import { runTransientTCK013Tests } from '../src/__tests__/transient_TCK-013.test.ts';
+import { runTransientTCK014Tests } from '../src/__tests__/transient_TCK-014.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -42,6 +43,7 @@ async function main() {
     { name: '16. Transient E2E: TCK-002 Swarm Telemetry & Reactive Event Bus', runner: async () => runTransientTCK002Tests() },
     { name: '17. Transient E2E: TCK-012 AST-Arkitekturspärrar, Greenfield UI & Skarp Agentkoppling', runner: async () => runTransientTCK012Tests() },
     { name: '18. Transient E2E: TCK-013 AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter', runner: async () => runTransientTCK013Tests() },
+    { name: '19. Transient E2E: TCK-014 Åtgärda React Render-State Krock & Röstspår Telemetrisynk', runner: async () => runTransientTCK014Tests() },
   ];
 
   for (const suite of testSuites) {

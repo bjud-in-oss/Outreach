@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [AKTIV] TCK-014 | Domän: src/features/gemini_live_swarm/ | Mål: Åtgärda React Render-State Krock & Röstspår Telemetrisynk | Spec: doc/TICKETS/TCK-014.md
+- Inga aktiva tickets för närvarande (Full mognad uppnådd).
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-014 | Domän: src/features/gemini_live_swarm/ | Mål: Åtgärda React Render-State Krock & Röstspår Telemetrisynk | Spec: doc/TICKETS/TCK-014.md
 - [VERIFIERAD] TCK-013 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet | Spec: doc/TICKETS/TCK-013.md
 - [VERIFIERAD] TCK-012 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling | Spec: doc/TICKETS/TCK-012.md
 - [VERIFIERAD] TCK-011 | Domän: src/features/gemini_live_swarm/ | Mål: Tyst Röstspärr & Namnutlöst Ljudaktivering i Live-gränssnittet | Spec: doc/TICKETS/TCK-011.md

@@ -21,7 +21,7 @@ export const SwarmHeader: React.FC<SwarmHeaderProps> = ({
         <Compass className="w-6 h-6 animate-spin-slow" />
       </div>
       <div className="space-y-1">
-        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">Outreach Coordination Engine <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-normal">SI v10.0 • TCK-013</span></h1>
+        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">Outreach Coordination Engine <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-normal">SI v10.0 • TCK-014</span></h1>
         <p className="text-xs text-slate-400">Kompass: Närhet till Guds son genom tre vägar till försoning och praktiskt bygge.</p>
       </div>
     </div>
