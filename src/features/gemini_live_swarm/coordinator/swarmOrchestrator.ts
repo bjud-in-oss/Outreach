@@ -186,6 +186,15 @@ export class SwarmOrchestrator {
       await this.runMcpStep(step, plan, turnResult, onEnvelopeGenerated);
       onStepUpdate?.(step, i);
 
+      const eventData = {
+        planId: plan.id,
+        force: step.agentRole,
+        displayName: unit?.displayName || step.agentRole,
+        title: step.title,
+        summary: step.output.slice(0, 120),
+        score: step.score,
+      };
+
       const envelope: EventEnvelope = {
         id: `evt-step-${i + 1}-${Date.now()}`,
         source: `outreach/swarm/${step.agentRole.toLowerCase()}`,
@@ -193,14 +202,7 @@ export class SwarmOrchestrator {
         specversion: '1.0',
         datacontenttype: 'application/json',
         time: new Date().toISOString(),
-        data: {
-          planId: plan.id,
-          force: step.agentRole,
-          displayName: unit?.displayName || step.agentRole,
-          title: step.title,
-          summary: step.output.slice(0, 120),
-          score: step.score,
-        },
+        data: eventData,
       };
 
       onEnvelopeGenerated?.(envelope);

@@ -43,19 +43,19 @@ export const SwarmHeader: React.FC<SwarmHeaderProps> = ({
   const pathGrid = (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
       <div className="p-2 rounded bg-slate-950/60 border border-blue-500/20">
-        <span className="font-semibold text-blue-300">1. {RECONCILIATION_UNITS.ATT_FOLJA.displayName}: </span>
+        <span className="font-semibold text-blue-300">1. Att följa: {RECONCILIATION_UNITS.ATT_FOLJA.displayName} </span>
         <span className="text-[10px] text-slate-400">Själv vara närheten.</span>
       </div>
       <div className="p-2 rounded bg-slate-950/60 border border-amber-500/20">
-        <span className="font-semibold text-amber-300">2. {RECONCILIATION_UNITS.ATT_VANDA_OM.displayName}: </span>
+        <span className="font-semibold text-amber-300">2. Att vända om: {RECONCILIATION_UNITS.ATT_VANDA_OM.displayName} </span>
         <span className="text-[10px] text-slate-400">Inåtriktad Fail-Fast.</span>
       </div>
       <div className="p-2 rounded bg-slate-950/60 border border-purple-500/20">
-        <span className="font-semibold text-purple-300">3. {RECONCILIATION_UNITS.ATT_FORLIKAS.displayName}: </span>
+        <span className="font-semibold text-purple-300">3. Att förlikas: {RECONCILIATION_UNITS.ATT_FORLIKAS.displayName} </span>
         <span className="text-[10px] text-slate-400">2+ perspektiv varma.</span>
       </div>
       <div className="p-2 rounded bg-slate-950/60 border border-cyan-500/20">
-        <span className="font-semibold text-cyan-300">4. {RECONCILIATION_UNITS.SERIELL_MOTOR.displayName}: </span>
+        <span className="font-semibold text-cyan-300">4. Att tjäna: {RECONCILIATION_UNITS.SERIELL_MOTOR.displayName} </span>
         <span className="text-[10px] text-slate-400">Praktiskt bygge.</span>
       </div>
     </div>

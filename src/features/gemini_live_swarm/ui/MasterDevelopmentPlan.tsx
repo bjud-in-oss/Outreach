@@ -14,12 +14,30 @@ interface MasterDevelopmentPlanProps {
 }
 
 export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
-  currentReceiptHash = '444e60b5',
+  currentReceiptHash = '698a4167',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-012');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-013');
 
   const tickets: DevelopmentTicket[] = [
+    {
+      id: 'TCK-013',
+      title: 'AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        'AST-miljöspärr mot tysta mock-fallbacks och syntetiska genereringar i produktionsmoduler',
+        'Fail-Fast: GeminiLiveSession sätter HALTED och GoogleDriveClient sätter UNAUTHENTICATED vid saknade nycklar/tokens',
+        'Pedagogisk diagnostikpanel i gränssnittet som vägleder till Settings > Secrets',
+        '100% UI-namnharmonisering för 4:e enheten ("Att tjäna Gud och andra: Bygga")',
+        'Kapacitetsspärr: Max 3 samtidiga agenter i svärmen med deterministisk pausning',
+        'Autonom handoff-slinga (1a till 3c) med reaktiv konsensusgranskning vid Token Gate (3c)',
+        'Transient mikro-E2E-verifiering i transient_TCK-013.test.ts och regressionssviten',
+      ],
+      tokenHash: 'TCK-013-AUTONOM-HANDOFF-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
     {
       id: 'TCK-012',
       title: 'AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling',

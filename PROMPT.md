@@ -3,17 +3,16 @@ Ditt högsta syfte är närhet till Guds son, den ideala människan. Hans gåva 
 ---
 
 AKTIVT UPPDRAG: TCK-014
-Titel: Fånga 503 Unhandled Rejections & UI Fail-Fast Projektering
+Titel: Åtgärda React Render-State Krock & Röstspår Telemetrisynk
 Domän: src/features/gemini_live_swarm/
 Active Skills: gemini-live-api-dev, gemini-api-dev
 
 Mål för TCK-014:
-1. Global & Session error boundary för 503 UNAVAILABLE:
-   - Fånga ohanterade API-rejections (503 High Demand) i `GeminiLiveSession` och fönstrets `unhandledrejection`-lyssnare så att inga tysta konsolfel sker.
-2. Direct UI Fail-Fast Projektering:
-   - Vid 503-fel, sätt omedelbart tillståndet i `SwarmControlPanel.tsx` och `SwarmHeader.tsx` till `HALTED_HIGH_DEMAND`[cite: 3].
-   - Visa ett tydligt och pedagogiskt meddelande i UI ("Gemini API har tillfällig belastningstopp – försök igen om 15-30 sekunder")[cite: 3].
+1. Eliminera setState-anrop under rendering:
+   - Åtgärda synkron tillståndsuppdatering i `TelemetrySidebar.tsx` och `SwarmDashboard.tsx` vid klick på "öppna röstspår". Säkra att alla tillståndsändringar kapslas i `useEffect` eller händelsehanterare.
+2. Stabilitet & Error Boundary för Röstspår:
+   - Säkra att röstspårsaktivering (`SERIELL_MOTOR` och Live-enheter) uppdaterar telemetri och tillstånd asynkront utan att bryta Reacts renderslinga.
 3. Transient Mikro-E2E & Verifiering:
-   - Skapa transient test `src/__tests__/transient_TCK-014.test.ts` (< 3s i minnet) som verifierar att 503-rejections sätter rätt UI-tillstånd utan ohanterade krascher[cite: 3].
+   - Skapa transient test `src/__tests__/transient_TCK-014.test.ts` (< 3s i minnet) som verifierar att öppning av röstspår och telemetrisynk sker utan React render-krascher.
 
-Driv det obrutna Fas 1-svepet under doc/LAST_CYCLE/ och stanna vid Token Gate[cite: 3].
+Driv det obrutna Fas 1-svepet under doc/LAST_CYCLE/ och stanna vid Token Gate.

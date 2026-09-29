@@ -1,24 +1,21 @@
-# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-013)
+# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-014)
 
 ## 1. Målkonflikter & Lösningar
 
-1. **Konflikt mellan bekväma tysta mockar och arkitektonisk integritet**:
-   - *Problem*: Att ha inbyggda fejkgenereringar (`isTestMode = true`, `generateDeterministicFallback`) i produktionskoden ger falsk trygghet och döljer saknade nycklar eller trasiga nätverkskopplingar.
-   - *Lösning*: Strikt AST-kontroll som förbjuder produktionsmockar i `src/features/`. Klienterna sätter tillståndet omedelbart till `HALTED`/`UNAUTHENTICATED` (Fail-Fast), och användargränssnittet visar en tydlig diagnostikpanel som vägleder användaren till AI Studio Secrets.
+1. **Konflikt mellan reaktiv realtidsuppdatering och Reacts renderingsordning**:
+   - *Problem*: När en eventbuss distribuerar händelser synkront kan händelsehanterare råka anropa `setState` mitt i en pågående render- eller reducerfas.
+   - *Lösning*: Strikt separation mellan sidoeffekter (buss-publicering) och tillståndsuppdatering. Sidoeffekter sker i eventhanteraren innan tillståndsuppdateringen, och komponenthierarkin använder prop-drilling (`snapshot={snapshot}`) istället för dubblerade hook-instanser.
 
-2. **Konflikt mellan autonom handoff-slinga och skyddande Token Gate**:
-   - *Problem*: Om motorn är helt autonom riskerar källkodsmodifieringar att utföras oövervakat. Om motorn kräver manuella klick för varje enskild fas (1a, 1b, osv.) hämmas utvecklingstempot i onödan.
-   - *Lösning*: Bygga-agenten ("Att tjäna Gud och andra: Bygga") är autonom genom Fas 1 (1a -> 1b -> 2a -> 2b -> 2e -> 3c). Vid Steg 3c aktiveras Token Gate, Bygga-agenten pausas och Live-agenterna utför reaktiv konsensusgranskning. Motorn stannar och inväntar produktägarens godkännandekod innan källkoden under `src/` rörs.
+2. **Konflikt mellan mikrotillstånd i underkomponenter och global konsistens**:
+   - *Problem*: Om `TelemetrySidebar` underhåller sin egen kopia av `snapshot` kan den tillfälligt visa en annan bild än vad `SwarmDashboard` visar.
+   - *Lösning*: `SwarmDashboard` är sanningskällan (single source of truth) och matar `TelemetrySidebar` med färsk data.
 
-3. **Konflikt mellan svärmens 4 enheter och kapacitetsgränsen på max 3 agenter**:
-   - *Problem*: Hur harmoniseras 4 försoningsenheter med regeln om max 3 samtidiga aktiva agenter?
-   - *Lösning*: Enheterna samkörs i två distinkta moduler:
-     - I Samrådsläget körs de tre Live-agenterna (`ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS`) = 3 agenter.
-     - I Byggläget pausas Live-agenterna och `SERIELL_MOTOR` körs ensam = 1 agent.
-     - Detta garanterar att det aldrig körs fler än 3 agenter samtidigt.
+3. **Konflikt mellan bakåtkompatibilitet och ren arkitektur**:
+   - *Problem*: Äldre tester kan rendera `TelemetrySidebar` utanför `SwarmDashboard`.
+   - *Lösning*: Gör `snapshot`-propen valfri med graceful fallback till intern `useSwarmTelemetry(eventBus)` om den saknas.
 
 ---
 
 ## 2. Mättnadsförklaring
 - **MÄTTNAD: JA**
-- Samtliga målkonflikter är lösta. AST-miljöspärr mot mockar, 100% UI-namnharmonisering, kapacitetsspärr på max 3 agenter, autonom handoff-slinga med konsensus vid 3c och transient E2E-test är fullt specificerade inför Fas 2.
+- Samtliga målkonflikter är lösta. Enkelriktat dataflöde, asynkron telemetrisynk, isolering av röstspårsaktivering och transient mikro-E2E-verifiering är fullt specificerade inför Fas 2.

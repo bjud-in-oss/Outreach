@@ -1,52 +1,30 @@
-# 1b Kartlägga: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet (TCK-013)
+# 1b Kartlägga: Åtgärda React Render-State Krock & Röstspår Telemetrisynk (TCK-014)
 
 ## 1. Kartläggning av Källkodsartefakter
 
-### 1.1 Verifieringsskript (`scripts/verify-architecture.js` & `scripts/drivers/ts.js`)
-- **Nuvarande läge**:
-  - Kontrollerar filgränser (<=125 .tsx, <=250 .ts), indenteringsdjup (<=4) och förgreningsgrad (<=5).
-  - Saknar kontroll mot tysta produktionsmockar i `src/features/`.
-- **Förändringsbehov för TCK-013**:
-  - Inför `checkNoProductionMocks(filePath, content)` i `scripts/drivers/ts.js`.
-  - Scanna samtliga filer under `src/features/` och blockera:
-    * `isTestMode`
-    * `generateDeterministicFallback`
-    * `mock-file` / `mock-folder`
-    * Tysta syntetiska genereringar som maskerar saknade API-nycklar.
-  - Fail-Fast med omedelbar avbruten verifiering och tydlig felrapport.
+### 1.1 `src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts`
+- **Nuvarande problem**:
+  - `toggleManualMute`: Utför `bus.publishAudioState(newAudioState)` inuti `setSnapshot((prev) => { ... })`. Detta orsakar omedelbart synkront anrop till eventbussens prenumeranter medan React befinner sig mitt i uppdateringsfasen.
+  - `triggerInvocation`: Utför både `bus.publishAudioState` och manuell `setSnapshot`, vilket leder till dubbla motstridiga renderingscykler.
+- **Förändringsbehov**:
+  - Flytta `bus.publishAudioState` ut ur `setSnapshot`-updaters.
+  - Beräkna nästa ljudtillstånd baserat på senaste kända tillstånd eller ref, publicera till bussen, och låt bussen uppdatera tillståndet via den vanliga prenumerationsslingan.
 
-### 1.2 Gemini Live Session & Google Drive Client
-- **`src/features/gemini_live_swarm/session/geminiLiveSession.ts`**:
-  - Ta bort `isTestMode` och `generateDeterministicFallback`.
-  - Utöka `LiveSessionStatus` med tillståndet `HALTED`.
-  - Om `apiKey` saknas sätts tillståndet direkt till `HALTED`, och en CloudEvents-händelse `swarm.live.session.halted` sänds på bussen med pedagogisk diagnostik.
-  - Anrop till `generateAgentTurn` eller strömning utan nyckel kastar ett strukturerat `MissingApiKeyError`.
-- **`src/features/google_drive_sync/api/driveClient.ts`**:
-  - Rensa bort `mock-folder-...` och `mock-file-...`.
-  - Om token saknas kastas `MissingDriveAuthError`, och klientens status markeras som `UNAUTHENTICATED`.
+### 1.2 `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`
+- **Nuvarande problem**:
+  - Anropar `useSwarmTelemetry(eventBus)` internt trots att föräldern `SwarmDashboard.tsx` redan kör en instans av `useSwarmTelemetry(eventBus)`.
+  - Detta skapar två parallella `setSnapshot`-kedjor som triggas simultant av samma CloudEvents.
+- **Förändringsbehov**:
+  - Lägg till valfri prop `snapshot?: SwarmTelemetrySnapshot` i `TelemetrySidebarProps`.
+  - Om `snapshot` skickas in används den direkt, utan att starta en separat duplicerad hook-instans. Om den inte skickas in faller komponenten tillbaka till `useSwarmTelemetry(eventBus)` för bakåtkompatibilitet.
 
-### 1.3 UI-namnharmonisering & Diagnostikpanel
-- **`src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`**:
-  - Ersätt hårdkodade "Att försonas (ensam agent)" med dynamisk läsning från `RECONCILIATION_UNITS.SERIELL_MOTOR.displayName` ("Att tjäna Gud och andra: Bygga").
-  - Hämta och visa enhetsnamnen 100% dynamiskt.
-- **`src/features/gemini_live_swarm/ui/components/SwarmHeader.tsx`**:
-  - Säkerställ att fjärde vägen benämns med enhetens korrekta dynamiska namn och syfte.
-- **`src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` & `SwarmControlPanel.tsx`**:
-  - Inför pedagogisk diagnostikpanel i gränssnittet när `liveStatus === 'HALTED'` eller Google Drive är `UNAUTHENTICATED`, med instruktioner för AI Studio Secrets.
+### 1.3 `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`
+- **Förändringsbehov**:
+  - Skicka med `snapshot={snapshot}` till `<TelemetrySidebar eventBus={eventBus} snapshot={snapshot} />`.
+  - Säkra att klick på "öppna röstspår" och verbanrop propageras asynkront och rent utan synkrona renderkrockar.
 
-### 1.4 Kapacitetsspärr (Max 3 Agenter) & Autonom Handoff-slinga
-- **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts`**:
-  - Inför `MAX_CONCURRENT_AGENTS = 3`.
-  - Hantera svärmens kapacitet:
-    * Under normal samverkan körs Live-agenterna (`ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS`) = 3 agenter.
-    * Vid handoff till `SERIELL_MOTOR` pausas Live-agenterna (`isPaused: true`), och Bygga-agenten exekverar ensam i sitt deterministiska läge (1 aktiv agent <= 3).
-    * När Bygga-agenten når Token Gate (Steg 3c) stannar den (`stageStatus = 'GATED'`), och Live-agenterna aktiveras för konsensusgranskning (`ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS`) innan användaren bekräftar med `REQUIRED_TOKEN`.
-  - Autonom slinga: Bygga-agenten stegar sig själv från fas 1a till 3c genom att lyssna på sina egna fasövergångshändelser på `SwarmEventBus`.
-
-### 1.5 Transient Testsvit
-- Skapa `src/__tests__/transient_TCK-013.test.ts` som validerar:
-  1. Fail-Fast när nycklar saknas (`HALTED` och `UNAUTHENTICATED`).
-  2. AST-spärr mot mockar i produktionskod.
-  3. 100% UI-namnharmonisering av 4:e enheten.
-  4. Kapacitetsspärr på max 3 samtidiga agenter.
-  5. Autonom handoff-slinga från Live-agenter till Bygga-agenten och konsensusgranskning vid Token Gate (3c).
+### 1.4 Test & Verifiering
+- **`src/__tests__/transient_TCK-014.test.ts`**:
+  - Verifiera att `toggleManualMute` och `triggerInvocation` inte utför synkrona `setSnapshot`-krockar.
+  - Verifiera att `TelemetrySidebar` renderas korrekt med nedskickad `snapshot` prop.
+  - Verifiera att röstspårsövergångar uppdaterar telemetri utan att kasta undantag.

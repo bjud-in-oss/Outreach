@@ -138,6 +138,21 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. Komplettera regressionssviten med `transient_TCK-002.test.ts` och `transient_TCK-012.test.ts` (< 3s i minnet).
 - **Konsekvens**: Fullständig modulär renhet, felfri efterlevnad av fil- och komplexitetsgränser, och en harmoniserad 4-agenters motor med intuitiva verbanrop.
 
+---
+
+## ADR-SWARM-011: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet
+- **Datum**: 2026-09-28
+- **Status**: Beslutat & Implementerat (TCK-013)
+- **Kontext**: Tysta mock-fallbacks (`isTestMode = true`, syntetiska stränggenereringar) i produktionskod dolde verkliga miljöfel och försvårade felsökning. Vidare krävdes deterministisk kapacitetsbegränsning (max 3 samtidiga agenter) och en autonom handoff-slinga där Bygga-agenten självständigt stegar fram till Token Gate (3c).
+- **Beslut**:
+  1. AST-Miljöspärr i `scripts/drivers/ts.js`: Blockera tysta mockar (`isTestMode`, `generateDeterministicFallback`, `mock-folder`, `mock-file`) under `src/features/`. Tillåt mockar enbart i isolerade tester under `src/__tests__/`.
+  2. Fail-Fast: `GeminiLiveSession` sätter tillståndet omedelbart till `HALTED` om `GEMINI_API_KEY` saknas, och `GoogleDriveClient` sätter tillståndet till `UNAUTHENTICATED`. Tydlig diagnostik visas i UI.
+  3. 100% UI-namnharmonisering: Den 4:e enheten heter konsekvent "Att tjäna Gud och andra: Bygga" i samtliga vyer via dynamisk uppslagning från `roleDefinitions.ts`.
+  4. Kapacitetsspärr: `MAX_CONCURRENT_AGENTS = 3` i `SwarmOrchestrator`. Live-agenter pausas när Bygga-agenten exekverar.
+  5. Autonom handoff-slinga: Bygga-agenten stegar sig själv från fas 1a till 3c via `SwarmEventBus`, varpå Live-agenterna återaktiveras för reaktiv konsensusgranskning vid Token Gate (3c).
+- **Konsekvens**: Kompromisslös arkitektonisk ärlighet, tydlig användardiagnostik och deterministisk autonom orkestrering.
+
+
 
 
 

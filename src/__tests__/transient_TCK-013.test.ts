@@ -1,4 +1,3 @@
-import { describe, it, expect } from 'vitest';
 import { checkNoProductionMocks } from '../../scripts/drivers/ts.js';
 import { GeminiLiveSession } from '../features/gemini_live_swarm/session/geminiLiveSession.ts';
 import { GoogleDriveClient } from '../features/google_drive_sync/api/driveClient.ts';
@@ -53,7 +52,7 @@ export async function runTransientTCK013Tests(): Promise<{ name: string; passed:
       haltedEventReceived = true;
     });
 
-    const session = new GeminiLiveSession(undefined, bus);
+    const session = new GeminiLiveSession('', bus);
     assert(session.getLiveStatus() === 'HALTED', 'Status ska vara HALTED utan nyckel');
     assert(haltedEventReceived, 'swarm.live.session.halted händelse mottogs inte');
 
@@ -157,12 +156,3 @@ export async function runTransientTCK013Tests(): Promise<{ name: string; passed:
 
   return results;
 }
-
-describe('TCK-013: Vitest Wrapper', () => {
-  it('Kör samtliga TCK-013 transienta tester', async () => {
-    const res = await runTransientTCK013Tests();
-    for (const r of res) {
-      expect(r.passed, r.error).toBe(true);
-    }
-  });
-});

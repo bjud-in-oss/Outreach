@@ -1,13 +1,11 @@
-# 2a Avgränsa: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet (TCK-013)
+# 2a Avgränsa: Åtgärda React Render-State Krock & Röstspår Telemetrisynk (TCK-014)
 
 ## 1. Avgränsningsmatris
 
-| Område | Ingår i TCK-013 | Ingår INTE (Avgränsat) | Motivering |
+| Område | Ingår i TCK-014 | Ingår INTE (Avgränsat) | Motivering |
 | :--- | :--- | :--- | :--- |
-| **Miljöspärr mot mockar** | AST-kontroll i `scripts/` som förbjuder tysta mockar i `src/features/` samt `HALTED`/`UNAUTHENTICATED`-lägen | Förbud mot mockar i `src/__tests__/` | Transienta tester (< 3s) måste kunna köra med isolerade in-memory-fixturer och testdubblar. |
-| **Kapacitetsspärr** | Begränsning till max 3 samtidiga aktiva agenter i `SwarmOrchestrator` | Godtyckligt antal bakgrundsprocesser utan kontroll | Deterministisk exekvering och förutsägbar resursanvändning. |
-| **Handoff & Autonomi** | Autonom stegning 1a -> 3c i Bygga-agenten och konsensusgranskning hos Live-agenter vid Token Gate | Helt oövervakad Fas 2-exekvering utan Token Gate | Mänsklig kontroll och produktägarens godkännandekod (Token Gate) vid Steg 3c är absolut obligatorisk. |
-| **UI-namnharmonisering** | Dynamisk uppslagning av `unit.displayName` i samtliga vyer | Hårdkodade strängar i individuella komponenter | En enda sanningskälla (`roleDefinitions.ts`) eliminerar begreppsförvirring. |
-| **Diagnostikpanel** | Tydlig pedagogisk varning i UI vid saknad nyckel/token | Inmatningsfält för API-nycklar i användargränssnittet | Systemreglerna förbjuder strikt API-nyckelhantering i frontend; Settings > Secrets gäller. |
-| **Testsvit** | Transient mikro-E2E `transient_TCK-013.test.ts` (< 3s i minnet) | Långsamma nätverkstester mot externa molnresurser | Snabb återkoppling och deterministisk CI/CD-pipeline. |
-| **Token Gate** | Fas 1-stopp vid Steg 3c i väntan på godkännandekod | Ändringar i `src/` under Fas 1 | Rör ingen källkod under `src/` innan `pnpm genomfor [REQUIRED_TOKEN]` körs. |
+| **Domän** | `src/features/gemini_live_swarm/` | Övriga moduler (`mcp_bridge`, `wal_logger`, `google_drive_sync`) | Felet är isolerat till gränssnittet och telemetrisynkroniseringen i `gemini_live_swarm`. |
+| **Render-State Hantering** | Åtgärdande av setState inuti updaters i `useSwarmTelemetry.ts` och prop-stöd i `TelemetrySidebar.tsx` | Fullständig omskrivning av state management till Redux/Zustand | Enkelt och deterministiskt enkelriktat dataflöde löser problemet utan nya tunga beroenden. |
+| **Röstspårsaktivering** | Ren asynkron telemetrisynk via `SwarmEventBus` vid klick på röstspår | Förändringar i röstmodellens backend-protokoll | Problemet är rent frontend-arkitektoniskt i React-komponenternas livscykel. |
+| **Kompatibilitet** | Bakåtkompatibel `TelemetrySidebar` som kan köras både med och utan injicerad `snapshot` | Tvingande ändringar som bryter äldre testfall | Säkerställer att alla regressionssviter förblir gröna. |
+| **Token Gate** | Stopp vid Steg 3c under Fas 1 tills godkännandekod ges | Ändringar i `src/` under Fas 1 | Absolut skydd av källkoden. |

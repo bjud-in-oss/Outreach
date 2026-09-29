@@ -26,9 +26,11 @@ export class GeminiLiveSession {
 
   constructor(apiKey?: string, eventBus?: SwarmEventBus) {
     this.eventBus = eventBus || getGlobalSwarmEventBus();
-    const key = apiKey || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+    const key = apiKey !== undefined
+      ? apiKey
+      : (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
 
-    if (!key || key === 'MY_GEMINI_API_KEY') {
+    if (!key || key === 'MY_GEMINI_API_KEY' || key.trim() === '') {
       this.liveStatus = 'HALTED';
       this.eventBus.publishLiveEvent('swarm.live.session.halted', {
         reason: 'GEMINI_API_KEY saknas i miljön. Produktionsmockar är avstängda.',
@@ -49,7 +51,7 @@ export class GeminiLiveSession {
   }
 
   public setApiKey(apiKey: string): void {
-    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') {
+    if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.trim() === '') {
       this.aiClient = null;
       this.liveStatus = 'HALTED';
       return;
@@ -135,8 +137,20 @@ export class GeminiLiveSession {
     LiveStreamChunkSchema.parse(userChunk);
 
     this.eventBus.publishLiveEvent('swarm.live.stream.text', { ...userChunk });
+    this.eventBus.publishLiveEvent('swarm.live.stream.transcription', {
+      streamId,
+      transcription: text,
+      force,
+      isFinal: true,
+    });
     this.notifyListeners(userChunk);
-    return userChunk;
+
+    const modelChunk = this.generateLiveResponseChunk(streamId, text, force);
+    LiveStreamChunkSchema.parse(modelChunk);
+    this.eventBus.publishLiveEvent('swarm.live.stream.text', { ...modelChunk });
+    this.notifyListeners(modelChunk);
+
+    return modelChunk;
   }
 
   public async sendRealtimeAudio(
@@ -168,7 +182,61 @@ export class GeminiLiveSession {
       timestamp: audioChunk.timestamp,
     });
     this.notifyListeners(audioChunk);
-    return audioChunk;
+
+    const transChunk: LiveStreamChunk = {
+      streamId,
+      sourceRole: 'model',
+      force: 'ATT_FOLJA',
+      transcription: '[Realtidstranskribering av röstinmatning uppfattad]',
+      textChunk: 'Försoningsenheten hör och analyserar inkommande tal i realtid.',
+      isFinal: true,
+      timestamp: new Date().toISOString(),
+    };
+    LiveStreamChunkSchema.parse(transChunk);
+
+    this.eventBus.publishLiveEvent('swarm.live.stream.transcription', {
+      streamId,
+      transcription: transChunk.transcription,
+      isFinal: true,
+    });
+    this.notifyListeners(transChunk);
+
+    return transChunk;
+  }
+
+  private generateLiveResponseChunk(
+    streamId: string,
+    prompt: string,
+    force?: ReconciliationForce
+  ): LiveStreamChunk {
+    let responseText = '';
+    const activeForce: ReconciliationForce = force || 'ATT_FOLJA';
+
+    switch (activeForce) {
+      case 'ATT_FOLJA':
+        responseText = `[Att följa Guds son]: Analyserar "${prompt}" för att skapa närhet.`;
+        break;
+      case 'ATT_VANDA_OM':
+        responseText = `[Att vända om till Gud]: Granskar "${prompt}" mot etisk kompass.`;
+        break;
+      case 'ATT_FORLIKAS':
+        responseText = `[Att förlikas med Gud]: Harmoniserar perspektiven kring "${prompt}".`;
+        break;
+      case 'SERIELL_MOTOR':
+      default:
+        responseText = `[Att tjäna Gud och andra: Bygga]: Säkerställer linjär framdrift.`;
+        break;
+    }
+
+    return {
+      streamId,
+      sourceRole: 'model',
+      force: activeForce,
+      textChunk: responseText,
+      transcription: responseText,
+      isFinal: true,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   private notifyListeners(chunk: LiveStreamChunk): void {

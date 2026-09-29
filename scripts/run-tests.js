@@ -41,6 +41,7 @@ async function main() {
     { name: '15. Transient E2E: TCK-011 Tyst Röstspärr & Namnutlöst Ljudaktivering', runner: async () => runTransientTCK011Tests() },
     { name: '16. Transient E2E: TCK-002 Swarm Telemetry & Reactive Event Bus', runner: async () => runTransientTCK002Tests() },
     { name: '17. Transient E2E: TCK-012 AST-Arkitekturspärrar, Greenfield UI & Skarp Agentkoppling', runner: async () => runTransientTCK012Tests() },
+    { name: '18. Transient E2E: TCK-013 AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter', runner: async () => runTransientTCK013Tests() },
   ];
 
   for (const suite of testSuites) {

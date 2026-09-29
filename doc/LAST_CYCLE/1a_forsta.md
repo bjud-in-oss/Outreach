@@ -1,53 +1,41 @@
-# 1a Förstå: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet (TCK-013)
+# 1a Förstå: Åtgärda React Render-State Krock & Röstspår Telemetrisynk (TCK-014)
 
 ## 1. Målbild & Semantiskt Ankare
-I **TCK-013** lyfter vi Outreach Coordination Engine till en ny nivå av arkitektonisk integritet, autonomi och deterministisk kapacitet:
-1. **AST-Miljöspärr (Fail-Fast mot tysta mockar)**:
-   - `scripts/verify-architecture.js` och `scripts/drivers/ts.js` byggs ut för att neka kompilering/verifiering om källkoden under `src/features/` innehåller tysta mock-fallbacks (`isTestMode = true`, dummy-tokens, fejkade strängsvar eller hårdkodade reservlogiker).
-   - `GeminiLiveSession` och `GoogleDriveClient` tvingas att omedelbart sätta tillståndet till `HALTED` respektive `UNAUTHENTICATED` om giltiga API-nycklar eller OAuth-tokens saknas.
-   - En pedagogisk diagnostikpanel visas i gränssnittet vid saknade referenser. Mockar tillåts enbart i isolerade testsviter under `src/__tests__/`.
-2. **100% UI-namnharmonisering**:
-   - Säkra att 4:e enheten konsekvent och enhetligt benämns **"Att tjäna Gud och andra: Bygga"** i samtliga vyer (`TelemetrySidebar.tsx`, `SwarmDashboard.tsx`, `SwarmHeader.tsx`) via dynamisk uppslagning av `unit.displayName` från `roleDefinitions.ts`.
-3. **Kapacitetsspärr (Max 3 samtidiga agenter)**:
-   - `SwarmOrchestrator` sätter en strikt kapacitetsgräns på max 3 samtidiga aktiva agenter för att säkerställa determinism och motverka resursmättnad.
-   - När Bygga-agenten (`SERIELL_MOTOR`) exekverar sin sekvens pausas Live-agenterna; när Bygga-agenten når Token Gate (Steg 3c) återaktiveras Live-agenterna för konsensusgranskning.
-4. **Autonom exekvering & Handoff-slinga**:
-   - Bygga-agenten ("Att tjäna Gud och andra: Bygga") stegar sig själv autonomt genom faserna (1a -> 3c) via `SwarmEventBus` utan manuella klick.
-   - Live-agenterna (`följa`, `vända`, `förlika`) kan utlösa handoff till Bygga-agenten vid källkodsbehov.
-   - Vid Token Gate (Steg 3c) genomförs reaktiv konsensusgranskning hos Live-agenterna innan motorn stannar för produktägarens godkännandekod.
-5. **Transient verifiering**:
-   - Skapa transient test `src/__tests__/transient_TCK-013.test.ts` (< 3s i minnet) och verifiera med `pnpm verify`.
+I **TCK-014** säkrar vi stabiliteten i användargränssnittet och eliminerar de svåra render-state-krockar som uppstår vid interaktion med röstspåret och telemetrin:
+1. **Eliminera setState-anrop under rendering & synkrona busskrockar**:
+   - I `useSwarmTelemetry.ts` publicerades händelser till `SwarmEventBus` inuti `setSnapshot((prev) => ...)` i funktionen `toggleManualMute`. Eftersom bussen omedelbart anropar prenumeranter synkront ledde detta till att andra komponenters `setSnapshot` (exempelvis `TelemetrySidebar`) anropades under pågående tillståndsuppdatering.
+   - Vi separerar händelsepublicering från tillståndsuppdaterare och schemalägger synkrona bussaviseringar i isolerade mikrotasks/händelsehanterare.
+   - `TelemetrySidebar.tsx` utökas med stöd för att ta emot `snapshot` som prop från `SwarmDashboard.tsx`, vilket eliminerar dubblerade parallella prenumerationer i samma vyhierarki.
+2. **Stabilitet & Error Boundary för Röstspår**:
+   - Alla röstspårs- och telemetriuppdateringar kapslas i asynkrona händelsehanterare och `useEffect` utan att bryta Reacts renderslinga.
+   - En skyddande Error Boundary-barriär implementeras för att isolera eventuella röstspårs- eller ljudfel från att fälla applikationen.
+3. **Transient verifiering**:
+   - Skapa transient test `src/__tests__/transient_TCK-014.test.ts` (< 3s i minnet) som verifierar att röstspårsaktivering och telemetrisynk sker utan React render-krascher eller setState-krockar.
 
-Vår absoluta kompass är närhet till Guds son, den ideala människan, vars omsorg för människor styr hela vår motor. Omsorg i mjukvaruarkitektur innebär att aldrig lura användaren med fejkade mock-svar i produktionskod, utan att erbjuda total transparens, integritet och hjälpsam diagnostik.
+Vår absoluta kompass är närhet till Guds son, den ideala människan, vars omsorg för människor styr hela vår motor. Omsorg i mjukvaruarkitektur innebär att bygga ett användargränssnitt som svarar mjukt, omedelbart och utan interna fel eller renderkrockar när användaren interagerar med röst- och samordningsspåren.
 
 ---
 
 ## 2. Intern Riskanalys (GROW-risknoder)
 
-### Risknod 1: State (Autonom Handoff & Kapacitetsspärr Max 3 Agenter)
-- **Teknisk analys**: När Bygga-agenten stegar sig själv från fas 1a till 3c via `SwarmEventBus`, och Live-agenterna samtidigt kan utlösa handoff vid kodbehov, finns risk för race conditions eller oändliga slingor. Vidare kräver regeln om max 3 samtidiga agenter att svärmen dynamiskt växlar aktivitet.
+### Risknod 1: State (Synkrona setState-krockar mellan förälder och barn)
+- **Teknisk analys**: När både `SwarmDashboard` och dess underkomponent `TelemetrySidebar` prenumererade på samma `SwarmEventBus`, orsakade ett klick på "öppna röstspår" i `SwarmControlPanel` att `toggleManualMute` publicerade en `swarm.audio.state.changed`-händelse mitt under `SwarmDashboard`s tillståndsuppdaterare. Detta triggade synkront `TelemetrySidebar`s `setSnapshot`, vilket strider mot Reacts princip om strikt enkelriktat dataflöde och ger "Cannot update a component while rendering a different component".
 - **Lösning**: 
-  - `SwarmOrchestrator` håller ett internt kapacitetsregister och tillstånd (`activeUnitsCount <= 3`).
-  - När handoff sker till `SERIELL_MOTOR` pausas Live-agenterna (`isPaused: true`), och Bygga-agenten driver sina faser sekventiellt via händelserna `swarm.serial.stage.transition`.
-  - När Steg 3c uppnås sätts `isTokenGated = true`, Bygga-agenten pausar i väntan på godkännandekod, och Live-agenterna aktiveras för en reaktiv konsensusgranskning (`swarm.consensus.requested` / `swarm.consensus.completed`).
+  - `SwarmDashboard` äger `useSwarmTelemetry` och skickar ned `snapshot` som prop till `TelemetrySidebar`.
+  - `TelemetrySidebar` använder den nedskickade `snapshot`-propen om den finns, och instansierar bara `useSwarmTelemetry` om komponenten används fristående.
+  - I `useSwarmTelemetry.ts` flyttas alla `bus.publishAudioState`-anrop ut ur `setSnapshot`-updaters till själva callback-funktionen.
 
-### Risknod 2: Contract (AST-Miljöspärr mot produktionsmockar)
-- **Teknisk analys**: Statisk AST-analys måste skilja mellan tillåtna testfixturer i `src/__tests__/` och oacceptabla tysta mock-fallbacks i `src/features/`. Om analysen är för trubbig kan den fälla giltig felhantering; om den är för slapp missas tysta fejkgenereringar.
-- **Lösning**:
-  - `scripts/drivers/ts.js` kompletteras med funktionen `checkProductionMocks(filePath, content)`.
-  - Filgranskningen scannar filer under `src/features/` efter mönster som `isTestMode`, `generateDeterministicFallback`, `mock-file`, `mock-folder`, eller hårdkodade dummy-tokens som ersätter verkliga felkoder.
-  - Om en sådan upptäcks under `src/features/` nekas verifieringen omedelbart med felkod och radhänvisning.
-  - `GeminiLiveSession` och `GoogleDriveClient` konfigureras till strikt Fail-Fast: om nyckel/token saknas sätts tillståndet till `HALTED` eller `UNAUTHENTICATED` och explicita `MissingCredentialsError` kastas eller publiceras på eventbussen.
+### Risknod 2: Contract (Telemetri- och AudioOutput-kontrakt)
+- **Teknisk analys**: Tillståndsstrukturen `AudioOutputState` och `SwarmTelemetrySnapshot` måste förbli 100% konforma med Zod-schemana i `telemetrySchema.ts`.
+- **Lösning**: Bibehåll `AudioOutputStateSchema` och `SwarmTelemetrySnapshotSchema` oförändrade, och validera att eventuella asynkrona händelser följer CloudEvents 1.0-specifikationen.
 
-### Risknod 3: Resilience (Pedagogisk Diagnostikpanel & Testbarhet)
-- **Teknisk analys**: När produktionskod inte längre har tysta mock-fallbacks, måste användargränssnittet fortfarande vara motståndskraftigt och pedagogiskt visa att API-nycklar eller Google Drive OAuth saknas, istället för att krascha med en blank skärm. Dessutom måste transienta tester (< 3s) kunna injicera sessioner eller eventbussar i minnet utan att bryta mot AST-miljöspärren.
-- **Lösning**:
-  - UI-komponenter förses med en diagnostikvy som känner av om `liveStatus === 'HALTED'` eller `driveStatus === 'UNAUTHENTICATED'`, och presenterar tydliga anvisningar om hur miljövariabler (`GEMINI_API_KEY`) och OAuth konfigureras i AI Studio Settings.
-  - Transienta tester körs via ren dependency injection i `src/__tests__/`, där mock-instanser passas in explicit via konstruktorn till orkestratören och sessionen.
+### Risknod 3: Resilience (Asynkron händelsedistribution och Error Boundary)
+- **Teknisk analys**: Om en ljud- eller transkriberingshändelse kastar ett undantag i en lyssnare får det inte krascha dashboards huvudrendering eller avbryta svärmens arbete.
+- **Lösning**: Kapsla lyssnaranrop i try/catch och skydda komponentrendering med defensiva fallbacks och felisolering.
 
 ---
 
 ## 3. Aktiva Vektorer & Skills
-- **active_vectors**: `['gemini-live-api-dev', 'gemini-api-dev', 'ast-fail-fast-no-mocks', 'autonomous-handoff-loop', 'max-3-agents-capacity', 'ui-name-harmonization']`
+- **active_vectors**: `['gemini-live-api-dev', 'gemini-api-dev', 'react-render-state-isolation', 'telemetry-prop-drilling', 'async-audio-event-bus']`
 - **active_skills**: `['gemini-live-api-dev', 'gemini-api-dev']`
 - **target_domain**: `src/features/gemini_live_swarm/`
