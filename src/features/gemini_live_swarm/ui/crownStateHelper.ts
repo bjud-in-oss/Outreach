@@ -3,14 +3,18 @@ import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 export type CrownStatusColor = 'ACTIVE' | 'THINKING' | 'ERROR';
 
 export interface CrownState {
-  symbol: '⇑' | '↔' | '●';
+  symbol: '⇑' | '⇐' | '↔' | '●';
   color: CrownStatusColor;
   activityText: string;
+  activeForce?: string;
+  activeUnitId?: string;
+  updatedAt?: string;
 }
 
 export const CROWN_SYMBOLS = {
   ATT_FOLJA: '⇑',
-  ATT_VANDA_OM: '↔',
+  ATT_VANDA_OM: '⇐',
+  ATT_VANDA_OM_LEGACY: '↔',
   ATT_FORLIKAS: '●',
   SERIELL_MOTOR: '●',
 } as const;
@@ -27,13 +31,13 @@ export const LED_BG_CLASSES: Record<CrownStatusColor, string> = {
   ERROR: 'bg-red-400',
 };
 
-const FORCE_MAP: Record<string, '⇑' | '↔' | '●'> = {
+const FORCE_MAP: Record<string, '⇑' | '⇐' | '↔' | '●'> = {
   ATT_FOLJA: '⇑',
-  ATT_VANDA_OM: '↔',
+  ATT_VANDA_OM: '⇐',
   ATT_FORLIKAS: '●',
   SERIELL_MOTOR: '●',
   'unit-att-folja': '⇑',
-  'unit-att-vanda-om': '↔',
+  'unit-att-vanda-om': '⇐',
   'unit-att-forlikas': '●',
 };
 
@@ -67,5 +71,8 @@ export function resolveCrownFromEnvelope(
     symbol: nextSymbol,
     color: nextColor,
     activityText: nextText,
+    activeForce: rawForce || current.activeForce,
+    activeUnitId: String(data.unitId || current.activeUnitId || ''),
+    updatedAt: envelope.time || new Date().toISOString(),
   };
 }

@@ -1,9 +1,9 @@
 # APPROVAL HISTORIK & AKTUELL GODKÄNNANDELOGG
 
-- **Aktuell Godkänd Token**: `TCK-017-SYMBOL-CROWN-TOKEN`
+- **Aktuell Godkänd Token**: `TCK-018-IMMERSIVE-OVERLAY-TOKEN`
 - **Godkänd av**: Produktägare via chatt
-- **Godkänd vid**: 2026-10-01T10:30:59Z
-- **Ticket**: TCK-017 (Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout)
+- **Godkänd vid**: 2026-10-01T11:31:16Z
+- **Ticket**: TCK-018 (Integrerad Symbol-Krona, Immersiv Touch-Overlay & Exekveringskort)
 - **Status**: Godkänd för Fas 2 Källkodsändringar
 
 ---
@@ -26,3 +26,4 @@
 - TCK-015-GLOBAL-CORE-TOKEN
 - TCK-016-PURGE-MONOLITH-TOKEN
 - TCK-017-SYMBOL-CROWN-TOKEN
+- TCK-018-IMMERSIVE-OVERLAY-TOKEN

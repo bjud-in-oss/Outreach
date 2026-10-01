@@ -1,41 +1,46 @@
-# Steg 1a: Förstå & Riskanalys (TCK-017)
+# Steg 1a: Förstå & Riskanalys (TCK-018)
 
 > *"Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas."*
 
 ---
 
-## 1. Uppdragsbeskrivning (TCK-017)
-- **Titel**: Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout
-- **Domän**: Global / src/features/gemini_live_swarm/
-- **Syfte**: Bygga ett elegant, tyst och yteffektivt gränssnitt som följer den universella frontend-designkonstitutionen:
-  1. **Yteffektiv Symbol-Krona**: En låst 1-radskrona överst i UI som ersätter textnamn med rena symboler (`⇑` för Att följa, `↔` för Att vända om, `●`/`🟢` för Att förlikas) och dynamisk LED-färg (🟢 Aktiv, 🟡 Återansluter/Tänker, 🔴 Fel/Avbruten).
-  2. **Justerbart Split-Pane Kanvas**: En dragbar horisontell split-bar mellan två flexibla zoner (övre zon för Agent-Kanvas, nedre zon för Chattflöde). Inga rubriker eller förklarande namn på zonerna – innehållet talar för sig självt.
-  3. **Multi-skikts Mikro-E2E**: Transienta tester under 3s som verifierar rendering, reaktiv status och draginteraktion.
+## 1. Uppdrag & Kontext (TCK-018)
+TCK-018 förfinar gränssnittet efter den renodlade arkitekturen i TCK-016 och TCK-017:
+1. **Integrerad & Expanderbar Symbol-Krona**:
+   - Avlägsna den separata LED-cirkeln. Symbolerna bär statusfärgen direkt:
+     - Att följa: `⇑` (stor tjock pil upp)
+     - Att vända om: `⇐` (stor tjock dubbelpil/vänsterpil)
+     - Att förlikas / Seriell motor: `●` (stor ren punkt)
+   - Kronan blir tryckbar för att fälla ut en detaljerad statuspanel över aktiva deluppgifter och telemetri.
+2. **Mobilanpassad Snap & Immersiv Touch-Overlay (`[ ⛶ ]`)**:
+   - Enkeltryck på grepplisten `[ ⇕ ]` för snabbväxling till 100% fullskärmschatt.
+   - Immersivt läge som döljer krona och bottenmeny. Vid beröring eller kantswipe fälls BÅDE krona och bottenmeny ut samtidigt som en flytande touch-overlay som tonas bort efter 3 sekunders inaktivitet.
+3. **Exekveringskort i Chattflödet (Reflektionsstöd)**:
+   - Generera fällbara exekveringskort (`[ ⇑ Exekveringskort #XX ]`) i chatten vid varje genomförd agentomgång.
+   - Historisk granskning av skapade filer, ändringsloggar och röstresuméer.
+4. **Användarlås vid Aktivitet (User Activity Lock)**:
+   - Frys automatiska Kanvas-uppdateringar vid användarinteraktion och återuppta autonom visning efter 5 sekunders inaktivitet.
 
 ---
 
-## 2. Intern Riskanalys (GROW-modell)
+## 2. GROW Intern Riskanalys
 
-### Risknod 1: State (Reaktiv Telemetri & Dragbart Tillstånd)
-- **Fråga**: Hur synkroniseras kronans aktiva symbol och LED-färg från `SwarmEventBus` utan att orsaka `setState`-krockar under rendering, och hur bibehålls Split-Pane-storleken stabilt under musdragning?
-- **Svar/Mitigering**: Kronan prenumererar på `SwarmEventBus` via en `useEffect` och lyssnar på `swarm.live.*`, `swarm.serial.*` samt agentbyten. Tillståndet uppdateras asynkront. Split-Pane-delaren använder en ren procentuell delning (`splitRatio`, standard 50%) med `pointerdown` / `pointermove` / `pointerup` mot fönstret (`window`) för att garantera följsam dragning även när markören rör sig snabbt eller över iframes/textfält.
+### 1. State-Risk (Tillståndshantering & Reaktiva Slingor)
+- **Risk**: Flera samtidiga timers (5s User Activity Lock och 3s Touch Overlay Timeout) samt tillstånd för fullskärm/snap kan krocka med bakgrundsuppdateringar från `SwarmEventBus` eller orsaka oönskade re-renders under pågående användarinteraktion.
+- **Lösning**:
+  - Implementera en ren `useUserActivityLock`-hook med `isLocked`-ref och deterministisk timeout-rensning via `useEffect`.
+  - Isolera immersivt overlay-tillstånd (`isImmersive`, `showOverlay`) med en stabil 3-sekunders timeout.
+  - Förvara exekveringskort i en separat lista med CloudEvents-lyssnare.
 
-### Risknod 2: Contract (Symbol-Harmonisering & Förbud mot Rubriker)
-- **Fråga**: Hur säkerställs att zonerna förblir helt befriade från textnamn och rubriker, samtidigt som symbol-kronan förmedlar rätt agentkontext (`⇑`, `↔`, `●`)?
-- **Svar/Mitigering**: Koden bannlyser rubriker som "Övre zon", "Agent-Kanvas" eller "Chattflöde". Övre zon renderar direkt genererat innehåll/dokument/teater. Nedre zon renderar direkt strömmen. Kronan visar symbolen i LED-färg följt av en kort statusrad (t.ex. `🟢 ⇑: Skriver utkast i Minnen...` eller `🟢 ●: System redo`) på maximalt 1 rad med `truncate`.
+### 2. Contract-Risk (Symboler, Scheman & AST-Spärrar)
+- **Risk**: Förändringen av `ATT_VANDA_OM` från `↔` till `⇐` kan påverka existerande tester om inte kontraktet harmoniseras. Dessutom ställer `scripts/drivers/ts.js` hårda AST-krav på TSX-filer: max 125 rader, indenteringsdjup max 4 och max 5 förgreningsvillkor.
+- **Lösning**:
+  - Uppdatera `CROWN_SYMBOLS.ATT_VANDA_OM` till `⇐` och bevara bakåtkompatibel uppslagning för äldre tester.
+  - Dela upp logik och presentation i rena, små komponenter under 80 rader vardera (t.ex. `ExecutionCard.tsx`, `useUserActivityLock.ts`, `CrownDetailPanel.tsx`).
+  - Håll förgreningsgraden i samtliga TSX-filer <= 3 genom att använda uppslagstabeller.
 
-### Risknod 3: Resilience (FSD-Struktur & AST-Gränser)
-- **Fråga**: Hur hålls alla nya UI-filer under de strikta AST-måtten (max 125 rader per `.tsx`, max 4 indenteringsnivåer, max 5 grenar)?
-- **Svar/Mitigering**: Vi delar upp gränssnittet i rena, fokuserade komponenter under `src/features/gemini_live_swarm/ui/`:
-  - `SymbolCrown.tsx` (< 70 rader)
-  - `SplitPaneCanvas.tsx` (< 90 rader)
-  - `App.tsx` förblir ett minimalistiskt rot-skal (< 30 rader).
-  Alla komponenter granskas via `checkAstMetrics`.
-
----
-
-## 3. Aktiva Vektorer & Skills
-- `frontend-design`: Zero-pill discipline, minimal 1-radskrona, 60-30-10 färgreferens, inga dekorativa pseudotaggar.
-- `gemini-live-api-dev`: Reaktiv koppling mot `SwarmEventBus`.
-- `gemini-api-dev`: Tillståndshantering för svärmens aktiva fas.
-- **active_vectors**: `['SYMBOL_CROWN', 'SPLIT_PANE_CANVAS', 'NO_ZONE_HEADERS', 'TRANSIENT_TCK017_TEST']`
+### 3. Resilience-Risk (Minnesläckor & Händelsedistribution)
+- **Risk**: Touch-lyssnare på `window` och oavslutade timeouts kan orsaka minnesläckor om komponenten unmountas.
+- **Lösning**:
+  - Strikt `cleanup`-mönster i alla `useEffect`-krokar.
+  - Transienta tester i `transient_TCK-018.test.ts` som validerar 5s och 3s timers deterministiskt med simulerad tid.

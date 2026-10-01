@@ -77,6 +77,7 @@ function runVerification() {
     'TCK-015-GLOBAL-CORE-TOKEN',
     'TCK-016-PURGE-MONOLITH-TOKEN',
     'TCK-017-SYMBOL-CROWN-TOKEN',
+    'TCK-018-IMMERSIVE-OVERLAY-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
@@ -111,6 +112,8 @@ function runVerification() {
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'telemetry', 'telemetrySchema.ts'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SymbolCrown.tsx'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SplitPaneCanvas.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'ExecutionCard.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'TouchOverlayMenu.tsx'),
   ];
 
   astCheckTargets.forEach(target => {

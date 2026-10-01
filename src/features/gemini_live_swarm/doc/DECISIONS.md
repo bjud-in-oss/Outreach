@@ -186,13 +186,28 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
 - **Beslut**:
   1. **Symbol-Krona (`SymbolCrown.tsx`)**: Låst 1-radskrona överst i gränssnittet (< 80 rader, djup <= 3, branch count <= 5). Textnamn ersätts helt av rena symboler:
      - Att följa: `⇑`
-     - Att vända om: `↔`
+     - Att vända om: `↔` (senare uppdaterad till `⇐` i TCK-018)
      - Att förlikas / Seriell motor: `●`
      - Status-LED: 🟢 (`ACTIVE`), 🟡 (`THINKING`), 🔴 (`ERROR`).
   2. **Split-Pane Kanvas (`SplitPaneCanvas.tsx`)**: Justerbar horisontell avgränsare (< 90 rader, djup <= 3, branch count <= 5). Dela skärmen mellan övre zon (Agent-Kanvas) och nedre zon (Chattflöde) med dragbar avgränsare (15%–85% spärr).
   3. **Strikt Layoutrenhet**: Inga rubriker (`h1`, `h2`, `h3`) eller förklarande zonnamn i DOM eller UI.
   4. **Rot-Integrering i `App.tsx`**: Minimalistiskt skal under 20 rader med `SwarmProvider`, `SymbolCrown` och `SplitPaneCanvas`.
 - **Konsekvens**: 100% fokus på innehållet, responsiv ytdelning och ren reaktiv rendering styrd av `SwarmEventBus`.
+
+---
+
+## ADR-SWARM-015: Integrerad Symbol-Krona, Immersiv Touch-Overlay & Exekveringskort
+- **Datum**: 2026-10-01
+- **Status**: Beslutat & Implementerat (TCK-018)
+- **Kontext**: För att ytterligare renodla gränssnittet togs den separata LED-cirkeln bort till förmån för integrerad färgstatus direkt på symbolerna (`⇑`, `⇐`, `●`). Dessutom krävdes enkeltryck-snap för fullskärmschatt, immersiv touch-overlay och skydd mot störande vybyten (User Activity Lock).
+- **Beslut**:
+  1. **Integrerad & Expanderbar Krona (`SymbolCrown.tsx`)**: Symbolerna bär färgstatusen direkt utan extra cirklar. Kronan blir klickbar och expanderar en detaljerad telemetripanel vid behov.
+  2. **Enkeltryck-Snap (`SplitPaneCanvas.tsx`)**: Klick på `[ ⇕ ]` snappar direkt till 0% övre zon (100% fullskärmschatt) eller återställer till 50%.
+  3. **Immersiv Touch-Overlay (`TouchOverlayMenu.tsx`)**: I immersivt läge döljs krona och bottenmeny. Touch/interaktion fäller ut meny och krona flytande med 3 sekunders auto-hide.
+  4. **User Activity Lock (`useUserActivityLock.ts`)**: Klick/touch/scroll fryser autonoma kanvas-uppdateringar i 5 sekunder så att användaren inte avbryts.
+  5. **Exekveringskort (`ExecutionCard.tsx`)**: Fällbara kort i chatten (`[ ⇑ Exekveringskort #XX ]`) med översikt över skapade filer, ändringsloggar och röstresuméer.
+- **Konsekvens**: Optimal mobil- och desktopanpassning, ostörd dialog vid behov och full spårbarhet via exekveringskort.
+
 
 
 

@@ -1,16 +1,13 @@
-# Steg 2e: Syntetisera & Verifiering av Mättnad (TCK-017)
+# Steg 2e: Syntetisera & Verifiering av Mättnad (TCK-018)
 
 ## 1. Målkonfliktanalys
-- **Konflikt 1**: Hur undviks layout-jitter när aktivitetsbeskrivningar i kronan ändras?
-  - **Lösning**: Kronan har fixerad höjd (`h-9`), `overflow-hidden` och `truncate` på aktivitetstexten med flex-grow, så att symbolerna förblir stadigt förankrade.
-- **Konflikt 2**: Hur garanteras att användaren uppfattar zonernas syfte när inga rubriker får användas?
-  - **Lösning**: Innehållets visuella struktur ger omedelbar intuition – övre fältet visar arbetsdokument/teaterkanvas och nedre fältet visar konversationsinmatning och dialogström. Det behövs inga överflödiga text-rubriker.
-- **Konflikt 3**: Kommer dragningen i split-pane att hacka eller tappa musfokus om pekaren rör sig snabbt?
-  - **Lösning**: Genom att koppla `pointermove` och `pointerup` till `window` med `pointer-events-none` på iframes och `user-select: none` under drag, blir dragningen helt ryckfri och deterministisk.
-
-## 2. Arkitektonisk Sammanfattning
-- Symbol-krona och justerbart Split-Pane uppfyller FSD-principerna och den universella designkonstitutionen.
-- Inga pill-badges, inga zonrubriker, 100% ren symbolisk närvaro.
-- Alla målkonflikter är utredda och lösta.
+- **Konflikt 1**: Ändringen av symbol för `ATT_VANDA_OM` från `↔` till `⇐`.
+  - *Syntes*: `CROWN_SYMBOLS.ATT_VANDA_OM` sätts till `⇐`. `crownStateHelper.ts` behåller bakåtkompatibilitet så att både `↔` och `⇐` hanteras säkert, och `transient_TCK-017.test.ts` uppdateras så att båda testerna passerar grönt.
+- **Konflikt 2**: Snap till 0% i `SplitPaneCanvas` vs tidigare 15% minimum clamp.
+  - *Syntes*: Grepplistens klick växlar explicit mellan `0` (100% fullskärmschatt) och `50`, medan manuell dragning tillåter intervallet `0%–100%` med magnetisk snap vid ytterlägena (< 10% -> 0%, > 90% -> 100%).
+- **Konflikt 3**: Touch-overlay krock med ordinarie meny.
+  - *Syntes*: När immersivt läge är inaktivt visas meny och krona i standardflödet. När immersivt läge är aktivt tas de bort ur det ordinarie flex-flödet och visas enbart via den flytande overlayen som tonas ut efter 3 sekunder.
+- **Konflikt 4**: AST-begränsningar (max 125 rader, max 5 förgreningsvillkor).
+  - *Syntes*: Modulär uppdelning i små, fokuserade komponenter (`ExecutionCard.tsx`, `useUserActivityLock.ts`, `TouchOverlayMenu.tsx`).
 
 MÄTTNAD: JA

@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [AKTIV] TCK-018 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Agentassisterat UI, Användarlås vid Aktivitet & Handlingstriggers | Spec: doc/TICKETS/TCK-018.md
+- [AKTIV] TCK-018 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Integrerad Symbol-Krona, Immersiv Touch-Overlay & Exekveringskort | Spec: doc/TICKETS/TCK-018.md
 
 ---
 

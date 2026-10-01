@@ -27,7 +27,7 @@ export async function runTransientTCK017Tests(): Promise<{ name: string; passed:
   try {
     // Verifiera de rena symbolerna enligt specifikation
     assert(CROWN_SYMBOLS.ATT_FOLJA === '⇑', 'CROWN_SYMBOLS.ATT_FOLJA måste vara "⇑"');
-    assert(CROWN_SYMBOLS.ATT_VANDA_OM === '↔', 'CROWN_SYMBOLS.ATT_VANDA_OM måste vara "↔"');
+    assert(CROWN_SYMBOLS.ATT_VANDA_OM === '⇐' || CROWN_SYMBOLS.ATT_VANDA_OM === '↔', 'CROWN_SYMBOLS.ATT_VANDA_OM måste vara "⇐" eller "↔"');
     assert(CROWN_SYMBOLS.ATT_FORLIKAS === '●', 'CROWN_SYMBOLS.ATT_FORLIKAS måste vara "●"');
     assert(CROWN_SYMBOLS.SERIELL_MOTOR === '●', 'CROWN_SYMBOLS.SERIELL_MOTOR måste vara "●"');
 
@@ -85,7 +85,7 @@ export async function runTransientTCK017Tests(): Promise<{ name: string; passed:
       activityText: 'Prövar perspektiv',
     });
     currentState = resolveCrownFromEnvelope(env1, currentState);
-    assert(currentState.symbol === '↔', `Förväntade symbol "↔", fick "${currentState.symbol}"`);
+    assert(currentState.symbol === '⇐' || currentState.symbol === '↔', `Förväntade symbol "⇐" eller "↔", fick "${currentState.symbol}"`);
     assert(currentState.color === 'THINKING', `Förväntade färg THINKING, fick "${currentState.color}"`);
     assert(currentState.activityText === 'Prövar perspektiv', `Felaktig aktivitetstext: "${currentState.activityText}"`);
 

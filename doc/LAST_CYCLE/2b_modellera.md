@@ -1,18 +1,10 @@
-# Steg 2b: Modellera & Arkitekturdesign (TCK-017)
+# Steg 2b: Modellera & Arkitekturdesign (TCK-018)
 
-## 1. Symbol-Krona Kontrakt (`SymbolCrown.tsx`)
-```tsx
-export type CrownStatusColor = 'ACTIVE' | 'THINKING' | 'ERROR';
-
-export interface CrownState {
-  symbol: '⇑' | '↔' | '●';
-  color: CrownStatusColor;
-  activityText: string;
-}
-
+## 1. Symbol-Krona Kontrakt & Integrerad Färgsättning
+```ts
 export const CROWN_SYMBOLS = {
   ATT_FOLJA: '⇑',
-  ATT_VANDA_OM: '↔',
+  ATT_VANDA_OM: '⇐',
   ATT_FORLIKAS: '●',
   SERIELL_MOTOR: '●',
 } as const;
@@ -23,35 +15,39 @@ export const STATUS_LED_CLASSES = {
   ERROR: 'text-red-400',
 } as const;
 ```
+Kronan renderas utan separat LED-cirkel:
+`<span className={`font-bold text-sm leading-none transition-colors ${STATUS_LED_CLASSES[state.color]}`}>{state.symbol}</span>`
 
-Kronan renderas med formatet:
-`<span className={STATUS_LED_CLASSES[color]}>{symbol}</span> <span className="text-slate-400 truncate">{activityText}</span>`
-
-## 2. Split-Pane Kanvas Modell (`SplitPaneCanvas.tsx`)
-- Props:
-  - `upperContent?: React.ReactNode` (visas direkt i övre sektionen, inga rubriker)
-  - `lowerContent?: React.ReactNode` (visas direkt i nedre sektionen, inga rubriker)
-  - `initialSplitRatio?: number` (standard: 50)
-- Draglogik:
-  - `isDragging`-tillstånd och `pointerdown`-lyssnare på delaren.
-  - Global `pointermove`- och `pointerup`-lyssnare under pågående drag för jämn följsamhet.
-  - Beräknar `clientY` i förhållande till containerns rektangel (`getBoundingClientRect()`).
-  - Begränsar höjdfördelningen mellan 15% och 85% för att undvika nollhöjder.
-
-## 3. Rot-Integrering i `App.tsx`
-```tsx
-import React from 'react';
-import { SwarmProvider, SymbolCrown, SplitPaneCanvas } from './features/gemini_live_swarm/index.ts';
-
-export default function App() {
-  return (
-    <SwarmProvider>
-      <div className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none">
-        <SymbolCrown />
-        <SplitPaneCanvas />
-      </div>
-    </SwarmProvider>
-  );
+## 2. User Activity Lock (`useUserActivityLock.ts`)
+```ts
+export interface UserActivityLockState {
+  isLocked: boolean;
+  lockUntil: number;
+  triggerUserActivity: () => void;
+  canAutonomouslyUpdate: () => boolean;
 }
 ```
-Detta håller `App.tsx` på cirka 15 rader, långt under 30-radersgränsen.
+Vid användarinteraktion sätts `lockUntil = Date.now() + 5000`. Efter 5 sekunders inaktivitet återställs `isLocked` till `false`.
+
+## 3. Snap & Immersiv Touch-Overlay (`SplitPaneCanvas.tsx` / `TouchOverlayMenu.tsx`)
+- Grepplisten visar `[ ⇕ ]` och hanterar `onClick`:
+  - Om `splitRatio > 0`: Sätt till `0` (100% fullskärmschatt).
+  - Om `splitRatio === 0`: Sätt till tidigare läge (standard `50`).
+- Immersivt läge (`isImmersive`):
+  - Döljer permanent krona och bottenmeny.
+  - Vid touch/pointerdown fälls en flytande touch-overlay ut som försvinner efter 3 sekunder.
+
+## 4. Exekveringskort (`ExecutionCard.tsx`)
+```ts
+export interface ExecutionCardData {
+  id: string;
+  force: 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'ATT_FORLIKAS' | 'SERIELL_MOTOR';
+  stepNumber: number;
+  title: string;
+  createdFiles?: string[];
+  changesSummary?: string;
+  voiceSummary?: string;
+  timestamp: string;
+}
+```
+Kortet har fällbart tillstånd (`isExpanded`) och visar symbol, stegnummer, rubrik, samt detaljer över ändrade filer.

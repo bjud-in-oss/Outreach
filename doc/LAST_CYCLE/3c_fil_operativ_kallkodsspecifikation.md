@@ -1,58 +1,83 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-017)
+# 3c Fil-operativ Källkodsspecifikation (TCK-018)
 
 ## 1. Förändringskedja för Fas 2 (pnpm genomfor)
 
-Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-017-SYMBOL-CROWN-TOKEN`):
+Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-018-IMMERSIVE-OVERLAY-TOKEN`):
 
 ---
 
-### Fil 1: `src/features/gemini_live_swarm/ui/SymbolCrown.tsx` (NY MODUL)
+### Fil 1: `src/features/gemini_live_swarm/ui/crownStateHelper.ts` (MODIFIERING)
 - **Förändring**:
-  - Skapa 1-radskrona överst i UI (< 80 rader, djup <= 3).
-  - Ersätt textnamn med rena symboler (`⇑`, `↔`, `●`) med dynamisk status-LED (🟢, 🟡, 🔴).
-  - Prenumerera på `SwarmEventBus` via `useEffect` för att reflektera aktiv agent och körtidstillstånd asynkront.
-  - Exportera `SymbolCrown`, `CROWN_SYMBOLS`, `STATUS_LED_CLASSES`.
+  - Uppdatera symbol för `ATT_VANDA_OM` till `⇐` med bibehållen bakåtkompatibilitet för `↔`.
+  - Definiera typer för kronans expanderade detaljvy.
 
 ---
 
-### Fil 2: `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx` (NY MODUL)
+### Fil 2: `src/features/gemini_live_swarm/ui/SymbolCrown.tsx` (MODIFIERING)
 - **Förändring**:
-  - Skapa dragbar horisontell split-panel (< 90 rader, djup <= 3).
-  - Dela skärmen mellan övre zon (Agent-Kanvas) och nedre zon (Chattflöde).
-  - STRIKT REGEL: Inga rubriker eller zon-namn i DOM eller UI.
-  - Implementera följsam dragning med mus och touch via `pointerdown`, `pointermove`, `pointerup` på `window`. Begränsa proportioner till 15%–85%.
+  - Avlägsna separat LED-cirkel (`<span data-testid="crown-status-led" />`).
+  - Låt själva agent-symbolen bära statusklassen (`STATUS_LED_CLASSES[state.color]`).
+  - Gör komponenten tryckbar med fällbar detaljvy (`isExpanded`).
 
 ---
 
-### Fil 3: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
+### Fil 3: `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx` (MODIFIERING)
 - **Förändring**:
-  - Re-exportera `SymbolCrown` och `SplitPaneCanvas`.
+  - Lägg till grepplisten med ikon `[ ⇕ ]` och klick-hanterare för snabbväxling till 100% fullskärmschatt (0% övre zon).
+  - Utöka spannet till 0%–100% med magnetisk snap vid ytterlägena.
+  - Håll filen under 125 rader och förgrening <= 5.
 
 ---
 
-### Fil 4: `src/App.tsx` (MODIFIERING)
+### Fil 4: `src/features/gemini_live_swarm/ui/useUserActivityLock.ts` (NY MODUL)
 - **Förändring**:
-  - Montera `<SymbolCrown />` och `<SplitPaneCanvas />` inuti `<SwarmProvider>`.
-  - Håll filen under 30 rader.
+  - Hook som sätter `isLocked = true` och schemalägger automatisk upplåsning efter 5 sekunder inaktivitet.
+  - Exportera `useUserActivityLock`.
 
 ---
 
-### Fil 5: `scripts/verify-architecture.js` (MODIFIERING)
+### Fil 5: `src/features/gemini_live_swarm/ui/ExecutionCard.tsx` (NY MODUL)
 - **Förändring**:
-  - Lägg till `SymbolCrown.tsx` och `SplitPaneCanvas.tsx` i `astCheckTargets`.
-  - Lägg till `TCK-017-SYMBOL-CROWN-TOKEN` i `validTokens`.
+  - Fällbart kort i chattflödet (`[ ⇑ Exekveringskort #XX ]`) med historik, skapade filer och ändringsöversikt (< 90 rader, djup <= 3).
 
 ---
 
-### Fil 6: `src/__tests__/transient_TCK-017.test.ts` (NY TRANSIENT TESTFIL)
+### Fil 6: `src/features/gemini_live_swarm/ui/TouchOverlayMenu.tsx` (NY MODUL)
+- **Förändring**:
+  - Flytande touch-overlay som visar krona och bottenmeny i immersivt läge och tonas bort efter 3 sekunder.
+
+---
+
+### Fil 7: `src/App.tsx` (MODIFIERING)
+- **Förändring**:
+  - Integrera immersivt läge, touch-overlay, User Activity Lock och bottenmeny med triggers (`[🎬 Reflektera]`, `[🧠 Kom ihåg]`, `[💬 Rådgör]`).
+  - Håll filen under 35 rader.
+
+---
+
+### Fil 8: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
+- **Förändring**:
+  - Re-exportera `ExecutionCard`, `useUserActivityLock`, `TouchOverlayMenu`.
+
+---
+
+### Fil 9: `scripts/verify-architecture.js` (MODIFIERING)
+- **Förändring**:
+  - Lägg till nya TSX-filer i `astCheckTargets`.
+  - Lägg till `TCK-018-IMMERSIVE-OVERLAY-TOKEN` i `validTokens`.
+
+---
+
+### Fil 10: `src/__tests__/transient_TCK-018.test.ts` (NY TRANSIENT TESTFIL)
 - **Förändring**:
   - Skapa mångskiktat test (< 3s i minnet):
-    1. **Test 1**: Verifiera korrekt rendering av agent-symboler (`⇑`, `↔`, `●`) och status-LED.
-    2. **Test 2**: Verifiera reaktiv tillståndsuppdatering i kronan vid händelser på `SwarmEventBus`.
-    3. **Test 3**: Verifiera dragbar split-pane layout och tillståndsändring av zonstorlekar (15%–85%).
+    1. **Test 1**: Verifiera symbol-kronans integrerade färgsättning och expansion (`⇑`, `⇐`, `●`).
+    2. **Test 2**: Verifiera snap till 100% fullskärmschatt och immersiv touch-overlay (3s timer).
+    3. **Test 3**: Verifiera User Activity Lock (5s inaktivitetstimer).
+    4. **Test 4**: Verifiera rendering och fällbarhet av exekveringskort i chatten.
 
 ---
 
-### Fil 7: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (MODIFIERING)
+### Fil 11: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (MODIFIERING)
 - **Förändring**:
-  - Registrera `transient_TCK-017.test.ts` i test runner och regressionssvit.
+  - Registrera `transient_TCK-018.test.ts` i test runner och regressionssvit.

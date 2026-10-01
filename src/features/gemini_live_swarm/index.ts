@@ -52,9 +52,17 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
-// Symbol-Krona & Split-Pane Layout (TCK-017)
+// Symbol-Krona & Split-Pane Layout (TCK-017 & TCK-018)
 export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';
 export type { SymbolCrownProps, CrownStatusColor, CrownState } from './ui/SymbolCrown.tsx';
 export { SplitPaneCanvas } from './ui/SplitPaneCanvas.tsx';
 export type { SplitPaneCanvasProps } from './ui/SplitPaneCanvas.tsx';
+
+// Immersiv Touch-Overlay, Exekveringskort & Användarlås (TCK-018)
+export { ExecutionCard } from './ui/ExecutionCard.tsx';
+export type { ExecutionCardProps } from './ui/ExecutionCard.tsx';
+export { TouchOverlayMenu } from './ui/TouchOverlayMenu.tsx';
+export type { TouchOverlayMenuProps } from './ui/TouchOverlayMenu.tsx';
+export { useUserActivityLock } from './ui/useUserActivityLock.ts';
+export type { UserActivityLockReturn } from './ui/useUserActivityLock.ts';
 
