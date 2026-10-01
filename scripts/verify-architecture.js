@@ -75,6 +75,7 @@ function runVerification() {
     'TCK-013-AUTONOM-HANDOFF-TOKEN',
     'TCK-014-REACT-STATE-SYNC-TOKEN',
     'TCK-015-GLOBAL-CORE-TOKEN',
+    'TCK-016-PURGE-MONOLITH-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
@@ -100,13 +101,10 @@ function runVerification() {
     }
   }
 
-  // 5. AST- och strukturmått (TCK-012)
+  // 5. AST- och strukturmått (TCK-012 & TCK-016)
   const astCheckTargets = [
-    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SwarmDashboard.tsx'),
-    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmHeader.tsx'),
-    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmUnitCard.tsx'),
-    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmStreamLog.tsx'),
-    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'components', 'SwarmControlPanel.tsx'),
+    path.join(ROOT_DIR, 'src', 'App.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'context', 'SwarmContext.tsx'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'coordinator', 'swarmOrchestrator.ts'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'agents', 'roleDefinitions.ts'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'telemetry', 'telemetrySchema.ts'),

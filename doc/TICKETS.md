@@ -1,13 +1,13 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [AKTIV] TCK-016 | Domän: Global / src/features/gemini_live_swarm/ | Mål: UI-Rensning, Monolit-Rasering & Purge av föråldrade FSD-komponenter | Spec: doc/TICKETS/TCK-016.md
 - [OPEN] TCK-017 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout | Spec: doc/TICKETS/TCK-017.md
 - [OPEN] TCK-018 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Agentassisterat UI, Användarlås vid Aktivitet & Handlingstriggers | Spec: doc/TICKETS/TCK-018.md
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-016 | Domän: Global / src/features/gemini_live_swarm/ | Mål: UI-Rensning, Monolit-Rasering & Purge av föråldrade FSD-komponenter | Spec: doc/TICKETS/TCK-016.md
 - [VERIFIERAD] TCK-015 | Domän: Global / src/shared/ & src/features/gemini_live_swarm/ | Mål: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad | Spec: doc/TICKETS/TCK-015.md
 - [VERIFIERAD] TCK-014 | Domän: src/features/gemini_live_swarm/ | Mål: Åtgärda React Render-State Krock & Röstspår Telemetrisynk | Spec: doc/TICKETS/TCK-014.md
 - [VERIFIERAD] TCK-013 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet | Spec: doc/TICKETS/TCK-013.md

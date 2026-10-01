@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "ba567f06",
+  "receipt_hash": "06339232",
   "status": "PASSED",
-  "verified_at": "2026-10-01T14:04:36.919Z",
+  "verified_at": "2026-10-01T14:14:22.899Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -27,6 +27,8 @@
     "src/__tests__/transient_TCK-012.test.ts",
     "src/__tests__/transient_TCK-013.test.ts",
     "src/__tests__/transient_TCK-014.test.ts",
+    "src/__tests__/transient_TCK-015.test.ts",
+    "src/__tests__/transient_TCK-016.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -36,17 +38,9 @@
     "src/features/gemini_live_swarm/session/geminiLiveSession.ts",
     "src/features/gemini_live_swarm/telemetry/telemetrySchema.ts",
     "src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts",
-    "src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx",
-    "src/features/gemini_live_swarm/ui/SwarmDashboard.tsx",
-    "src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx",
-    "src/features/gemini_live_swarm/ui/components/SwarmControlPanel.tsx",
-    "src/features/gemini_live_swarm/ui/components/SwarmHeader.tsx",
-    "src/features/gemini_live_swarm/ui/components/SwarmStreamLog.tsx",
-    "src/features/gemini_live_swarm/ui/components/SwarmUnitCard.tsx",
     "src/features/google_drive_sync/api/driveClient.ts",
     "src/features/google_drive_sync/index.ts",
     "src/features/google_drive_sync/model/driveStore.ts",
-    "src/features/google_drive_sync/ui/DriveSyncPanel.tsx",
     "src/features/mcp_bridge/contracts/mcpSchema.ts",
     "src/features/mcp_bridge/index.ts",
     "src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts",
@@ -59,6 +53,6 @@
     "src/features/wal_logger/replay/walReplay.ts",
     "src/main.tsx"
   ],
-  "active_ticket": "TCK-016",
+  "active_ticket": "TCK-017",
   "issues": []
 }

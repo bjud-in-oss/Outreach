@@ -1,9 +1,9 @@
 # APPROVAL HISTORIK & AKTUELL GODKÄNNANDELOGG
 
-- **Aktuell Godkänd Token**: `TCK-015-GLOBAL-CORE-TOKEN`
+- **Aktuell Godkänd Token**: `TCK-016-PURGE-MONOLITH-TOKEN`
 - **Godkänd av**: Produktägare via chatt
-- **Godkänd vid**: 2026-10-01T02:22:52Z
-- **Ticket**: TCK-015 (Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad)
+- **Godkänd vid**: 2026-10-01T07:10:51Z
+- **Ticket**: TCK-016 (UI-Rensning, Monolit-Rasering & Purge av föråldrade FSD-komponenter)
 - **Status**: Godkänd för Fas 2 Källkodsändringar
 
 ---
@@ -24,3 +24,4 @@
 - TCK-013-AUTONOM-HANDOFF-TOKEN
 - TCK-014-REACT-STATE-SYNC-TOKEN
 - TCK-015-GLOBAL-CORE-TOKEN
+- TCK-016-PURGE-MONOLITH-TOKEN
