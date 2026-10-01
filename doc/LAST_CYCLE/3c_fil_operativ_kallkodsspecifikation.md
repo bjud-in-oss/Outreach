@@ -1,70 +1,69 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-015)
+# 3c Fil-operativ Källkodsspecifikation (TCK-016)
 
 ## 1. Förändringskedja för Fas 2 (pnpm genomfor)
 
-Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-015-GLOBAL-CORE-TOKEN`):
+Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-016-PURGE-MONOLITH-TOKEN`):
 
 ---
 
-### Fil 1: `src/features/gemini_live_swarm/agents/roleDefinitions.ts` (MODIFIERING)
-- **Förändring**:
-  - Uppdatera `SEMANTIC_INVARIANT` ordagrant:
-    `'Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.'`
-  - Kontrollera att alla 4 enheters systeminstruktioner injicerar denna exakta invariant.
+### Fil 1–7: Filer att radera
+- `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` (RADERAS)
+- `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx` (RADERAS)
+- `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` (RADERAS)
+- `src/features/gemini_live_swarm/ui/components/SwarmControlPanel.tsx` (RADERAS)
+- `src/features/gemini_live_swarm/ui/components/SwarmUnitCard.tsx` (RADERAS)
+- `src/features/gemini_live_swarm/ui/components/SwarmStreamLog.tsx` (RADERAS)
+- `src/features/google_drive_sync/ui/DriveSyncPanel.tsx` (RADERAS)
 
 ---
 
-### Fil 2: `src/features/gemini_live_swarm/telemetry/telemetrySchema.ts` (MODIFIERING)
-- **Förändring**:
-  - Utöka `LiveSessionStatusSchema` med `'RECONNECTING'`.
-  - Definiera `ContextUsageMetricSchema` med Zod (`usedTokens`, `maxTokens`, `usageRatio`, `isMarginalReached`, `timestamp`).
+### Fil 8: `src/App.tsx` (REFAKTORERING TILL MINIMALT ROT-SKAL < 30 RADER)
+- Ersätt den monolitiska flikstrukturen med ett rent, minimalistiskt rot-skal:
+```tsx
+import React from 'react';
+import { SwarmProvider } from './features/gemini_live_swarm/index.ts';
+
+export default function App() {
+  return (
+    <SwarmProvider>
+      <main className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none">
+        {/* Ren grundvisningsyta förberedd för TCK-017 Symbol-Krona & Split-Pane */}
+      </main>
+    </SwarmProvider>
+  );
+}
+```
 
 ---
 
-### Fil 3: `src/features/gemini_live_swarm/session/geminiLiveSession.ts` (MODIFIERING)
-- **Förändring**:
-  - Implementera `reconnectAttempts`, `maxReconnectAttempts = 3`, och `reconnectTimer`.
-  - Vid nätverkstapp eller 503-fel: sätt status till `RECONNECTING`, publicera `swarm.live.session.reconnecting`, och schemalägg återanslutning med exponentiell backoff (1s, 2s, 4s).
-  - Bevara sessionsdata och tidigare transkription.
+### Fil 9: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
+- Ta bort alla re-exports av raderade UI-komponenter (`SwarmDashboard`, `TelemetrySidebar`, etc.).
+- Exportera endast kärnmoduler och `SwarmProvider` / `useSwarmContext`.
 
 ---
 
-### Fil 4: `src/features/gemini_live_swarm/context/SwarmContext.tsx` (NY MODUL)
-- **Förändring**:
-  - Skapa `SwarmContext` och `<SwarmProvider>` under 100 rader (.tsx).
-  - Instansiera `SwarmEventBus`, `GoogleDriveClient`, `GeminiLiveSession` och `SwarmOrchestrator` en gång globalt.
-  - Exportera hook `useSwarmContext()`.
+### Fil 10: `src/features/google_drive_sync/index.ts` (MODIFIERING)
+- Ta bort re-export av `DriveSyncPanel`. Behåll `GoogleDriveClient`, `useDriveStore`.
 
 ---
 
-### Fil 5: `src/App.tsx` (MODIFIERING)
-- **Förändring**:
-  - Omslut applikationen med `<SwarmProvider>` så att instanserna överlever alla vy- och flikbyten.
+### Fil 11: `scripts/verify-architecture.js` (MODIFIERING)
+- Rensa bort de raderade filerna från `astCheckTargets`.
 
 ---
 
-### Fil 6: `src/__tests__/transient_TCK-015.test.ts` (NY TRANSIENT TESTFIL)
-- **Förändring**:
-  - Skapa transient test (< 3s i minnet) som verifierar:
-    1. Ordagrann likhet och invarians för systeminstruktionstexten över systemet.
-    2. Auto-reconnect-dynamik och publicering av `RECONNECTING`-händelse vid simulerat 503-fel.
-    3. `ContextUsageMetricSchema` och triggning av marginal-händelse vid ≥60% nyttjande.
-    4. Att `SwarmContext` exponerar nödvändiga instanser med bevarad livscykel.
+### Fil 12: `src/__tests__/transient_TCK-007.test.ts`, `transient_TCK-008.test.ts`, `transient_TCK-012.test.ts` (ANPASSNING)
+- Säkra att dessa tester kontrollerar komponenter villkorligt (`if (fs.existsSync(...))`) eller testar kvarvarande kontrakt, så att de inte kräver raderade filer.
 
 ---
 
-### Fil 7: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (MODIFIERING)
-- **Förändring**:
-  - Registrera `transient_TCK-015.test.ts` i test runner och regressionssvit.
+### Fil 13: `src/__tests__/transient_TCK-016.test.ts` (NY TRANSIENT TESTFIL)
+- Skapa 3 isolerade testfall (< 3s i minnet):
+  1. **Test 1 (Ren Renderelektion)**: Verifiera att `App.tsx` har < 30 rader och omsluts av `SwarmProvider` utan gamla monolitkomponenter.
+  2. **Test 2 (Bakgrundsöverlevnad)**: Verifiera att `SwarmProvider` och `SwarmEventBus` upprätthåller sitt tillstånd oberoende av UI:t.
+  3. **Test 3 (Import-Integritet)**: Verifiera via statisk AST/filgenomsökning att inga föråldrade UI-importer återstår.
 
 ---
 
-### Fil 8: `src/features/gemini_live_swarm/doc/DECISIONS.md` (MODIFIERING)
-- **Förändring**:
-  - Dokumentera **ADR-SWARM-013: Global Swarm Core, Auto-Reconnect & 60% Kontextmarginal**.
-
----
-
-### Fil 9: `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` (MODIFIERING)
-- **Förändring**:
-  - Lägg till styrkort för TCK-015.
+### Fil 14: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (MODIFIERING)
+- Registrera `transient_TCK-016.test.ts` i test runner och regressionssvit.

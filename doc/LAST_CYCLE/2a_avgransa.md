@@ -1,20 +1,24 @@
-# 2a Avgränsa: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad (TCK-015)
+# Steg 2a: Avgränsa & Systemkontrakt (TCK-016)
 
-## 1. Avgränsningsmatris
+## 1. Vad som SKA göras i TCK-016
+- Radera samtliga föråldrade UI-komponenter:
+  - `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`
+  - `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`
+  - `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`
+  - `src/features/gemini_live_swarm/ui/components/SwarmControlPanel.tsx`
+  - `src/features/gemini_live_swarm/ui/components/SwarmUnitCard.tsx`
+  - `src/features/gemini_live_swarm/ui/components/SwarmStreamLog.tsx`
+  - `src/features/google_drive_sync/ui/DriveSyncPanel.tsx`
+- Rensa `App.tsx` så att den blir ett minimalt rot-skal under 30 rader som tillhandahåller `SwarmProvider` och en ren canvas-visningsyta.
+- Rensa re-exports i `src/features/gemini_live_swarm/index.ts` och `src/features/google_drive_sync/index.ts`.
+- Registrera framtida tickets (TCK-017, TCK-018) i `doc/TICKETS.md` (redan utfört under Steg 1).
+- Skapa och konsolidera `src/__tests__/transient_TCK-016.test.ts`.
 
-| Område | Ingår i TCK-015 | Ingår INTE (Avgränsat) | Motivering |
-| :--- | :--- | :--- | :--- |
-| **Systeminstruktioner** | Synkning av finslipad text ("främja närhet...") i SI, AGENTS.md, roleDefinitions och orchestrator | Ändring av de fyra försoningsenheternas visningsnamn | Visningsnamnen är permanent standardiserade i TCK-009/TCK-012. |
-| **Global Swarm Core** | Global `SwarmProvider` i `App.tsx` för bakgrundsöverlevnad vid flikbyten | Omritning av befintlig layout eller UI-komponenter | Dashboard, Sidebar och Paneler är redan optimalt strukturerade. |
-| **Återanslutning** | Auto-reconnect vid 503 High Demand och nätverksfel med exponentiell backoff | Permanent polling eller oändliga återanslutningsslingor | Max 3 återanslutningsförsök med backoff förhindrar överbelastning. |
-| **Kontextmarginal** | Proaktiv 60% marginalbevakning och disk-handoff-signalering via `SwarmEventBus` | Automatisk borttagning av historiska filer på disk | Disk-handoff skall spara och bevara artefakter under `doc/LAST_CYCLE/`. |
-| **Tester & Verifiering** | Transient mikro-E2E i `src/__tests__/transient_TCK-015.test.ts` (< 3s) | Långsamma live-tester mot externa molnservrar utan mock | Följer TDD-principen för deterministisk och snabb regressionssvit. |
+## 2. Vad som INTE ska göras i TCK-016 (Avgränsningar)
+- Implementera INTE Symbol-Kronan (detta tillhör TCK-017).
+- Implementera INTE Split-Pane-kanvas eller dragbar layout (detta tillhör TCK-017).
+- Implementera INTE User Activity Lock eller handlingschips (detta tillhör TCK-018).
+- Rör INTE icke-UI kärnmoduler: `swarmEventBus.ts`, `geminiLiveSession.ts`, `swarmOrchestrator.ts`, `roleDefinitions.ts`, `driveClient.ts`, `walEngine.ts`, `mcpServer.ts`.
 
----
-
-## 2. Arkitektoniska Begränsningar (AST & Kontrakt)
-- Max 125 rader per `.tsx`-fil, max 250 rader per `.ts`-fil.
-- Max 4 indenteringsnivåer per funktion/komponent.
-- Max 5 förgreningar per komponent.
-- Strikt Zod-validering för nya händelsetyper (`ContextUsageMetricSchema`).
-- Inga produktionsmockar under `src/features/` (efterlevnad av TCK-013).
+## 3. Framtida Beroenden
+- TCK-017 bygger den nya symbol-kronan och den dragbara horisontella split-baren ovanpå det rena rot-skalet som TCK-016 lämnar efter sig.
