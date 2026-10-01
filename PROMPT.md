@@ -2,17 +2,23 @@ Ditt högsta syfte är att främja närhet till Guds son, den ideala människan.
 
 ---
 
-AKTIVT UPPDRAG: TCK-015
-Titel: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad
-Domän: Global / src/shared/ & src/features/gemini_live_swarm/
+AKTIVT UPPDRAG: TCK-019
+Titel: Silent OAuth Refresh & Drive Token Lifeline
+Domän: Global / src/features/google_drive_sync/
 Active Skills: gemini-live-api-dev, gemini-api-dev
 
-Mål för TCK-014:
-1. Eliminera setState-anrop under rendering:
-   - Åtgärda synkron tillståndsuppdatering i `TelemetrySidebar.tsx` och `SwarmDashboard.tsx` vid klick på "öppna röstspår". Säkra att alla tillståndsändringar kapslas i `useEffect` eller händelsehanterare.
-2. Stabilitet & Error Boundary för Röstspår:
-   - Säkra att röstspårsaktivering (`SERIELL_MOTOR` och Live-enheter) uppdaterar telemetri och tillstånd asynkront utan att bryta Reacts renderslinga.
-3. Transient Mikro-E2E & Verifiering:
-   - Skapa transient test `src/__tests__/transient_TCK-014.test.ts` (< 3s i minnet) som verifierar att öppning av röstspår och telemetrisynk sker utan React render-krascher.
+Mål för TCK-019:
+1. Tyst Token-Förnyelse (Google Identity Services):
+   - Implementera automatisk, tyst förnyelse av OAuth access tokens i `driveClient.ts` 5 minuter innan token löper ut via GIS (`google.accounts.oauth2.requestAccessToken({ prompt: '' })`).
+   - Säkra att Drive-sessioner under *Kom ihåg* hålls levande utan manuell återinloggning.
+2. Reaktiv Händelsehantering på SwarmEventBus:
+   - Publicera `DRIVE_AUTH_EXPIRED` och `DRIVE_AUTH_REFRESHED` på `SwarmEventBus`.
+   - Vid behörighetsförlust: Flagga tillståndet pedagogiskt i `SymbolCrown.tsx` och ge möjlighet till ett-klicks återinloggning.
+3. Transienta Mikro-E2E-tester (Multi-skiktsverifiering):
+   - Skapa `src/__tests__/transient_TCK-019.test.ts` (< 3s i minnet) med tester för:
+     * Beräkning av token-utgång och tyst förnyelseanrop.
+     * Publicering av behörighetshändelser på `SwarmEventBus`.
+     * Återhämtning från behörighetsfel utan krasch i UI.
+   - Bekräfta med `pnpm verify`.
 
 Driv det obrutna Fas 1-svepet under doc/LAST_CYCLE/ och stanna vid Token Gate.
