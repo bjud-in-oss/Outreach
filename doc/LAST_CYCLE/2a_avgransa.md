@@ -1,11 +1,20 @@
-# 2a Avgränsa: Åtgärda React Render-State Krock & Röstspår Telemetrisynk (TCK-014)
+# 2a Avgränsa: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad (TCK-015)
 
 ## 1. Avgränsningsmatris
 
-| Område | Ingår i TCK-014 | Ingår INTE (Avgränsat) | Motivering |
+| Område | Ingår i TCK-015 | Ingår INTE (Avgränsat) | Motivering |
 | :--- | :--- | :--- | :--- |
-| **Domän** | `src/features/gemini_live_swarm/` | Övriga moduler (`mcp_bridge`, `wal_logger`, `google_drive_sync`) | Felet är isolerat till gränssnittet och telemetrisynkroniseringen i `gemini_live_swarm`. |
-| **Render-State Hantering** | Åtgärdande av setState inuti updaters i `useSwarmTelemetry.ts` och prop-stöd i `TelemetrySidebar.tsx` | Fullständig omskrivning av state management till Redux/Zustand | Enkelt och deterministiskt enkelriktat dataflöde löser problemet utan nya tunga beroenden. |
-| **Röstspårsaktivering** | Ren asynkron telemetrisynk via `SwarmEventBus` vid klick på röstspår | Förändringar i röstmodellens backend-protokoll | Problemet är rent frontend-arkitektoniskt i React-komponenternas livscykel. |
-| **Kompatibilitet** | Bakåtkompatibel `TelemetrySidebar` som kan köras både med och utan injicerad `snapshot` | Tvingande ändringar som bryter äldre testfall | Säkerställer att alla regressionssviter förblir gröna. |
-| **Token Gate** | Stopp vid Steg 3c under Fas 1 tills godkännandekod ges | Ändringar i `src/` under Fas 1 | Absolut skydd av källkoden. |
+| **Systeminstruktioner** | Synkning av finslipad text ("främja närhet...") i SI, AGENTS.md, roleDefinitions och orchestrator | Ändring av de fyra försoningsenheternas visningsnamn | Visningsnamnen är permanent standardiserade i TCK-009/TCK-012. |
+| **Global Swarm Core** | Global `SwarmProvider` i `App.tsx` för bakgrundsöverlevnad vid flikbyten | Omritning av befintlig layout eller UI-komponenter | Dashboard, Sidebar och Paneler är redan optimalt strukturerade. |
+| **Återanslutning** | Auto-reconnect vid 503 High Demand och nätverksfel med exponentiell backoff | Permanent polling eller oändliga återanslutningsslingor | Max 3 återanslutningsförsök med backoff förhindrar överbelastning. |
+| **Kontextmarginal** | Proaktiv 60% marginalbevakning och disk-handoff-signalering via `SwarmEventBus` | Automatisk borttagning av historiska filer på disk | Disk-handoff skall spara och bevara artefakter under `doc/LAST_CYCLE/`. |
+| **Tester & Verifiering** | Transient mikro-E2E i `src/__tests__/transient_TCK-015.test.ts` (< 3s) | Långsamma live-tester mot externa molnservrar utan mock | Följer TDD-principen för deterministisk och snabb regressionssvit. |
+
+---
+
+## 2. Arkitektoniska Begränsningar (AST & Kontrakt)
+- Max 125 rader per `.tsx`-fil, max 250 rader per `.ts`-fil.
+- Max 4 indenteringsnivåer per funktion/komponent.
+- Max 5 förgreningar per komponent.
+- Strikt Zod-validering för nya händelsetyper (`ContextUsageMetricSchema`).
+- Inga produktionsmockar under `src/features/` (efterlevnad av TCK-013).

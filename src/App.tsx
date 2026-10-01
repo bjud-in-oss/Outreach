@@ -18,7 +18,7 @@ import {
 import { DriveSyncPanel, useDriveStore } from './features/google_drive_sync/index.ts';
 import { WalEngine, WalEntry, WalReplayer } from './features/wal_logger/index.ts';
 import { createStandardMcpServer, McpServer, McpToolDefinition } from './features/mcp_bridge/index.ts';
-import { SwarmOrchestrator, SwarmDashboard, CampaignPlan, getGlobalSwarmEventBus } from './features/gemini_live_swarm/index.ts';
+import { SwarmOrchestrator, SwarmDashboard, CampaignPlan, getGlobalSwarmEventBus, SwarmProvider } from './features/gemini_live_swarm/index.ts';
 import { EventEnvelope } from './shared/contracts/envelope.ts';
 
 export default function App() {
@@ -150,7 +150,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <SwarmProvider orchestrator={orchestratorRef.current}>
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       {/* Toppnavigering */}
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
@@ -440,5 +441,6 @@ export default function App() {
         </div>
       </footer>
     </div>
+  </SwarmProvider>
   );
 }

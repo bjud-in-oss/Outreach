@@ -18,6 +18,10 @@ export type {
 export { SwarmEventBus, getGlobalSwarmEventBus } from './bus/swarmEventBus.ts';
 export type { SwarmEventHandler, SwarmSubscription } from './bus/swarmEventBus.ts';
 
+// Kontext & Global Swarm Core (TCK-015)
+export { SwarmProvider, useSwarmContext } from './context/SwarmContext.tsx';
+export type { SwarmCoreContextValue, SwarmProviderProps } from './context/SwarmContext.tsx';
+
 // Telemetri & Styrkort Scheman & Hooks (TCK-002 & TCK-006)
 export {
   AgentForceSchema,
@@ -30,6 +34,7 @@ export {
   LiveStreamChunkSchema,
   AudioTriggerReasonSchema,
   AudioOutputStateSchema,
+  ContextUsageMetricSchema,
   detectUnitInvocation,
 } from './telemetry/telemetrySchema.ts';
 export type {
@@ -42,6 +47,7 @@ export type {
   LiveStreamChunk,
   AudioTriggerReason,
   AudioOutputState,
+  ContextUsageMetric,
   InvocationMatch,
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';

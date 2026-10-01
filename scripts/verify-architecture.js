@@ -74,6 +74,7 @@ function runVerification() {
     'TCK-012-GREENFIELD-UI-TOKEN',
     'TCK-013-AUTONOM-HANDOFF-TOKEN',
     'TCK-014-REACT-STATE-SYNC-TOKEN',
+    'TCK-015-GLOBAL-CORE-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();

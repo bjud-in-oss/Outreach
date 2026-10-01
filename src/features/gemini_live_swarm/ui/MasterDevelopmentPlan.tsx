@@ -14,12 +14,28 @@ interface MasterDevelopmentPlanProps {
 }
 
 export const MasterDevelopmentPlan: React.FC<MasterDevelopmentPlanProps> = ({
-  currentReceiptHash = 'a258f92a',
+  currentReceiptHash = '2cecd385',
   className = '',
 }) => {
-  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-014');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>('TCK-015');
 
   const tickets: DevelopmentTicket[] = [
+    {
+      id: 'TCK-015',
+      title: 'Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad',
+      status: 'VERIFIERAD',
+      phase: 'Fas 2: Slutförd & Verifierad',
+      progressPercentage: 100,
+      deliverables: [
+        '100% Systeminstruktionsinvarians & ordagrann synk över alla artefakter och rolldefinitioner',
+        'Global Swarm Core i App.tsx (SwarmProvider, SwarmContext) för oavbruten bakgrundsöverlevnad vid vybyten',
+        'Körtidsstabilitet & Auto-Reconnect i GeminiLiveSession vid 503 High Demand och nätverkstapp',
+        'Proaktiv 60% kontextmarginal (~40K tokens) och autonom disk-handoff via ContextUsageMetricSchema',
+        'Transient mikro-E2E-verifiering i transient_TCK-015.test.ts (< 3s i minnet) och regressionssviten',
+      ],
+      tokenHash: 'TCK-015-GLOBAL-CORE-TOKEN',
+      verifiedReceiptHash: currentReceiptHash,
+    },
     {
       id: 'TCK-014',
       title: 'Åtgärda React Render-State Krock & Röstspår Telemetrisynk',

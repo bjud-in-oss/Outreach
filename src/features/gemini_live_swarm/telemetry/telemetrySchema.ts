@@ -82,9 +82,22 @@ export const SwarmTelemetrySnapshotSchema = z.object({
   serialExecution: SerialExecutionMetricSchema.optional(),
   audioOutput: z.lazy(() => AudioOutputStateSchema).optional(),
   liveSession: z.lazy(() => LiveSessionTelemetrySchema).optional(),
+  contextUsage: z.lazy(() => ContextUsageMetricSchema).optional(),
 });
 
 export type SwarmTelemetrySnapshot = z.infer<typeof SwarmTelemetrySnapshotSchema>;
+
+/**
+ * Kontextmarginal- och tokenanvändningsschema (TCK-015)
+ */
+export const ContextUsageMetricSchema = z.object({
+  usedTokens: z.number().int().nonnegative(),
+  maxTokens: z.number().int().positive(),
+  usageRatio: z.number().min(0).max(1),
+  isMarginalReached: z.boolean(),
+  timestamp: z.string(),
+});
+export type ContextUsageMetric = z.infer<typeof ContextUsageMetricSchema>;
 
 /**
  * Styrkort / Master Development Plan schema
@@ -103,7 +116,7 @@ export const DevelopmentTicketSchema = z.object({
 export type DevelopmentTicket = z.infer<typeof DevelopmentTicketSchema>;
 
 /**
- * Gemini Live Streaming Schemas (TCK-010)
+ * Gemini Live Streaming Schemas (TCK-010 & TCK-015)
  */
 export const LiveSessionStatusSchema = z.enum([
   'IDLE',
@@ -112,6 +125,7 @@ export const LiveSessionStatusSchema = z.enum([
   'DISCONNECTED',
   'ERROR',
   'HALTED',
+  'RECONNECTING',
 ]);
 export type LiveSessionStatus = z.infer<typeof LiveSessionStatusSchema>;
 

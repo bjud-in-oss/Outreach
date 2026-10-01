@@ -50,7 +50,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
         <button onClick={() => setSubView('orchestration')} className={`px-3 py-1 rounded-lg font-semibold ${subView === 'orchestration' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Svärmöversikt</button>
         <button onClick={() => setSubView('plan')} className={`px-3 py-1 rounded-lg font-semibold ${subView === 'plan' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Styrkort & Roadmap</button>
       </div>
-      <span className="text-[11px] font-mono text-emerald-400">SI v10.0 • TCK-014</span>
+      <span className="text-[11px] font-mono text-emerald-400">SI v10.0 • TCK-015</span>
     </div>
   );
 
@@ -70,7 +70,7 @@ export const SwarmDashboard: React.FC<SwarmDashboardProps> = ({
   );
 
   const mainArea = subView === 'plan' ? (
-    <MasterDevelopmentPlan currentReceiptHash="a258f92a" />
+    <MasterDevelopmentPlan currentReceiptHash="2cecd385" />
   ) : (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
       <div className="lg:col-span-8 space-y-5">

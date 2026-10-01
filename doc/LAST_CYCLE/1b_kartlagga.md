@@ -1,30 +1,29 @@
-# 1b Kartlägga: Åtgärda React Render-State Krock & Röstspår Telemetrisynk (TCK-014)
+# 1b Kartlägga: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad (TCK-015)
 
-## 1. Kartläggning av Källkodsartefakter
+## 1. Kartläggning av Befintliga Artefakter
 
-### 1.1 `src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts`
-- **Nuvarande problem**:
-  - `toggleManualMute`: Utför `bus.publishAudioState(newAudioState)` inuti `setSnapshot((prev) => { ... })`. Detta orsakar omedelbart synkront anrop till eventbussens prenumeranter medan React befinner sig mitt i uppdateringsfasen.
-  - `triggerInvocation`: Utför både `bus.publishAudioState` och manuell `setSnapshot`, vilket leder till dubbla motstridiga renderingscykler.
-- **Förändringsbehov**:
-  - Flytta `bus.publishAudioState` ut ur `setSnapshot`-updaters.
-  - Beräkna nästa ljudtillstånd baserat på senaste kända tillstånd eller ref, publicera till bussen, och låt bussen uppdatera tillståndet via den vanliga prenumerationsslingan.
+### 1.1 Systeminstruktioner och Invarianter
+- **`doc/SI_v10.0.md`**: Innehåller systemets övergripande kompass och försoningsprinciper. Behöver synkroniseras ordagrant med den finslipade texten: "Ditt högsta syfte är att främja närhet till Guds son, den ideala människan...".
+- **`AGENTS.md`**: Definierar agenternas körtidskontrakt och kompass under `<RULE[AGENTS_md]>`.
+- **`src/features/gemini_live_swarm/agents/roleDefinitions.ts`**:
+  - Exporterar `SEMANTIC_INVARIANT`: Den centrala strängkonstanten som injiceras i agenternas systeminstruktioner.
+  - Genererar `systemInstruction` för de 4 försoningsenheterna (`ATT_FOLJA`, `ATT_VANDA_OM`, `ATT_FORLIKAS`, `SERIELL_MOTOR`).
+- **`src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts`**:
+  - Innehåller kampanjplanering och systemprompter. Använder `SEMANTIC_INVARIANT` för att säkerställa att ingen roll agerar utanför kompassen.
 
-### 1.2 `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`
-- **Nuvarande problem**:
-  - Anropar `useSwarmTelemetry(eventBus)` internt trots att föräldern `SwarmDashboard.tsx` redan kör en instans av `useSwarmTelemetry(eventBus)`.
-  - Detta skapar två parallella `setSnapshot`-kedjor som triggas simultant av samma CloudEvents.
-- **Förändringsbehov**:
-  - Lägg till valfri prop `snapshot?: SwarmTelemetrySnapshot` i `TelemetrySidebarProps`.
-  - Om `snapshot` skickas in används den direkt, utan att starta en separat duplicerad hook-instans. Om den inte skickas in faller komponenten tillbaka till `useSwarmTelemetry(eventBus)` för bakåtkompatibilitet.
+### 1.2 Applikationsrot & Tillståndskärna (`src/App.tsx`)
+- **Nuvarande läge**: `App.tsx` instansierar `SwarmOrchestrator` och renderedar flikar. `GeminiLiveSession` och `GoogleDriveClient` initialiseras lokalt eller on-demand.
+- **Målbild**: Introducera en `SwarmProvider` (eller global kärna) som initierar och bevarar:
+  1. `SwarmEventBus` (singleton eller kontextbunden)
+  2. `GoogleDriveClient` (autentiserad instans)
+  3. `GeminiLiveSession` (aktiv WebSocket-förbindelse)
+  4. `SwarmOrchestrator` (samlad exekveringsmotor)
+- Detta säkerställer att pågående dialog och Drive-synk fortsätter obrutet i bakgrunden vid flik- och vybyten.
 
-### 1.3 `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`
-- **Förändringsbehov**:
-  - Skicka med `snapshot={snapshot}` till `<TelemetrySidebar eventBus={eventBus} snapshot={snapshot} />`.
-  - Säkra att klick på "öppna röstspår" och verbanrop propageras asynkront och rent utan synkrona renderkrockar.
+### 1.3 Realtidsresiliens & Auto-Reconnect (`geminiLiveSession.ts`)
+- **Nuvarande läge**: Vid fel sätts sessionen till `ERROR` eller `HALTED`. Om ett nätverksfel eller 503 High Demand inträffar finns ingen automatisk återuppkoppling.
+- **Målbild**: Införa en kontrollerad auto-reconnect-loop med exponentiell backoff (1s, 2s, 4s, max 3 försök) som försöker återupprätta sessionen utan att tappa transkriptionshistorik eller buffrade chunks.
 
-### 1.4 Test & Verifiering
-- **`src/__tests__/transient_TCK-014.test.ts`**:
-  - Verifiera att `toggleManualMute` och `triggerInvocation` inte utför synkrona `setSnapshot`-krockar.
-  - Verifiera att `TelemetrySidebar` renderas korrekt med nedskickad `snapshot` prop.
-  - Verifiera att röstspårsövergångar uppdaterar telemetri utan att kasta undantag.
+### 1.4 Kontextmarginal & Disk-Handoff (`telemetrySchema.ts` & `swarmEventBus.ts`)
+- **Nuvarande läge**: Eventbussen samlar händelser upp till ringbuffertens maxkapacitet (150). Tokenförbrukning mäts inte mot en specifik marginalgräns.
+- **Målbild**: Introducera `ContextUsageMetric` i `telemetrySchema.ts`. Vid 60% utnyttjande (~40K tokens av 64K fönster) publiceras `swarm.context.marginal.reached`. Systemet stödjer disk-handoff via `doc/LAST_CYCLE/` och registrering av under-tickets i `doc/TICKETS.md`.

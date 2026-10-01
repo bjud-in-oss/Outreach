@@ -1,11 +1,11 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- Inga aktiva tickets för närvarande (Full mognad uppnådd).
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-015 | Domän: Global / src/shared/ & src/features/gemini_live_swarm/ | Mål: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad | Spec: doc/TICKETS/TCK-015.md
 - [VERIFIERAD] TCK-014 | Domän: src/features/gemini_live_swarm/ | Mål: Åtgärda React Render-State Krock & Röstspår Telemetrisynk | Spec: doc/TICKETS/TCK-014.md
 - [VERIFIERAD] TCK-013 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Miljöspärr mot Mockar, Autonom Handoff & Max 3 Agenter-kapacitet | Spec: doc/TICKETS/TCK-013.md
 - [VERIFIERAD] TCK-012 | Domän: src/features/gemini_live_swarm/ | Mål: AST-Arkitekturspärrar, Greenfield UI-Nybygg & Skarp Agentkoppling | Spec: doc/TICKETS/TCK-012.md

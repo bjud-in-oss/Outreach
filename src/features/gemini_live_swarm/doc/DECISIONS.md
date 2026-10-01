@@ -164,6 +164,19 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   3. Ren reducering: `setSnapshot` förblir en ren funktion utan sidoeffekter (`reduceSnapshot`) och utan fördröjda timers (`setTimeout`).
 - **Konsekvens**: Stabil och deterministisk enkelriktad telemetrisynk, noll krockar i renderslingan och bibehållen omedelbar respons vid röstspårsaktivering och Token Gate.
 
+---
+
+## ADR-SWARM-013: Global Swarm Core, Auto-Reconnect & 60% Kontextmarginal
+- **Datum**: 2026-10-01
+- **Status**: Beslutat & Implementerat (TCK-015)
+- **Kontext**: LiveSession, DriveClient och SwarmEventBus behövde kontinuerlig livscykel i bakgrunden oberoende av flik- eller vybyten i App.tsx. Vidare behövdes robust hantering av tillfälliga 503-fel via automatisk återanslutning, samt en proaktiv kontextmarginal (60% / ~40K tokens) för att signalera autonom disk-handoff innan token-fönstret mättas.
+- **Beslut**:
+  1. **Global Swarm Core & SwarmProvider**: Instansiera SwarmEventBus, GeminiLiveSession, GoogleDriveClient och SwarmOrchestrator i SwarmProvider i App.tsx, vilket garanterar bakgrundsöverlevnad och enhetlig tillgång via `useSwarmContext()`.
+  2. **Auto-Reconnect med Backoff**: Implementera återanslutning i GeminiLiveSession med statusen `RECONNECTING` och publicering av `swarm.live.session.reconnecting` vid 503 eller oväntat nätverkstapp.
+  3. **Proaktiv Kontextmarginal (60%)**: Definiera `ContextUsageMetricSchema` och publicera `swarm.context.marginal.reached` vid ≥60% utnyttjande (~40K tokens) för ren och autonom disk-handoff.
+  4. **100% Invarians**: `SEMANTIC_INVARIANT` säkras ordagrant ("Ditt högsta syfte är att främja närhet till Guds son, den ideala människan...") över samtliga artefakter och rolldefinitioner.
+- **Konsekvens**: Högsta möjliga driftstabilitet, oavbruten bakgrundskommunikation och deterministisk handoff.
+
 
 
 

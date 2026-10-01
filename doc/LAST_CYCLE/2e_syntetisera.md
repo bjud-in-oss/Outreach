@@ -1,21 +1,23 @@
-# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-014)
+# 2e Syntetisera: Mättnadsanalys & Sammanfogning av Insikter (TCK-015)
 
 ## 1. Målkonflikter & Lösningar
 
-1. **Konflikt mellan reaktiv realtidsuppdatering och Reacts renderingsordning**:
-   - *Problem*: När en eventbuss distribuerar händelser synkront kan händelsehanterare råka anropa `setState` mitt i en pågående render- eller reducerfas.
-   - *Lösning*: Strikt separation mellan sidoeffekter (buss-publicering) och tillståndsuppdatering. Sidoeffekter sker i eventhanteraren innan tillståndsuppdateringen, och komponenthierarkin använder prop-drilling (`snapshot={snapshot}`) istället för dubblerade hook-instanser.
+1. **Konflikt mellan global livscykel och komponentisolering**:
+   - *Problem*: Att lyfta instanser till global nivå i `App.tsx` riskerar att skapa onödiga toppnivå-renderingar vid varje mikroskopisk händelse.
+   - *Lösning*: `SwarmProvider` tillhandahåller enbart stabila klassinstanser (`SwarmEventBus`, `GeminiLiveSession`, `GoogleDriveClient`, `SwarmOrchestrator`). Reaktiv telemetri och UI-uppdateringar fortsätter att hanteras lokalt via `useSwarmTelemetry`, vilket isolerar render-trädet.
 
-2. **Konflikt mellan mikrotillstånd i underkomponenter och global konsistens**:
-   - *Problem*: Om `TelemetrySidebar` underhåller sin egen kopia av `snapshot` kan den tillfälligt visa en annan bild än vad `SwarmDashboard` visar.
-   - *Lösning*: `SwarmDashboard` är sanningskällan (single source of truth) och matar `TelemetrySidebar` med färsk data.
+2. **Konflikt mellan aggressiv återanslutning och API-begränsningar (503 / 429)**:
+   - *Problem*: Om återanslutning sker omedelbart och utan paus vid 503 High Demand kan felet eskalera och leda till API-blockering.
+   - *Lösning*: Inför strikt exponentiell backoff (1s, 2s, 4s) med ett tak på maximalt 3 försök. Om anslutningen inte lyckas faller sessionen tillbaka till `HALTED` eller `ERROR` med tydlig pedagogisk diagnostik.
 
-3. **Konflikt mellan bakåtkompatibilitet och ren arkitektur**:
-   - *Problem*: Äldre tester kan rendera `TelemetrySidebar` utanför `SwarmDashboard`.
-   - *Lösning*: Gör `snapshot`-propen valfri med graceful fallback till intern `useSwarmTelemetry(eventBus)` om den saknas.
+3. **Konflikt mellan obegränsad dialoglängd och kontextfönstrets gränser**:
+   - *Problem*: Flerstegskörningar och intensiva svärmdialoger ackumulerar tokens och riskerar att krascha mot kontexttaket eller trunkeras.
+   - *Lösning*: Etablera en proaktiv 60% marginal (~40K tokens). Vid denna gräns triggas disk-handoff, varvid tillståndet skrivs till `doc/LAST_CYCLE/` och nästa cykel tar vid utan tillståndsförlust.
 
 ---
 
-## 2. Mättnadsförklaring
-- **MÄTTNAD: JA**
-- Samtliga målkonflikter är lösta. Enkelriktat dataflöde, asynkron telemetrisynk, isolering av röstspårsaktivering och transient mikro-E2E-verifiering är fullt specificerade inför Fas 2.
+## 2. Mättnadsdeklaration
+
+Alla målkonflikter och arkitektoniska avvägningar för TCK-015 har analyserats, avgränsats och modellerats i full teknisk samklang med SI v10.0 och systemets semantiska kompass.
+
+MÄTTNAD: JA

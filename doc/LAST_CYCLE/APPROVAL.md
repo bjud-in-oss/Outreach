@@ -1,9 +1,9 @@
 # APPROVAL HISTORIK & AKTUELL GODKÄNNANDELOGG
 
-- **Aktuell Godkänd Token**: `TCK-014-REACT-STATE-SYNC-TOKEN`
+- **Aktuell Godkänd Token**: `TCK-015-GLOBAL-CORE-TOKEN`
 - **Godkänd av**: Produktägare via chatt
-- **Godkänd vid**: 2026-09-29T03:15:10Z
-- **Ticket**: TCK-014 (Åtgärda React Render-State Krock & Röstspår Telemetrisynk)
+- **Godkänd vid**: 2026-10-01T02:22:52Z
+- **Ticket**: TCK-015 (Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad)
 - **Status**: Godkänd för Fas 2 Källkodsändringar
 
 ---
@@ -23,3 +23,4 @@
 - TCK-012-GREENFIELD-UI-TOKEN
 - TCK-013-AUTONOM-HANDOFF-TOKEN
 - TCK-014-REACT-STATE-SYNC-TOKEN
+- TCK-015-GLOBAL-CORE-TOKEN
