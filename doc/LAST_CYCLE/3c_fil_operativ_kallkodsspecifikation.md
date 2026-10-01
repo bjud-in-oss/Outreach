@@ -1,69 +1,58 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-016)
+# 3c Fil-operativ Källkodsspecifikation (TCK-017)
 
 ## 1. Förändringskedja för Fas 2 (pnpm genomfor)
 
-Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-016-PURGE-MONOLITH-TOKEN`):
+Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-017-SYMBOL-CROWN-TOKEN`):
 
 ---
 
-### Fil 1–7: Filer att radera
-- `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx` (RADERAS)
-- `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx` (RADERAS)
-- `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx` (RADERAS)
-- `src/features/gemini_live_swarm/ui/components/SwarmControlPanel.tsx` (RADERAS)
-- `src/features/gemini_live_swarm/ui/components/SwarmUnitCard.tsx` (RADERAS)
-- `src/features/gemini_live_swarm/ui/components/SwarmStreamLog.tsx` (RADERAS)
-- `src/features/google_drive_sync/ui/DriveSyncPanel.tsx` (RADERAS)
+### Fil 1: `src/features/gemini_live_swarm/ui/SymbolCrown.tsx` (NY MODUL)
+- **Förändring**:
+  - Skapa 1-radskrona överst i UI (< 80 rader, djup <= 3).
+  - Ersätt textnamn med rena symboler (`⇑`, `↔`, `●`) med dynamisk status-LED (🟢, 🟡, 🔴).
+  - Prenumerera på `SwarmEventBus` via `useEffect` för att reflektera aktiv agent och körtidstillstånd asynkront.
+  - Exportera `SymbolCrown`, `CROWN_SYMBOLS`, `STATUS_LED_CLASSES`.
 
 ---
 
-### Fil 8: `src/App.tsx` (REFAKTORERING TILL MINIMALT ROT-SKAL < 30 RADER)
-- Ersätt den monolitiska flikstrukturen med ett rent, minimalistiskt rot-skal:
-```tsx
-import React from 'react';
-import { SwarmProvider } from './features/gemini_live_swarm/index.ts';
-
-export default function App() {
-  return (
-    <SwarmProvider>
-      <main className="h-screen w-screen bg-slate-950 text-slate-100 flex flex-col overflow-hidden select-none">
-        {/* Ren grundvisningsyta förberedd för TCK-017 Symbol-Krona & Split-Pane */}
-      </main>
-    </SwarmProvider>
-  );
-}
-```
+### Fil 2: `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx` (NY MODUL)
+- **Förändring**:
+  - Skapa dragbar horisontell split-panel (< 90 rader, djup <= 3).
+  - Dela skärmen mellan övre zon (Agent-Kanvas) och nedre zon (Chattflöde).
+  - STRIKT REGEL: Inga rubriker eller zon-namn i DOM eller UI.
+  - Implementera följsam dragning med mus och touch via `pointerdown`, `pointermove`, `pointerup` på `window`. Begränsa proportioner till 15%–85%.
 
 ---
 
-### Fil 9: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
-- Ta bort alla re-exports av raderade UI-komponenter (`SwarmDashboard`, `TelemetrySidebar`, etc.).
-- Exportera endast kärnmoduler och `SwarmProvider` / `useSwarmContext`.
+### Fil 3: `src/features/gemini_live_swarm/index.ts` (MODIFIERING)
+- **Förändring**:
+  - Re-exportera `SymbolCrown` och `SplitPaneCanvas`.
 
 ---
 
-### Fil 10: `src/features/google_drive_sync/index.ts` (MODIFIERING)
-- Ta bort re-export av `DriveSyncPanel`. Behåll `GoogleDriveClient`, `useDriveStore`.
+### Fil 4: `src/App.tsx` (MODIFIERING)
+- **Förändring**:
+  - Montera `<SymbolCrown />` och `<SplitPaneCanvas />` inuti `<SwarmProvider>`.
+  - Håll filen under 30 rader.
 
 ---
 
-### Fil 11: `scripts/verify-architecture.js` (MODIFIERING)
-- Rensa bort de raderade filerna från `astCheckTargets`.
+### Fil 5: `scripts/verify-architecture.js` (MODIFIERING)
+- **Förändring**:
+  - Lägg till `SymbolCrown.tsx` och `SplitPaneCanvas.tsx` i `astCheckTargets`.
+  - Lägg till `TCK-017-SYMBOL-CROWN-TOKEN` i `validTokens`.
 
 ---
 
-### Fil 12: `src/__tests__/transient_TCK-007.test.ts`, `transient_TCK-008.test.ts`, `transient_TCK-012.test.ts` (ANPASSNING)
-- Säkra att dessa tester kontrollerar komponenter villkorligt (`if (fs.existsSync(...))`) eller testar kvarvarande kontrakt, så att de inte kräver raderade filer.
+### Fil 6: `src/__tests__/transient_TCK-017.test.ts` (NY TRANSIENT TESTFIL)
+- **Förändring**:
+  - Skapa mångskiktat test (< 3s i minnet):
+    1. **Test 1**: Verifiera korrekt rendering av agent-symboler (`⇑`, `↔`, `●`) och status-LED.
+    2. **Test 2**: Verifiera reaktiv tillståndsuppdatering i kronan vid händelser på `SwarmEventBus`.
+    3. **Test 3**: Verifiera dragbar split-pane layout och tillståndsändring av zonstorlekar (15%–85%).
 
 ---
 
-### Fil 13: `src/__tests__/transient_TCK-016.test.ts` (NY TRANSIENT TESTFIL)
-- Skapa 3 isolerade testfall (< 3s i minnet):
-  1. **Test 1 (Ren Renderelektion)**: Verifiera att `App.tsx` har < 30 rader och omsluts av `SwarmProvider` utan gamla monolitkomponenter.
-  2. **Test 2 (Bakgrundsöverlevnad)**: Verifiera att `SwarmProvider` och `SwarmEventBus` upprätthåller sitt tillstånd oberoende av UI:t.
-  3. **Test 3 (Import-Integritet)**: Verifiera via statisk AST/filgenomsökning att inga föråldrade UI-importer återstår.
-
----
-
-### Fil 14: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (MODIFIERING)
-- Registrera `transient_TCK-016.test.ts` i test runner och regressionssvit.
+### Fil 7: `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts` (MODIFIERING)
+- **Förändring**:
+  - Registrera `transient_TCK-017.test.ts` i test runner och regressionssvit.

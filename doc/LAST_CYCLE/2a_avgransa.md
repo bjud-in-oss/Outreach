@@ -1,24 +1,21 @@
-# Steg 2a: Avgränsa & Systemkontrakt (TCK-016)
+# Steg 2a: Avgränsa & Systemkontrakt (TCK-017)
 
-## 1. Vad som SKA göras i TCK-016
-- Radera samtliga föråldrade UI-komponenter:
-  - `src/features/gemini_live_swarm/ui/SwarmDashboard.tsx`
-  - `src/features/gemini_live_swarm/ui/TelemetrySidebar.tsx`
-  - `src/features/gemini_live_swarm/ui/MasterDevelopmentPlan.tsx`
-  - `src/features/gemini_live_swarm/ui/components/SwarmControlPanel.tsx`
-  - `src/features/gemini_live_swarm/ui/components/SwarmUnitCard.tsx`
-  - `src/features/gemini_live_swarm/ui/components/SwarmStreamLog.tsx`
-  - `src/features/google_drive_sync/ui/DriveSyncPanel.tsx`
-- Rensa `App.tsx` så att den blir ett minimalt rot-skal under 30 rader som tillhandahåller `SwarmProvider` och en ren canvas-visningsyta.
-- Rensa re-exports i `src/features/gemini_live_swarm/index.ts` och `src/features/google_drive_sync/index.ts`.
-- Registrera framtida tickets (TCK-017, TCK-018) i `doc/TICKETS.md` (redan utfört under Steg 1).
-- Skapa och konsolidera `src/__tests__/transient_TCK-016.test.ts`.
+## 1. Vad som SKA implementeras i TCK-017
+- **Yteffektiv Symbol-Krona (`SymbolCrown.tsx`)**:
+  - Exakt 1 rad låst högst upp i viewporten.
+  - Ersätt textnamn med rena symboler (`⇑`, `↔`, `●`) kopplade till de 3 försoningsvägarna.
+  - Dynamiska statusfärger/LED: 🟢 (Aktiv), 🟡 (Återansluter/Tänker), 🔴 (Avbruten/Fel).
+  - Lyssna på `SwarmEventBus` för reaktiv uppdatering.
+- **Justerbart Split-Pane Kanvas (`SplitPaneCanvas.tsx`)**:
+  - Dragbar horisontell avgränsare (split-bar) med mus- och touch-stöd.
+  - Två zoner med variabel höjdfördelning (övre zon och nedre zon).
+  - STRIKT REGEL: Inga rubriker, inga etiketter ("Övre zon", "Kanvas", "Chatt") – zonerna innehåller direkt sina respektive element.
+- **Uppdatering av `App.tsx`**:
+  - Integrera `SymbolCrown` och `SplitPaneCanvas` med bibehållen strikt radgräns (< 30 rader).
+- **Transient testsvit (`transient_TCK-017.test.ts`)**:
+  - Tre mångskiktade tester som verifierar symboler, eventbusssynk och dragfunktion.
 
-## 2. Vad som INTE ska göras i TCK-016 (Avgränsningar)
-- Implementera INTE Symbol-Kronan (detta tillhör TCK-017).
-- Implementera INTE Split-Pane-kanvas eller dragbar layout (detta tillhör TCK-017).
-- Implementera INTE User Activity Lock eller handlingschips (detta tillhör TCK-018).
-- Rör INTE icke-UI kärnmoduler: `swarmEventBus.ts`, `geminiLiveSession.ts`, `swarmOrchestrator.ts`, `roleDefinitions.ts`, `driveClient.ts`, `walEngine.ts`, `mcpServer.ts`.
-
-## 3. Framtida Beroenden
-- TCK-017 bygger den nya symbol-kronan och den dragbara horisontella split-baren ovanpå det rena rot-skalet som TCK-016 lämnar efter sig.
+## 2. Vad som INTE ska implementeras i TCK-017 (Avgränsningar)
+- Implementera INTE User Activity Lock eller 5s inaktivitetstimer (detta tillhör TCK-018).
+- Implementera INTE de agentassisterade handlingstriggers-knapparna (`[🎬 Reflektera]`, `[🧠 Kom ihåg]`, `[💬 Rådgör]`) eller fällbara handlingschips i chatten (detta tillhör TCK-018).
+- Rör INTE backend/domänkärnan i `swarmOrchestrator.ts`, `roleDefinitions.ts`, `geminiLiveSession.ts`, `walEngine.ts` eller `driveClient.ts`.

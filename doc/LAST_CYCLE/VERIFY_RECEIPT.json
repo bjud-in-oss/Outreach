@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "06339232",
+  "receipt_hash": "b0e5f8e7",
   "status": "PASSED",
-  "verified_at": "2026-10-01T14:14:22.899Z",
+  "verified_at": "2026-10-01T17:35:37.994Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -29,6 +29,7 @@
     "src/__tests__/transient_TCK-014.test.ts",
     "src/__tests__/transient_TCK-015.test.ts",
     "src/__tests__/transient_TCK-016.test.ts",
+    "src/__tests__/transient_TCK-017.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -38,6 +39,9 @@
     "src/features/gemini_live_swarm/session/geminiLiveSession.ts",
     "src/features/gemini_live_swarm/telemetry/telemetrySchema.ts",
     "src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts",
+    "src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx",
+    "src/features/gemini_live_swarm/ui/SymbolCrown.tsx",
+    "src/features/gemini_live_swarm/ui/crownStateHelper.ts",
     "src/features/google_drive_sync/api/driveClient.ts",
     "src/features/google_drive_sync/index.ts",
     "src/features/google_drive_sync/model/driveStore.ts",
@@ -53,6 +57,6 @@
     "src/features/wal_logger/replay/walReplay.ts",
     "src/main.tsx"
   ],
-  "active_ticket": "TCK-017",
+  "active_ticket": "TCK-018",
   "issues": []
 }

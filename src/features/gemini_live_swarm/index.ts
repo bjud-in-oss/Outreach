@@ -52,3 +52,9 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
+// Symbol-Krona & Split-Pane Layout (TCK-017)
+export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';
+export type { SymbolCrownProps, CrownStatusColor, CrownState } from './ui/SymbolCrown.tsx';
+export { SplitPaneCanvas } from './ui/SplitPaneCanvas.tsx';
+export type { SplitPaneCanvasProps } from './ui/SplitPaneCanvas.tsx';
+

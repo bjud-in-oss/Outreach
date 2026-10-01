@@ -76,6 +76,7 @@ function runVerification() {
     'TCK-014-REACT-STATE-SYNC-TOKEN',
     'TCK-015-GLOBAL-CORE-TOKEN',
     'TCK-016-PURGE-MONOLITH-TOKEN',
+    'TCK-017-SYMBOL-CROWN-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
@@ -108,6 +109,8 @@ function runVerification() {
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'coordinator', 'swarmOrchestrator.ts'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'agents', 'roleDefinitions.ts'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'telemetry', 'telemetrySchema.ts'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SymbolCrown.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SplitPaneCanvas.tsx'),
   ];
 
   astCheckTargets.forEach(target => {

@@ -1,33 +1,41 @@
-# Steg 1a: Förstå & Riskanalys (TCK-016)
+# Steg 1a: Förstå & Riskanalys (TCK-017)
 
 > *"Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas."*
 
 ---
 
-## 1. Uppdragsbeskrivning (TCK-016)
-- **Titel**: UI-Rensning, Monolit-Rasering & Purge av föråldrade FSD-komponenter
+## 1. Uppdragsbeskrivning (TCK-017)
+- **Titel**: Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout
 - **Domän**: Global / src/features/gemini_live_swarm/
-- **Syfte**: Radera den gamla monolitiska instrumentbrädan (`SwarmDashboard.tsx`, `SwarmControlPanel.tsx`, `TelemetrySidebar.tsx`, `SwarmUnitCard.tsx`, `SwarmStreamLog.tsx`, `MasterDevelopmentPlan.tsx`, `DriveSyncPanel.tsx`) samt manuella testknappar, och skala ner `App.tsx` till ett minimalt rot-skal (< 30 rader) med `SwarmProvider` och en ren visningsyta. Detta förbereder marken för den nya symbol-kronan och split-pane-layouten (TCK-017 & TCK-018).
+- **Syfte**: Bygga ett elegant, tyst och yteffektivt gränssnitt som följer den universella frontend-designkonstitutionen:
+  1. **Yteffektiv Symbol-Krona**: En låst 1-radskrona överst i UI som ersätter textnamn med rena symboler (`⇑` för Att följa, `↔` för Att vända om, `●`/`🟢` för Att förlikas) och dynamisk LED-färg (🟢 Aktiv, 🟡 Återansluter/Tänker, 🔴 Fel/Avbruten).
+  2. **Justerbart Split-Pane Kanvas**: En dragbar horisontell split-bar mellan två flexibla zoner (övre zon för Agent-Kanvas, nedre zon för Chattflöde). Inga rubriker eller förklarande namn på zonerna – innehållet talar för sig självt.
+  3. **Multi-skikts Mikro-E2E**: Transienta tester under 3s som verifierar rendering, reaktiv status och draginteraktion.
 
 ---
 
 ## 2. Intern Riskanalys (GROW-modell)
 
-### Risknod 1: State (Tillstånd & Bakgrundsöverlevnad)
-- **Fråga**: Hur säkerställs att `SwarmEventBus`, `GeminiLiveSession`, `GoogleDriveClient` och `SwarmOrchestrator` överlever i bakgrunden när alla tidigare UI-paneler och flik-tillstånd raderas?
-- **Svar/Mitigering**: I TCK-015 kapslades hela svärmens motor in i `SwarmProvider` (`src/features/gemini_live_swarm/context/SwarmContext.tsx`). När `App.tsx` bantas till < 30 rader är dess enda ansvar att omsluta rot-elementet med `<SwarmProvider>`. Eventbussen, sessionen och Drive-klienten lever därmed oberoende av UI:t och förlorar varken minne eller tillstånd.
+### Risknod 1: State (Reaktiv Telemetri & Dragbart Tillstånd)
+- **Fråga**: Hur synkroniseras kronans aktiva symbol och LED-färg från `SwarmEventBus` utan att orsaka `setState`-krockar under rendering, och hur bibehålls Split-Pane-storleken stabilt under musdragning?
+- **Svar/Mitigering**: Kronan prenumererar på `SwarmEventBus` via en `useEffect` och lyssnar på `swarm.live.*`, `swarm.serial.*` samt agentbyten. Tillståndet uppdateras asynkront. Split-Pane-delaren använder en ren procentuell delning (`splitRatio`, standard 50%) med `pointerdown` / `pointermove` / `pointerup` mot fönstret (`window`) för att garantera följsam dragning även när markören rör sig snabbt eller över iframes/textfält.
 
-### Risknod 2: Contract (Gränssnitts- och Importintegritet)
-- **Fråga**: Kommer raderingen av de monolitiska UI-komponenterna att bryta export-kontrakt i index-filer eller orsaka fel i TypeScript-kompileringen?
-- **Svar/Mitigering**: Vi städar bort alla re-exports av raderade komponenter i `src/features/gemini_live_swarm/index.ts` och `src/features/google_drive_sync/index.ts`. Endast rena domänmodeller, orkestratorer, eventbussar och `SwarmProvider` exponeras. `tsc --noEmit` och AST-analys garanterar 100% kontraktsintegritet.
+### Risknod 2: Contract (Symbol-Harmonisering & Förbud mot Rubriker)
+- **Fråga**: Hur säkerställs att zonerna förblir helt befriade från textnamn och rubriker, samtidigt som symbol-kronan förmedlar rätt agentkontext (`⇑`, `↔`, `●`)?
+- **Svar/Mitigering**: Koden bannlyser rubriker som "Övre zon", "Agent-Kanvas" eller "Chattflöde". Övre zon renderar direkt genererat innehåll/dokument/teater. Nedre zon renderar direkt strömmen. Kronan visar symbolen i LED-färg följt av en kort statusrad (t.ex. `🟢 ⇑: Skriver utkast i Minnen...` eller `🟢 ●: System redo`) på maximalt 1 rad med `truncate`.
 
-### Risknod 3: Resilience (Regressionsstabilitet & Testisolering)
-- **Fråga**: Hur skyddas regressionssviten mot trasiga referenser till `SwarmDashboard.tsx` i historiska transienta tester (TCK-007, TCK-008, TCK-012)?
-- **Svar/Mitigering**: Vi granskar och uppdaterar historiska tester så att de inte förutsätter existensen av de raderade monolitfilerna. Det nya `transient_TCK-016.test.ts` implementerar 3 strikta deltester (Ren rendering, Bakgrundsöverlevnad, Import-Integritet) och ansluts till regressionssviten så att hela testsviten exekverar på under 3 sekunder.
+### Risknod 3: Resilience (FSD-Struktur & AST-Gränser)
+- **Fråga**: Hur hålls alla nya UI-filer under de strikta AST-måtten (max 125 rader per `.tsx`, max 4 indenteringsnivåer, max 5 grenar)?
+- **Svar/Mitigering**: Vi delar upp gränssnittet i rena, fokuserade komponenter under `src/features/gemini_live_swarm/ui/`:
+  - `SymbolCrown.tsx` (< 70 rader)
+  - `SplitPaneCanvas.tsx` (< 90 rader)
+  - `App.tsx` förblir ett minimalistiskt rot-skal (< 30 rader).
+  Alla komponenter granskas via `checkAstMetrics`.
 
 ---
 
 ## 3. Aktiva Vektorer & Skills
-- `gemini-live-api-dev`: Säkra sessionens livscykel i `SwarmProvider`.
-- `gemini-api-dev`: Säkra modell- och tokenkontrakt.
-- **active_vectors**: `['PURGE_MONOLITH_UI', 'SLIM_APP_ROOT', 'REGISTER_UI_ROADMAP', 'TRANSIENT_TCK016_TEST']`
+- `frontend-design`: Zero-pill discipline, minimal 1-radskrona, 60-30-10 färgreferens, inga dekorativa pseudotaggar.
+- `gemini-live-api-dev`: Reaktiv koppling mot `SwarmEventBus`.
+- `gemini-api-dev`: Tillståndshantering för svärmens aktiva fas.
+- **active_vectors**: `['SYMBOL_CROWN', 'SPLIT_PANE_CANVAS', 'NO_ZONE_HEADERS', 'TRANSIENT_TCK017_TEST']`

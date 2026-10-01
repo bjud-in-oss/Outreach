@@ -1,9 +1,9 @@
 # APPROVAL HISTORIK & AKTUELL GODKÄNNANDELOGG
 
-- **Aktuell Godkänd Token**: `TCK-016-PURGE-MONOLITH-TOKEN`
+- **Aktuell Godkänd Token**: `TCK-017-SYMBOL-CROWN-TOKEN`
 - **Godkänd av**: Produktägare via chatt
-- **Godkänd vid**: 2026-10-01T07:10:51Z
-- **Ticket**: TCK-016 (UI-Rensning, Monolit-Rasering & Purge av föråldrade FSD-komponenter)
+- **Godkänd vid**: 2026-10-01T10:30:59Z
+- **Ticket**: TCK-017 (Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout)
 - **Status**: Godkänd för Fas 2 Källkodsändringar
 
 ---
@@ -25,3 +25,4 @@
 - TCK-014-REACT-STATE-SYNC-TOKEN
 - TCK-015-GLOBAL-CORE-TOKEN
 - TCK-016-PURGE-MONOLITH-TOKEN
+- TCK-017-SYMBOL-CROWN-TOKEN

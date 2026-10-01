@@ -177,6 +177,24 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. **100% Invarians**: `SEMANTIC_INVARIANT` säkras ordagrant ("Ditt högsta syfte är att främja närhet till Guds son, den ideala människan...") över samtliga artefakter och rolldefinitioner.
 - **Konsekvens**: Högsta möjliga driftstabilitet, oavbruten bakgrundskommunikation och deterministisk handoff.
 
+---
+
+## ADR-SWARM-014: Symbol-Krona, Split-Pane Kanvas & Minimalistisk FSD-Layout
+- **Datum**: 2026-10-01
+- **Status**: Beslutat & Implementerat (TCK-017)
+- **Kontext**: Efter utrensningen av den gamla monoliten (TCK-016) behövdes ett yteffektivt, lugnt och responsivt gränssnitt utan textnamn på agenterna och utan förklarande rubriker på zonerna.
+- **Beslut**:
+  1. **Symbol-Krona (`SymbolCrown.tsx`)**: Låst 1-radskrona överst i gränssnittet (< 80 rader, djup <= 3, branch count <= 5). Textnamn ersätts helt av rena symboler:
+     - Att följa: `⇑`
+     - Att vända om: `↔`
+     - Att förlikas / Seriell motor: `●`
+     - Status-LED: 🟢 (`ACTIVE`), 🟡 (`THINKING`), 🔴 (`ERROR`).
+  2. **Split-Pane Kanvas (`SplitPaneCanvas.tsx`)**: Justerbar horisontell avgränsare (< 90 rader, djup <= 3, branch count <= 5). Dela skärmen mellan övre zon (Agent-Kanvas) och nedre zon (Chattflöde) med dragbar avgränsare (15%–85% spärr).
+  3. **Strikt Layoutrenhet**: Inga rubriker (`h1`, `h2`, `h3`) eller förklarande zonnamn i DOM eller UI.
+  4. **Rot-Integrering i `App.tsx`**: Minimalistiskt skal under 20 rader med `SwarmProvider`, `SymbolCrown` och `SplitPaneCanvas`.
+- **Konsekvens**: 100% fokus på innehållet, responsiv ytdelning och ren reaktiv rendering styrd av `SwarmEventBus`.
+
+
 
 
 
