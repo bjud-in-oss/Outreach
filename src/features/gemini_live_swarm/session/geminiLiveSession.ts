@@ -39,10 +39,21 @@ export class GeminiLiveSession {
     }
     try {
       this.aiClient = new GoogleGenAI({ apiKey: key });
+      this.subscribeToMicPiping();
     } catch (e) {
       this.liveStatus = 'HALTED';
       this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: `Init-fel: ${e instanceof Error ? e.message : String(e)}`, status: 'HALTED' });
     }
+  }
+
+  private subscribeToMicPiping(): void {
+    this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
+      if (this.isLiveConnected() && this.activeSdkSession?.sendRealtimeInput && env.data?.audioChunkBase64) {
+        this.activeSdkSession.sendRealtimeInput({
+          audio: { data: env.data.audioChunkBase64, mimeType: env.data.mimeType || 'audio/pcm;rate=16000' }
+        });
+      }
+    });
   }
 
   public setApiKey(apiKey: string): void {

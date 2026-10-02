@@ -112,7 +112,7 @@ export class SessionIntentManager {
 
         this.eventBus.publishLiveEvent('swarm.live.stream.audio', {
           streamId: `mic-${Date.now()}`, mimeType: 'audio/pcm;rate=16000',
-          byteLength: base64PCM.length, hasAudio: true, timestamp: new Date().toISOString(),
+          byteLength: base64PCM.length, hasAudio: true, audioChunkBase64: base64PCM, timestamp: new Date().toISOString(),
         });
       };
 

@@ -15,6 +15,7 @@ import { ExecutionCard } from './ExecutionCard.tsx';
 export const SplitPaneCanvas: React.FC = () => {
   const [splitPos, setSplitPos] = useState<SplitSnapState>(50);
   const [activeIntent, setActiveIntent] = useState<SwarmIntent | null>(null);
+  const [messages, setMessages] = useState<string[]>([]);
   const [isPortrait, setIsPortrait] = useState<boolean>(true);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const swarmCtx = useOptionalSwarmContext();
@@ -27,20 +28,23 @@ export const SplitPaneCanvas: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!swarmCtx?.eventBus) return;
+    return swarmCtx.eventBus.subscribe('*', (env) => {
+      if (env.type === 'swarm.live.stream.transcription' && env.data?.transcription) {
+        setMessages((prev) => [...prev.slice(-20), env.data.transcription]);
+      }
+    });
+  }, [swarmCtx]);
+
+  useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const next = handleKeyboardNavigation(e.key, isPortrait ? 'portrait' : 'landscape', splitPos);
-      if (next !== splitPos) {
-        e.preventDefault();
-        setSplitPos(next);
-      }
+      e.preventDefault();
+      setSplitPos(next);
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isPortrait, splitPos]);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-  };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (!touchStartRef.current) return;
@@ -53,23 +57,21 @@ export const SplitPaneCanvas: React.FC = () => {
   const handleIntentClick = async (intentId: SwarmIntent) => {
     const nextIntent = activeIntent === intentId ? null : intentId;
     setActiveIntent(nextIntent);
-    if (swarmCtx?.liveSession) {
-      if (nextIntent) {
-        await swarmCtx.liveSession.activateIntent(nextIntent);
-      } else {
-        swarmCtx.liveSession.deactivateIntent();
-      }
-    }
+    if (!swarmCtx?.liveSession) return;
+    nextIntent ? await swarmCtx.liveSession.activateIntent(nextIntent) : swarmCtx.liveSession.deactivateIntent();
   };
 
   const arrows = computeSplitArrows(isPortrait ? 'portrait' : 'landscape', splitPos);
 
   return (
-    <div onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd} className={`flex h-full w-full overflow-hidden ${isPortrait ? 'flex-col' : 'flex-row'}`}>
+    <div onTouchStart={(e) => { touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; }} onTouchEnd={handleTouchEnd} className={`flex h-full w-full overflow-hidden ${isPortrait ? 'flex-col' : 'flex-row'}`}>
       <div style={{ [isPortrait ? 'height' : 'width']: `${splitPos}%` }} className="transition-all duration-300 overflow-hidden bg-slate-900/40 p-4 border-slate-800 flex flex-col">
         <div className="text-xs font-mono text-emerald-400 mb-2">💬 Agentchatt & Dialog</div>
-        <div className="flex-1 bg-slate-950/60 rounded border border-slate-800/80 p-3 overflow-y-auto text-sm text-slate-300">
-          {activeIntent ? <p className="text-emerald-300 font-mono">Aktiv röstström: {activeIntent}</p> : <p className="text-slate-500 italic">Välj ett intention-läge på delningsraden för att starta röstinteraktion.</p>}
+        <div className="flex-1 bg-slate-950/60 rounded border border-slate-800/80 p-3 overflow-y-auto text-sm text-slate-300 flex flex-col gap-1.5">
+          <p className="text-emerald-300 font-mono text-xs">{activeIntent ? `Aktiv röstström: ${activeIntent}` : 'Välj ett intention-läge på delningsraden.'}</p>
+          {messages.map((m, i) => (
+            <div key={i} className="p-1.5 rounded bg-slate-900/80 text-xs text-slate-200 border border-slate-800">{m}</div>
+          ))}
         </div>
       </div>
 
