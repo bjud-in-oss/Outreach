@@ -45,13 +45,18 @@ export class SessionIntentManager {
       return;
     }
 
-    this.activeIntent = intent;
     await this.initUserGestureAudio();
 
     if (onAudioConnect) {
-      try { await onAudioConnect(); } catch { /* handled */ }
+      try {
+        await onAudioConnect();
+      } catch (err) {
+        this.deactivateIntent();
+        throw err;
+      }
     }
 
+    this.activeIntent = intent;
     const intentMeta = INTENT_FORCE_MAP[intent];
     this.eventBus.publishLiveEvent('swarm.live.intent.activated', {
       intent, force: intentMeta.force, title: intentMeta.title,

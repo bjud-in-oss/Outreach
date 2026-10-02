@@ -31,9 +31,10 @@ export const SplitPaneCanvas: React.FC = () => {
     return swarmCtx?.eventBus.subscribe('*', (env) => {
       const text = env.data?.transcription ?? env.data?.error ?? env.data?.reason;
       if (text) {
-        const prefix = env.type.includes('error') ? '⚠️ ' : (env.type.includes('halted') ? '⚠️ ' : '');
-        setMessages((prev) => [...prev.slice(-20), `${prefix}${text}`]);
+        setMessages((prev) => [...prev.slice(-20), text]);
       }
+      const shouldReset = ['disconnected', 'deactivated', 'error', 'halted'].some((k) => env.type.includes(k));
+      if (shouldReset) setActiveIntent(null);
     });
   }, [swarmCtx]);
 
@@ -48,23 +49,23 @@ export const SplitPaneCanvas: React.FC = () => {
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     const start = touchStartRef.current;
-    if (start) {
-      const dx = e.changedTouches[0].clientX - start.x;
-      const dy = e.changedTouches[0].clientY - start.y;
-      touchStartRef.current = null;
-      setSplitPos(handleSwipeGesture(dx, dy, isPortrait ? 'portrait' : 'landscape', splitPos));
-    }
+    if (!start) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    touchStartRef.current = null;
+    setSplitPos(handleSwipeGesture(dx, dy, isPortrait ? 'portrait' : 'landscape', splitPos));
   };
 
   const handleIntentClick = async (intentId: SwarmIntent) => {
     const nextIntent = activeIntent === intentId ? null : intentId;
     setActiveIntent(nextIntent);
-    if (swarmCtx?.liveSession) {
-      try {
-        nextIntent ? await swarmCtx.liveSession.activateIntent(nextIntent) : swarmCtx.liveSession.deactivateIntent();
-      } catch (err) {
-        setMessages((prev) => [...prev.slice(-20), `⚠️ ${err}`]);
-      }
+    if (!swarmCtx?.liveSession) return;
+    try {
+      if (nextIntent) await swarmCtx.liveSession.activateIntent(nextIntent);
+      else swarmCtx.liveSession.deactivateIntent();
+    } catch (err) {
+      setActiveIntent(null);
+      setMessages((prev) => [...prev.slice(-20), `⚠️ ${err}`]);
     }
   };
 
