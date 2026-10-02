@@ -34,7 +34,7 @@ export class GeminiLiveSession {
     const key = apiKey !== undefined ? apiKey : (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
     if (!key || key === 'MY_GEMINI_API_KEY' || !key.trim()) {
       this.liveStatus = 'HALTED';
-      this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: 'GEMINI_API_KEY saknas.', status: 'HALTED' });
+      this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: 'GEMINI_API_KEY saknas i miljön (VITE_GEMINI_API_KEY).', status: 'HALTED' });
       return;
     }
     try {
@@ -76,7 +76,7 @@ export class GeminiLiveSession {
 
   public async activateIntent(intent: SwarmIntent): Promise<void> {
     await this.intentManager.activateIntent(intent, async () => {
-      if (!this.isLiveConnected() && this.liveStatus !== 'HALTED') await this.connectLive();
+      if (!this.isLiveConnected()) await this.connectLive();
     });
   }
 
@@ -88,7 +88,9 @@ export class GeminiLiveSession {
 
   public async connectLive(config?: { responseModalities?: ('audio' | 'text')[]; systemInstruction?: string; }): Promise<boolean> {
     if (this.liveStatus === 'HALTED' || !this.aiClient) {
-      throw new Error('Kan inte ansluta Gemini Live: Session är HALTED p.g.a. saknad GEMINI_API_KEY.');
+      const errMsg = 'GEMINI_API_KEY saknas eller är ogiltig i Netlify (VITE_GEMINI_API_KEY).';
+      this.eventBus.publishLiveEvent('swarm.live.session.error', { error: errMsg, status: 'HALTED' });
+      throw new Error(errMsg);
     }
     this.liveStatus = 'CONNECTING';
     const streamId = `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -125,8 +127,9 @@ export class GeminiLiveSession {
       return true;
     } catch (err) {
       this.liveStatus = 'ERROR';
-      this.eventBus.publishLiveEvent('swarm.live.session.error', { error: `Anslutningsfel: ${err instanceof Error ? err.message : String(err)}`, status: 'ERROR' });
-      return false;
+      const msg = `Anslutningsfel: ${err instanceof Error ? err.message : String(err)}`;
+      this.eventBus.publishLiveEvent('swarm.live.session.error', { error: msg, status: 'ERROR' });
+      throw new Error(msg);
     }
   }
 

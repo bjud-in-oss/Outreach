@@ -28,37 +28,44 @@ export const SplitPaneCanvas: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!swarmCtx?.eventBus) return;
-    return swarmCtx.eventBus.subscribe('*', (env) => {
-      if (env.type === 'swarm.live.stream.transcription' && env.data?.transcription) {
-        setMessages((prev) => [...prev.slice(-20), env.data.transcription]);
+    return swarmCtx?.eventBus.subscribe('*', (env) => {
+      const text = env.data?.transcription ?? env.data?.error ?? env.data?.reason;
+      if (text) {
+        const prefix = env.type.includes('error') ? '⚠️ ' : (env.type.includes('halted') ? '⚠️ ' : '');
+        setMessages((prev) => [...prev.slice(-20), `${prefix}${text}`]);
       }
     });
   }, [swarmCtx]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      const next = handleKeyboardNavigation(e.key, isPortrait ? 'portrait' : 'landscape', splitPos);
       e.preventDefault();
-      setSplitPos(next);
+      setSplitPos(handleKeyboardNavigation(e.key, isPortrait ? 'portrait' : 'landscape', splitPos));
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [isPortrait, splitPos]);
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartRef.current) return;
-    const dx = e.changedTouches[0].clientX - touchStartRef.current.x;
-    const dy = e.changedTouches[0].clientY - touchStartRef.current.y;
-    touchStartRef.current = null;
-    setSplitPos(handleSwipeGesture(dx, dy, isPortrait ? 'portrait' : 'landscape', splitPos));
+    const start = touchStartRef.current;
+    if (start) {
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      touchStartRef.current = null;
+      setSplitPos(handleSwipeGesture(dx, dy, isPortrait ? 'portrait' : 'landscape', splitPos));
+    }
   };
 
   const handleIntentClick = async (intentId: SwarmIntent) => {
     const nextIntent = activeIntent === intentId ? null : intentId;
     setActiveIntent(nextIntent);
-    if (!swarmCtx?.liveSession) return;
-    nextIntent ? await swarmCtx.liveSession.activateIntent(nextIntent) : swarmCtx.liveSession.deactivateIntent();
+    if (swarmCtx?.liveSession) {
+      try {
+        nextIntent ? await swarmCtx.liveSession.activateIntent(nextIntent) : swarmCtx.liveSession.deactivateIntent();
+      } catch (err) {
+        setMessages((prev) => [...prev.slice(-20), `⚠️ ${err}`]);
+      }
+    }
   };
 
   const arrows = computeSplitArrows(isPortrait ? 'portrait' : 'landscape', splitPos);
@@ -70,7 +77,7 @@ export const SplitPaneCanvas: React.FC = () => {
         <div className="flex-1 bg-slate-950/60 rounded border border-slate-800/80 p-3 overflow-y-auto text-sm text-slate-300 flex flex-col gap-1.5">
           <p className="text-emerald-300 font-mono text-xs">{activeIntent ? `Aktiv röstström: ${activeIntent}` : 'Välj ett intention-läge på delningsraden.'}</p>
           {messages.map((m, i) => (
-            <div key={i} className="p-1.5 rounded bg-slate-900/80 text-xs text-slate-200 border border-slate-800">{m}</div>
+            <div key={i} className="p-1.5 rounded text-xs bg-slate-900/80 text-slate-200 border border-slate-800">{m}</div>
           ))}
         </div>
       </div>
