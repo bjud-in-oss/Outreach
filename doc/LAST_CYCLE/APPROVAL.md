@@ -1,12 +1,13 @@
 # APPROVAL HISTORIK & AKTUELL GODKÄNNANDELOGG
 
-- **Aktuell Godkänd Token**: `TCK-019-SILENT-REFRESH-TOKEN`
+- **Aktuell Godkänd Token**: `TCK-020-ADAPTIVE-CONTROL-TOKEN`
 - **Godkänd av**: Produktägare via chatt
-- **Godkänd vid**: 2026-10-02T10:23:00Z
-- **Ticket**: TCK-019 (Silent OAuth Refresh & Drive Token Lifeline)
+- **Godkänd vid**: 2026-10-02T11:00:00Z
+- **Ticket**: TCK-020 (Intent-Driven Audio Trigger, Responsive SplitPane & Adaptive Control Bar)
 - **Status**: Godkänd för genomförande (Fas 2)
 
 ## Tidigare Godkända Tokens
+- `TCK-019-SILENT-REFRESH-TOKEN` (TCK-019)
 - `TCK-018-IMMERSIVE-OVERLAY-TOKEN` (TCK-018)
 - `TCK-017-SYMBOL-CROWN-TOKEN` (TCK-017)
 - `TCK-016-PURGE-MONOLITH-TOKEN` (TCK-016)

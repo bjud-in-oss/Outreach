@@ -52,3 +52,8 @@ export function useSwarmContext(): SwarmCoreContextValue {
   }
   return ctx;
 }
+
+export function useOptionalSwarmContext(): SwarmCoreContextValue | null {
+  return useContext(SwarmContext);
+}
+

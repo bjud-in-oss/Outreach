@@ -19,7 +19,7 @@ export { SwarmEventBus, getGlobalSwarmEventBus } from './bus/swarmEventBus.ts';
 export type { SwarmEventHandler, SwarmSubscription } from './bus/swarmEventBus.ts';
 
 // Kontext & Global Swarm Core (TCK-015)
-export { SwarmProvider, useSwarmContext } from './context/SwarmContext.tsx';
+export { SwarmProvider, useSwarmContext, useOptionalSwarmContext } from './context/SwarmContext.tsx';
 export type { SwarmCoreContextValue, SwarmProviderProps } from './context/SwarmContext.tsx';
 
 // Telemetri & Styrkort Scheman & Hooks (TCK-002 & TCK-006)
@@ -52,11 +52,25 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
-// Symbol-Krona & Split-Pane Layout (TCK-017 & TCK-018)
+// Symbol-Krona & Split-Pane Layout (TCK-017 & TCK-018 & TCK-020)
 export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';
 export type { SymbolCrownProps, CrownStatusColor, CrownState } from './ui/SymbolCrown.tsx';
 export { SplitPaneCanvas } from './ui/SplitPaneCanvas.tsx';
 export type { SplitPaneCanvasProps } from './ui/SplitPaneCanvas.tsx';
+export {
+  computeSplitArrows,
+  getIntentButtonClass,
+  getIntentTextClass,
+  getArrowDisplay,
+  getPaneDirectionClass,
+  getDividerStyleClass,
+  getPaneSizeStyle,
+  calculateRatioFromPointer,
+  computeSnapTarget,
+  SWARM_INTENTS,
+  INTENT_FORCE_MAP,
+} from './ui/splitPaneHelper.ts';
+export type { SwarmIntent, SplitOrientation, SplitArrowConfig, SwarmIntentDef } from './ui/splitPaneHelper.ts';
 
 // Immersiv Touch-Overlay, Exekveringskort & Användarlås (TCK-018)
 export { ExecutionCard } from './ui/ExecutionCard.tsx';

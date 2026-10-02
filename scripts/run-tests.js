@@ -22,6 +22,7 @@ import { runTransientTCK016Tests } from '../src/__tests__/transient_TCK-016.test
 import { runTransientTCK017Tests } from '../src/__tests__/transient_TCK-017.test.ts';
 import { runTransientTCK018Tests } from '../src/__tests__/transient_TCK-018.test.ts';
 import { runTransientTCK019Tests } from '../src/__tests__/transient_TCK-019.test.ts';
+import { runTransientTCK020Tests } from '../src/__tests__/transient_TCK-020.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -54,6 +55,7 @@ async function main() {
     { name: '22. Transient E2E: TCK-017 Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout', runner: async () => runTransientTCK017Tests() },
     { name: '23. Transient E2E: TCK-018 Integrerad Symbol-Krona, Immersiv Touch-Overlay & Exekveringskort', runner: async () => runTransientTCK018Tests() },
     { name: '24. Transient E2E: TCK-019 Silent OAuth Refresh & Drive Token Lifeline', runner: async () => runTransientTCK019Tests() },
+    { name: '25. Transient E2E: TCK-020 Intent-Driven Audio, Responsive SplitPane & Adaptive Control Bar', runner: async () => runTransientTCK020Tests() },
   ];
 
   for (const suite of testSuites) {

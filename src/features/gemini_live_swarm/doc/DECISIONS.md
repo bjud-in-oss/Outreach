@@ -208,13 +208,15 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   5. **Exekveringskort (`ExecutionCard.tsx`)**: Fällbara kort i chatten (`[ ⇑ Exekveringskort #XX ]`) med översikt över skapade filer, ändringsloggar och röstresuméer.
 - **Konsekvens**: Optimal mobil- och desktopanpassning, ostörd dialog vid behov och full spårbarhet via exekveringskort.
 
+---
 
-
-
-
-
-
-
-
-
-
+## ADR-SWARM-015: Intent-Driven Audio Trigger & Adaptive Control Bar
+- **Datum**: 2026-10-02
+- **Status**: Beslutat & Implementerat (TCK-020)
+- **Kontext**: Tidigare krävdes manuell röstaktivering och kontrollknapparna var spridda i flytande overlays. Dessutom behövdes orienteringsanpassad split-pane med enkelpilar för gränslägen och permanent synlighet av SymbolCrown.
+- **Beslut**:
+  1. **Intent-Driven Audio & User Gesture**: Koppla start av AudioContext och mikrofon till direkta klick på lägesknapparna ([ 🎬 Reflektera ], [ 🧠 Kom ihåg ], [ 💬 Rådgör ]). Ett klick ansluter mikrofonströmmen; ett återklick stänger mikrofonen och försätter sessionen i dvala ("🟡 Agenter i dvala").
+  2. **Integrerad & Adaptiv Kontrollrad**: Placera lägesknapparna i mitten av delningslinjen. Vid begränsat utrymme döljs texten på inaktiva knappar (kompakta runda ikoner), medan aktiv knapp förstoras (scale-105).
+  3. **Orientering & Enkelpilar**: Stöd för både porträtt (vertikal stapling) och landskap (horisontell stapling). Vid gränslägen (0% och 100%) döljs förbrukad pilsymbol så att enbart giltig återställningspil visas ([ ⇧ ] resp [ ⇩ ] i porträtt; [ ⇒ ] resp [ ⇐ ] i landskap).
+  4. **Permanent SymbolCrown & Helskärmsåtergång**: SymbolCrown är låst till toppzonen och förblir permanent synlig. Återgång från helskärmsläge återställer delningen balanserat till 50% så att båda fälten visas.
+- **Konsekvens**: Betydligt mer intuitiv användarupplevelse på både mobil och desktop med fail-safe röstaktivering och stabil kanvaslayout.
