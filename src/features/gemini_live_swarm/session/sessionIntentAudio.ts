@@ -7,7 +7,7 @@ export function createBidiSetupPayload(systemInstruction?: string) {
     setup: {
       model: 'models/gemini-3.8-live',
       generationConfig: {
-        responseModalities: ['audio'],
+        responseModalities: ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
       },
       systemInstruction: { parts: [{ text }] },
