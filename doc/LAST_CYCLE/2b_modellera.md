@@ -1,84 +1,106 @@
-# Steg 2b: Modellera & Arkitekturdesign (TCK-020)
+# Steg 2b: Modellera & Arkitekturdesign (TCK-020b)
 
-## 1. Intent-Modell & User Gesture Ljudaktivering
+## 1. 3-State Modell & Navigeringsregler i `splitPaneHelper.ts`
 
 ```ts
-export type SwarmIntent = 'REFLECT' | 'REMEMBER' | 'CONSULT';
+export type SplitSnapState = 0 | 50 | 100;
 
-export const INTENT_FORCE_MAP: Record<SwarmIntent, { force: string; title: string; symbol: string }> = {
-  REFLECT: { force: 'ATT_FOLJA', title: 'Reflektera', symbol: '🎬' },
-  REMEMBER: { force: 'ATT_VANDA_OM', title: 'Kom ihåg', symbol: '🧠' },
-  CONSULT: { force: 'ATT_FORLIKAS', title: 'Rådgör', symbol: '💬' },
-};
-
-export class GeminiLiveSession {
-  private activeIntent: SwarmIntent | null = null;
-  private audioContext: AudioContext | null = null;
-  private mediaStream: MediaStream | null = null;
-
-  public async activateIntent(intent: SwarmIntent): Promise<void> {
-    if (this.activeIntent === intent) {
-      this.deactivateIntent();
-      return;
-    }
-    this.activeIntent = intent;
-    // User Gesture: Säker start av AudioContext och getUserMedia
-    await this.initAudioStream();
-    this.publishIntentActivated(intent);
+export function stepSnapState(
+  current: SplitSnapState,
+  direction: 'prev' | 'next'
+): SplitSnapState {
+  if (direction === 'prev') {
+    if (current === 100) return 50;
+    if (current === 50) return 0;
+    return 0;
   }
-
-  public deactivateIntent(): void {
-    this.activeIntent = null;
-    this.stopAudioStream();
-    this.publishDormantState(); // "🟡 Agenter i dvala"
-  }
+  // direction === 'next'
+  if (current === 0) return 50;
+  if (current === 50) return 100;
+  return 100;
 }
-```
 
-## 2. Orientering & Enkelpils-Logik i `splitPaneHelper.ts`
+export function handleKeyboardNavigation(
+  key: string,
+  orientation: SplitOrientation,
+  current: SplitSnapState
+): SplitSnapState {
+  if (orientation === 'portrait') {
+    if (key === 'ArrowUp') return stepSnapState(current, 'prev');
+    if (key === 'ArrowDown') return stepSnapState(current, 'next');
+  } else {
+    if (key === 'ArrowLeft') return stepSnapState(current, 'prev');
+    if (key === 'ArrowRight') return stepSnapState(current, 'next');
+  }
+  return current;
+}
 
-```ts
-export type SplitOrientation = 'portrait' | 'landscape';
-
-export interface SplitArrowConfig {
-  showFirst: boolean;
-  showSecond: boolean;
-  firstIcon: string;
-  secondIcon: string;
+export function handleSwipeGesture(
+  deltaX: number,
+  deltaY: number,
+  orientation: SplitOrientation,
+  current: SplitSnapState
+): SplitSnapState {
+  const threshold = 30;
+  if (orientation === 'portrait') {
+    if (deltaY < -threshold) return stepSnapState(current, 'prev');
+    if (deltaY > threshold) return stepSnapState(current, 'next');
+  } else {
+    if (deltaX < -threshold) return stepSnapState(current, 'prev');
+    if (deltaX > threshold) return stepSnapState(current, 'next');
+  }
+  return current;
 }
 
 export function computeSplitArrows(
   orientation: SplitOrientation,
-  ratio: number
+  ratio: SplitSnapState
 ): SplitArrowConfig {
   if (orientation === 'landscape') {
     return {
-      showFirst: ratio > 0,
-      showSecond: ratio < 100,
+      showFirst: ratio > 0, // [ ⇐ ] vid 50% och 100%
+      showSecond: ratio < 100, // [ ⇒ ] vid 0% och 50%
       firstIcon: '⇐',
       secondIcon: '⇒',
     };
   }
-  // Portrait
   return {
-    showFirst: ratio > 0,
-    showSecond: ratio < 100,
-    firstIcon: '⇩',
-    secondIcon: '⇧',
+    showFirst: ratio > 0, // [ ⇧ ] vid 50% och 100%
+    showSecond: ratio < 100, // [ ⇩ ] vid 0% och 50%
+    firstIcon: '⇧',
+    secondIcon: '⇩',
   };
 }
 ```
 
-## 3. Delningslinjens Integrerade Knappar
+## 2. Gemini Live Bidi Audio Handshake & PCM16 Piping
 
-```tsx
-<div role="separator" className="delningslinje">
-  {arrows.showFirst && <button onClick={snapMin}>{arrows.firstIcon}</button>}
-  <div className="lägesknappar-center">
-    <button className={getButtonClass('REFLECT', activeIntent)}>🎬 <span>Reflektera</span></button>
-    <button className={getButtonClass('REMEMBER', activeIntent)}>🧠 <span>Kom ihåg</span></button>
-    <button className={getButtonClass('CONSULT', activeIntent)}>💬 <span>Rådgör</span></button>
-  </div>
-  {arrows.showSecond && <button onClick={snapMax}>{arrows.secondIcon}</button>}
-</div>
+```ts
+export function createBidiSetupPayload(systemInstruction?: string) {
+  return {
+    setup: {
+      model: 'models/gemini-3.8-live',
+      generationConfig: {
+        responseModalities: ['audio'],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Aoede' },
+          },
+        },
+      },
+      systemInstruction: {
+        parts: [{ text: systemInstruction || 'Försoningsmotorns kompass aktiv.' }],
+      },
+    },
+  };
+}
+
+export function floatTo16BitPCM(input: Float32Array): Int16Array {
+  const output = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]));
+    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return output;
+}
 ```

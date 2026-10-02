@@ -1,12 +1,13 @@
 # APPROVAL HISTORIK & AKTUELL GODKÄNNANDELOGG
 
-- **Aktuell Godkänd Token**: `TCK-020-ADAPTIVE-CONTROL-TOKEN`
+- **Aktuell Godkänd Token**: `TCK-020B-AUDIO-GESTURE-TOKEN`
 - **Godkänd av**: Produktägare via chatt
-- **Godkänd vid**: 2026-10-02T11:00:00Z
-- **Ticket**: TCK-020 (Intent-Driven Audio Trigger, Responsive SplitPane & Adaptive Control Bar)
+- **Godkänd vid**: 2026-10-02T11:28:30Z
+- **Ticket**: TCK-020b (Audio Handshake, 3-State SplitPane Gestures & Keyboard Shortcuts)
 - **Status**: Godkänd för genomförande (Fas 2)
 
 ## Tidigare Godkända Tokens
+- `TCK-020-ADAPTIVE-CONTROL-TOKEN` (TCK-020)
 - `TCK-019-SILENT-REFRESH-TOKEN` (TCK-019)
 - `TCK-018-IMMERSIVE-OVERLAY-TOKEN` (TCK-018)
 - `TCK-017-SYMBOL-CROWN-TOKEN` (TCK-017)

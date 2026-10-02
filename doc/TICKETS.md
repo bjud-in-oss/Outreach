@@ -1,6 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
+- [AKTIV] TCK-020b | Domän: Global / src/features/gemini_live_swarm/ | Mål: Audio Handshake, 3-State SplitPane Gestures & Keyboard Shortcuts | Spec: doc/TICKETS/TCK-020b.md
 
 ---
 

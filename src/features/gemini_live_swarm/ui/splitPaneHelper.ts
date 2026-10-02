@@ -1,5 +1,6 @@
 export type SwarmIntent = 'REFLECT' | 'REMEMBER' | 'CONSULT';
 export type SplitOrientation = 'portrait' | 'landscape';
+export type SplitSnapState = 0 | 50 | 100;
 
 export interface SplitArrowConfig {
   showFirst: boolean;
@@ -27,23 +28,60 @@ export const INTENT_FORCE_MAP: Record<SwarmIntent, { force: string; title: strin
   CONSULT: { force: 'ATT_FORLIKAS', title: 'Rådgör', symbol: '💬' },
 };
 
+export function stepSnapState(
+  current: SplitSnapState,
+  direction: 'prev' | 'next'
+): SplitSnapState {
+  if (direction === 'prev') {
+    if (current === 100) return 50;
+    return 0;
+  }
+  if (current === 0) return 50;
+  return 100;
+}
+
+export function handleKeyboardNavigation(
+  key: string,
+  orientation: SplitOrientation,
+  current: SplitSnapState
+): SplitSnapState {
+  if (orientation === 'portrait') {
+    if (key === 'ArrowUp') return stepSnapState(current, 'prev');
+    if (key === 'ArrowDown') return stepSnapState(current, 'next');
+  } else {
+    if (key === 'ArrowLeft') return stepSnapState(current, 'prev');
+    if (key === 'ArrowRight') return stepSnapState(current, 'next');
+  }
+  return current;
+}
+
+export function handleSwipeGesture(
+  deltaX: number,
+  deltaY: number,
+  orientation: SplitOrientation,
+  current: SplitSnapState
+): SplitSnapState {
+  const threshold = 30;
+  if (orientation === 'portrait') {
+    if (deltaY < -threshold) return stepSnapState(current, 'prev');
+    if (deltaY > threshold) return stepSnapState(current, 'next');
+  } else {
+    if (deltaX < -threshold) return stepSnapState(current, 'prev');
+    if (deltaX > threshold) return stepSnapState(current, 'next');
+  }
+  return current;
+}
+
 export function computeSplitArrows(
   orientation: SplitOrientation,
   ratio: number
 ): SplitArrowConfig {
-  if (orientation === 'landscape') {
-    return {
-      showFirst: ratio > 0,
-      showSecond: ratio < 100,
-      firstIcon: '⇐',
-      secondIcon: '⇒',
-    };
-  }
+  const isLand = orientation === 'landscape';
   return {
     showFirst: ratio > 0,
     showSecond: ratio < 100,
-    firstIcon: '⇩',
-    secondIcon: '⇧',
+    firstIcon: isLand ? '⇐' : '⇧',
+    secondIcon: isLand ? '⇒' : '⇩',
   };
 }
 
@@ -107,6 +145,12 @@ export function calculateRatioFromPointer(
     ? ((clientX - rect.left) / rect.width) * 100
     : ((clientY - rect.top) / rect.height) * 100;
   return Math.max(0, Math.min(100, Math.round(raw)));
+}
+
+export function clampSnapState(ratio: number): SplitSnapState {
+  if (ratio === 0) return 0;
+  if (ratio === 100) return 100;
+  return 50;
 }
 
 export function computeSnapTarget(currentRatio: number, toMin: boolean): number {

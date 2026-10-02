@@ -1,62 +1,55 @@
-# 3c Fil-operativ Källkodsspecifikation (TCK-020)
+# 3c Fil-operativ Källkodsspecifikation (TCK-020b)
 
 ## 1. Förändringskedja för Fas 2 (pnpm genomfor)
 
-Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-020-ADAPTIVE-CONTROL-TOKEN`):
+Följande filer är specificerade för källkodsändring under Fas 2 efter bekräftelse av godkännandekoden (`TCK-020B-AUDIO-GESTURE-TOKEN`):
 
-### 1. `src/features/gemini_live_swarm/ui/splitPaneHelper.ts` (Ny fil)
-- **Funktioner**:
-  - `computeSplitArrows(orientation: 'portrait' | 'landscape', ratio: number): SplitArrowConfig`
-    * Porträtt: Dölj nedåtpil vid botten (0%), visa enbart `[ ⇧ ]`; dölj uppåtpil vid topp (100%), visa enbart `[ ⇩ ]`.
-    * Landskap: Dölj vänsterpil vid vänster gräns (0%), visa enbart `[ ⇒ ]`; dölj högerpil vid höger gräns (100%), visa enbart `[ ⇐ ]`.
-  - `getIntentButtonClass(intent: SwarmIntent, activeIntent: SwarmIntent | null): string`
-    * Formaterar aktiv knapp med förstorad layout (`scale-105 shadow-md`) och inaktiv knapp med adaptiv textdöljning på mobil.
-  - `getOrientationClass(orientation: 'portrait' | 'landscape'): string`
+### 1. `src/features/gemini_live_swarm/ui/splitPaneHelper.ts`
+- **Tillägg/Ändring**:
+  - `type SplitSnapState = 0 | 50 | 100`.
+  - `stepSnapState(current: SplitSnapState, direction: 'prev' | 'next'): SplitSnapState`.
+  - `handleKeyboardNavigation(key: string, orientation: SplitOrientation, current: SplitSnapState): SplitSnapState`.
+  - `handleSwipeGesture(deltaX: number, deltaY: number, orientation: SplitOrientation, current: SplitSnapState): SplitSnapState`.
+  - Justera `computeSplitArrows`:
+    * Vid 100%: Enbart [ ⇧ ] (Portrait) / [ ⇐ ] (Landscape).
+    * Vid 50%: Båda [ ⇧ ][ ⇩ ] (Portrait) / [ ⇐ ][ ⇒ ] (Landscape).
+    * Vid 0%: Enbart [ ⇩ ] (Portrait) / [ ⇒ ] (Landscape).
 
-### 2. `src/features/gemini_live_swarm/session/geminiLiveSession.ts`
-- **Tillägg**:
-  - `activeIntent: SwarmIntent | null = null`.
-  - `activateIntent(intent: SwarmIntent): Promise<void>`
-    * Växlar aktivt läge. Om samma knapp trycks anropas `deactivateIntent()`.
-    * User Gesture: Initierar Web Audio (`AudioContext`) och begär mikrofon.
-    * Publicerar `swarm.live.intent.activated`.
-  - `deactivateIntent(): void`
-    * Frigör mikrofonströmmar och sätter `activeIntent = null`.
-    * Publicerar `swarm.live.intent.deactivated` med `activityText: "🟡 Agenter i dvala"`.
+### 2. `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`
+- **Tillägg/Ändring**:
+  - `createBidiSetupPayload(systemInstruction?: string)` för Live API-handskakning.
+  - `floatTo16BitPCM(input: Float32Array): Int16Array` för PCM16 mono 16kHz-strömning.
+  - Publicering av `swarm.live.audio.talking` och `swarm.live.audio.thinking` på `SwarmEventBus`.
 
 ### 3. `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx`
-- **Förändring**:
-  - Flytta in lägesknapparna i mitten av delningslinjen (`split-pane-divider`).
-  - Använd `computeSplitArrows` och `getIntentButtonClass` för att bevara låg förgreningsgrad (max 5) och linjeantal under 120 rader.
-  - Hantera orienteringsväxling och enkelpilsklick för direkt återställning till neutralläge (50%).
+- **Tillägg/Ändring**:
+  - Lås till de 3 fasta lägena (0, 50, 100).
+  - Integrera `handleKeyboardNavigation` och `handleSwipeGesture`.
+  - Enkelklick på pilar flyttar exakt 1 steg.
+  - AST-begränsning: max 125 rader, djup <= 4, förgreningar <= 5.
 
 ### 4. `src/features/gemini_live_swarm/ui/AppShell.tsx`
-- **Förändring**:
-  - Gör `SymbolCrown` permanent synlig i toppzonen oavsett immersivt tillstånd.
-  - Koppla intent-anrop till `GeminiLiveSession`.
+- **Tillägg/Ändring**:
+  - Ta bort `TouchOverlayMenu` helt.
+  - Lägg till dynamisk orienteringsdetektering via `window.matchMedia('(orientation: landscape)')`.
+  - Lås `SymbolCrown` permanent i toppzonen.
 
 ### 5. `src/features/gemini_live_swarm/doc/DECISIONS.md`
 - **Tillägg**:
-  - Dokumentera **ADR-SWARM-015: Intent-Driven Audio Trigger & Adaptive Control Bar**.
+  - Dokumentera `ADR-SWARM-016: Live Audio Handshake, 3-State SplitPane & Gesture Navigation`.
 
-### 6. `src/__tests__/transient_TCK-020.test.ts` (Ny fil)
-- **Verifieringar**:
-  - Test 1: User Gesture-aktivering av röstström och intent-växling.
-  - Test 2: Inaktivering av röstsession och status `"🟡 Agenter i dvala"`.
-  - Test 3: Enkelpilar vid gränslägen (döljning vid 0% och 100%) i porträtt och landskap.
-  - Test 4: Adaptiv knappkollaps (ikon vs text + scale-105).
-  - Test 5: Permanent SymbolCrown och helskärmsåtergång.
-  - Test 6: AST- och strukturmått (max 125 rader, djup <= 4, förgreningar <= 5 i TSX).
+### 6. `src/__tests__/transient_TCK-020.test.ts`
+- **Tillägg/Ändring**:
+  - Verifiera Audio Setup handskakning och PCM16-strömning.
+  - Verifiera 3-state snap via klick, svep och piltangenter.
+  - Verifiera döljning av förbrukade pilar vid 0% och 100%.
+  - Verifiera fullständig bortkoppling av TouchOverlayMenu i AppShell.
 
 ### 7. `scripts/verify-architecture.js`
 - **Tillägg**:
-  - Registrera `TCK-020-ADAPTIVE-CONTROL-TOKEN` i `validTokens`.
-
-### 8. `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts`
-- **Tillägg**:
-  - Registrera TCK-020.
+  - Registrera `TCK-020B-AUDIO-GESTURE-TOKEN` i `validTokens`.
 
 ---
 
 ## 2. Token Gate
-- Godkännandekod: `TCK-020-ADAPTIVE-CONTROL-TOKEN` i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.
+- Godkännandekod: `TCK-020B-AUDIO-GESTURE-TOKEN` i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.

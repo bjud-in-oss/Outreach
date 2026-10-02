@@ -1,50 +1,46 @@
-# Steg 1a: Förstå & Riskanalys (TCK-020)
+# Steg 1a: Förstå & Riskanalys (TCK-020b)
 
 > *"Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas."*
 
----
+## 1. Uppdrag & Kontext (TCK-020b)
+- **Titel**: Audio Handshake, 3-State SplitPane Gestures & Keyboard Shortcuts
+- **Domän**: Global / `src/features/gemini_live_swarm/`
+- **Active Skills**: `gemini-live-api-dev`, `gemini-api-dev`
+- **Mål**:
+  1. Fullständig Gemini Live Audio-handskakning (`BidiGenerateContentSetup`), kontinuerlig 16kHz PCM16 ljudinmatning och WebAudio-uppspelning med telemetrihändelser (`SWARM_TALKING`, `SWARM_THINKING`).
+  2. Strikt 3-stegs snap (`0%` topp/vänster, `50%` mitten, `100%` botten/höger) med enstegsnavigering via klick, touch-svepgester (swipe) och piltangenter (`ArrowUp`/`ArrowDown`/`ArrowLeft`/`ArrowRight`).
+  3. Dynamiska enkelpilar per läge:
+     - Vid `100%`: Enbart `[ ⇧ ]` (Portrait) / `[ ⇐ ]` (Landscape).
+     - Vid `50%`: Båda pilar `[ ⇧ ][ ⇩ ]` (Portrait) / `[ ⇐ ][ ⇒ ]` (Landscape).
+     - Vid `0%`: Enbart `[ ⇩ ]` (Portrait) / `[ ⇒ ]` (Landscape).
+  4. Dynamisk orienteringsdetektering via `window.matchMedia('(orientation: landscape)')` eller container-dimensioner (flex-col i Portrait, flex-row i Landscape).
+  5. Rensning av `TouchOverlayMenu` från `AppShell.tsx` så att delningslinjens adaptiva kontrollrad är den enda och permanenta kontrollenheten.
+  6. Permanent låsning av `SymbolCrown` i toppzonen oavsett delningsläge.
 
-## 1. Uppdrag & Kontext (TCK-020)
-TCK-020 förenar gränssnittets fysiska och funktionella layout i en adaptiv och intent-styrd helhet:
-1. **Intent-Driven Audio & User Gesture**:
-   - Webbläsarens strikta `Autoplay Policy` kräver en direkt användargest (`User Gesture`, t.ex. klick) för att instansiera/återuppta `AudioContext` och erhålla mikrofonåtkomst via `navigator.mediaDevices.getUserMedia()`.
-   - Lägesknapparna `[ 🎬 Reflektera ]`, `[ 🧠 Kom ihåg ]` och `[ 💬 Rådgör ]` fungerar som direkta intent-triggers som öppnar röstströmmen och kopplar upp sessionen.
-   - Klick på en redan aktiv knapp stänger mikrofon/session och publicerar ett dvalatillstånd till `SymbolCrown` med status `"🟡 Agenter i dvala"`.
-2. **Integrerade & Adaptiva Lägesknappar på Delningslinjen**:
-   - Lägesknapparna flyttas in centralt på själva delningslinjen i `SplitPaneCanvas.tsx`.
-   - Vid begränsad bredd kollapsar inaktiva knappar till kompakta, runda ikonknappar, medan den aktiva knappen behåller full text och framhävs (`scale-105`).
-3. **Orientering- och Enkelpilsanpassad SplitPane**:
-   - Porträttläge: Horisontell delningslinje. Vid botten-snap (0%) döljs nedåtpil och enbart uppåtpil `[ ⇧ ]` visas; vid topp-snap (100%) döljs uppåtpil och enbart `[ ⇩ ]` visas.
-   - Landskapsläge: Vertikal delningslinje (vänster/höger) med horisontella pilar `[ ⇐ ]` och `[ ⇒ ]`.
-4. **Permanent SymbolCrown & Helskärmskorrigering**:
-   - `SymbolCrown` låses permanent till toppzonen och förblir synlig oavsett helskärm eller immersivt tillstånd.
-   - Återgång från maximerad chatt (0% eller 100%) återställer split ratio till det balanserade neutralläget (50%) utan klippning eller layoutkrasch.
+## 2. GROW-Riskanalys (Intern Teknisk Precision)
 
----
+### Risknod 1: State (3-State Lägeshantering, Svepgester & Tangentbordslyssnare)
+- **Risk**: Godtyckliga procenttal (t.ex. 23% eller 78%) vid dragning eller gester kan korrumpera de 3 fasta lägena. Tangentbordslyssnare kan läcka eller krocka vid fokus i inmatningsfält.
+- **Teknisk Lösning**:
+  - Definiera de exakta 3 tillstånden som en union: `type SplitSnapState = 0 | 50 | 100`.
+  - Skapa deterministiska övergångsfunktioner i `splitPaneHelper.ts`: `stepSnapState(current: SplitSnapState, direction: 'prev' | 'next'): SplitSnapState`.
+  - Svepgester detekterar rörelsevektor ($\Delta Y$ för Portrait, $\Delta X$ för Landscape) med en tröskel på 30px och flyttar exakt 1 steg.
+  - Tangentbordslyssnare binds till container/window och ignorerar händelser då `target` är `HTMLInputElement` eller `HTMLTextAreaElement`.
 
-## 2. GROW Intern Riskanalys
+### Risknod 2: Contract (Bidi WebSocket Setup, PCM16 Format & Event Envelopes)
+- **Risk**: WebSocket-anslutningen skickar felaktig setup-struktur eller inkompatibel ljudkodning, vilket leder till att Gemini Live API omedelbart stänger socketen (1008 Policy Violation / Invalid Argument).
+- **Teknisk Lösning**:
+  - Följ `@google/genai` specifikationen för Live API:
+    - Initial payload: `{ setup: { model: 'models/gemini-3.8-live', generationConfig: { responseModalities: ['audio'] } } }`.
+    - Ljuddata: 16kHz mono Linear PCM 16-bit paketerad som Base64 i `{ realtimeInput: { mediaChunks: [{ mimeType: 'audio/pcm;rate=16000', data: base64Pcm }] } }`.
+  - SwarmEventBus publicerar CloudEvents 1.0 för `swarm.live.audio.talking` och `swarm.live.audio.thinking`.
 
-### 1. State-Risk (Röstsession, Aktivt Läge & Delningsorientering)
-- **Risk**: Växling mellan orienteringar (porträtt/landskap), klick på intent-knappar under pågående röstströmning samt helskärmsväxlingar kan orsaka osynkroniserade tillstånd mellan `AudioContext`, `GeminiLiveSession`, `activeIntent` och `splitRatio`.
-- **Lösning**:
-  - Definiera ett rent `SwarmIntent`-tillstånd: `'REFLECT' | 'REMEMBER' | 'CONSULT' | null`.
-  - Atomär hantering i sessionen: Starta eller stoppa mikrofonen synkront med tillståndsväxling.
-  - Spara och återställ föregående `splitRatio` (default 50) vid toggle från helskärm.
+### Risknod 3: Resilience & AST-gränser (Browser vs Testmiljö, max 125 rader TSX)
+- **Risk**: `AudioContext`, `AudioWorklet`, `MediaStream` och `matchMedia` saknas i Node.js-baserade transienta testmiljöer. `SplitPaneCanvas.tsx` och `geminiLiveSession.ts` riskerar att överskrida AST-metrikerna (max 125 rader / 5 förgreningar för TSX, max 250 rader för TS).
+- **Teknisk Lösning**:
+  - All Web Audio- och WebSocket-kod kapslas med `typeof window !== 'undefined'`-skydd och injicerbara audio-pipelines i `sessionIntentAudio.ts`.
+  - Extrahera all beräkning av svepgester, tangentbordsövergångar och pilkonfigurationer till `splitPaneHelper.ts`.
+  - Håll `SplitPaneCanvas.tsx` under 115 rader och förgreningsantal under 5 genom att undvika `&&`/`?` i JSX.
 
-### 2. Contract-Risk (Web Audio API, User Gesture & AST-Mått)
-- **Risk**: Direkta Web Audio- och MediaDevices-anrop kraschar i Node.js (`npm test`) om de inte skyddas av miljöabstraktion. Samtidigt ställer `scripts/drivers/ts.js` hårda krav på `.tsx`-filer (max 125 rader, djup max 4, max 5 förgreningar).
-- **Lösning**:
-  - Skydda ljudinitiering bakom webbläsarkontroll (`typeof window !== 'undefined' && window.AudioContext`).
-  - Håll `SplitPaneCanvas.tsx` och relaterade komponenter strikt modulära och under 120 rader genom att flytta pilsymboler och layoutlogik till en renodlad hjälpmodul (`splitPaneHelper.ts`).
-
-### 3. Resilience-Risk (Mikrofon-nekad & Hårdvaruresurser)
-- **Risk**: Om användaren nekar mikrofontillstånd eller om hårdvaran är upptagen kan appen frysa eller fastna i anslutningsläge.
-- **Lösning**:
-  - Fånga `NotAllowedError` och nätverksfel säkert, återställ intent-knappen till inaktiv och publicera felbesked till `SymbolCrown`.
-  - Garantera att transienta tester i `src/__tests__/transient_TCK-020.test.ts` verifierar både lyckad och avbruten start på under 3 sekunder.
-
----
-
-## 3. Aktiva Vektorer & Skills
-- **active_vectors**: `State` (Intent-växling, split ratio & orientering), `Contract` (User Gesture Audio API & pilscheman), `Resilience` (Mikrofonfrigörelse & permanent SymbolCrown).
-- **active_skills**: `gemini-live-api-dev`, `gemini-api-dev`.
+## 3. Active Vectors
+- `active_vectors`: `["pcm16_bidi_handshake", "3_state_split_navigation", "orientation_matchmedia", "touch_overlay_purge", "permanent_crown_lock"]`

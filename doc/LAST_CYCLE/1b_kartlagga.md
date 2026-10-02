@@ -1,35 +1,44 @@
-# Steg 1b: Kartlägga & Komponentinventering (TCK-020)
+# Steg 1b: Kartlägga & Komponentinventering (TCK-020b)
 
-## 1. Inventering av Filer att Skapa och Modifiera
+## 1. Inventering av Filer att Modifiera och Skapa
 
-### Filer att Skapa
-1. `src/features/gemini_live_swarm/ui/splitPaneHelper.ts`:
-   - Beräkning av pil-symboler (`[ ⇧ ]`, `[ ⇩ ]`, `[ ⇐ ]`, `[ ⇒ ]`) baserat på orientering (`portrait` vs `landscape`) och `splitRatio`.
-   - Logik för att dölja förbrukad riktningspil vid gränslägena 0% och 100%.
-   - Klassnamnshjälpare för adaptiv kollaps av lägesknappar (full text vs cirkelformad ikon).
-   - Hjälper `SplitPaneCanvas.tsx` att hålla sig strikt inom AST-kraven (max 125 rader, djup max 4, max 5 förgreningar).
-2. `src/__tests__/transient_TCK-020.test.ts`:
-   - Transienta mikro-E2E-tester (< 3s i minnet) för:
-     * User Gesture start av AudioContext och säker hantering i mock/nodemiljö.
-     * Enkelpilar vid gränslägen (döljning vid 0% och 100%).
-     * Adaptiv knappkollaps (ikon vs text + `scale-105`).
-     * Permanent synlighet för `SymbolCrown` och ren helskärmsåtergång.
-     * AST- och strukturmått.
+### 1. `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`
+- **Nuvarande status**: Hanterar basala intents och AudioContext-start.
+- **Förändring**:
+  - Implementera `BidiGenerateContentSetup`-generator och sändning över WebSocket (`connectLive`).
+  - Skapa PCM16 mono 16kHz-omvandlare (`floatTo16BitPCM`) från ScriptProcessor/AudioWorklet.
+  - Sänd realtimeInput kontinuerligt under aktiv ljudström.
+  - Publicera `swarm.live.audio.talking` och `swarm.live.audio.thinking`.
 
-### Filer att Modifiera
-1. `src/features/gemini_live_swarm/session/geminiLiveSession.ts`:
-   - Metoder för `activateIntent(intent)` och `deactivateIntent()`.
-   - `User Gesture`-koppling: startar eller återupptar `AudioContext` och kopplar mikrofonström.
-   - Sänder dvalahändelse på `SwarmEventBus` vid inaktivering (`"🟡 Agenter i dvala"`).
-2. `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx`:
-   - Inbäddade lägesknappar på delningslinjen.
-   - Stöd för porträtt/landskap samt dynamiska enkelpilar.
-3. `src/features/gemini_live_swarm/ui/AppShell.tsx`:
-   - Permanent låsning av `SymbolCrown` i toppzonen.
-   - Robust återgång från helskärmsläge till neutralläge (50%).
-4. `src/features/gemini_live_swarm/doc/DECISIONS.md`:
-   - Dokumentera **ADR-SWARM-015: Intent-Driven Audio Trigger & Adaptive Control Bar**.
-5. `scripts/verify-architecture.js`:
-   - Registrera godkännandekoden `TCK-020-ADAPTIVE-CONTROL-TOKEN`.
-6. `scripts/run-tests.js` & `src/__tests__/suite/e2e_regression.test.ts`:
-   - Registrera TCK-020 i regressionssviten.
+### 2. `src/features/gemini_live_swarm/ui/splitPaneHelper.ts`
+- **Nuvarande status**: Hanterar beräkning av pilar och knappklasser.
+- **Förändring**:
+  - Definiera `SplitSnapState = 0 | 50 | 100`.
+  - Implementera `stepSnapState(current: SplitSnapState, direction: 'prev' | 'next'): SplitSnapState`.
+  - Implementera `handleKeyboardNavigation(key: string, orientation: SplitOrientation, current: SplitSnapState): SplitSnapState`.
+  - Implementera `handleSwipeGesture(deltaX: number, deltaY: number, orientation: SplitOrientation, current: SplitSnapState): SplitSnapState`.
+  - Justera `computeSplitArrows`:
+    * Vid `100`: Enbart `firstIcon` (`[ ⇧ ]` i Portrait, `[ ⇐ ]` i Landscape).
+    * Vid `50`: Båda `[ ⇧ ][ ⇩ ]` / `[ ⇐ ][ ⇒ ]`.
+    * Vid `0`: Enbart `secondIcon` (`[ ⇩ ]` i Portrait, `[ ⇒ ]` i Landscape).
+
+### 3. `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx`
+- **Nuvarande status**: Stödjer dragning och kontinuerliga värden.
+- **Förändring**:
+  - Lås till de 3 fasta lägena (0, 50, 100).
+  - Lägg till tangentbordslyssnare för piltangenter (`ArrowUp`/`ArrowDown` i Portrait, `ArrowLeft`/`ArrowRight` i Landscape).
+  - Lägg till touch event handlers (`onTouchStart`, `onTouchEnd`) för svepgester.
+  - Behåll linjeantal <= 125 och förgreningsantal <= 5.
+
+### 4. `src/features/gemini_live_swarm/ui/AppShell.tsx`
+- **Nuvarande status**: Renderar både `SplitPaneCanvas` och `TouchOverlayMenu`.
+- **Förändring**:
+  - Radera import och rendering av `TouchOverlayMenu`.
+  - Lägg till dynamisk orienteringsdetektering via `window.matchMedia('(orientation: landscape)')`.
+  - Behåll permanent `SymbolCrown` i toppzonen.
+
+### 5. `src/features/gemini_live_swarm/doc/DECISIONS.md`
+- **Förändring**: Dokumentera `ADR-SWARM-016: Live Audio Handshake, 3-State SplitPane & Gesture Navigation`.
+
+### 6. `src/__tests__/transient_TCK-020.test.ts`
+- **Förändring**: Uppdatera för att verifiera samtliga 5 delmål i TCK-020b.

@@ -52,7 +52,10 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
-// Symbol-Krona & Split-Pane Layout (TCK-017 & TCK-018 & TCK-020)
+// Audio Setup & PCM16 (TCK-020b)
+export { createBidiSetupPayload, floatTo16BitPCM } from './session/sessionIntentAudio.ts';
+
+// Symbol-Krona & Split-Pane Layout (TCK-017, TCK-018, TCK-020 & TCK-020b)
 export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';
 export type { SymbolCrownProps, CrownStatusColor, CrownState } from './ui/SymbolCrown.tsx';
 export { SplitPaneCanvas } from './ui/SplitPaneCanvas.tsx';
@@ -67,10 +70,14 @@ export {
   getPaneSizeStyle,
   calculateRatioFromPointer,
   computeSnapTarget,
+  clampSnapState,
+  stepSnapState,
+  handleKeyboardNavigation,
+  handleSwipeGesture,
   SWARM_INTENTS,
   INTENT_FORCE_MAP,
 } from './ui/splitPaneHelper.ts';
-export type { SwarmIntent, SplitOrientation, SplitArrowConfig, SwarmIntentDef } from './ui/splitPaneHelper.ts';
+export type { SwarmIntent, SplitOrientation, SplitArrowConfig, SwarmIntentDef, SplitSnapState } from './ui/splitPaneHelper.ts';
 
 // Immersiv Touch-Overlay, Exekveringskort & Användarlås (TCK-018)
 export { ExecutionCard } from './ui/ExecutionCard.tsx';

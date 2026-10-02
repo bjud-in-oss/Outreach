@@ -1,23 +1,21 @@
-# Steg 2a: Avgränsa & Systemkontrakt (TCK-020)
+# Steg 2a: Avgränsa & Systemkontrakt (TCK-020b)
 
-## 1. Vad som SKA göras i TCK-020
-- **Intent-Driven Audio & User Gesture**:
-  - Koppla start av `AudioContext` och mikrofon till klick på intent-knapparna (`REFLECT`, `REMEMBER`, `CONSULT`).
-  - Klick på redan aktiv knapp stänger session och sänder `"🟡 Agenter i dvala"` till `SymbolCrown`.
-- **Integrerade & Adaptiva Lägesknappar i SplitPane**:
-  - Lägg in knapparna på själva delningslinjen mellan navigeringspilarna.
-  - Adaptiv kollaps: Inaktiva knappar minimeras till runda ikoner (`🎬`, `🧠`, `💬`) på smala skärmar medan den aktiva knappen visar full text och förstoras (`scale-105`).
-- **Orientering & Enkelpilar**:
-  - Identifiera skärmorientering (`portrait` vs `landscape`).
-  - Porträtt: Horisontell delningslinje med vertikala pilar; dölj nedåtpil vid botten (visa enbart `[ ⇧ ]`); dölj uppåtpil vid topp (visa enbart `[ ⇩ ]`).
-  - Landskap: Vertikal delningslinje med horisontella pilar (`[ ⇐ ]` / `[ ⇒ ]`).
-- **Permanent SymbolCrown & Fullskärmsåtergång**:
-  - SymbolCrown förblir alltid synlig i toppen.
-  - Klick på pil eller toggle återställer split ratio rent från 0% eller 100% till neutralläge (50%).
-- **Transienta E2E-tester (< 3s)**:
-  - Validera alla delar i minnet via `src/__tests__/transient_TCK-020.test.ts`.
+## 1. Vad som SKA göras i TCK-020b
+- **Audio Handshake & PCM16 Streaming**:
+  - Sänd `BidiGenerateContentSetup` direkt vid anslutning med `gemini-3.8-live` och `responseModalities: ['audio']`.
+  - Konvertera mikrofonström till 16kHz mono PCM16 och strömma via `realtimeInput`.
+  - Hantera inkommande server-ljud och signalera `SWARM_TALKING` och `SWARM_THINKING` på SwarmEventBus.
+- **3-State SplitPane Navigering**:
+  - Endast 3 lägen tillåtna: `0%`, `50%`, `100%`.
+  - Stegvis förflyttning (ett steg per interaktion) via klick, piltangenter eller svep.
+  - Dynamiska pilar: 100% visar enbart back-pil (`[ ⇧ ]` / `[ ⇐ ]`), 0% visar enbart forward-pil (`[ ⇩ ]` / `[ ⇒ ]`), 50% visar båda.
+- **Menyrensning & MatchMedia**:
+  - Radera `TouchOverlayMenu` från `AppShell.tsx`.
+  - Detektera orientering via `window.matchMedia('(orientation: landscape)')`.
+- **Permanent SymbolCrown**:
+  - Behåll SymbolCrown låst och synlig i toppzonen oavsett läge.
 
-## 2. Vad som INTE ska göras (Avgränsningar)
-- Ingen videoströmning eller bildbearbetning (planerat för senare ticket).
-- Inga förändringar av Google Drive sync eller WAL logger kontrakten.
-- Ingen omskrivning av Gemini Live WebSocket-kärnan från TCK-010.
+## 2. Vad som INTE ska göras (Out of Scope)
+- Inga förändringar av MCP Bridge eller Google Drive synkronisering.
+- Inga nya AI-assistenter eller externa API-klienter utanför Gemini Live.
+- Ingen modifiering av WAL-logger eller databaslagring.

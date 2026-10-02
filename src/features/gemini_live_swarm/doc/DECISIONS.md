@@ -220,3 +220,17 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   3. **Orientering & Enkelpilar**: Stöd för både porträtt (vertikal stapling) och landskap (horisontell stapling). Vid gränslägen (0% och 100%) döljs förbrukad pilsymbol så att enbart giltig återställningspil visas ([ ⇧ ] resp [ ⇩ ] i porträtt; [ ⇒ ] resp [ ⇐ ] i landskap).
   4. **Permanent SymbolCrown & Helskärmsåtergång**: SymbolCrown är låst till toppzonen och förblir permanent synlig. Återgång från helskärmsläge återställer delningen balanserat till 50% så att båda fälten visas.
 - **Konsekvens**: Betydligt mer intuitiv användarupplevelse på både mobil och desktop med fail-safe röstaktivering och stabil kanvaslayout.
+
+---
+
+## ADR-SWARM-016: Live Audio Handshake, 3-State SplitPane & Gesture Navigation
+- **Datum**: 2026-10-02
+- **Status**: Beslutat & Implementerat (TCK-020b)
+- **Kontext**: För att säkerställa skarp realtidsinteraktion behövdes fullständig BidiGenerateContentSetup-handskakning och 16kHz PCM16-strömning mot Gemini Live. Dessutom krävdes deterministisk 3-state snap (0%, 50%, 100%) med stöd för touch-svepgester och piltangenter, samt total utrensning av TouchOverlayMenu från AppShell.
+- **Beslut**:
+  1. **Bidi Setup & PCM16 Piping**: Skicka korrekt initialiseringspayload vid anslutning med Aoede-röst och responseModalities audio. Konvertera mikrofonströmmen till Linear PCM 16-bit mono och strömma realtimeInput kontinuerligt. Publicera SWARM_TALKING och SWARM_THINKING vid serverljud.
+  2. **3-State SplitPane Navigering**: Lås delningen till tre diskreta tillstånd (0%, 50%, 100%). Klick på pil, svepgester (tröskel 30px) och piltangenter (ArrowUp/Down i Portrait, ArrowLeft/Right i Landscape) stegar exakt ett läge i taget.
+  3. **Dynamiska Pilar per Läge**: Vid 100% visas enbart [ ⇧ ] / [ ⇐ ]; vid 50% visas båda [ ⇧ ][ ⇩ ] / [ ⇐ ][ ⇒ ]; vid 0% visas enbart [ ⇩ ] / [ ⇒ ].
+  4. **Menyrensning & MatchMedia**: Ta bort TouchOverlayMenu helt ur AppShell. Låt matchMedia styra flex-col (Portrait) vs flex-row (Landscape) dynamiskt, medan SymbolCrown förblir permanent i toppzonen.
+- **Konsekvens**: Fullständigt förutsägbar och responsiv upplevelse med skarp ljudintegration och ren FSD-komposition.
+

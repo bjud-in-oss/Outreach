@@ -1,6 +1,29 @@
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 import { SwarmIntent, INTENT_FORCE_MAP } from '../ui/splitPaneHelper.ts';
 
+export function createBidiSetupPayload(systemInstruction?: string) {
+  const text = systemInstruction || 'Försoningsmotorns kompass aktiv.';
+  return {
+    setup: {
+      model: 'models/gemini-3.8-live',
+      generationConfig: {
+        responseModalities: ['audio'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
+      },
+      systemInstruction: { parts: [{ text }] },
+    },
+  };
+}
+
+export function floatTo16BitPCM(input: Float32Array): Int16Array {
+  const output = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]));
+    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return output;
+}
+
 export class SessionIntentManager {
   private activeIntent: SwarmIntent | null = null;
   private audioContext: AudioContext | null = null;
@@ -61,6 +84,20 @@ export class SessionIntentManager {
       intent: null,
       status: 'THINKING',
       activityText: '🟡 Agenter i dvala',
+    });
+  }
+
+  public emitAudioTalking(): void {
+    this.eventBus.publishLiveEvent('swarm.live.audio.talking', {
+      state: 'SWARM_TALKING',
+      activityText: '🔊 Agenten talar',
+    });
+  }
+
+  public emitAudioThinking(): void {
+    this.eventBus.publishLiveEvent('swarm.live.audio.thinking', {
+      state: 'SWARM_THINKING',
+      activityText: '🧠 Agenten reflekterar',
     });
   }
 

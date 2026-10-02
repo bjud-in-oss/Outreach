@@ -1,24 +1,20 @@
-# Steg 2e: Syntetisera & Verifiering av Mättnad (TCK-020)
+# Steg 2e: Syntetisera & Verifiering av Mättnad (TCK-020b)
 
 ## 1. Målkonfliktanalys & Syntes
 
-### Målkonflikt 1: Web Audio User Gesture vs Server/Node E2E-Testmiljö
-- **Konflikt**: Webbläsarens Autoplay Policy kräver verkliga användargester (`pointerdown`/`click`) för att aktivera `AudioContext` och mikrofon. I Node.js-miljön för transienta minnestester existerar inte dessa globala Web Audio-gränssnitt.
-- **Syntes**: `GeminiLiveSession` kapslar in ljudaktiveringen med säker miljödetektering (`typeof window !== 'undefined' && window.AudioContext`). I Node.js utförs tillståndsövergången och händelsedistributionen deterministiskt utan att krascha, medan mikrofonen i webbläsaren kopplas upp skarpt via användarens klick på intent-knapparna.
+### Målkonflikt 1: Fri Dragning vs 3-State Stegvis Låsning
+- **Konflikt**: Tidigare implementation hade godtycklig kontinuerlig dragning med pointer-events, vilket ledde till mellanlägen (t.ex. 23%, 67%) och oväntat beteende.
+- **Syntes**: Ersätt kontinuerlig dragning med diskreta 3-state övergångar (`0%`, `50%`, `100%`). Dragning/svep registreras som en gest (tröskel 30px) som stegar exakt ett läge i taget. Tangentbord (piltangenter) och pilar följer exakt samma deterministiska tillståndsmaskin.
 
-### Målkonflikt 2: Begränsad Mobil Skärmbredd vs Tre Lägesknappar & Pilar
-- **Konflikt**: På smala mobilskärmar (360px–420px) ryms inte tre fulla textknappar tillsammans med två pilsymboler och draghandtag på delningslinjen utan radbrytning eller overflow.
-- **Syntes**: Adaptiv knappkollaps via `splitPaneHelper.ts`. Inaktiva knappar krymper till runda, eleganta ikonknappar (`🎬`, `🧠`, `💬`) med texten dold på små skärmar (`hidden sm:inline`). Enbart den aktiva knappen expanderas med full text och förhöjs med `scale-105 shadow-md`.
+### Målkonflikt 2: Dubbla Kontroller (TouchOverlayMenu vs Delningsraden)
+- **Konflikt**: Både `TouchOverlayMenu` och delningsraden hade knappar för `Reflektera`, `Kom ihåg` och `Rådgör`, vilket skapade redundant UI och förvirring vid immersivt läge.
+- **Syntes**: Radera `TouchOverlayMenu` helt från `AppShell.tsx`. Delningsradens adaptiva knappar är alltid tillgängliga och anpassar sig efter orientering och skärmstorlek.
 
-### Målkonflikt 3: Helskärmschatt vs Permanent Symbol-Krona
-- **Konflikt**: Tidigare lösning dolde Symbol-Kronan vid immersivt helskärmsläge, vilket berövade användaren insyn i aktuell kraft och aktivitet.
-- **Syntes**: `SymbolCrown` förankras permanent i den översta zonen i `AppShell.tsx`. Delningslinjens gränslägen (0% och 100%) anpassar enbart ytfördelningen mellan övre kanvas och undre chatt, medan kronan alltid förblir intakt och klickbar. Enkelpilarna indikerar entydigt vägen tillbaka till 50% neutralläge.
+### Målkonflikt 3: Web Audio i Node.js Testmiljö
+- **Konflikt**: Transienta enhetstester körs i Node.js där `AudioContext`, `AudioWorklet` och `navigator.mediaDevices` inte finns nativt.
+- **Syntes**: `sessionIntentAudio.ts` kapslar all webbläsarspecifik hårdvara med säkra miljötester (`typeof window !== 'undefined'`) och tillhandahåller rena enhetstestbara hjälpfunktioner för PCM16-konvertering och setup-handskakning.
 
----
-
-## 2. Kriterier för Mättnad
-- Samtliga mål från TCK-020 är fullständigt adresserade i arkitekturskissen.
-- Inga regressioner i befintliga 103 tester.
-- AST-begränsningar för alla `.tsx`-komponenter garanteras genom hjälparstrukturen i `splitPaneHelper.ts`.
+## 2. Slutsats & Mättnadsdeklaration
+Samtliga målkonflikter har lösts harmoniskt och arkitekturen uppfyller alla tre vägar till försoning.
 
 MÄTTNAD: JA
