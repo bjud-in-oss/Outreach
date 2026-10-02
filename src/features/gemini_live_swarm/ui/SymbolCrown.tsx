@@ -6,6 +6,10 @@ import {
   CROWN_SYMBOLS,
   STATUS_LED_CLASSES,
   resolveCrownFromEnvelope,
+  getForceLabel,
+  getExpandIcon,
+  getDetailDisplay,
+  getReauthClass,
 } from './crownStateHelper.ts';
 
 export type { CrownStatusColor, CrownState };
@@ -17,6 +21,7 @@ export interface SymbolCrownProps {
   className?: string;
   defaultExpanded?: boolean;
   onToggleExpand?: (expanded: boolean) => void;
+  onDriveReauth?: () => void;
 }
 
 const DEFAULT_STATE: CrownState = {
@@ -33,6 +38,7 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
   className = '',
   defaultExpanded = false,
   onToggleExpand = NOOP,
+  onDriveReauth = NOOP,
 }) => {
   const [state, setState] = useState<CrownState>(() =>
     Object.assign({}, DEFAULT_STATE, initialState)
@@ -54,8 +60,9 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
   };
 
   const symbolClass = `${STATUS_LED_CLASSES[state.color]} font-bold text-base leading-none transition-colors`;
-  const detailDisplay = isExpanded ? 'block' : 'hidden';
-  const forceText = state.activeForce || 'ATT_FOLJA';
+  const detailDisplay = getDetailDisplay(isExpanded);
+  const forceText = getForceLabel(state.activeForce);
+  const reauthClass = getReauthClass(state.isDriveAuthExpired);
 
   return (
 <div className="flex flex-col shrink-0 select-none">
@@ -65,7 +72,7 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
       <span data-testid="crown-colon" className="text-slate-500 font-bold">:</span>
       <span data-testid="crown-activity" className="text-slate-300 font-mono truncate max-w-xs md:max-w-md">{state.activityText}</span>
     </div>
-    <span data-testid="crown-expand-indicator" className="text-[10px] text-slate-500 font-mono">{isExpanded ? '▲' : '▼'}</span>
+    <span data-testid="crown-expand-indicator" className="text-[10px] text-slate-500 font-mono">{getExpandIcon(isExpanded)}</span>
   </header>
   <div data-testid="crown-detail-panel" className={`${detailDisplay} bg-slate-900 border-b border-slate-800 p-2.5 text-[11px] font-mono text-slate-300 flex flex-col gap-1 shadow-lg`}>
     <div className="flex justify-between items-center text-slate-400">
@@ -73,6 +80,9 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
       <span className={STATUS_LED_CLASSES[state.color]}>Status: {state.color}</span>
     </div>
     <div className="text-slate-400 truncate">Handling: {state.activityText}</div>
+    <button type="button" data-testid="drive-reauth-btn" onClick={onDriveReauth} className={`${reauthClass} mt-1.5 px-2 py-0.5 bg-red-600/90 hover:bg-red-500 text-white rounded text-[10px] items-center gap-1 font-mono w-fit`}>
+      ↺ Återanslut Google Drive
+    </button>
   </div>
 </div>
   );

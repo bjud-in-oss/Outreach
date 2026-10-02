@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "132c9e98",
+  "receipt_hash": "8f8dae78",
   "status": "PASSED",
-  "verified_at": "2026-10-02T08:33:54.874Z",
+  "verified_at": "2026-10-02T10:28:19.168Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -31,6 +31,7 @@
     "src/__tests__/transient_TCK-016.test.ts",
     "src/__tests__/transient_TCK-017.test.ts",
     "src/__tests__/transient_TCK-018.test.ts",
+    "src/__tests__/transient_TCK-019.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -48,6 +49,7 @@
     "src/features/gemini_live_swarm/ui/crownStateHelper.ts",
     "src/features/gemini_live_swarm/ui/useImmersiveMode.ts",
     "src/features/gemini_live_swarm/ui/useUserActivityLock.ts",
+    "src/features/google_drive_sync/api/driveAuthLifeline.ts",
     "src/features/google_drive_sync/api/driveClient.ts",
     "src/features/google_drive_sync/index.ts",
     "src/features/google_drive_sync/model/driveStore.ts",

@@ -9,6 +9,7 @@ export interface CrownState {
   activeForce?: string;
   activeUnitId?: string;
   updatedAt?: string;
+  isDriveAuthExpired?: boolean;
 }
 
 export const CROWN_SYMBOLS = {
@@ -30,6 +31,26 @@ export const LED_BG_CLASSES: Record<CrownStatusColor, string> = {
   THINKING: 'bg-amber-400',
   ERROR: 'bg-red-400',
 };
+
+export function getForceLabel(force?: string): string {
+  if (force) return force;
+  return 'ATT_FOLJA';
+}
+
+export function getExpandIcon(expanded: boolean): string {
+  if (expanded) return '▲';
+  return '▼';
+}
+
+export function getDetailDisplay(expanded: boolean): string {
+  if (expanded) return 'block';
+  return 'hidden';
+}
+
+export function getReauthClass(isExpired?: boolean): string {
+  if (isExpired) return 'inline-flex';
+  return 'hidden';
+}
 
 const FORCE_MAP: Record<string, '⇑' | '⇐' | '↔' | '●'> = {
   ATT_FOLJA: '⇑',
@@ -63,8 +84,24 @@ export function resolveCrownFromEnvelope(
   const rawStatus = String(data.color || data.status || data.stageStatus || '');
   const rawText = String(data.activityText || data.text || data.currentThought || '');
 
+  const eventName = String(data.event || envelope.type || '');
+  const isDriveExpired = eventName === 'DRIVE_AUTH_EXPIRED' || envelope.type === 'swarm.drive.auth.expired';
+  const isDriveRefreshed = eventName === 'DRIVE_AUTH_REFRESHED' || envelope.type === 'swarm.drive.auth.refreshed';
+
+  let nextDriveExpired = current.isDriveAuthExpired || false;
+  if (isDriveExpired) {
+    nextDriveExpired = true;
+  } else if (isDriveRefreshed) {
+    nextDriveExpired = false;
+  }
+
   const nextSymbol = FORCE_MAP[rawForce] || current.symbol;
-  const nextColor = COLOR_MAP[rawStatus] || current.color;
+  let nextColor = COLOR_MAP[rawStatus] || current.color;
+  if (isDriveExpired) {
+    nextColor = 'ERROR';
+  } else if (isDriveRefreshed) {
+    nextColor = 'ACTIVE';
+  }
   const nextText = rawText.trim() ? rawText.trim() : current.activityText;
 
   return {
@@ -74,5 +111,6 @@ export function resolveCrownFromEnvelope(
     activeForce: rawForce || current.activeForce,
     activeUnitId: String(data.unitId || current.activeUnitId || ''),
     updatedAt: envelope.time || new Date().toISOString(),
+    isDriveAuthExpired: nextDriveExpired,
   };
 }

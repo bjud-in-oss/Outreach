@@ -1,3 +1,9 @@
+import { DriveTokenManager, TokenRefresher } from './driveAuthLifeline.ts';
+import { SwarmEventBus } from '../../gemini_live_swarm/bus/swarmEventBus.ts';
+
+export type { TokenRefresher };
+export { DriveTokenManager };
+
 export interface DriveFileMetadata {
   id: string;
   name: string;
@@ -25,21 +31,59 @@ export interface UploadFileParams {
 }
 
 export class GoogleDriveClient {
-  private accessToken: string | null = null;
+  private tokenManager: DriveTokenManager;
   private workspaceSubfolders = ['Campaigns', 'Templates', 'Logs', 'Artifacts'];
 
-  constructor(token?: string) {
-    if (token) {
-      this.accessToken = token;
+  constructor(
+    token?: string,
+    expiresInSeconds?: number,
+    eventBus?: SwarmEventBus,
+    refresher?: TokenRefresher
+  ) {
+    this.tokenManager = new DriveTokenManager(token, expiresInSeconds, eventBus);
+    if (refresher) {
+      this.tokenManager.setTokenRefresher(refresher);
     }
   }
 
-  public setToken(token: string | null): void {
-    this.accessToken = token;
+  public setToken(token: string | null, expiresInSeconds?: number): void {
+    this.tokenManager.setToken(token, expiresInSeconds);
+  }
+
+  public getToken(): string | null {
+    return this.tokenManager.getAccessToken();
   }
 
   public hasValidToken(): boolean {
-    return Boolean(this.accessToken && this.accessToken.trim().length > 0);
+    return this.tokenManager.hasValidToken();
+  }
+
+  public getExpiresAt(): number | null {
+    return this.tokenManager.getExpiresAt();
+  }
+
+  public isTokenExpiringSoon(thresholdMs?: number): boolean {
+    return this.tokenManager.isTokenExpiringSoon(thresholdMs);
+  }
+
+  public isTokenExpired(): boolean {
+    return this.tokenManager.isTokenExpired();
+  }
+
+  public async requestSilentRefresh(): Promise<boolean> {
+    return this.tokenManager.requestSilentRefresh();
+  }
+
+  public setTokenRefresher(refresher: TokenRefresher | null): void {
+    this.tokenManager.setTokenRefresher(refresher);
+  }
+
+  public setEventBus(bus: SwarmEventBus | null): void {
+    this.tokenManager.setEventBus(bus);
+  }
+
+  public dispose(): void {
+    this.tokenManager.dispose();
   }
 
   public getWorkspaceSubfolders(): string[] {
@@ -48,29 +92,20 @@ export class GoogleDriveClient {
 
   public resolveMimeType(fileName: string): string {
     const ext = fileName.split('.').pop()?.toLowerCase();
-    switch (ext) {
-      case 'json':
-        return 'application/json';
-      case 'md':
-      case 'txt':
-        return 'text/plain';
-      case 'html':
-        return 'text/html';
-      case 'csv':
-        return 'text/csv';
-      case 'pdf':
-        return 'application/pdf';
-      default:
-        return 'application/octet-stream';
-    }
+    const map: Record<string, string> = {
+      json: 'application/json', md: 'text/plain', txt: 'text/plain',
+      html: 'text/html', csv: 'text/csv', pdf: 'application/pdf',
+    };
+    return (ext && map[ext]) || 'application/octet-stream';
   }
 
   private getHeaders(): Record<string, string> {
-    if (!this.accessToken) {
+    const token = this.tokenManager.getAccessToken();
+    if (!token) {
       throw new Error('Google Drive autentisering krävs: Ingen aktiv access token i minnet');
     }
     return {
-      Authorization: `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${token}`,
     };
   }
 
@@ -101,15 +136,8 @@ export class GoogleDriveClient {
       // Mappen finns inte, skapa den
       const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
         method: 'POST',
-        headers: {
-          ...this.getHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: parentId ? [parentId] : undefined,
-        }),
+        headers: { ...this.getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: parentId ? [parentId] : undefined }),
       });
 
       if (!createRes.ok) {

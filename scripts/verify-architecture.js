@@ -78,6 +78,7 @@ function runVerification() {
     'TCK-016-PURGE-MONOLITH-TOKEN',
     'TCK-017-SYMBOL-CROWN-TOKEN',
     'TCK-018-IMMERSIVE-OVERLAY-TOKEN',
+    'TCK-019-SILENT-REFRESH-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
