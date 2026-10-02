@@ -1,6 +1,20 @@
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 import { SwarmIntent, INTENT_FORCE_MAP } from '../ui/splitPaneHelper.ts';
 
+export function createBidiSetupPayload(systemInstruction?: string) {
+  const text = systemInstruction || 'Försoningsmotorns kompass aktiv.';
+  return {
+    setup: {
+      model: 'models/gemini-3.8-live',
+      generationConfig: {
+        responseModalities: ['audio'],
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
+      },
+      systemInstruction: { parts: [{ text }] },
+    },
+  };
+}
+
 export function floatTo16BitPCM(input: Float32Array): Int16Array {
   const output = new Int16Array(input.length);
   for (let i = 0; i < input.length; i++) {
