@@ -31,7 +31,7 @@ export class GeminiLiveSession {
   constructor(apiKey?: string, eventBus?: SwarmEventBus) {
     this.eventBus = eventBus || getGlobalSwarmEventBus();
     this.intentManager = new SessionIntentManager(this.eventBus);
-    const key = apiKey !== undefined ? apiKey : (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
+    const key = apiKey !== undefined ? apiKey : (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);
     if (!key || key === 'MY_GEMINI_API_KEY' || !key.trim()) {
       this.liveStatus = 'HALTED';
       this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: 'GEMINI_API_KEY saknas.', status: 'HALTED' });
