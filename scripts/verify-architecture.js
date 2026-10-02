@@ -114,6 +114,7 @@ function runVerification() {
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'SplitPaneCanvas.tsx'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'ExecutionCard.tsx'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'TouchOverlayMenu.tsx'),
+    path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'ui', 'AppShell.tsx'),
   ];
 
   astCheckTargets.forEach(target => {

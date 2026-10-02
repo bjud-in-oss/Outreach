@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "35ad3ddc",
+  "receipt_hash": "132c9e98",
   "status": "PASSED",
-  "verified_at": "2026-10-01T18:28:22.109Z",
+  "verified_at": "2026-10-02T08:33:54.874Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -30,6 +30,7 @@
     "src/__tests__/transient_TCK-015.test.ts",
     "src/__tests__/transient_TCK-016.test.ts",
     "src/__tests__/transient_TCK-017.test.ts",
+    "src/__tests__/transient_TCK-018.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -39,9 +40,14 @@
     "src/features/gemini_live_swarm/session/geminiLiveSession.ts",
     "src/features/gemini_live_swarm/telemetry/telemetrySchema.ts",
     "src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts",
+    "src/features/gemini_live_swarm/ui/AppShell.tsx",
+    "src/features/gemini_live_swarm/ui/ExecutionCard.tsx",
     "src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx",
     "src/features/gemini_live_swarm/ui/SymbolCrown.tsx",
+    "src/features/gemini_live_swarm/ui/TouchOverlayMenu.tsx",
     "src/features/gemini_live_swarm/ui/crownStateHelper.ts",
+    "src/features/gemini_live_swarm/ui/useImmersiveMode.ts",
+    "src/features/gemini_live_swarm/ui/useUserActivityLock.ts",
     "src/features/google_drive_sync/api/driveClient.ts",
     "src/features/google_drive_sync/index.ts",
     "src/features/google_drive_sync/model/driveStore.ts",
@@ -57,6 +63,6 @@
     "src/features/wal_logger/replay/walReplay.ts",
     "src/main.tsx"
   ],
-  "active_ticket": "TCK-018",
+  "active_ticket": "TCK-019",
   "issues": []
 }

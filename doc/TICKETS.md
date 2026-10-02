@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [AKTIV] TCK-018 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Integrerad Symbol-Krona, Immersiv Touch-Overlay & Exekveringskort | Spec: doc/TICKETS/TCK-018.md
+- [OPEN] TCK-019 | Domän: src/features/google_drive_sync/ | Mål: Silent OAuth Refresh & Drive Token Lifeline | Spec: doc/TICKETS/TCK-019.md
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-018 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Integrerad Symbol-Krona, Immersiv Touch-Overlay & Exekveringskort | Spec: doc/TICKETS/TCK-018.md
 - [VERIFIERAD] TCK-017 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Symbol-Krona, Justerbar Split-Pane & Ren FSD-Layout | Spec: doc/TICKETS/TCK-017.md
 - [VERIFIERAD] TCK-016 | Domän: Global / src/features/gemini_live_swarm/ | Mål: UI-Rensning, Monolit-Rasering & Purge av föråldrade FSD-komponenter | Spec: doc/TICKETS/TCK-016.md
 - [VERIFIERAD] TCK-015 | Domän: Global / src/shared/ & src/features/gemini_live_swarm/ | Mål: Global Swarm Core, Systeminstruktions-synk & Bakgrundsöverlevnad | Spec: doc/TICKETS/TCK-015.md

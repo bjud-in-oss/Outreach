@@ -65,4 +65,6 @@ export { TouchOverlayMenu } from './ui/TouchOverlayMenu.tsx';
 export type { TouchOverlayMenuProps } from './ui/TouchOverlayMenu.tsx';
 export { useUserActivityLock } from './ui/useUserActivityLock.ts';
 export type { UserActivityLockReturn } from './ui/useUserActivityLock.ts';
+export { useImmersiveMode } from './ui/useImmersiveMode.ts';
+export type { ImmersiveModeReturn } from './ui/useImmersiveMode.ts';
 
