@@ -136,7 +136,7 @@ export class GeminiLiveSession {
       config: {
         responseModalities: config?.responseModalities || ['TEXT', 'AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
-        thinkingConfig: { thinkingBudget: 1024 },
+        thinkingConfig: { thinkingLevel: 'low' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || 'Försoningsmotorns kompass aktiv.' }] },
       },
       callbacks: {
