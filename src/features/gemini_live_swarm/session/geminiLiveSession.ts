@@ -134,7 +134,7 @@ export class GeminiLiveSession {
     const liveConfig = {
       model: modelToUse,
       config: {
-        responseModalities: config?.responseModalities || ['TEXT', 'AUDIO'],
+        responseModalities: config?.responseModalities || ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
         thinkingConfig: { thinkingLevel: 'low' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || 'Försoningsmotorns kompass aktiv.' }] },
