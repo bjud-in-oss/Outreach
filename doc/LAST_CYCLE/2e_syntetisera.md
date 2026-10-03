@@ -1,20 +1,21 @@
-# Steg 2e: Syntetisera & Verifiering av Mättnad (TCK-020b)
+# Steg 2e: Syntetisera (TCK-020c)
 
-## 1. Målkonfliktanalys & Syntes
+Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjulhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.
 
-### Målkonflikt 1: Fri Dragning vs 3-State Stegvis Låsning
-- **Konflikt**: Tidigare implementation hade godtycklig kontinuerlig dragning med pointer-events, vilket ledde till mellanlägen (t.ex. 23%, 67%) och oväntat beteende.
-- **Syntes**: Ersätt kontinuerlig dragning med diskreta 3-state övergångar (`0%`, `50%`, `100%`). Dragning/svep registreras som en gest (tröskel 30px) som stegar exakt ett läge i taget. Tangentbord (piltangenter) och pilar följer exakt samma deterministiska tillståndsmaskin.
+---
 
-### Målkonflikt 2: Dubbla Kontroller (TouchOverlayMenu vs Delningsraden)
-- **Konflikt**: Både `TouchOverlayMenu` och delningsraden hade knappar för `Reflektera`, `Kom ihåg` och `Rådgör`, vilket skapade redundant UI och förvirring vid immersivt läge.
-- **Syntes**: Radera `TouchOverlayMenu` helt från `AppShell.tsx`. Delningsradens adaptiva knappar är alltid tillgängliga och anpassar sig efter orientering och skärmstorlek.
+## 1. Perspektivsyntes & Förlikning
 
-### Målkonflikt 3: Web Audio i Node.js Testmiljö
-- **Konflikt**: Transienta enhetstester körs i Node.js där `AudioContext`, `AudioWorklet` och `navigator.mediaDevices` inte finns nativt.
-- **Syntes**: `sessionIntentAudio.ts` kapslar all webbläsarspecifik hårdvara med säkra miljötester (`typeof window !== 'undefined'`) och tillhandahåller rena enhetstestbara hjälpfunktioner för PCM16-konvertering och setup-handskakning.
+### Perspektiv 1: Stabilitet & Bevarande av Ljudgest-kontraktet (TCK-020b)
+- `sessionIntentAudio.ts` och UI-skalet (`SplitPaneCanvas.tsx`, `AppShell.tsx`, `SymbolCrown.tsx`, `ExecutionCard.tsx`) måste hållas orörda.
+- Ljudströmmarna, 3-state delningen och användarupplevelsen ska fortsätta fungera utan minsta regression.
 
-## 2. Slutsats & Mättnadsdeklaration
-Samtliga målkonflikter har lösts harmoniskt och arkitekturen uppfyller alla tre vägar till försoning.
+### Perspektiv 2: Teknisk Renodling, Extended Thinking & Bidi MediaChunks
+- WebSocket-anslutningen ska följa de allra senaste specifikationerna från Google Gemini Live API.
+- Död REST-kod, dolda zombiekablar och gamla reconnect-loops i `geminiLiveSession.ts` måste saneras orätt (Fail Fast).
+- Verktygsanrop måste kunna returnera `NON_BLOCKING`-svar så att agenter kan verka autonomt i bakgrunden utan att användaren tvingas starta om sessionen.
+
+### Syntes
+Genom att placera den renodlade `mediaChunks`-strukturen och `extended_thinking`-konfigurationen i `geminiLiveSession.ts` samtidigt som API:et mot `sessionIntentAudio.ts` och `SwarmEventBus` bevaras 100% konsistent, uppnås både djupgående teknisk excellens och fullständig bakåtkompatibilitet.
 
 MÄTTNAD: JA

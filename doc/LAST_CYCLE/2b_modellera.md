@@ -1,106 +1,66 @@
-# Steg 2b: Modellera & Arkitekturdesign (TCK-020b)
+# Steg 2b: Modellera (TCK-020c)
 
-## 1. 3-State Modell & Navigeringsregler i `splitPaneHelper.ts`
+## 1. Datastrukturer & Scheman
 
-```ts
-export type SplitSnapState = 0 | 50 | 100;
-
-export function stepSnapState(
-  current: SplitSnapState,
-  direction: 'prev' | 'next'
-): SplitSnapState {
-  if (direction === 'prev') {
-    if (current === 100) return 50;
-    if (current === 50) return 0;
-    return 0;
-  }
-  // direction === 'next'
-  if (current === 0) return 50;
-  if (current === 50) return 100;
-  return 100;
-}
-
-export function handleKeyboardNavigation(
-  key: string,
-  orientation: SplitOrientation,
-  current: SplitSnapState
-): SplitSnapState {
-  if (orientation === 'portrait') {
-    if (key === 'ArrowUp') return stepSnapState(current, 'prev');
-    if (key === 'ArrowDown') return stepSnapState(current, 'next');
-  } else {
-    if (key === 'ArrowLeft') return stepSnapState(current, 'prev');
-    if (key === 'ArrowRight') return stepSnapState(current, 'next');
-  }
-  return current;
-}
-
-export function handleSwipeGesture(
-  deltaX: number,
-  deltaY: number,
-  orientation: SplitOrientation,
-  current: SplitSnapState
-): SplitSnapState {
-  const threshold = 30;
-  if (orientation === 'portrait') {
-    if (deltaY < -threshold) return stepSnapState(current, 'prev');
-    if (deltaY > threshold) return stepSnapState(current, 'next');
-  } else {
-    if (deltaX < -threshold) return stepSnapState(current, 'prev');
-    if (deltaX > threshold) return stepSnapState(current, 'next');
-  }
-  return current;
-}
-
-export function computeSplitArrows(
-  orientation: SplitOrientation,
-  ratio: SplitSnapState
-): SplitArrowConfig {
-  if (orientation === 'landscape') {
-    return {
-      showFirst: ratio > 0, // [ ⇐ ] vid 50% och 100%
-      showSecond: ratio < 100, // [ ⇒ ] vid 0% och 50%
-      firstIcon: '⇐',
-      secondIcon: '⇒',
+### BidiGenerateContentSetup Payload
+```typescript
+export interface BidiLiveSetupConfig {
+  setup: {
+    model: string;
+    generationConfig: {
+      responseModalities: ('TEXT' | 'AUDIO')[];
+      speechConfig?: {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: string;
+          };
+        };
+      };
+      thinkingConfig?: {
+        thinkingLevel?: 'HIGH' | 'LOW' | 'MINIMAL';
+      };
     };
-  }
-  return {
-    showFirst: ratio > 0, // [ ⇧ ] vid 50% och 100%
-    showSecond: ratio < 100, // [ ⇩ ] vid 0% och 50%
-    firstIcon: '⇧',
-    secondIcon: '⇩',
+    systemInstruction?: {
+      parts: Array<{ text: string }>;
+    };
+    tools?: Array<any>;
   };
 }
 ```
 
-## 2. Gemini Live Bidi Audio Handshake & PCM16 Piping
-
-```ts
-export function createBidiSetupPayload(systemInstruction?: string) {
-  return {
-    setup: {
-      model: 'models/gemini-3.8-live',
-      generationConfig: {
-        responseModalities: ['audio'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Aoede' },
-          },
-        },
-      },
-      systemInstruction: {
-        parts: [{ text: systemInstruction || 'Försoningsmotorns kompass aktiv.' }],
-      },
-    },
+### RealtimeInput MediaChunks Payload
+```typescript
+export interface BidiRealtimeInputPayload {
+  realtimeInput: {
+    mediaChunks?: Array<{
+      mimeType: string;
+      data: string; // Base64 PCM16
+    }>;
+    audio?: {
+      mimeType: string;
+      data: string;
+    };
+    audioStreamEnd?: boolean;
   };
 }
+```
 
-export function floatTo16BitPCM(input: Float32Array): Int16Array {
-  const output = new Int16Array(input.length);
-  for (let i = 0; i < input.length; i++) {
-    const s = Math.max(-1, Math.min(1, input[i]));
-    output[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-  }
-  return output;
+### Tool Response Payload (NON_BLOCKING)
+```typescript
+export interface BidiToolResponsePayload {
+  toolResponse: {
+    functionResponses: Array<{
+      response: Record<string, unknown>;
+      id: string;
+    }>;
+    behavior?: 'NON_BLOCKING' | 'BLOCKING';
+  };
 }
 ```
+
+## 2. Sekvensflöde
+1. **User Gesture (Intent Click)**: Användaren klickar på t.ex. *Reflektera*.
+2. **Setup Handshake**: `geminiLiveSession.ts` ansluter till WebSocket-kabeln med extended thinking och responsmodaliteter `['TEXT', 'AUDIO']`.
+3. **Mikrofonströmning**: `sessionIntentAudio.ts` samlar 16kHz PCM16, sänder över `SwarmEventBus` som `swarm.live.stream.audio`.
+4. **MediaChunks Packaging**: `geminiLiveSession.ts` paketerar ljudpaketen strikt under `realtimeInput.mediaChunks` (och `audio`) till WebSocket.
+5. **Autonoma Verktygssvar**: Inkommande `toolCall` exekveras och returneras autonomt som `NON_BLOCKING` utan att avbryta röst- eller tankeflödet.
