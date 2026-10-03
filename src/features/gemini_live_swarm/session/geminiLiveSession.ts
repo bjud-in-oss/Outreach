@@ -109,14 +109,17 @@ export class GeminiLiveSession {
     this.liveStatus = 'CONNECTING';
     const streamId = `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     this.currentStreamId = streamId;
-    const modelToUse = config?.model || this.liveModelName;
+
+    // 1. Säkerställ explicit models/ prefiks för att förhindra dubblerade model-nycklar i setup-payload
+    const rawModel = config?.model || this.liveModelName;
+    const modelToUse = rawModel.startsWith('models/') ? rawModel : `models/${rawModel}`;
 
     const onOpen = () => {
       this.liveStatus = 'STREAMING';
       this.reconnectAttempts = 0;
       this.eventBus.publishLiveEvent('swarm.live.session.connected', {
         streamId, status: 'CONNECTED', model: modelToUse,
-        responseModalities: config?.responseModalities || ['TEXT', 'AUDIO'],
+        responseModalities: config?.responseModalities || ['AUDIO'],
         connectedAt: new Date().toISOString(),
       });
     };
@@ -131,12 +134,13 @@ export class GeminiLiveSession {
       this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', disconnectedAt: new Date().toISOString() });
     };
 
+    // 2. Strikt Bidi-konfiguration med snake_case för thinking_level och singular AUDIO-modalitet
     const liveConfig = {
       model: modelToUse,
       config: {
         responseModalities: config?.responseModalities || ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
-        thinkingConfig: { thinkingLevel: 'low' },
+        thinkingConfig: { thinking_level: 'low' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || 'Försoningsmotorns kompass aktiv.' }] },
       },
       callbacks: {
@@ -147,7 +151,7 @@ export class GeminiLiveSession {
       },
     };
 
-console.log('DEBUG SETUP PAYLOAD:', JSON.stringify(liveConfig, null, 2));
+    console.log('DEBUG SETUP PAYLOAD:', JSON.stringify(liveConfig, null, 2));
 
     try {
       this.activeSdkSession = await (this.aiClient as any).live.connect(liveConfig);
