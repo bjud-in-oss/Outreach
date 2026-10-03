@@ -1,25 +1,26 @@
-# Steg 3c: Filoperativ Källkodsspecifikation (TCK-020c)
+# Steg 3c: Filoperativ Källkodsspecifikation (TCK-020d)
 
-## 1. Filoperationer & Destruktiva Handlingssteg för Fas 2
+## 1. GROW Specifikation
+- **Goal (Mål)**: Sanera `geminiLiveSession.ts` genom att radera `modelName = 'gemini-3.8-flash'` och tvinga `apiVersion: 'v1alpha'` i GoogleGenAI SDK-instansen.
+- **Reality (Nuläge)**: `geminiLiveSession.ts` har en kvarvarande variabel `private modelName = 'gemini-3.8-flash'` och saknar explicit `apiVersion: 'v1alpha'`.
+- **Options (Alternativ)**: Sätta `apiVersion` på varje anrop vs i SDK-konstruktorn. Att sätta `apiVersion: 'v1alpha'` direkt i `new GoogleGenAI({ apiKey, apiVersion: 'v1alpha' })` är officiellt mönster enligt `gemini-docs` MCP och låser även WebSocket-kabeln.
+- **Will (Beslut)**: Lås `apiVersion: 'v1alpha'` i konstruktorn och `setApiKey`, radera `private modelName`, och låt `generateAgentTurn` använda `params.model || this.liveModelName`.
 
-### A. Fil: `src/features/gemini_live_swarm/session/geminiLiveSession.ts`
-- **Destruktiva handlingssteg**:
-  - Radera eventuella kvarvarande REST-fallbacks och dubbla API-nyckelvägar.
-  - Ersätt platta audio-sändningar med strikt packaging av PCM16 i `realtimeInput.mediaChunks` (`mimeType: 'audio/pcm;rate=16000'`) samt kompatibel `audio`-egenskap.
-  - Uppdatera Bidi setup till att använda `gemini-3.8-live-extended-thinking` (eller konfigurerbar Live-modell), `responseModalities: ['TEXT', 'AUDIO']` samt `thinkingConfig`.
-  - Säkra att `subscribeToMicPiping` vidarebefordrar ljudpaket strukturerat och asynkront utan att överskrida AST-indenteringsdjup (max 4 nivåer) och radgräns (max 250 rader).
+## 2. Operativt Delta: Bevara vs Sanera
+- **Bevara**:
+  - `packRealtimeAudioChunk` och strikt `realtimeInput.mediaChunks` PCM16-struktur.
+  - `sendToolResponse` med `behavior: 'NON_BLOCKING'`.
+  - Hela gränssnittet (`SplitPaneCanvas.tsx`, `AppShell.tsx`, `SymbolCrown.tsx`, etc.).
+  - `swarmOrchestrator.ts` och `sessionIntentAudio.ts`.
+- **Sanera (Destruktiva Handlingssteg för Fas 2)**:
+  - Radera `private modelName = 'gemini-3.8-flash';` i `geminiLiveSession.ts`.
+  - Ersätt instansiering av `GoogleGenAI` med explicit `{ apiKey: ..., apiVersion: 'v1alpha' }`.
+  - Uppdatera `generateAgentTurn` att använda `params.model || this.liveModelName`.
 
-### B. Fil: `src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts`
-- **Tillägg**:
-  - Säkerställ att verktygssvar via Bidi WebSocket paketeras som `toolResponse` med `behavior: 'NON_BLOCKING'`.
+## 3. Zod-kontrakt & Typdefinitioner
+- `GoogleGenAI({ apiKey: string, apiVersion: 'v1alpha' })`
+- `AgentThoughtResponse`: `{ agentRole: string, thought: string, content: string, suggestedTools?: string[], score?: number }`
 
-### C. Fil: `src/__tests__/transient_TCK-020c.test.ts`
-- **Nytt transient test**:
-  - Verifiera att Bidi setup inkluderar `extended_thinking` och `['TEXT', 'AUDIO']`.
-  - Verifiera att `realtimeInput.mediaChunks` paketeras med strikt `audio/pcm;rate=16000` och base64 PCM16.
-  - Verifiera att verktygsrespons hanteras med `behavior: 'NON_BLOCKING'`.
-  - Verifiera att testet körs isolerat i minnet på < 3 sekunder.
-
-## 2. Godkännandekod (Token Gate)
-- **Token**: `TCK-020C-BIDI-THINKING-TOKEN`
-- **Säkerhetsspärr**: Ingen källkod under `src/` ändras förrän användaren anger godkännandekoden i chatten.
+## 4. Godkännandekod (Token Gate)
+- **Token**: `TCK-020D-SANERA-V1ALPHA-TOKEN`
+- **Säkerhetsspärr**: Ingen källkod under `src/` ändras förrän användaren anger godkännandekoden i chatten via `pnpm genomfor TCK-020D-SANERA-V1ALPHA-TOKEN`.

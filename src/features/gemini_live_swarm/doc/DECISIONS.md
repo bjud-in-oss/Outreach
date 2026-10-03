@@ -247,4 +247,16 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. **Fail-Fast & Zombie-eliminering**: Ersätt dolda manuella reconnect-slingor med omedelbar felrendering i chattkanvasen och automatisk avaktivering av aktiv intention vid nätverksfel eller sessionstapp.
 - **Konsekvens**: Betydligt stabilare realtidsströmmar, djupare resonemang via extended thinking och friktionsfri multi-verktygsexekvering över WebSocket-kabeln.
 
+---
+
+## ADR-SWARM-018: Sanering av geminiLiveSession.ts och tvingad v1alpha
+- **Datum**: 2026-10-03
+- **Status**: Beslutat & Implementerat (TCK-020d)
+- **Kontext**: Föråldrad klassvariabel `modelName = 'gemini-3.8-flash'` skapade fragmentering och risk för osynkade textmodellsanrop vid sidan av den primära försoningsmotorn. Dessutom behövdes explicit hårdlåsning till `apiVersion: 'v1alpha'` i GoogleGenAI-klienten för att förhindra att WebSocket-kabeln kopplar upp mot v1beta.
+- **Beslut**:
+  1. **Sanera modelName**: Radera den döda klassvariabeln `private modelName = 'gemini-3.8-flash'`. `generateAgentTurn` använder nu `params.model || this.liveModelName`, vilket eliminerar döda fallbacks.
+  2. **Tvinga v1alpha**: Explicit konfigurera GoogleGenAI med `{ apiKey: ..., apiVersion: 'v1alpha' }` i både konstruktor och `setApiKey`, samt exponera `getApiVersion(): string`.
+- **Konsekvens**: Ren källkod fri från legacy-modeller, garanterad anslutning till Gemini Live v1alpha och total arkitektonisk överensstämmelse.
+
+
 

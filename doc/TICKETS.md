@@ -6,6 +6,7 @@ Inga aktiva ärenden.
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-020d | Domän: Global / src/features/gemini_live_swarm/ | Mål: Sanering av geminiLiveSession.ts och tvingad v1alpha | Token: TCK-020D-SANERA-V1ALPHA-TOKEN
 - [VERIFIERAD] TCK-020c | Domän: Global / src/features/gemini_live_swarm/ | Mål: Gemini Live API WebSocket Bidi-renodling och extended thinking | Token: TCK-020C-BIDI-THINKING-TOKEN
 - [VERIFIERAD] TCK-020b | Domän: Global / src/features/gemini_live_swarm/ | Mål: Audio Handshake, 3-State SplitPane Gestures & Keyboard Shortcuts | Kvitto: 43f40652
 - [VERIFIERAD] TCK-020 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Intent-Driven Audio Trigger, Responsive SplitPane & Adaptive Control Bar | Spec: doc/TICKETS/TCK-020.md

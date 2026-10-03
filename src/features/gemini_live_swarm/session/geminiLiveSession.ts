@@ -22,7 +22,6 @@ export interface BidiRealtimeInputPayload {
 export class GeminiLiveSession {
   private aiClient: GoogleGenAI | null = null;
   private activeSdkSession: any = null;
-  private modelName = 'gemini-3.8-flash';
   private liveModelName = 'gemini-3.8-live-extended-thinking';
   private liveStatus: LiveSessionStatus = 'IDLE';
   private eventBus: SwarmEventBus;
@@ -43,7 +42,7 @@ export class GeminiLiveSession {
       return;
     }
     try {
-      this.aiClient = new GoogleGenAI({ apiKey: key });
+      this.aiClient = new GoogleGenAI({ apiKey: key, apiVersion: 'v1alpha' });
       this.subscribeToMicPiping();
     } catch (e) {
       this.liveStatus = 'HALTED';
@@ -74,11 +73,12 @@ export class GeminiLiveSession {
       this.liveStatus = 'HALTED';
       return;
     }
-    this.aiClient = new GoogleGenAI({ apiKey: apiKey.trim() });
+    this.aiClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1alpha' });
     this.liveStatus = 'IDLE';
     this.reconnectAttempts = 0;
   }
 
+  public getApiVersion(): string { return 'v1alpha'; }
   public setLiveModel(model: string): void { this.liveModelName = model; }
   public getLiveModel(): string { return this.liveModelName; }
   public getLiveStatus(): LiveSessionStatus { return this.liveStatus; }
@@ -233,12 +233,13 @@ export class GeminiLiveSession {
     for (const listener of this.streamListeners) { try { listener(chunk); } catch {} }
   }
 
-  public async generateAgentTurn(params: { role: string; systemInstruction: string; prompt: string; context?: string; }): Promise<AgentThoughtResponse> {
+  public async generateAgentTurn(params: { role: string; systemInstruction: string; prompt: string; context?: string; model?: string; }): Promise<AgentThoughtResponse> {
     if (!this.aiClient || this.liveStatus === 'HALTED') throw new Error(`API-nyckel saknas för ${params.role}.`);
+    const modelToUse = params.model || this.liveModelName;
     const response = await this.aiClient.models.generateContent({
-      model: this.modelName,
+      model: modelToUse,
       contents: [{ role: 'user', parts: [{ text: `Roll: ${params.role}\nInstruktion: ${params.systemInstruction}\nKontext: ${params.context || ''}\nUppdrag: ${params.prompt}` }] }],
     });
-    return { agentRole: params.role, thought: `Analys genererad via ${this.modelName}`, content: response.text || '' };
+    return { agentRole: params.role, thought: `Analys genererad via ${modelToUse}`, content: response.text || '' };
   }
 }

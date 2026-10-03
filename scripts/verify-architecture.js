@@ -82,6 +82,7 @@ function runVerification() {
     'TCK-020-ADAPTIVE-CONTROL-TOKEN',
     'TCK-020B-AUDIO-GESTURE-TOKEN',
     'TCK-020C-BIDI-THINKING-TOKEN',
+    'TCK-020D-SANERA-V1ALPHA-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
