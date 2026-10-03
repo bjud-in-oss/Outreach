@@ -234,3 +234,17 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. **Menyrensning & MatchMedia**: Ta bort TouchOverlayMenu helt ur AppShell. Låt matchMedia styra flex-col (Portrait) vs flex-row (Landscape) dynamiskt, medan SymbolCrown förblir permanent i toppzonen.
 - **Konsekvens**: Fullständigt förutsägbar och responsiv upplevelse med skarp ljudintegration och ren FSD-komposition.
 
+---
+
+## ADR-SWARM-017: Bidi Extended Thinking, Strikt PCM16 MediaChunks & NON_BLOCKING Tool Responses
+- **Datum**: 2026-10-03
+- **Status**: Beslutat & Implementerat (TCK-020c)
+- **Kontext**: Gemini Live API kräver strikt packaging av realtime-ljud under realtimeInput.mediaChunks (16kHz PCM16 mono) samt extended thinking i session-setup. För att inte bryta flerstegskörningar eller låsa WebSocket-kabeln vid MCP-verktygsanrop måste verktygsrespons automatiseras med behavior: 'NON_BLOCKING'. Dessutom behövdes eliminering av oändliga zombiekablar vid anslutningsfel genom omedelbar Fail-Fast och nollställning av aktivt intention i UI.
+- **Beslut**:
+  1. **Bidi Setup med Extended Thinking**: Konfigurera handskakningspayload med thinkingConfig (thinkingBudget: 1024, extendedThinking: true) och dubbla svarsmodaliteter (TEXT och AUDIO).
+  2. **Strikt PCM16 MediaChunks**: Packa rå 16-bitars linjär PCM i realtimeInput.mediaChunks (mimeType: 'audio/pcm;rate=16000') med bibehållen bakåtkompatibel audio-egenskap.
+  3. **Autonoma NON_BLOCKING Verktygssvar**: SwarmOrchestrator och GeminiLiveSession paketerar alla verktygsresultat som toolResponse med behavior: 'NON_BLOCKING', så att svärmen kan fortsätta samtala utan att användaren manuellt måste sparka igång sessionen mellan varje steg.
+  4. **Fail-Fast & Zombie-eliminering**: Ersätt dolda manuella reconnect-slingor med omedelbar felrendering i chattkanvasen och automatisk avaktivering av aktiv intention vid nätverksfel eller sessionstapp.
+- **Konsekvens**: Betydligt stabilare realtidsströmmar, djupare resonemang via extended thinking och friktionsfri multi-verktygsexekvering över WebSocket-kabeln.
+
+

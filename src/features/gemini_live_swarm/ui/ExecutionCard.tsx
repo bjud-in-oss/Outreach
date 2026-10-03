@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { CROWN_SYMBOLS, STATUS_LED_CLASSES } from './crownStateHelper.ts';
 
 export interface ExecutionCardProps {
-  id: string;
-  force: 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'ATT_FORLIKAS' | 'SERIELL_MOTOR';
-  stepNumber: number;
-  title: string;
+  id?: string;
+  force?: 'ATT_FOLJA' | 'ATT_VANDA_OM' | 'ATT_FORLIKAS' | 'SERIELL_MOTOR';
+  stepNumber?: number;
+  title?: string;
   createdFiles?: string[];
   changesSummary?: string;
   voiceSummary?: string;
@@ -15,10 +15,10 @@ export interface ExecutionCardProps {
 }
 
 export const ExecutionCard: React.FC<ExecutionCardProps> = ({
-  id,
-  force,
-  stepNumber,
-  title,
+  id = 'exec-canvas',
+  force = 'SERIELL_MOTOR',
+  stepNumber = 1,
+  title = 'Realtidskanvas',
   createdFiles = [],
   changesSummary = '',
   voiceSummary = '',

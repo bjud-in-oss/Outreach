@@ -81,6 +81,7 @@ function runVerification() {
     'TCK-019-SILENT-REFRESH-TOKEN',
     'TCK-020-ADAPTIVE-CONTROL-TOKEN',
     'TCK-020B-AUDIO-GESTURE-TOKEN',
+    'TCK-020C-BIDI-THINKING-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();

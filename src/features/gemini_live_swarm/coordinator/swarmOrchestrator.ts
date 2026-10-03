@@ -44,16 +44,9 @@ export class SwarmOrchestrator {
     this.mcpBridge = mcpBridge;
     this.eventBus = eventBus || getGlobalSwarmEventBus();
     this.units = new Map();
-    const activeForces: ReconciliationForce[] = [
-      'ATT_FOLJA',
-      'ATT_VANDA_OM',
-      'ATT_FORLIKAS',
-      'SERIELL_MOTOR',
-    ];
+    const activeForces: ReconciliationForce[] = ['ATT_FOLJA', 'ATT_VANDA_OM', 'ATT_FORLIKAS', 'SERIELL_MOTOR'];
     for (const force of activeForces) {
-      if (RECONCILIATION_UNITS[force]) {
-        this.units.set(force, { ...RECONCILIATION_UNITS[force] });
-      }
+      if (RECONCILIATION_UNITS[force]) this.units.set(force, { ...RECONCILIATION_UNITS[force] });
     }
   }
 
@@ -108,12 +101,7 @@ export class SwarmOrchestrator {
     });
 
     const stages: Array<'1a_forsta' | '1b_kartlagga' | '2a_avgransa' | '2b_modellera' | '2e_syntetisera' | '3c_spec'> = [
-      '1a_forsta',
-      '1b_kartlagga',
-      '2a_avgransa',
-      '2b_modellera',
-      '2e_syntetisera',
-      '3c_spec',
+      '1a_forsta', '1b_kartlagga', '2a_avgransa', '2b_modellera', '2e_syntetisera', '3c_spec',
     ];
 
     const completedStages: string[] = [];
@@ -222,26 +210,34 @@ export class SwarmOrchestrator {
     if (step.agentRole === 'ATT_FOLJA') {
       plan.finalDraft = turn.content;
       const res = await this.mcpBridge.executeTool('drive_create_file', {
-        fileName: `Kampanj_${plan.input.title.replace(/\s+/g, '_')}.md`,
-        folder: 'Campaigns',
-        content: turn.content,
+        fileName: `Kampanj_${plan.input.title.replace(/\s+/g, '_')}.md`, folder: 'Campaigns', content: turn.content,
       });
       if (res.envelope) onEnv?.(res.envelope);
+      if (this.session?.sendToolResponse) this.session.sendToolResponse(res.bidiResponse.functionResponses, 'NON_BLOCKING');
     }
     if (step.agentRole === 'ATT_VANDA_OM') {
       if (turn.score) plan.consensusScore = turn.score;
       const res = await this.mcpBridge.executeTool('outreach_evaluate_tone', {
-        draftText: plan.finalDraft || turn.content,
-        recipientProfile: plan.input.targetAudience,
+        draftText: plan.finalDraft || turn.content, recipientProfile: plan.input.targetAudience,
       });
       if (res.envelope) onEnv?.(res.envelope);
+      if (this.session?.sendToolResponse) this.session.sendToolResponse(res.bidiResponse.functionResponses, 'NON_BLOCKING');
     }
     if (step.agentRole === 'SERIELL_MOTOR') {
       const res = await this.mcpBridge.executeTool('wal_append_entry', {
-        operation: 'BUILD_DELIVERY_PACKAGE',
-        payload: { planId: plan.id, title: plan.input.title },
+        operation: 'BUILD_DELIVERY_PACKAGE', payload: { planId: plan.id, title: plan.input.title },
       });
       if (res.envelope) onEnv?.(res.envelope);
+      if (this.session?.sendToolResponse) this.session.sendToolResponse(res.bidiResponse.functionResponses, 'NON_BLOCKING');
     }
+  }
+
+  public async handleToolCall(toolName: string, args: Record<string, any> = {}, callId?: string) {
+    if (!this.mcpBridge) return null;
+    const res = await this.mcpBridge.executeTool(toolName, args, callId);
+    if (this.session?.sendToolResponse) {
+      this.session.sendToolResponse(res.bidiResponse.functionResponses, 'NON_BLOCKING');
+    }
+    return res;
   }
 }

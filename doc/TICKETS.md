@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [   ] TCK-020c: Gemini Live API WebSocket Bidi-renodling och extended thinking (In Progress)
+Inga aktiva ärenden.
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-020c | Domän: Global / src/features/gemini_live_swarm/ | Mål: Gemini Live API WebSocket Bidi-renodling och extended thinking | Token: TCK-020C-BIDI-THINKING-TOKEN
 - [VERIFIERAD] TCK-020b | Domän: Global / src/features/gemini_live_swarm/ | Mål: Audio Handshake, 3-State SplitPane Gestures & Keyboard Shortcuts | Kvitto: 43f40652
 - [VERIFIERAD] TCK-020 | Domän: Global / src/features/gemini_live_swarm/ | Mål: Intent-Driven Audio Trigger, Responsive SplitPane & Adaptive Control Bar | Spec: doc/TICKETS/TCK-020.md
 - [VERIFIERAD] TCK-019 | Domän: src/features/google_drive_sync/ | Mål: Silent OAuth Refresh & Drive Token Lifeline | Spec: doc/TICKETS/TCK-019.md

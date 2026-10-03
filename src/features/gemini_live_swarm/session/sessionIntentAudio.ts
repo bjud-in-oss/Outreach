@@ -1,14 +1,15 @@
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 import { SwarmIntent, INTENT_FORCE_MAP } from '../ui/splitPaneHelper.ts';
 
-export function createBidiSetupPayload(systemInstruction?: string) {
+export function createBidiSetupPayload(systemInstruction?: string, model = 'models/gemini-3.8-live') {
   const text = systemInstruction || 'Försoningsmotorns kompass aktiv.';
   return {
     setup: {
-      model: 'models/gemini-3.8-live',
+      model,
       generationConfig: {
-        responseModalities: ['AUDIO'],
+        responseModalities: ['audio', 'AUDIO', 'text', 'TEXT'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
+        thinkingConfig: { thinkingBudget: 1024, extendedThinking: true },
       },
       systemInstruction: { parts: [{ text }] },
     },

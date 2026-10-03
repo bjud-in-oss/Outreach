@@ -19,7 +19,15 @@ const renderIntent = (item: (typeof SWARM_INTENTS)[0], active: SwarmIntent | nul
   </button>
 );
 
-export const SplitPaneCanvas: React.FC = () => {
+export interface SplitPaneCanvasProps {
+  upperContent?: React.ReactNode;
+  lowerContent?: React.ReactNode;
+  initialSplitRatio?: number;
+  isImmersive?: boolean;
+  className?: string;
+}
+
+export const SplitPaneCanvas: React.FC<SplitPaneCanvasProps> = () => {
   const [splitPos, setSplitPos] = useState<SplitSnapState>(50);
   const [activeIntent, setActiveIntent] = useState<SwarmIntent | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
@@ -36,7 +44,8 @@ export const SplitPaneCanvas: React.FC = () => {
 
   useEffect(() => {
     return swarmCtx?.eventBus.subscribe('*', (env) => {
-      const text = env.data?.transcription ?? env.data?.error ?? env.data?.reason;
+      const d = env.data as any;
+      const text = d?.transcription ?? d?.error ?? d?.reason;
       if (text) {
         setMessages((prev) => [...prev.slice(-20), text]);
       }
