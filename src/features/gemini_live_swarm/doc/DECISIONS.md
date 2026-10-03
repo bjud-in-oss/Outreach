@@ -258,5 +258,16 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   2. **Tvinga v1alpha**: Explicit konfigurera GoogleGenAI med `{ apiKey: ..., apiVersion: 'v1alpha' }` i både konstruktor och `setApiKey`, samt exponera `getApiVersion(): string`.
 - **Konsekvens**: Ren källkod fri från legacy-modeller, garanterad anslutning till Gemini Live v1alpha och total arkitektonisk överensstämmelse.
 
+---
 
+## ADR-SWARM-019: Bidi Live 16kHz Nedsampling, Snake-Case Payload & Defensiv Livscykelhantering
+
+- **Datum**: 2026-10-03
+- **Status**: Beslutat & Implementerat
+- **Kontext**: För att realisera försoningsmotorns kompass om varm, obehindrad tvåvägsdialog krävdes en fully functional Gemini Live Bidi WebSocket-anslutning (`v1alpha`) med kontinuerlig röst- och textströmning. Tidigare uppstod tystnad från VAD-motorn på grund av sampelfrekvensförskjutning (48kHz vs 16kHz) samt unhandled exceptions i konsolen vid frånkoppling.
+- **Beslut**:
+  1. **16kHz Dynamisk Nedsampling**: Tvinga `sampleRate: 16000` vid skapande av `AudioContext` i `sessionIntentAudio.ts` samt införa en linjär nedsamplingsalgoritm om hårdvaran körs i 48kHz. Detta eliminerar 3x hastighetsförskjutning (chipmunk-effekt) och garanterar att Googles Server VAD identifierar mänskligt tal.
+  2. **Strikt Bidi Payload**: Konfigurera `connectLive` i `geminiLiveSession.ts` med `thinkingConfig: { thinking_level: 'low' }` (snake_case), singular modalitet `['AUDIO']` och en enskild `audio`-kapsel (`{ audio: { data, mimeType } }`) enligt `@google/genai` SKILL-specifikationen.
+  3. **Defensiv Teardown**: Kapsla in `sendRealtimeInput` i `subscribeToMicPiping` med `try/catch` för att tyst fånga asynkrona mikrofonpaket när socketen övergår i status `CLOSING` eller `CLOSED`.
+- **Konsekvens**: Omedelbar röstdetektering, naturligt talsvar från agenten (24kHz PCM), noll unhandled exceptions vid frånkoppling och en helt stabil grund för framtida MCP-verktyg och försoningsdialoger.
 
