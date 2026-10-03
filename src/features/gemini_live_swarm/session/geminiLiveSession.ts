@@ -63,7 +63,12 @@ export class GeminiLiveSession {
       const chunk = d?.audioChunkBase64;
       if (!this.isLiveConnected() || !this.activeSdkSession?.sendRealtimeInput || !chunk) return;
       const mime = d?.mimeType || 'audio/pcm;rate=16000';
-      this.activeSdkSession.sendRealtimeInput(this.packRealtimeAudioChunk(chunk, mime));
+      try {
+        this.activeSdkSession.sendRealtimeInput(this.packRealtimeAudioChunk(chunk, mime));
+      } catch {
+        this.liveStatus = 'DISCONNECTED';
+        this.deactivateIntent();
+      }
     });
   }
 
@@ -110,7 +115,6 @@ export class GeminiLiveSession {
     const streamId = `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     this.currentStreamId = streamId;
 
-    // 1. Säkerställ explicit models/ prefiks för att förhindra dubblerade model-nycklar i setup-payload
     const rawModel = config?.model || this.liveModelName;
     const modelToUse = rawModel.startsWith('models/') ? rawModel : `models/${rawModel}`;
 
@@ -134,7 +138,6 @@ export class GeminiLiveSession {
       this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', disconnectedAt: new Date().toISOString() });
     };
 
-    // 2. Strikt Bidi-konfiguration med snake_case för thinking_level och singular AUDIO-modalitet
     const liveConfig = {
       model: modelToUse,
       config: {
