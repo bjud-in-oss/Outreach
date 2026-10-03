@@ -19,14 +19,14 @@ Detta dokument utgör det lokala exekveringskontraktet för byggmotorn i AI Stud
      - **State:** Vilken tillståndshantering påverkas och vilka referenser måste hållas intakta?
      - **Contract:** Vilka Zod-scheman, API-ytor eller angränsande moduler berörs?
      - **Resilience:** Hur säkerställs felhantering och nätverksresiliens?
-3. **Token Gate (Steg 3c spärr):**
-   - Stanna strikt vid Steg 3c. Varken redigera eller skapa några filer under `src/` under Fas 1.
-   - Generera den unika godkännandekoden i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.
-   - Generera enbart följande output vid Steg 3c:
-     1. Statusrad: `[VERIFIED: hash • Kodande/Analytisk:skill • Domän • sök/väg/] TCK-XXX: Rubrik`
-     2. Användarnytta (pedagogisk svenska).
-     3. Systembeteende (pedagogisk svenska).
-     4. `REQUIRED_TOKEN: [koden från REQUIRED_TOKEN.txt]`
+
+2. **TOKEN GATE (STEG 3C SPÄRR):**
+   - Stanna vid Steg 3c. Redigera eller skapa INGA filer under src/ förrän "pnpm genomfor" körs.
+   - Skriv hela den agent-strukturerade specifikationen (GROW, Operativt Delta: Bevara vs Sanera, Zod-kontrakt) i doc/LAST_CYCLE/3c_fil_operativ_kallkodsspecifikation.md och spara koden i doc/LAST_CYCLE/REQUIRED_TOKEN.txt.
+   - Chatt-output vid 3c ska bestå ENBART av:
+     1. Statusraden: [VERIFIED: hash • Kodande/Analytisk:skill • Domän • sök/väg/] TCK-XXX: Rubrik
+     2. Mänsklig nytta / Mänsklig fråga (om ett strategiskt val/beslut krävs av användaren).
+     3. REQUIRED_TOKEN: [koden från REQUIRED_TOKEN.txt].
 
 ---
 
