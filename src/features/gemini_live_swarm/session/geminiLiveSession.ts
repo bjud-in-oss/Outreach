@@ -48,11 +48,11 @@ export class GeminiLiveSession {
 
   private subscribeToMicPiping(): void {
     this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
-      if (this.isLiveConnected() && this.activeSdkSession?.sendRealtimeInput && env.data?.audioChunkBase64) {
-        this.activeSdkSession.sendRealtimeInput({
-          audio: { data: env.data.audioChunkBase64, mimeType: env.data.mimeType || 'audio/pcm;rate=16000' }
-        });
-      }
+      const chunk = env.data?.audioChunkBase64;
+      if (!this.isLiveConnected() || !this.activeSdkSession?.sendRealtimeInput || !chunk) return;
+      this.activeSdkSession.sendRealtimeInput({
+        audio: { data: chunk, mimeType: env.data?.mimeType || 'audio/pcm;rate=16000' },
+      });
     });
   }
 
@@ -96,34 +96,40 @@ export class GeminiLiveSession {
     const streamId = `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     this.currentStreamId = streamId;
 
-    try {
-      this.activeSdkSession = await (this.aiClient as any).live.connect({
-        model: this.liveModelName,
-        config: {
-          responseModalities: ['audio'],
-          systemInstruction: { parts: [{ text: config?.systemInstruction || 'Försoningsmotorns kompass aktiv.' }] }
-        },
-        callbacks: {
-          onopen: () => {
-            this.liveStatus = 'STREAMING';
-            this.reconnectAttempts = 0;
-            this.eventBus.publishLiveEvent('swarm.live.session.connected', {
-              streamId, status: 'CONNECTED', model: this.liveModelName,
-              responseModalities: config?.responseModalities || ['audio'],
-              connectedAt: new Date().toISOString(),
-            });
-          },
-          onmessage: (msg: any) => this.handleIncomingLiveMessage(msg),
-          onerror: (err: any) => {
-            this.liveStatus = 'ERROR';
-            this.eventBus.publishLiveEvent('swarm.live.session.error', { error: String(err), status: 'ERROR' });
-          },
-          onclose: () => {
-            this.liveStatus = 'DISCONNECTED';
-            this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', disconnectedAt: new Date().toISOString() });
-          }
-        }
+    const onOpen = () => {
+      this.liveStatus = 'STREAMING';
+      this.reconnectAttempts = 0;
+      this.eventBus.publishLiveEvent('swarm.live.session.connected', {
+        streamId, status: 'CONNECTED', model: this.liveModelName,
+        responseModalities: config?.responseModalities || ['audio'],
+        connectedAt: new Date().toISOString(),
       });
+    };
+    const onError = (err: any) => {
+      this.liveStatus = 'ERROR';
+      this.eventBus.publishLiveEvent('swarm.live.session.error', { error: String(err), status: 'ERROR' });
+    };
+    const onClose = () => {
+      this.liveStatus = 'DISCONNECTED';
+      this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', disconnectedAt: new Date().toISOString() });
+    };
+
+    const liveConfig = {
+      model: this.liveModelName,
+      config: {
+        responseModalities: config?.responseModalities || ['audio'],
+        systemInstruction: { parts: [{ text: config?.systemInstruction || 'Försoningsmotorns kompass aktiv.' }] },
+      },
+      callbacks: {
+        onopen: onOpen,
+        onmessage: (msg: any) => this.handleIncomingLiveMessage(msg),
+        onerror: onError,
+        onclose: onClose,
+      },
+    };
+
+    try {
+      this.activeSdkSession = await (this.aiClient as any).live.connect(liveConfig);
       return true;
     } catch (err) {
       this.liveStatus = 'ERROR';
@@ -138,13 +144,10 @@ export class GeminiLiveSession {
       this.intentManager.emitAudioThinking();
       return;
     }
-    const parts = message?.serverContent?.modelTurn?.parts;
-    if (parts) {
-      for (const part of parts) {
-        if (part.inlineData?.data) {
-          this.audioPlayer.play24kHzPCMBase64(part.inlineData.data, () => this.intentManager.emitAudioTalking());
-        }
-      }
+    const parts = message?.serverContent?.modelTurn?.parts || [];
+    for (const part of parts) {
+      const data = part.inlineData?.data;
+      if (data) this.audioPlayer.play24kHzPCMBase64(data, () => this.intentManager.emitAudioTalking());
     }
     if (message?.serverContent?.outputTranscription?.text && this.currentStreamId) {
       this.eventBus.publishLiveEvent('swarm.live.stream.transcription', {

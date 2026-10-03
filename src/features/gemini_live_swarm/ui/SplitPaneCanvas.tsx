@@ -12,6 +12,13 @@ import {
 } from './splitPaneHelper.ts';
 import { ExecutionCard } from './ExecutionCard.tsx';
 
+const renderIntent = (item: (typeof SWARM_INTENTS)[0], active: SwarmIntent | null, onClick: (id: SwarmIntent) => void) => (
+  <button key={item.id} onClick={() => onClick(item.id)} className={getIntentButtonClass(item.id, active)}>
+    <span>{item.icon}</span>
+    <span className={getIntentTextClass(item.id, active)}>{item.label}</span>
+  </button>
+);
+
 export const SplitPaneCanvas: React.FC = () => {
   const [splitPos, setSplitPos] = useState<SplitSnapState>(50);
   const [activeIntent, setActiveIntent] = useState<SwarmIntent | null>(null);
@@ -76,30 +83,15 @@ export const SplitPaneCanvas: React.FC = () => {
       <div style={{ [isPortrait ? 'height' : 'width']: `${splitPos}%` }} className="transition-all duration-300 overflow-hidden bg-slate-900/40 p-4 border-slate-800 flex flex-col">
         <div className="text-xs font-mono text-emerald-400 mb-2">💬 Agentchatt & Dialog</div>
         <div className="flex-1 bg-slate-950/60 rounded border border-slate-800/80 p-3 overflow-y-auto text-sm text-slate-300 flex flex-col gap-1.5">
-          <p className="text-emerald-300 font-mono text-xs">{activeIntent ? `Aktiv röstström: ${activeIntent}` : 'Välj ett intention-läge på delningsraden.'}</p>
-          {messages.map((m, i) => (
-            <div key={i} className="p-1.5 rounded text-xs bg-slate-900/80 text-slate-200 border border-slate-800">{m}</div>
-          ))}
+        <p className="text-emerald-300 font-mono text-xs">{activeIntent ? `Aktiv röstström: ${activeIntent}` : 'Välj ett intention-läge på delningsraden.'}</p>
+        {messages.map((m, i) => <div key={i} className="p-1.5 rounded text-xs bg-slate-900/80 text-slate-200 border border-slate-800">{m}</div>)}
         </div>
       </div>
 
       <div className="flex-none bg-slate-800 border-slate-700/60 p-1.5 flex items-center justify-between z-20 shadow-lg">
-        <button onClick={() => setSplitPos((prev) => (prev === 100 ? 50 : 0))} disabled={!arrows.showFirst} className={`px-3 py-1.5 rounded text-xs font-bold ${arrows.showFirst ? 'bg-slate-700 hover:bg-slate-600 text-slate-100' : 'opacity-20 cursor-not-allowed'}`}>
-          {arrows.firstIcon}
-        </button>
-
-        <div className="flex items-center gap-2">
-          {SWARM_INTENTS.map((item) => (
-            <button key={item.id} onClick={() => handleIntentClick(item.id)} className={getIntentButtonClass(item.id, activeIntent)}>
-              <span>{item.icon}</span>
-              <span className={getIntentTextClass(item.id, activeIntent)}>{item.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <button onClick={() => setSplitPos((prev) => (prev === 0 ? 50 : 100))} disabled={!arrows.showSecond} className={`px-3 py-1.5 rounded text-xs font-bold ${arrows.showSecond ? 'bg-slate-700 hover:bg-slate-600 text-slate-100' : 'opacity-20 cursor-not-allowed'}`}>
-          {arrows.secondIcon}
-        </button>
+        <button onClick={() => setSplitPos((prev) => (prev === 100 ? 50 : 0))} disabled={!arrows.showFirst} className={`px-3 py-1.5 rounded text-xs font-bold ${arrows.showFirst ? 'bg-slate-700 hover:bg-slate-600 text-slate-100' : 'opacity-20 cursor-not-allowed'}`}>{arrows.firstIcon}</button>
+        <div className="flex items-center gap-2">{SWARM_INTENTS.map((item) => renderIntent(item, activeIntent, handleIntentClick))}</div>
+        <button onClick={() => setSplitPos((prev) => (prev === 0 ? 50 : 100))} disabled={!arrows.showSecond} className={`px-3 py-1.5 rounded text-xs font-bold ${arrows.showSecond ? 'bg-slate-700 hover:bg-slate-600 text-slate-100' : 'opacity-20 cursor-not-allowed'}`}>{arrows.secondIcon}</button>
       </div>
 
       <div style={{ [isPortrait ? 'height' : 'width']: `${100 - splitPos}%` }} className="transition-all duration-300 overflow-hidden bg-slate-950 p-4 flex flex-col">

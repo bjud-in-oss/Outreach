@@ -107,18 +107,7 @@ export class SessionIntentManager {
 
       this.audioProcessor.onaudioprocess = (e) => {
         if (!this.activeIntent) return;
-        const inputData = e.inputBuffer.getChannelData(0);
-        const pcm16 = floatTo16BitPCM(inputData);
-
-        let binary = '';
-        const bytes = new Uint8Array(pcm16.buffer);
-        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-        const base64PCM = btoa(binary);
-
-        this.eventBus.publishLiveEvent('swarm.live.stream.audio', {
-          streamId: `mic-${Date.now()}`, mimeType: 'audio/pcm;rate=16000',
-          byteLength: base64PCM.length, hasAudio: true, audioChunkBase64: base64PCM, timestamp: new Date().toISOString(),
-        });
+        this.emitMicPcmChunk(e.inputBuffer.getChannelData(0));
       };
 
       source.connect(this.audioProcessor);
@@ -126,6 +115,19 @@ export class SessionIntentManager {
     } catch {
       /* sampling fallback */
     }
+  }
+
+  private emitMicPcmChunk(inputData: Float32Array): void {
+    const pcm16 = floatTo16BitPCM(inputData);
+    let binary = '';
+    const bytes = new Uint8Array(pcm16.buffer);
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    const base64PCM = btoa(binary);
+
+    this.eventBus.publishLiveEvent('swarm.live.stream.audio', {
+      streamId: `mic-${Date.now()}`, mimeType: 'audio/pcm;rate=16000',
+      byteLength: base64PCM.length, hasAudio: true, audioChunkBase64: base64PCM, timestamp: new Date().toISOString(),
+    });
   }
 
   private ensureAudioContext(): void {

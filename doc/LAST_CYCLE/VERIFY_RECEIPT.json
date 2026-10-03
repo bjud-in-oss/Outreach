@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "d6e66b98",
-  "status": "FAILED",
-  "verified_at": "2026-10-03T07:01:11.739Z",
+  "receipt_hash": "ae69add4",
+  "status": "PASSED",
+  "verified_at": "2026-10-03T11:52:03.492Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -71,7 +71,5 @@
     "src/main.tsx"
   ],
   "active_ticket": "TCK-020",
-  "issues": [
-    "AST/Strukturöverträdelse: src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx:79 har indenteringsdjup 5 (> 4 nivåer)"
-  ]
+  "issues": []
 }
