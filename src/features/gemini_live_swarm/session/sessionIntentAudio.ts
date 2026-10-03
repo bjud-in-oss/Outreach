@@ -119,29 +119,51 @@ export class SessionIntentManager {
   }
 
   private emitMicPcmChunk(inputData: Float32Array): void {
-    const pcm16 = floatTo16BitPCM(inputData);
+    const currentRate = this.audioContext?.sampleRate || 16000;
+    let targetData = inputData;
+
+    if (currentRate !== 16000 && currentRate > 0) {
+      const ratio = currentRate / 16000;
+      const newLength = Math.round(inputData.length / ratio);
+      targetData = new Float32Array(newLength);
+      for (let i = 0; i < newLength; i++) {
+        targetData[i] = inputData[Math.round(i * ratio)];
+      }
+    }
+
+    const pcm16 = floatTo16BitPCM(targetData);
     let binary = '';
     const bytes = new Uint8Array(pcm16.buffer);
     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
     const base64PCM = btoa(binary);
 
     this.eventBus.publishLiveEvent('swarm.live.stream.audio', {
-      streamId: `mic-${Date.now()}`, mimeType: 'audio/pcm;rate=16000',
-      byteLength: base64PCM.length, hasAudio: true, audioChunkBase64: base64PCM, timestamp: new Date().toISOString(),
+      streamId: `mic-${Date.now()}`,
+      mimeType: 'audio/pcm;rate=16000',
+      byteLength: base64PCM.length,
+      hasAudio: true,
+      audioChunkBase64: base64PCM,
+      timestamp: new Date().toISOString(),
     });
   }
+
+
 
   private ensureAudioContext(): void {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     if (!this.audioContext) {
-      this.audioContext = new AudioCtx();
+      try {
+        this.audioContext = new AudioCtx({ sampleRate: 16000 });
+      } catch {
+        this.audioContext = new AudioCtx();
+      }
       return;
     }
     if (this.audioContext.state === 'suspended') {
       this.audioContext.resume().catch(() => {});
     }
-  }
+  }  
 
   private stopAudioStream(): void {
     if (this.audioProcessor) {
