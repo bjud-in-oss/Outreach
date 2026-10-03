@@ -158,6 +158,7 @@ export class GeminiLiveSession {
 
     try {
       this.activeSdkSession = await (this.aiClient as any).live.connect(liveConfig);
+      if (typeof window !== 'undefined') { (window as any).geminiSession = this; }
       return true;
     } catch (err) {
       this.liveStatus = 'ERROR';
