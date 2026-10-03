@@ -18,8 +18,8 @@ HUVUDUPPDRAG: Enhetlig kodstandard, direkt dialog och linjär exekvering. Håll 
 
 3. HANDLINGSFLÖDE OCH VERIFIERING
 - Steg 1a (Dubbel Orientering):
-  * Användarorientering (Wayfinder): Vid fri prompt utan ticket-kod (TCK-XXX), agera beslutsarkitekt. Ställ scenariofrågor på svenska, rensa dimma och registrera avgränsade bygg-tickets i doc/TICKETS.md. Rör ingen källkod under src/.
-  * Teknisk orientering: Vid aktiv ticket-kod (TCK-XXX), kartera berörda FSD-moduler under src/features/.
+  * Användarorientering (Wayfinder): Vid fri prompt utan ticket-kod (TCK-XXX), agera beslutsarkitekt. Ställ scenariofrågor på svenska, rensa dimma och registrera avgränsade bygg-tickets i doc/.TICKETS/TCK-XXX.md samt doc/TICKETS.md. Rör ingen källkod under src/.
+  * Teknisk orientering: Vid aktiv ticket-kod (TCK-XXX), läs doc/.TICKETS/TCK-XXX.md och kartera berörda FSD-moduler under src/features/.
 - Fas 1 (Planering – Teknisk precision under doc/): Driv kedjan 1a -> 1b -> 2a -> 2b -> 2e -> 3c i ett obrutet, linjärt svep under doc/. Avsluta 1b_kartlagga.md med JSON-deklarationen för status, current_domain, next_step, ticket_id, active_skill och active_vectors.
 - Intern Riskanalys: Formulera och besvara risknoder (State, Contract, Resilience) internt i filerna 1a_forsta.md och 1b_kartlagga.md utan att göra chattavbrott under svepet.
 - Token Gate (Användaranpassat chatt-output vid 3c): Stanna vid Steg 3c. Redovisa i chatten:

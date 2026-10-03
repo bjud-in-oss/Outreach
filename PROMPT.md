@@ -1,32 +1,15 @@
-Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.
-
----
-
-AKTIVT UPPDRAG: TCK-020
-Titel: Intent-Driven Audio Trigger, Responsive SplitPane & Adaptive Control Bar
+AKTIVT UPPDRAG: TCK-020c
+Titel: Live Audio Piping & Fail-Fast Error Rendering via Gemini Docs MCP
 Domän: Global / src/features/gemini_live_swarm/
 Active Skills: gemini-live-api-dev, gemini-api-dev
 
-Mål för TCK-020:
-1. Intent-Driven Audio & User Gesture (geminiLiveSession.ts / TouchOverlayMenu.tsx):
-   - Koppla start av AudioContext och navigator.mediaDevices.getUserMedia till klick på [ 🎬 Reflektera ], [ 🧠 Kom ihåg ] eller [ 💬 Rådgör ].
-   - Ett klick utlöser webbläsarens mikrofonförfrågan och ansluter röstströmmen.
-   - Klick på redan aktiv knapp stänger mikrofon/ session och sätter status i SymbolCrown till "🟡 Agenter i dvala".
-2. Integrerade & Adaptiva Lägesknappar på Delningslinjen (SplitPaneCanvas.tsx):
-   - Placera lägesknapparna i mitten av delningslinjen.
-   - Responsiv kollaps: Inaktiva knappar minimeras till runda ikonknappar vid utrymmesbrist. Enbart den aktiva knappen visar text och förstoras (scale-105).
-3. Orientering- och Enkelpilsanpassad SplitPane (SplitPaneCanvas.tsx):
-   - Stående läge (Portrait): Horisontell delning. Dölj nedåtpil vid botten-snap (visa enbart [ ⇧ ]); dölj uppåtpil vid topp-snap (visa enbart [ ⇩ ]).
-   - Liggande läge (Landscape): Vertikal delning (vänster/höger) med horisontella pilar ([ ⇐ ] / [ ⇒ ]).
-4. Permanent SymbolCrown & Helskärmskorrigering (SymbolCrown.tsx / AppShell.tsx):
-   - Lås SymbolCrown till toppzonen så att den alltid är synlig.
-   - Korrigera återgång från helskärmsläge så att både över- och underfälten återställs felfritt.
-5. Transienta Mikro-E2E-tester:
-   - Skapa src/__tests__/transient_TCK-020.test.ts (< 3s i minnet) med verifiering av:
-     * User Gesture-start av AudioContext vid klick på intent-knapp.
-     * Döljning av förbrukad pilsymbol vid gränslägen.
-     * Adaptiv ikon/text-kollaps på delningslinjen.
-     * Permanent synlighet för SymbolCrown och ren återgång från helskärm.
-   - Bekräfta med pnpm verify.
-
-Driv det obrutna Fas 1-svepet under doc/ och stanna vid Token Gate (Steg 3c).
+Mål för TCK-020c:
+1. Validera API-kontrakt via gemini-docs MCP:
+   - Anropa search_documentation på MCP-servern gemini-docs för att verifiera @google/genai Live API-mönster för sendRealtimeInput (PCM16 16kHz mono base64) och anslutningsfel.
+2. Bidi Audio Piping & Fail-Fast UI Alignment:
+   - Vidarebefordra base64-kodade PCM16-mikrofonpaket direkt till WebSocket-sessionen vid aktiv röstström.
+   - Rendera alla HALTED-, ERROR- och anslutningsfel i klartext i chattfönstret (SplitPaneCanvas.tsx < 125 rader, < 5 förgreningar).
+   - Nollställ activeIntent i UI omedelbart vid frånkoppling eller fel.
+3. Obrutet Svep & Token Gate (Steg 3c):
+   - Driv kedjan 1a -> 1b -> 2a -> 2b -> 2e -> 3c i ett obrutet svep under doc/.
+   - Stanna vid Steg 3c och redovisa statusraden, Användarnytta, Systembeteende samt godkännandekoden från REQUIRED_TOKEN.txt.

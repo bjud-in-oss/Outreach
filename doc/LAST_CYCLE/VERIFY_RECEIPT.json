@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "b20d5ee0",
-  "status": "PASSED",
-  "verified_at": "2026-10-02T11:30:35.729Z",
+  "receipt_hash": "d6e66b98",
+  "status": "FAILED",
+  "verified_at": "2026-10-03T07:01:11.739Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -33,6 +33,7 @@
     "src/__tests__/transient_TCK-018.test.ts",
     "src/__tests__/transient_TCK-019.test.ts",
     "src/__tests__/transient_TCK-020.test.ts",
+    "src/__tests__/transient_TCK-020c.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -40,6 +41,7 @@
     "src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts",
     "src/features/gemini_live_swarm/index.ts",
     "src/features/gemini_live_swarm/session/geminiLiveSession.ts",
+    "src/features/gemini_live_swarm/session/liveAudioPlayback.ts",
     "src/features/gemini_live_swarm/session/sessionIntentAudio.ts",
     "src/features/gemini_live_swarm/telemetry/telemetrySchema.ts",
     "src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts",
@@ -69,5 +71,7 @@
     "src/main.tsx"
   ],
   "active_ticket": "TCK-020",
-  "issues": []
+  "issues": [
+    "AST/Strukturöverträdelse: src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx:79 har indenteringsdjup 5 (> 4 nivåer)"
+  ]
 }
