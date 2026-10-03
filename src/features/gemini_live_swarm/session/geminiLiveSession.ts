@@ -147,6 +147,8 @@ export class GeminiLiveSession {
       },
     };
 
+console.log('DEBUG SETUP PAYLOAD:', JSON.stringify(liveConfig, null, 2));
+
     try {
       this.activeSdkSession = await (this.aiClient as any).live.connect(liveConfig);
       return true;
