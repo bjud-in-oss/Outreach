@@ -52,7 +52,6 @@ export class GeminiLiveSession {
 
   public packRealtimeAudioChunk(data: string, mimeType = 'audio/pcm;rate=16000'): BidiRealtimeInputPayload {
     return {
-      realtimeInput: { mediaChunks: [{ mimeType, data }] },
       audio: { data, mimeType },
     };
   }
