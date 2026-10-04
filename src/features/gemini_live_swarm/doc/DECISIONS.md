@@ -284,3 +284,15 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. **Multi-Agent Setup & Unika Röster**: Etablera unika röstprofiler (`Puck` för Att följa, `Aoede` för Att förlikas, `Charon` för Att vända om) och strikt hålla `geminiLiveSession.ts` under AST-gränsen på 250 rader genom modulär delegering till `FloorController`.
 - **Konsekvens**: Naturlig, klickfri flerstämmig samtalssituation där användaren hör var krafterna talar ifrån i stereofältet och där den förlikande kraften harmoniskt kan avbryta underordnade krafter vid behov.
 
+---
+
+## ADR-SWARM-021: VAD ZCR-Mjukgörande & Kontinuerlig Mikrofonströmning (TCK-022c)
+- **Status**: Beslutad och implementerad
+- **Datum**: 2026-10-04
+- **Kontext**: Tidigare implementering av Voice Activity Detection (VAD) i `sessionIntentAudio.ts` använde en strikt konjunktion mellan RMS-energi och Zero-Crossing Rate (`rms > rmsThreshold && zcr > zcrThreshold`). Detta medförde att dova vokaler eller djupa mansröster med låg frekvens och få nollgenomgångar kapades som tystnad. Dessutom var mikrofonens sampling låst bakom `activeIntent`, vilket krävde klick i UI för att starta ljudöverföring.
+- **Beslut**:
+  1. **Adaptiv Volymprioritering i detectSpeechPCM**: Komplettera ZCR med ett energivillkor där `rms > (rmsThreshold * 1.5)` omedelbart klassas som tal oavsett ZCR, medan svagare ljud fortfarande kräver att `zcr > zcrThreshold` uppfylls.
+  2. **Frikopplad Mikrofonströmning**: Ta bort beroendet av `activeIntent` i `startPCM16Sampling` och `onaudioprocess` så att mikrofonen kontinuerligt sänder PCM-paket via `SwarmEventBus` så fort tal detekteras.
+- **Konsekvens**: Betydligt mer robust taligenkänning som bevarar djupa stämmor och vokaler, samt eliminerar behovet av UI-knapptryckningar för röstinmatning.
+
+

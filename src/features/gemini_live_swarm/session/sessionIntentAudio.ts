@@ -42,7 +42,8 @@ export function detectSpeechPCM(samples: Float32Array, rmsThreshold = 0.015, zcr
   }
   const rms = Math.sqrt(sumSquares / samples.length);
   const zcr = zeroCrossings / samples.length;
-  return { isSpeech: rms > rmsThreshold && zcr > zcrThreshold, rms, zcr };
+  const isSpeech = rms > (rmsThreshold * 1.5) || (rms > rmsThreshold && zcr > zcrThreshold);
+  return { isSpeech, rms, zcr };
 }
 
 export class AudioPreRollBuffer {
@@ -134,7 +135,7 @@ export class SessionIntentManager {
     this.eventBus.publishLiveEvent('swarm.live.audio.thinking', { state: 'SWARM_THINKING', activityText: '🧠 Agenten reflekterar' });
   }
 
-  private async initUserGestureAudio(): Promise<void> {
+  public async initUserGestureAudio(): Promise<void> {
     if (typeof window === 'undefined') return;
     this.ensureAudioContext();
     try {
@@ -145,13 +146,12 @@ export class SessionIntentManager {
     } catch { /* media fallback */ }
   }
 
-  private startPCM16Sampling(stream: MediaStream): void {
+  public startPCM16Sampling(stream: MediaStream): void {
     if (!this.audioContext) return;
     try {
       const source = this.audioContext.createMediaStreamSource(stream);
       this.audioProcessor = this.audioContext.createScriptProcessor(4096, 1, 1);
       this.audioProcessor.onaudioprocess = (e) => {
-        if (!this.activeIntent) return;
         this.processIncomingChunk(e.inputBuffer.getChannelData(0));
       };
       source.connect(this.audioProcessor);
