@@ -1,79 +1,55 @@
-# Steg 2b: Modellera MCP Wrapper & Transaktionsflöde (TCK-021b)
+# Steg 2b: Modellera DSP Mixer & Floor Control (TCK-022a)
 
-## 1. Zod-schema och Verktygsdefinition
+## 1. DSPRingBufferMixer Datamodell (`liveAudioPlayback.ts`)
 ```typescript
-import { z } from 'zod';
-import { McpToolDefinition } from '../contracts/mcpSchema.ts';
+export type SwarmAudioChannel = 'folja' | 'forlikas' | 'vanda_om';
 
-export const ApplyCodePatchSchema = z.object({
-  filePath: z.string().min(1, 'filePath krävs'),
-  searchBlock: z.string().describe(
-    'Inkludera alltid 1–2 omgivande, oförändrade rader ovanför och nedanför ändringen för att garantera exakt indatering och unikhet.'
-  ),
-  replaceBlock: z.string(),
-});
+export interface ChannelNode {
+  panner: StereoPannerNode;
+  gain: GainNode;
+  nextPlayTime: number;
+  activeSources: Set<AudioBufferSourceNode>;
+}
 
-export const CodePatchToolsDefinitions: McpToolDefinition[] = [
-  {
-    name: 'apply_code_patch',
-    description: 'Utför en kirurgisk O(N) search/replace patch på en fil i VFS Staging med unikhetsskydd.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        filePath: { type: 'string', description: 'Relativ sökväg i VFS Staging' },
-        searchBlock: {
-          type: 'string',
-          description:
-            'Inkludera alltid 1–2 omgivande, oförändrade rader ovanför och nedanför ändringen för att garantera exakt indatering och unikhet.',
-        },
-        replaceBlock: { type: 'string', description: 'Nytt kodblock som ska ersätta searchBlock' },
-      },
-      required: ['filePath', 'searchBlock', 'replaceBlock'],
-    },
-  },
-];
+export const CHANNEL_PAN_CONFIG: Record<SwarmAudioChannel, number> = {
+  folja: -0.4,    // Vänster
+  forlikas: 0.0,  // Mitten
+  vanda_om: 0.4,  // Höger
+};
 ```
 
-## 2. Handler-flöde
-1. Validera argument mot `ApplyCodePatchSchema`.
-2. Skapa CloudEvents envelope:
-   ```typescript
-   const envelope = {
-     id: `patch-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-     source: 'mcp/code_patch',
-     type: 'code.patch.applied',
-     time: new Date().toISOString(),
-     specversion: '1.0' as const,
-     datacontenttype: 'application/json',
-     data: { filePath, searchBlockLength: searchBlock.length, replaceBlockLength: replaceBlock.length },
-   };
-   ```
-3. Anropa `walEngine.appendWalEntry(envelope)` -> status `PENDING`.
-4. Utför `driveStore.applyPatch(filePath, searchBlock, replaceBlock)`.
-5. Vid framgång:
-   - Anropa `walEngine.commitWalEntry(seq)` -> status `COMMITTED`.
-   - Returnera:
-     ```typescript
-     {
-       content: [
-         {
-           type: 'text',
-           text: `[MCP:apply_code_patch] Patch applicerad framgångsrikt på "${filePath}". WAL seq #${seq} COMMITTED.`,
-         },
-       ],
-     }
-     ```
-6. Vid fel (`AMBIGUOUS_SEARCH_BLOCK`, `SEARCH_BLOCK_NOT_FOUND`, `FILE_NOT_FOUND`):
-   - Anropa `walEngine.failWalEntry(seq, err.message)`.
-   - Returnera utan att kasta exception:
-     ```typescript
-     {
-       content: [
-         {
-           type: 'text',
-           text: 'Sökblocket var inte unikt eller kunde inte hittas. Lägg till 2 omgivande kontextrader i searchBlock och försök igen.',
-         },
-       ],
-       isError: true,
-     }
-     ```
+## 2. Floor Control Modell (`geminiLiveSession.ts`)
+```typescript
+export interface FloorRequest {
+  channel: SwarmAudioChannel;
+  priority: number; // 1 = forlikas, 2 = vanda_om, 3 = folja
+  requestedAt: number;
+}
+
+export const CHANNEL_PRIORITY: Record<SwarmAudioChannel, number> = {
+  forlikas: 1,
+  vanda_om: 2,
+  folja: 3,
+};
+```
+- **Preemption**: Om `currentSpeaker` har prioritet > inkommande `request.priority`, rampar vi `currentSpeaker` till Gain 0 inom 18 ms, publicerar `swarm.floor.preempted`, och tilldelar golvet till utmanaren.
+- **Arbitration Window**: 15 ms timeout samlar förfrågningar när golvet är ledigt innan det allokeras till den med lägst siffra (högst prioritet).
+
+## 3. Pre-Roll Ringbuffert Modell (`sessionIntentAudio.ts`)
+```typescript
+export class AudioPreRollBuffer {
+  private buffer: Float32Array;
+  private writePointer = 0;
+  private capacity: number;
+  private filled = false;
+
+  constructor(capacity = 3200) { // 200 ms vid 16kHz
+    this.capacity = capacity;
+    this.buffer = new Float32Array(capacity);
+  }
+
+  public push(samples: Float32Array): void { ... }
+  public flush(): Float32Array { ... }
+  public clear(): void { ... }
+}
+```

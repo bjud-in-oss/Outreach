@@ -85,6 +85,7 @@ function runVerification() {
     'TCK-020D-SANERA-V1ALPHA-TOKEN',
     'TCK-021A-VFS-PATCH-TOKEN',
     'TCK-021B-MCP-PATCH-TOKEN',
+    'TCK-022A-DSP-FLOOR-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();

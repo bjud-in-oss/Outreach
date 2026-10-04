@@ -1,8 +1,8 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [ ] TCK-022a | Domän: src/features/gemini_live_swarm/ | Mål: DSP Ring Buffer Mixer & Spatial Audio Floor (Pending)
-- [ ] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring (Pending)
+- [IN PROGRESS] TCK-022a | Domän: src/features/gemini_live_swarm/ | Mål: DSP Ring Buffer Mixer, Spatial Audio & Prioritized Preemptive Floor Control
+- [ ] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release (Pending)
 
 ---
 
