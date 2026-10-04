@@ -32,3 +32,16 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för MCP-bryggan och
   3. Publicera CloudEvents 1.0 händelser (`mcp.tool.execution.started`, `mcp.tool.execution.completed`) för full telemetrisk spårbarhet.
   4. Injicera bryggan i `SwarmOrchestrator` så att enheterna *Att följa Guds son* och *Att vända om till Gud* autonomt kan persistera utkast och granska tonfall.
 - **Konsekvens**: Oavbruten autonom verktygsexekvering över WebSocket-kabeln med full händelsespårbarhet och noll UI-blockering.
+
+---
+
+## ADR-MCP-004: MCP Tool Wrapper för Kirurgisk Kodpatchning & Strukturerade System-Nudges
+- **Datum**: 2026-10-04
+- **Status**: Beslutat & Implementerat (TCK-021b)
+- **Kontext**: När svärmens agenter utför kodredigeringar via `apply_code_patch` får oväntade sökblocksavvikelser (t.ex. dubblettförekomster eller indragsfel) inte resultera i protokollfel (-32603) som kraschar anropet eller fryser Live Bidi-sessionen.
+- **Beslut**:
+  1. **Zod-schema med Prompt-Beskrivning**: `ApplyCodePatchSchema` deklarerar `searchBlock` med explicit prompt-instruktion som vägleder modellen att alltid bifoga 1–2 omgivande rader för unikhet.
+  2. **Transaktionell WAL-spårbarhet**: Innan VFS-patchning loggas `code.patch.applied` som `PENDING` i `WalEngine`, och markeras som `COMMITTED` vid framgång respektive `FAILED` vid fel.
+  3. **Strukturerad Felhantering (isError: true)**: Vid `AMBIGUOUS_SEARCH_BLOCK` eller saknat block fångas felet och returneras som `{ content: [...], isError: true }` med en handledande system-nudge i stället för ett okontrollerat RPC-fel.
+- **Konsekvens**: Robust och självläkande kodpatchning via MCP utan risk för sessionstapp eller kraschade verktygsanrop.
+

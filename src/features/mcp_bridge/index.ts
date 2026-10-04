@@ -18,5 +18,6 @@ export type {
 } from './contracts/mcpSchema.ts';
 export { DriveToolsDefinitions, createDriveToolHandlers } from './tools/driveTools.ts';
 export { WalToolsDefinitions, createWalToolHandlers } from './tools/walTools.ts';
+export { CodePatchToolsDefinitions, createCodePatchToolHandlers, ApplyCodePatchSchema } from './tools/codePatchTools.ts';
 export { McpSwarmBridge, getGlobalMcpSwarmBridge } from './orchestrator/mcpSwarmBridge.ts';
 export type { ToolExecutionResult } from './orchestrator/mcpSwarmBridge.ts';

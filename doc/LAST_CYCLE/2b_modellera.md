@@ -1,50 +1,79 @@
-# Steg 2b: Modellera Kodpatchmotorn (TCK-021a)
+# Steg 2b: Modellera MCP Wrapper & Transaktionsflöde (TCK-021b)
 
-## 1. Algoritm för `applyPatch`
+## 1. Zod-schema och Verktygsdefinition
 ```typescript
-function countOccurrences(str: string, substr: string): number {
-  if (!substr) return 0;
-  let count = 0;
-  let pos = 0;
-  while ((pos = str.indexOf(substr, pos)) !== -1) {
-    count++;
-    pos += substr.length;
-  }
-  return count;
-}
+import { z } from 'zod';
+import { McpToolDefinition } from '../contracts/mcpSchema.ts';
+
+export const ApplyCodePatchSchema = z.object({
+  filePath: z.string().min(1, 'filePath krävs'),
+  searchBlock: z.string().describe(
+    'Inkludera alltid 1–2 omgivande, oförändrade rader ovanför och nedanför ändringen för att garantera exakt indatering och unikhet.'
+  ),
+  replaceBlock: z.string(),
+});
+
+export const CodePatchToolsDefinitions: McpToolDefinition[] = [
+  {
+    name: 'apply_code_patch',
+    description: 'Utför en kirurgisk O(N) search/replace patch på en fil i VFS Staging med unikhetsskydd.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Relativ sökväg i VFS Staging' },
+        searchBlock: {
+          type: 'string',
+          description:
+            'Inkludera alltid 1–2 omgivande, oförändrade rader ovanför och nedanför ändringen för att garantera exakt indatering och unikhet.',
+        },
+        replaceBlock: { type: 'string', description: 'Nytt kodblock som ska ersätta searchBlock' },
+      },
+      required: ['filePath', 'searchBlock', 'replaceBlock'],
+    },
+  },
+];
 ```
 
-1. **Filhämtning**:
-   - `const currentContent = vfsFiles.get(filePath);`
-   - Om `currentContent === undefined`: Kasta `new Error("FILE_NOT_FOUND: Filen '" + filePath + "' hittades inte i VFS Staging.")`.
-
-2. **Steg 1 (Exakt matchning)**:
-   - `const exactCount = countOccurrences(currentContent, searchBlock);`
-   - Om `exactCount > 1`:
-     - Kasta `new Error("AMBIGUOUS_SEARCH_BLOCK: Sökblocket förekommer " + exactCount + " gånger i '" + filePath + "'. Ange 2–3 omgivande kontextrader för unik matchning.")`.
-   - Om `exactCount === 1`:
-     - `const idx = currentContent.indexOf(searchBlock);`
-     - `const updated = currentContent.slice(0, idx) + replaceBlock + currentContent.slice(idx + searchBlock.length);`
-     - `vfsFiles.set(filePath, updated);`
-     - Returnera `updated`.
-
-3. **Steg 2 (Fuzzy Fallback: LF-normalisering & Trimning)**:
-   - `const normContent = currentContent.replace(/\r\n/g, '\n');`
-   - `const normSearch = searchBlock.replace(/\r\n/g, '\n');`
-   - `const normReplace = replaceBlock.replace(/\r\n/g, '\n');`
-   - `let normCount = countOccurrences(normContent, normSearch);`
-   - `let effectiveSearch = normSearch;`
-   - Om `normCount === 0`:
-     - Trimma sökblocket: `const trimmedSearch = normSearch.trim();`
-     - Om `trimmedSearch`:
-       - `normCount = countOccurrences(normContent, trimmedSearch);`
-       - `effectiveSearch = trimmedSearch;`
-   - Om `normCount > 1`:
-     - Kasta `new Error("AMBIGUOUS_SEARCH_BLOCK: Sökblocket förekommer " + normCount + " gånger i '" + filePath + "'. Ange 2–3 omgivande kontextrader för unik matchning.")`.
-   - Om `normCount === 1`:
-     - `const idx = normContent.indexOf(effectiveSearch);`
-     - `const updated = normContent.slice(0, idx) + normReplace + normContent.slice(idx + effectiveSearch.length);`
-     - `vfsFiles.set(filePath, updated);`
-     - Returnera `updated`.
-   - Om fortfarande 0 träffar:
-     - Kasta `new Error("SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte i '" + filePath + "'. Kontrollera indrag och kontextrader.")`.
+## 2. Handler-flöde
+1. Validera argument mot `ApplyCodePatchSchema`.
+2. Skapa CloudEvents envelope:
+   ```typescript
+   const envelope = {
+     id: `patch-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+     source: 'mcp/code_patch',
+     type: 'code.patch.applied',
+     time: new Date().toISOString(),
+     specversion: '1.0' as const,
+     datacontenttype: 'application/json',
+     data: { filePath, searchBlockLength: searchBlock.length, replaceBlockLength: replaceBlock.length },
+   };
+   ```
+3. Anropa `walEngine.appendWalEntry(envelope)` -> status `PENDING`.
+4. Utför `driveStore.applyPatch(filePath, searchBlock, replaceBlock)`.
+5. Vid framgång:
+   - Anropa `walEngine.commitWalEntry(seq)` -> status `COMMITTED`.
+   - Returnera:
+     ```typescript
+     {
+       content: [
+         {
+           type: 'text',
+           text: `[MCP:apply_code_patch] Patch applicerad framgångsrikt på "${filePath}". WAL seq #${seq} COMMITTED.`,
+         },
+       ],
+     }
+     ```
+6. Vid fel (`AMBIGUOUS_SEARCH_BLOCK`, `SEARCH_BLOCK_NOT_FOUND`, `FILE_NOT_FOUND`):
+   - Anropa `walEngine.failWalEntry(seq, err.message)`.
+   - Returnera utan att kasta exception:
+     ```typescript
+     {
+       content: [
+         {
+           type: 'text',
+           text: 'Sökblocket var inte unikt eller kunde inte hittas. Lägg till 2 omgivande kontextrader i searchBlock och försök igen.',
+         },
+       ],
+       isError: true,
+     }
+     ```

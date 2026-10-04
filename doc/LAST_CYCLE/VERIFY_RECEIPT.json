@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "645ae540",
+  "receipt_hash": "1de99e0a",
   "status": "PASSED",
-  "verified_at": "2026-10-04T06:53:25.114Z",
+  "verified_at": "2026-10-04T07:15:33.591Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -36,6 +36,7 @@
     "src/__tests__/transient_TCK-020c.test.ts",
     "src/__tests__/transient_TCK-020d.test.ts",
     "src/__tests__/transient_TCK-021a.test.ts",
+    "src/__tests__/transient_TCK-021b.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -64,6 +65,7 @@
     "src/features/mcp_bridge/index.ts",
     "src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts",
     "src/features/mcp_bridge/server/mcpServer.ts",
+    "src/features/mcp_bridge/tools/codePatchTools.ts",
     "src/features/mcp_bridge/tools/driveTools.ts",
     "src/features/mcp_bridge/tools/walTools.ts",
     "src/features/wal_logger/contracts/walSchema.ts",

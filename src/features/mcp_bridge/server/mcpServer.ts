@@ -8,11 +8,16 @@ import { GoogleDriveClient } from '../../google_drive_sync/api/driveClient.ts';
 import { WalEngine } from '../../wal_logger/engine/walEngine.ts';
 import { DriveToolsDefinitions, createDriveToolHandlers } from '../tools/driveTools.ts';
 import { WalToolsDefinitions, createWalToolHandlers } from '../tools/walTools.ts';
+import { CodePatchToolsDefinitions, createCodePatchToolHandlers } from '../tools/codePatchTools.ts';
 
 export type ToolHandler = (args: Record<string, any>) => Promise<{
   content: Array<{ type: 'text' | 'resource'; text?: string }>;
   isError?: boolean;
 }>;
+
+function makeRpcError(id: any, code: number, message: string): McpResponse {
+  return { jsonrpc: '2.0', id: id ?? 0, error: { code, message } };
+}
 
 export class McpServer {
   private tools = new Map<string, { definition: McpToolDefinition; handler: ToolHandler }>();
@@ -34,73 +39,74 @@ export class McpServer {
     try {
       parsed = McpRequestSchema.parse(rawRequest);
     } catch (err) {
-      return {
-        jsonrpc: '2.0',
-        id: (rawRequest as any)?.id ?? 0,
-        error: {
-          code: -32600,
-          message: `Ogiltig JSON-RPC 2.0 förfrågan: ${err instanceof Error ? err.message : String(err)}`,
-        },
-      };
+      const msg = `Ogiltig JSON-RPC 2.0 förfrågan: ${err instanceof Error ? err.message : String(err)}`;
+      return makeRpcError((rawRequest as any)?.id, -32600, msg);
     }
 
     const { id, method, params } = parsed;
 
     if (method === 'tools/list') {
-      return {
-        jsonrpc: '2.0',
-        id,
-        result: {
-          tools: this.getRegisteredTools(),
-        },
-      };
+      return { jsonrpc: '2.0', id, result: { tools: this.getRegisteredTools() } };
     }
 
     if (method === 'tools/call') {
       const toolName = params.name as string;
       const toolArgs = (params.arguments as Record<string, any>) || {};
-
       const toolEntry = this.tools.get(toolName);
       if (!toolEntry) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          error: {
-            code: -32601,
-            message: `Verktyg "${toolName}" hittades inte i MCP-registret`,
-          },
-        };
+        return makeRpcError(id, -32601, `Verktyg "${toolName}" hittades inte i MCP-registret`);
       }
 
       try {
         const toolResult = await toolEntry.handler(toolArgs);
-        return {
-          jsonrpc: '2.0',
-          id,
-          result: toolResult,
-        };
+        return { jsonrpc: '2.0', id, result: toolResult };
       } catch (execErr) {
-        return {
-          jsonrpc: '2.0',
-          id,
-          error: {
-            code: -32603,
-            message: `Verktygsexekveringsfel: ${execErr instanceof Error ? execErr.message : String(execErr)}`,
-          },
-        };
+        const msg = `Verktygsexekveringsfel: ${execErr instanceof Error ? execErr.message : String(execErr)}`;
+        return makeRpcError(id, -32603, msg);
       }
     }
 
-    return {
-      jsonrpc: '2.0',
-      id,
-      error: {
-        code: -32601,
-        message: `Metod "${method}" stöds inte av denna MCP-brygga`,
-      },
-    };
+    return makeRpcError(id, -32601, `Metod "${method}" stöds inte av denna MCP-brygga`);
   }
 }
+
+const standardToolDefinitions: McpToolDefinition[] = [
+  {
+    name: 'drive_create_file',
+    description: 'Skapar eller uppdaterar ett dokument i Google Drive Outreach Workspace',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        fileName: { type: 'string', description: 'Namn på filen' },
+        folder: { type: 'string', description: 'Undermapp (Campaigns, Templates, Logs, Artifacts)' },
+        content: { type: 'string', description: 'Filinnehåll (text, markdown eller json)' },
+      },
+      required: ['fileName', 'content'],
+    },
+  },
+  {
+    name: 'wal_query_recent',
+    description: 'Hämtar de senaste händelserna från Write-Ahead Loggen för granskning',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Maximalt antal poster att hämta (standard 10)' },
+      },
+    },
+  },
+  {
+    name: 'outreach_evaluate_tone',
+    description: 'Utvärderar tonläge och relevans i ett genererat outreach-utkast',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        draftText: { type: 'string', description: 'Utkastet som ska utvärderas' },
+        recipientProfile: { type: 'string', description: 'Målgrupp eller mottagarens profil' },
+      },
+      required: ['draftText'],
+    },
+  },
+];
 
 /**
  * Fabriksfunktion för standardkonfigurerad MCP-server med Drive och WAL verktyg
@@ -108,94 +114,48 @@ export class McpServer {
 export function createStandardMcpServer(): McpServer {
   const server = new McpServer();
 
-  // Verktyg 1: drive_create_file
-  server.registerTool(
-    {
-      name: 'drive_create_file',
-      description: 'Skapar eller uppdaterar ett dokument i Google Drive Outreach Workspace',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          fileName: { type: 'string', description: 'Namn på filen' },
-          folder: { type: 'string', description: 'Undermapp (Campaigns, Templates, Logs, Artifacts)' },
-          content: { type: 'string', description: 'Filinnehåll (text, markdown eller json)' },
-        },
-        required: ['fileName', 'content'],
-      },
-    },
-    async (args) => {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `[MCP:drive_create_file] Fil "${args.fileName}" skapad i mappen "${args.folder || 'Campaigns'}". Storlek: ${args.content?.length || 0} tecken.`,
-          },
-        ],
-      };
-    }
-  );
+  server.registerTool(standardToolDefinitions[0], async (args) => ({
+    content: [{
+      type: 'text',
+      text: `[MCP:drive_create_file] Fil "${args.fileName}" skapad i mappen "${args.folder || 'Campaigns'}". Storlek: ${args.content?.length || 0} tecken.`,
+    }],
+  }));
 
-  // Verktyg 2: wal_query_recent
-  server.registerTool(
-    {
-      name: 'wal_query_recent',
-      description: 'Hämtar de senaste händelserna från Write-Ahead Loggen för granskning',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          limit: { type: 'number', description: 'Maximalt antal poster att hämta (standard 10)' },
-        },
-      },
-    },
-    async (args) => {
-      const limit = args.limit || 10;
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `[MCP:wal_query_recent] Hämtade de senaste ${limit} WAL-posterna. Status: Alla transaktioner verifierade.`,
-          },
-        ],
-      };
-    }
-  );
+  server.registerTool(standardToolDefinitions[1], async (args) => {
+    const limit = args.limit || 10;
+    return {
+      content: [{
+        type: 'text',
+        text: `[MCP:wal_query_recent] Hämtade de senaste ${limit} WAL-posterna. Status: Alla transaktioner verifierade.`,
+      }],
+    };
+  });
 
-  // Verktyg 3: outreach_evaluate_tone
-  server.registerTool(
-    {
-      name: 'outreach_evaluate_tone',
-      description: 'Utvärderar tonläge och relevans i ett genererat outreach-utkast',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          draftText: { type: 'string', description: 'Utkastet som ska utvärderas' },
-          recipientProfile: { type: 'string', description: 'Målgrupp eller mottagarens profil' },
-        },
-        required: ['draftText'],
-      },
-    },
-    async (args) => {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `[MCP:outreach_evaluate_tone] Betyg: 9.4/10. Professionell och pedagogisk ton. Tydlig värdekoppling till mottagaren. Inga spam-signaler upptäckta.`,
-          },
-        ],
-      };
-    }
-  );
+  server.registerTool(standardToolDefinitions[2], async () => ({
+    content: [{
+      type: 'text',
+      text: `[MCP:outreach_evaluate_tone] Betyg: 9.4/10. Professionell och pedagogisk ton. Tydlig värdekoppling till mottagaren. Inga spam-signaler upptäckta.`,
+    }],
+  }));
+
+  // Verktyg 4: apply_code_patch
+  const patchHandlers = createCodePatchToolHandlers();
+  for (const def of CodePatchToolsDefinitions) {
+    const handler = (patchHandlers as any)[def.name];
+    if (handler) server.registerTool(def, handler);
+  }
 
   return server;
 }
 
 /**
  * TCK-003 Unified MCP Server
- * Registrerar verktyg från samtliga delsystem: Drive, WAL och Kvalitetsanalys
+ * Registrerar verktyg från samtliga delsystem: Drive, WAL, Kvalitetsanalys och Code Patching
  */
 export function createUnifiedMcpServer(
   driveClient?: GoogleDriveClient,
-  walEngine?: WalEngine
+  walEngine?: WalEngine,
+  driveStoreInstance?: any
 ): McpServer {
   const server = createStandardMcpServer();
 
@@ -204,9 +164,7 @@ export function createUnifiedMcpServer(
   const driveHandlers = createDriveToolHandlers(dc);
   for (const def of DriveToolsDefinitions) {
     const handler = (driveHandlers as any)[def.name];
-    if (handler) {
-      server.registerTool(def, handler);
-    }
+    if (handler) server.registerTool(def, handler);
   }
 
   // 2. Registrera WAL-verktyg
@@ -214,8 +172,15 @@ export function createUnifiedMcpServer(
   const walHandlers = createWalToolHandlers(we);
   for (const def of WalToolsDefinitions) {
     const handler = (walHandlers as any)[def.name];
-    if (handler) {
-      server.registerTool(def, handler);
+    if (handler) server.registerTool(def, handler);
+  }
+
+  // 3. Registrera Code Patch-verktyg med injicerade instanser
+  if (walEngine || driveStoreInstance) {
+    const patchHandlers = createCodePatchToolHandlers(we, driveStoreInstance);
+    for (const def of CodePatchToolsDefinitions) {
+      const handler = (patchHandlers as any)[def.name];
+      if (handler) server.registerTool(def, handler);
     }
   }
 

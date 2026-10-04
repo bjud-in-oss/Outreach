@@ -1,14 +1,14 @@
-# Steg 2a: Avgränsa & Isolera (TCK-021a)
+# Steg 2a: Avgränsa & Isolera (TCK-021b)
 
 ## 1. Strikt Domän- och FSD-avgränsning
-- **Modul**: `src/features/google_drive_sync/`
-- **Fokus**: Enbart VFS Staging och algoritmen för `applyPatch` i `driveStore.ts`.
+- **Modul**: `src/features/mcp_bridge/`
+- **Fokus**: Verktygsdefinition och serverregistrering för `apply_code_patch`.
 - **Förbud**:
-  - Inga ändringar i `mcp_bridge` (MCP-verktyget och WAL-kopplingen tillhör TCK-021b).
-  - Inga ändringar i `gemini_live_swarm` (DSP-mixer och floor control tillhör TCK-022a).
-  - Inga ändringar i UI-komponenter eller mockfiler.
+  - Inga ändringar i `driveStore.ts` eller `driveClient.ts` (tillhörde TCK-021a och är redan verifierad).
+  - Inga ändringar i `gemini_live_swarm` (ljudmixer och floor control tillhör TCK-022a, Bidi wiring tillhör TCK-022b).
+  - Inga ändringar i befintliga verktyg `drive_create_file`, `wal_query_recent` eller `outreach_evaluate_tone`.
 
 ## 2. Arkitektur- och Kodmått
-- `driveStore.ts` hålls under 200 rader (strikt under maxgränsen på 250 rader för TypeScript).
-- Inga cirkulära beroenden.
-- Rent TypeScript utan externa tredjepartsberoenden för strängjämförelsen.
+- `codePatchTools.ts` hålls under 100 rader.
+- `mcpServer.ts` hålls strikt under 240 rader (maximalt tillåtet för TypeScript är 250 rader).
+- Inga cirkulära beroenden och inga produktionsmockar.
