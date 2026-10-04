@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [IN PROGRESS] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release
+(Inga aktiva tickets för tillfället)
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release | Token: TCK-022B-BIDI-MCP-TOKEN
 - [VERIFIERAD] TCK-022a | Domän: src/features/gemini_live_swarm/ | Mål: DSP Ring Buffer Mixer, Spatial Audio, Native PCM VAD & Prioritized Preemptive Floor Control | Token: TCK-022A-DSP-FLOOR-TOKEN
 - [VERIFIERAD] TCK-021b | Domän: src/features/mcp_bridge/ | Mål: MCP Tool Wrapper for Code Patching | Token: TCK-021B-MCP-PATCH-TOKEN
 - [VERIFIERAD] TCK-021a | Domän: src/features/google_drive_sync/ | Mål: VFS Staging Code Patch Engine | Token: TCK-021A-VFS-PATCH-TOKEN

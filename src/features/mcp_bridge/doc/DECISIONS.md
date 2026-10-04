@@ -45,3 +45,15 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för MCP-bryggan och
   3. **Strukturerad Felhantering (isError: true)**: Vid `AMBIGUOUS_SEARCH_BLOCK` eller saknat block fångas felet och returneras som `{ content: [...], isError: true }` med en handledande system-nudge i stället för ett okontrollerat RPC-fel.
 - **Konsekvens**: Robust och självläkande kodpatchning via MCP utan risk för sessionstapp eller kraschade verktygsanrop.
 
+---
+
+## ADR-MCP-005: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release
+- **Datum**: 2026-10-04
+- **Status**: Beslutat & Implementerat (TCK-022b)
+- **Kontext**: När Svärmens agenter exekverar verktyg under pågående tal i Gemini Live API krävs omedelbara `NON_BLOCKING` röstsvar till Bidi-kabeln så att talströmmen inte tystnar eller klickar. Dessutom krävs en standardiserad CloudEvent-signalering med `agentId` för att signalera att agenten slutfört sitt bakgrundsarbete och kan släppa röstgolvet kontrollerat.
+- **Beslut**:
+  1. **Dynamisk Bidi Tools Deklaration**: Implementera `getBidiFunctionDeclarations()` i `McpSwarmBridge` som direkt mappar alla registrerade MCP-verktyg till formatet som krävs av `liveConfig.tools` i Gemini 3.8 Live API.
+  2. **Icke-blockerande Tool Routing**: Implementera `routeToolCallNonBlocking` som omedelbart returnerar ett ack-svar med `behavior: 'NON_BLOCKING'` till WebSocket-kabeln och asynkront sparkar igång `mcpServer.handleJsonRpcRequest`.
+  3. **Event-Driven Floor Release**: Publicera `mcp.tool.execution.completed` med `agentId`, `toolCallId`, `toolName` och `status` ('COMMITTED' | 'ERROR') på `SwarmEventBus` så snart verktygsexekveringen avslutas. Detta bevarar FSD-isoleringen mellan `mcp_bridge` och `gemini_live_swarm`.
+- **Konsekvens**: Blixtsnabb respons (< 50 ms) för röstkabeln, noll ljudfrysningar vid filpatchning och deterministisk händelsebaserad röstgolvsfrigörelse.
+

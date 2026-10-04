@@ -9,7 +9,9 @@ import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 
 export interface ToolExecutionResult {
   toolCallId: string;
+  agentId: string;
   toolName: string;
+  status: 'COMMITTED' | 'ERROR';
   success: boolean;
   output: any;
   error?: string;
@@ -17,10 +19,37 @@ export interface ToolExecutionResult {
   bidiResponse: BidiGenerateContentToolResponse;
 }
 
+export interface IncomingToolCall {
+  id: string;
+  name: string;
+  args?: Record<string, any>;
+}
+
+export interface BidiFunctionDeclaration {
+  name: string;
+  description: string;
+  parameters: Record<string, any>;
+}
+
+export interface ToolRoutingResult {
+  toolCallId: string;
+  immediateBidiResponse: BidiGenerateContentToolResponse;
+  executionPromise: Promise<ToolExecutionResult>;
+}
+
+function createBidiToolResponse(id: string, name: string, output: any): BidiGenerateContentToolResponse {
+  const resp = { output };
+  const raw: BidiGenerateContentToolResponse = {
+    functionResponses: [{ id, name, response: resp }],
+    behavior: 'NON_BLOCKING',
+  };
+  return BidiGenerateContentToolResponseSchema.parse(raw);
+}
+
 /**
- * TCK-003: McpSwarmBridge
+ * TCK-003 & TCK-022b: McpSwarmBridge
  * Orkestreringsbrygga mellan MCP Server och Gemini Live WebSocket-kabeln.
- * Matar automatiskt kabeln med NON_BLOCKING tool responses.
+ * Matar kabeln med NON_BLOCKING tool responses och publicerar mcp.tool.execution.completed.
  */
 export class McpSwarmBridge {
   private mcpServer: McpServer;
@@ -39,18 +68,35 @@ export class McpSwarmBridge {
     return this.mcpServer.hasTool(name);
   }
 
-  /**
-   * Exekverar ett verktygsanrop och genererar automatiskt ett NON_BLOCKING Bidi-svar
-   * för WebSocket-kabeln samt sänder CloudEvents 1.0 till eventbussen.
-   */
+  public getBidiFunctionDeclarations(): BidiFunctionDeclaration[] {
+    return this.mcpServer.getRegisteredTools().map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      parameters: tool.inputSchema as Record<string, any>,
+    }));
+  }
+
+  public routeToolCallNonBlocking(call: IncomingToolCall, agentId = 'unknown'): ToolRoutingResult {
+    const id = call.id || `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const pendingMsg = { status: 'PENDING', message: `Verktygsanrop för ${call.name} körs asynkront.` };
+    const immediateBidiResponse = createBidiToolResponse(id, call.name, pendingMsg);
+    const executionPromise = this.executeTool(call.name, call.args || {}, id, agentId);
+
+    return {
+      toolCallId: id,
+      immediateBidiResponse,
+      executionPromise,
+    };
+  }
+
   public async executeTool(
     toolName: string,
     toolArgs: Record<string, any> = {},
-    toolCallId?: string
+    toolCallId?: string,
+    agentId = 'unknown'
   ): Promise<ToolExecutionResult> {
     const id = toolCallId || `call-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-    // 1. Publicera starthändelse (CloudEvents 1.0)
     const startEnvelope: EventEnvelope = {
       id: `evt-mcp-start-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       source: 'outreach/mcp_bridge',
@@ -58,46 +104,22 @@ export class McpSwarmBridge {
       specversion: '1.0',
       datacontenttype: 'application/json',
       time: new Date().toISOString(),
-      data: {
-        toolCallId: id,
-        toolName,
-        args: toolArgs,
-      },
+      data: { toolCallId: id, agentId, toolName, args: toolArgs },
     };
     this.eventBus.publish(startEnvelope);
 
-    // 2. Anropa MCP JSON-RPC 2.0
     const mcpResponse = await this.mcpServer.handleJsonRpcRequest({
       jsonrpc: '2.0',
       id,
       method: 'tools/call',
-      params: {
-        name: toolName,
-        arguments: toolArgs,
-      },
+      params: { name: toolName, arguments: toolArgs },
     });
 
-    const isError = Boolean(mcpResponse.error);
+    const isError = Boolean(mcpResponse.error) || Boolean(mcpResponse.result?.isError);
     const output = mcpResponse.error ? mcpResponse.error.message : mcpResponse.result;
+    const status: 'COMMITTED' | 'ERROR' = isError ? 'ERROR' : 'COMMITTED';
+    const bidiResponse = createBidiToolResponse(id, toolName, output);
 
-    // 3. Skapa BidiGenerateContentToolResponse med behavior: 'NON_BLOCKING'
-    const bidiResponseRaw: BidiGenerateContentToolResponse = {
-      functionResponses: [
-        {
-          id,
-          name: toolName,
-          response: {
-            output: output as any,
-          },
-        },
-      ],
-      behavior: 'NON_BLOCKING',
-    };
-
-    // Validera med Zod (Fail-Fast)
-    const bidiResponse = BidiGenerateContentToolResponseSchema.parse(bidiResponseRaw);
-
-    // 4. Publicera sluthändelse (CloudEvents 1.0)
     const completedEnvelope: EventEnvelope = {
       id: `evt-mcp-complete-${Date.now()}-${Math.random().toString(36).substring(7)}`,
       source: 'outreach/mcp_bridge',
@@ -107,17 +129,22 @@ export class McpSwarmBridge {
       time: new Date().toISOString(),
       data: {
         toolCallId: id,
+        agentId,
         toolName,
+        status,
         success: !isError,
         output,
         bidiBehavior: bidiResponse.behavior,
+        timestamp: new Date().toISOString(),
       },
     };
     this.eventBus.publish(completedEnvelope);
 
     return {
       toolCallId: id,
+      agentId,
       toolName,
+      status,
       success: !isError,
       output,
       error: mcpResponse.error?.message,

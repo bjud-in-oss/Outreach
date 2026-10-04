@@ -28,6 +28,7 @@ import { runTransientTCK020dTests } from '../src/__tests__/transient_TCK-020d.te
 import { runTransientTCK021aTests } from '../src/__tests__/transient_TCK-021a.test.ts';
 import { runTransientTCK021bTests } from '../src/__tests__/transient_TCK-021b.test.ts';
 import { runTransientTCK022aTests } from '../src/__tests__/transient_TCK-022a.test.ts';
+import { runTransientTCK022bTests } from '../src/__tests__/transient_TCK-022b.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -66,6 +67,7 @@ async function main() {
     { name: '28. Transient E2E: TCK-021a VFS Staging Code Patch Engine & Unikhetsskydd', runner: async () => runTransientTCK021aTests() },
     { name: '29. Transient E2E: TCK-021b MCP Tool Wrapper for Code Patching & WAL Transaction', runner: async () => runTransientTCK021bTests() },
     { name: '30. Transient E2E: TCK-022a DSP Ring Buffer Mixer, Spatial Audio & Preemptive Floor Control', runner: async () => runTransientTCK022aTests() },
+    { name: '31. Transient E2E: TCK-022b Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release', runner: async () => runTransientTCK022bTests() },
   ];
 
   for (const suite of testSuites) {
