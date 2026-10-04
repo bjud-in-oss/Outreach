@@ -1,35 +1,24 @@
-# Steg 1b: Kartlägga Beroenden & Aktiva Vektorer (TCK-022a)
+# Steg 1b: Kartlägga Beroenden & Aktiva Vektorer (TCK-022b)
 
 ## 1. Aktiva Vektorer & Skills
-- **active_vectors**: `gemini_live_swarm`, `dsp_mixer`, `spatial_audio`, `native_pcm_vad`, `floor_control`, `multi_bidi_sessions`
-- **active_skill**: `gemini-api` (Modell: `models/gemini-3.8-live` med Bidi WebSocket, Extended Thinking och PCM Audio Streaming)
+- **active_vectors**: `mcp_bridge`, `bidi_mcp_wiring`, `non_blocking_routing`, `floor_release`, `swarm_event_bus`
+- **active_skill**: `gemini-api` (Gemini Live Bidi Function Calling och Asynchronous Non-blocking Tools)
 
 ## 2. Berörda Domäner & Filer
-- **Domän**: `src/features/gemini_live_swarm/`
-- **Källkodsfiler som berörs i Fas 2**:
-  - `src/features/gemini_live_swarm/session/liveAudioPlayback.ts`:
-    - `DSPRingBufferMixer` med tre stereokanaler:
-      * `folja`: Pan `-0.4` (Vänster)
-      * `forlikas`: Pan `0.0` (Mitten)
-      * `vanda_om`: Pan `+0.4` (Höger)
-    - Node.js-säker AudioContext-hantering med fullt teststöd under `pnpm verify`.
-    - 18 ms mjuk gain-rampning och dröjt stopp av källnoder vid preemption.
-  - `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`:
-    - Nativ PCM VAD-algoritm (RMS-energi + Zero-Crossing Rate).
-    - Cirkulär RAM-ringbuffert för 200 ms Pre-Roll (3200 samplingar vid 16kHz).
-    - 500 ms Post-Roll för bevarande av meningsslut och tvekan.
-  - `src/features/gemini_live_swarm/session/geminiLiveSession.ts`:
-    - Floor Control-orkestrering (Prioritet: forlikas [1] > vanda_om [2] > folja [3]).
-    - Tre parallella Bidi-sessioner med unika röster:
-      * `Puck` (Att följa)
-      * `Aoede` (Att förlikas)
-      * `Charon` (Att vända om)
-    - Extended Thinking: `thinkingLevel: "HIGH"`.
-    - Kompakt arkitektur som strikt håller filen under 250 rader enligt AST-regler i `scripts/drivers/ts.js`.
-  - `src/__tests__/transient_TCK-022a.test.ts`:
-    - Transient testsvit (< 3s) som verifierar DSP-panorering, nativ VAD med pre-roll & post-roll, omedelbar preemption inom 20 ms och avbrottssignaler.
+- **Domän**: `src/features/mcp_bridge/`
+- **Exklusiva källkodsfiler som berörs i Fas 2**:
+  - `src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts`:
+    - `getBidiFunctionDeclarations()` för dynamisk verktygsdeklaration (`liveConfig.tools`).
+    - `handleIncomingToolCall(call, agentId?)`: Utför asynkron routing till `mcpServer`, genererar blixtsnabbt `NON_BLOCKING` Bidi-svar.
+    - CloudEvents 1.0 emission av `mcp.tool.execution.completed` med `agentId`, `toolName`, `status` och `output` till `SwarmEventBus`.
+  - `src/__tests__/transient_TCK-022b.test.ts`:
+    - Transient testsvit (< 3s) som verifierar:
+      * Blixtsnabbt `NON_BLOCKING`-svar vid mockat `toolCall`.
+      * Publicering av `mcp.tool.execution.completed` på `SwarmEventBus` vid slutförd bakgrundsexekvering.
+      * Dynamisk verktygsdeklarationsmappning till Gemini Live format.
+      * AST- och radgränser (< 250 rader).
 
-## 3. FSD- & AST-begränsningar
-- Noll externa npm-beroenden för VAD (enbart standard TypeScript-matematik).
-- Inga mockar i produktionskoden under `src/`.
-- Håll alla berörda filer strikt under 250 rader.
+## 3. FSD- & Arkitekturbegränsningar
+- Rör inga filer under `src/features/gemini_live_swarm/` direkt från denna ticket. Kommunikationen sker löst kopplad via `SwarmEventBus`.
+- AST-gräns: Max 250 rader per `.ts`-fil.
+- Noll mockar i produktionskoden.

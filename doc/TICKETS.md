@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [ ] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release (Pending)
+- [IN PROGRESS] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release
 
 ---
 

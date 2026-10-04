@@ -1,14 +1,11 @@
-# Steg 2a: Avgränsa & Isolera (TCK-022a)
+# Steg 2a: Avgränsa & Isolera (TCK-022b)
 
 ## 1. Strikt Domän- och FSD-avgränsning
-- **Modul**: `src/features/gemini_live_swarm/`
+- **Modul**: `src/features/mcp_bridge/`
 - **Fokus**:
-  - `DSPRingBufferMixer` med spatial stereopanering och Node.js-säker körning i `liveAudioPlayback.ts`.
-  - Nativ PCM VAD med 200 ms pre-roll och 500 ms post-roll i `sessionIntentAudio.ts`.
-  - Floor Controller med prioritetsmatris, arbitration window (15 ms) och tre Bidi-sessioner i `geminiLiveSession.ts`.
+  - `mcpSwarmBridge.ts`: Implementera Bidi `toolCall`-routing, `getBidiFunctionDeclarations()` och CloudEvent-emission (`mcp.tool.execution.completed`).
 - **Förbud**:
-  - Rör INTE `mcp_bridge` direkt i denna ticket (Bidi WebSocket MCP Tool Call-koppling tillhör TCK-022b).
-  - Skapa inga mockar i produktionskod (`src/`).
-  - Importera inga externa VAD-paket som inte finns i `package.json`.
-  - Överskrid inte 250 rader per fil.
+  - Rör INTE filer under `src/features/gemini_live_swarm/` direkt.
+  - Skapa inga mockar i produktionskoden (`src/`).
+  - Håll alla filer strikt under 250 rader.
   - Rör ingen källkod under `src/` förrän i Fas 2 (efter godkänd Token Gate).

@@ -86,6 +86,7 @@ function runVerification() {
     'TCK-021A-VFS-PATCH-TOKEN',
     'TCK-021B-MCP-PATCH-TOKEN',
     'TCK-022A-DSP-FLOOR-TOKEN',
+    'TCK-022B-BIDI-MCP-TOKEN',
   ];
   if (fs.existsSync(requiredTokenPath)) {
     const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();

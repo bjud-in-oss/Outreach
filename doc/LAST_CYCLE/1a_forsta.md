@@ -1,28 +1,21 @@
-# Steg 1a: Förstå & Riskanalys (TCK-022a)
+# Steg 1a: Förstå & Riskanalys (TCK-022b)
 
 Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjulhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.
 
 ## 1. Mål & Användarorientering
-- **Uppdrag**: Etablera en klickfri DSP-mixer med cirkulär schemalagd ringbuffert och spatial panorering i `liveAudioPlayback.ts`, lokal nativ PCM VAD (Zero-crossing rate + adaptiv RMS-energi) med 200 ms pre-roll och 500 ms post-roll i `sessionIntentAudio.ts`, samt en deterministisk, prioriterad preemptive Floor Control-motor med arbitration window och treparallell WebSocket Bidi-session i `geminiLiveSession.ts`.
-- **Systemeffekt**: Tre samtida försoningskrafter (Att följa, Att förlikas, Att vända om) kan verka i samma spatiala stereofält (-0.4, 0.0, +0.4) med unika personlighetsröster (Puck, Aoede, Charon) utan krockar eller sprak. Användarens inledande tal bevaras med 200 ms pre-roll utan onödig token-förbrukning under tystnad, och högre prioriterade krafter kan omedelbart och mjukt (< 20 ms) avbryta underordnade krafter vid behov.
+- **Uppdrag**: Koppla ihop Svärmens Bidi WebSocket-kabel (`liveConfig.tools`) med `mcpServer` i `mcpSwarmBridge.ts`. Fånga inkommande `toolCall`-händelser, routa dem asynkront med omedelbara `NON_BLOCKING` röstsvar samt publicera `mcp.tool.execution.completed` på `SwarmEventBus` så att DSP-mixern och FloorController automatiskt frigör röstgolvet när bakgrundsarbete har slutförts.
+- **Systemeffekt**: När en försoningskraft anropar ett verktyg (t.ex. `apply_code_patch` eller `wal_append_entry`) fryser inte den auditiva dialogen i högtalarna. Systemet kvitterar omedelbart med ett icke-blockerande svar till Gemini Live-modellen och kör verktyget asynkront i bakgrunden. När verktygskörningen är klar signaleras `mcp.tool.execution.completed` så att röstgolvet kan lämnas vidare utan dödlägen.
 
 ## 2. GROW Risknoder (State, Contract, Resilience)
 
-### Risknod 1: State (DSP AudioContext & Schemaläggning i Web Audio & Node.js)
-- **Problem**: I webbläsaren hanterar `AudioContext` schemaläggning av 24kHz Base64 PCM-strömmar. I Node.js-miljön (under `npm run verify` och transienta tester) finns inte global `AudioContext`, vilket kan orsaka krascher om AudioContext förutsätts villkorslöst.
-- **Lösning**: `liveAudioPlayback.ts` implementerar villkorad och robust AudioContext-initiering (`typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)`), med en i-minnet stub/fallback för miljöer utan Web Audio. Spårning av `nextPlayTime` och 18 ms linjär gain-rampning isoleras så att mixern förblir fullt testbar i Node.js.
+### Risknod 1: State (Asynkron Verktygsexekvering & Röstgolv)
+- **Problem**: Om en agent som begärt golvet startar ett verktyg som tar 50-200 ms (t.ex. disk- eller minnesoperationer i WAL/VFS) kan golvet bli blockerat om FloorController förväntar sig omedelbar tystnad, eller så kan agenten förbli registrerad som aktiv talare trots att den väntar på I/O.
+- **Lösning**: `mcpSwarmBridge.ts` returnerar omedelbart `NON_BLOCKING` till WebSocket-kabeln så att talaren kan fortsätta prata ("Jag applicerar nu ändringen i källkoden..."). När verktygsexekveringen i `mcpServer` slutförs emitteras `mcp.tool.execution.completed` med `agentId`, `toolName` och `status` via `SwarmEventBus`, vilket låter FloorController och mixern veta exakt när handuppräckningen avslutas.
 
-### Risknod 2: Contract (Preemptive Floor Control & Prioritetsmatris)
-- **Problem**: Konkurrerande handuppräckningar mellan försoningskrafterna riskerar kapplöpningskonditioner och abrupta ljudklipp om inte preemption sker kontrollerat.
-- **Lösning**: Strikt prioritetsmatris: `forlikas` (Prio 1) > `vanda_om` (Prio 2) > `folja` (Prio 3).
-  - Aktiv preemption: När Prio 1 begär ordet medan Prio 3 talar, rampar DSP-mixern ner Prio 3 (`gain.linearRampToValueAtTime(0, now + 0.018)`), schemalägger dröjt stopp av aktiva källnoder (20 ms), emitterar `swarm.floor.preempted` via `SwarmEventBus`, och tilldelar golvet till Prio 1.
-  - Arbitration Window (15 ms): Vid ledigt golv samlas inkomna `swarm.floor.request` under 15 ms innan ordet tilldelas den agent som har högst prioritet.
-  - Cancellation: Hantering av `swarm.floor.cancel` för att dra tillbaka förfrågningar ur kön.
+### Risknod 2: Contract (Bidi Function Calling & Zod-kontrakt)
+- **Problem**: Gemini 3.8 Live API WebSocket kräver ett strikt format på `functionResponses` med `behavior: 'NON_BLOCKING'` och exakt matchande anrops-ID (`toolCallId`). Om formatet avviker kastar Bidi-kabeln ett protokollfel eller stänger anslutningen.
+- **Lösning**: Strikt validering mot `BidiGenerateContentToolResponseSchema` i `mcpSchema.ts`. Dynamisk verktygskonvertering via `getBidiFunctionDeclarations()` som mappar MCP-verktygens JSON-schema till Gemini `functionDeclarations`.
 
-### Risknod 3: Resilience (Nativ PCM VAD utan externa npm-beroenden)
-- **Problem**: Externa VAD-paket (som Silero ONNX runtime) kräver tunga WebAssembly- och npm-beroenden som inte finns installerade och kan krascha i sandlådan.
-- **Lösning**: Bygg en ren TypeScript-baserad nativ PCM VAD direkt i `sessionIntentAudio.ts`:
-  - Beräkna RMS-energi och Zero-Crossing Rate (ZCR) på inkommande 16kHz Float32/PCM16-ramar.
-  - Cirkulär pre-roll-ringbuffert (200 ms, 3200 samplingar) sparar kontinuerligt mikrofondata.
-  - När VAD detekterar röst (`isSpeech === true`) spolas de sparade 200 ms pre-roll omedelbart mot Bidi-kabeln följt av realtidsströmmen.
-  - Post-roll på 500 ms håller ljudströmmen öppen efter sista detekterade talramen så att naturliga pauser och mjuka konsonantslut inte hackas sönder.
+### Risknod 3: Resilience (Fail-Safe Felhantering utan Protokollkrasch)
+- **Problem**: Om ett verktygsanrop misslyckas (t.ex. `AMBIGUOUS_SEARCH_BLOCK` eller ogiltiga argument) får inte WebSocket-anslutningen brytas med JSON-RPC-fel -32603.
+- **Lösning**: `mcpSwarmBridge.ts` fångar alla undantag, kapslar in felmeddelandet i verktygsresultatets `output` och publicerar `mcp.tool.execution.failed` via CloudEvents 1.0. Bidi-svaret returneras alltid med `behavior: 'NON_BLOCKING'` så att agenten muntligt kan förklara felet för användaren.
