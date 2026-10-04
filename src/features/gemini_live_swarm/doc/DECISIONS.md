@@ -271,3 +271,16 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   3. **Defensiv Teardown**: Kapsla in `sendRealtimeInput` i `subscribeToMicPiping` med `try/catch` för att tyst fånga asynkrona mikrofonpaket när socketen övergår i status `CLOSING` eller `CLOSED`.
 - **Konsekvens**: Omedelbar röstdetektering, naturligt talsvar från agenten (24kHz PCM), noll unhandled exceptions vid frånkoppling och en helt stabil grund för framtida MCP-verktyg och försoningsdialoger.
 
+---
+
+## ADR-SWARM-020: DSP Ring Buffer Mixer, Spatial Panorering, Nativ PCM VAD & Preemptive Floor Control
+- **Datum**: 2026-10-04
+- **Status**: Beslutat & Implementerat (TCK-022a)
+- **Kontext**: För att de tre försoningskrafterna (*Att följa*, *Att förlikas*, *Att vända om*) ska kunna verka simultant i samma rumsliga stereofält krävdes klickfri och koordinerad ljuduppspelning, röstseparation, preemptive samtalsstyrning (Floor Control) samt lokal röstdetektering (VAD) som sparar nätverkstokens utan att klippa inledande konsonanter.
+- **Beslut**:
+  1. **DSP Ring Buffer Mixer med Spatial Panorering**: Implementera `DSPRingBufferMixer` i `liveAudioPlayback.ts` med tre stereokanaler (`folja: -0.4`, `forlikas: 0.0`, `vanda_om: +0.4`), 18 ms linjär gain-rampning och dröjt stopp av aktiva källnoder för klickfri preemption och Node.js-säker fallback.
+  2. **Preemptive Floor Control & Arbitration Window**: Etablera `FloorController` i `floorController.ts` med prioritetsordning `forlikas (1) > vanda_om (2) > folja (3)`. När en överordnad kraft begär ordet avbryts pågående tal omedelbart (< 20 ms) och `swarm.floor.preempted` emitteras. Vid ledigt golv samlas förfrågningar under ett 15 ms arbitration window för att undvika tjuvstarter.
+  3. **Nativ PCM VAD utan Externa npm-beroenden**: Införa RMS- och Zero-Crossing Rate-analys direkt i `sessionIntentAudio.ts` tillsammans med 200 ms cirkulär Pre-Roll buffert och 500 ms Post-Roll. Bidi-strömmen aktiveras probabilistiskt först vid detekterat tal och flushar omedelbart pre-roll-samplingarna.
+  4. **Multi-Agent Setup & Unika Röster**: Etablera unika röstprofiler (`Puck` för Att följa, `Aoede` för Att förlikas, `Charon` för Att vända om) och strikt hålla `geminiLiveSession.ts` under AST-gränsen på 250 rader genom modulär delegering till `FloorController`.
+- **Konsekvens**: Naturlig, klickfri flerstämmig samtalssituation där användaren hör var krafterna talar ifrån i stereofältet och där den förlikande kraften harmoniskt kan avbryta underordnade krafter vid behov.
+

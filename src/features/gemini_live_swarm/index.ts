@@ -52,8 +52,11 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
-// Audio Setup & PCM16 (TCK-020b)
-export { createBidiSetupPayload, floatTo16BitPCM } from './session/sessionIntentAudio.ts';
+// Audio Setup, DSP Mixer, VAD & Floor Control (TCK-020b & TCK-022a)
+export { createBidiSetupPayload, floatTo16BitPCM, detectSpeechPCM, AudioPreRollBuffer, SessionIntentManager } from './session/sessionIntentAudio.ts';
+export { DSPRingBufferMixer, LiveAudioPlayer, CHANNEL_PAN_CONFIG } from './session/liveAudioPlayback.ts';
+export type { SwarmAudioChannel } from './session/liveAudioPlayback.ts';
+export { FloorController, CHANNEL_PRIORITY, AGENT_VOICE_MAP } from './session/floorController.ts';
 
 // Symbol-Krona & Split-Pane Layout (TCK-017, TCK-018, TCK-020 & TCK-020b)
 export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';

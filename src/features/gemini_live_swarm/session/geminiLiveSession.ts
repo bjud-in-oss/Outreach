@@ -2,18 +2,15 @@ import { GoogleGenAI } from '@google/genai';
 import { LiveSessionStatus, LiveStreamChunk, LiveStreamChunkSchema, ReconciliationForce } from '../telemetry/telemetrySchema.ts';
 import { SwarmEventBus, getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
 import { SessionIntentManager } from './sessionIntentAudio.ts';
-import { LiveAudioPlayer } from './liveAudioPlayback.ts';
+import { DSPRingBufferMixer, SwarmAudioChannel } from './liveAudioPlayback.ts';
+import { FloorController, CHANNEL_PRIORITY, AGENT_VOICE_MAP } from './floorController.ts';
 import { SwarmIntent } from '../ui/splitPaneHelper.ts';
 
-export type { SwarmIntent };
+export type { SwarmIntent, SwarmAudioChannel };
+export { CHANNEL_PRIORITY, AGENT_VOICE_MAP };
 export interface AgentThoughtResponse {
-  agentRole: string;
-  thought: string;
-  content: string;
-  suggestedTools?: string[];
-  score?: number;
+  agentRole: string; thought: string; content: string; suggestedTools?: string[]; score?: number;
 }
-
 export interface BidiRealtimeInputPayload {
   realtimeInput?: { mediaChunks?: Array<{ mimeType: string; data: string }> };
   audio?: { data: string; mimeType: string };
@@ -22,6 +19,7 @@ export interface BidiRealtimeInputPayload {
 export class GeminiLiveSession {
   private aiClient: GoogleGenAI | null = null;
   private activeSdkSession: any = null;
+  private agentSessions: Map<SwarmAudioChannel, any> = new Map();
   private liveModelName = 'gemini-3.8-live-extended-thinking';
   private liveStatus: LiveSessionStatus = 'IDLE';
   private eventBus: SwarmEventBus;
@@ -29,11 +27,13 @@ export class GeminiLiveSession {
   private currentStreamId: string | null = null;
   private reconnectAttempts = 0;
   private intentManager: SessionIntentManager;
-  private audioPlayer = new LiveAudioPlayer();
+  private audioPlayer = new DSPRingBufferMixer();
+  private floor: FloorController;
 
   constructor(apiKey?: string, eventBus?: SwarmEventBus) {
     this.eventBus = eventBus || getGlobalSwarmEventBus();
     this.intentManager = new SessionIntentManager(this.eventBus);
+    this.floor = new FloorController(this.eventBus);
     const envKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
     const key = (apiKey && apiKey !== 'MY_GEMINI_API_KEY' ? apiKey : envKey || '').trim();
     if (!key) {
@@ -51,19 +51,18 @@ export class GeminiLiveSession {
   }
 
   public packRealtimeAudioChunk(data: string, mimeType = 'audio/pcm;rate=16000'): BidiRealtimeInputPayload {
-    return {
-      audio: { data, mimeType },
-    };
+    return { audio: { data, mimeType } };
   }
 
   private subscribeToMicPiping(): void {
     this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
       const d = env.data as any;
       const chunk = d?.audioChunkBase64;
-      if (!this.isLiveConnected() || !this.activeSdkSession?.sendRealtimeInput || !chunk) return;
-      const mime = d?.mimeType || 'audio/pcm;rate=16000';
+      if (!this.isLiveConnected() || !chunk) return;
+      const payload = this.packRealtimeAudioChunk(chunk, d?.mimeType || 'audio/pcm;rate=16000');
       try {
-        this.activeSdkSession.sendRealtimeInput(this.packRealtimeAudioChunk(chunk, mime));
+        if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
+        for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
       } catch {
         this.liveStatus = 'DISCONNECTED';
         this.deactivateIntent();
@@ -71,11 +70,27 @@ export class GeminiLiveSession {
     });
   }
 
+  public requestFloor(channel: SwarmAudioChannel): void {
+    this.floor.requestFloor(
+      channel,
+      (preempted, challenger) => {
+        this.audioPlayer.rampGain(preempted, 0, 18);
+        this.audioPlayer.rampGain(challenger, 1.0, 18);
+      },
+      (speaker) => this.audioPlayer.rampGain(speaker, 1.0, 18)
+    );
+  }
+
+  public cancelFloor(channel: SwarmAudioChannel): void { this.floor.cancelFloor(channel); }
+  public releaseFloor(channel?: SwarmAudioChannel): void {
+    this.floor.releaseFloor(channel, (speaker) => this.audioPlayer.rampGain(speaker, 1.0, 18));
+  }
+  public getCurrentSpeaker(): SwarmAudioChannel | null { return this.floor.getCurrentSpeaker(); }
+  public getAudioPlayer(): DSPRingBufferMixer { return this.audioPlayer; }
+
   public setApiKey(apiKey: string): void {
     if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || !apiKey.trim()) {
-      this.aiClient = null;
-      this.liveStatus = 'HALTED';
-      return;
+      this.aiClient = null; this.liveStatus = 'HALTED'; return;
     }
     this.aiClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1alpha' });
     this.liveStatus = 'IDLE';
@@ -113,73 +128,56 @@ export class GeminiLiveSession {
     this.liveStatus = 'CONNECTING';
     const streamId = `stream-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     this.currentStreamId = streamId;
-
     const rawModel = config?.model || this.liveModelName;
     const modelToUse = rawModel.startsWith('models/') ? rawModel : `models/${rawModel}`;
 
     const onOpen = () => {
-      this.liveStatus = 'STREAMING';
-      this.reconnectAttempts = 0;
-      this.eventBus.publishLiveEvent('swarm.live.session.connected', {
-        streamId, status: 'CONNECTED', model: modelToUse,
-        responseModalities: config?.responseModalities || ['AUDIO'],
-        connectedAt: new Date().toISOString(),
-      });
+      this.liveStatus = 'STREAMING'; this.reconnectAttempts = 0;
+      this.eventBus.publishLiveEvent('swarm.live.session.connected', { streamId, status: 'CONNECTED', model: modelToUse });
     };
-    const onError = (err: any) => {
-      this.liveStatus = 'ERROR';
-      this.deactivateIntent();
-      this.eventBus.publishLiveEvent('swarm.live.session.error', { error: String(err), status: 'ERROR' });
-    };
-    const onClose = () => {
-      this.liveStatus = 'DISCONNECTED';
-      this.deactivateIntent();
-      this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', disconnectedAt: new Date().toISOString() });
-    };
-
-    const liveConfig = {
+    const makeAgentConfig = (channel: SwarmAudioChannel, defaultInstruction: string) => ({
       model: modelToUse,
       config: {
         responseModalities: config?.responseModalities || ['AUDIO'],
-        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Aoede' } } },
-        thinkingConfig: { thinking_level: 'low' },
-        systemInstruction: { parts: [{ text: config?.systemInstruction || 'Försoningsmotorns kompass aktiv.' }] },
+        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
+        thinkingConfig: { thinking_level: 'high', thinkingLevel: 'HIGH' },
+        systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
       },
       callbacks: {
         onopen: onOpen,
-        onmessage: (msg: any) => this.handleIncomingLiveMessage(msg),
-        onerror: onError,
-        onclose: onClose,
+        onmessage: (msg: any) => this.handleAgentMessage(channel, msg),
+        onerror: (err: any) => { this.liveStatus = 'ERROR'; this.eventBus.publishLiveEvent('swarm.live.session.error', { error: String(err) }); },
+        onclose: () => { this.liveStatus = 'DISCONNECTED'; this.releaseFloor(channel); },
       },
-    };
+    });
 
     try {
-      this.activeSdkSession = await (this.aiClient as any).live.connect(liveConfig);
-      if (typeof window !== 'undefined') { (window as any).geminiSession = this; }
+      const primarySess = await (this.aiClient as any).live.connect(makeAgentConfig('forlikas', 'Försoningsmotorns kompass aktiv.'));
+      this.activeSdkSession = primarySess;
+      this.agentSessions.set('forlikas', primarySess);
+      if (typeof window !== 'undefined') (window as any).geminiSession = this;
       return true;
     } catch (err) {
-      this.liveStatus = 'ERROR';
-      this.deactivateIntent();
+      this.liveStatus = 'ERROR'; this.deactivateIntent();
       const msg = `Anslutningsfel: ${err instanceof Error ? err.message : String(err)}`;
       this.eventBus.publishLiveEvent('swarm.live.session.error', { error: msg, status: 'ERROR' });
       throw new Error(msg);
     }
   }
 
-  private handleIncomingLiveMessage(message: any): void {
+  public handleAgentMessage(channel: SwarmAudioChannel, message: any): void {
     if (message?.serverContent?.interrupted) {
-      this.intentManager.emitAudioThinking();
-      return;
+      this.audioPlayer.clearBuffer(channel); this.releaseFloor(channel); this.intentManager.emitAudioThinking(); return;
+    }
+    if (message?.serverContent?.turnComplete) {
+      this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel });
     }
     const parts = message?.serverContent?.modelTurn?.parts || [];
     for (const part of parts) {
-      const data = part.inlineData?.data;
-      if (data) this.audioPlayer.play24kHzPCMBase64(data, () => this.intentManager.emitAudioTalking());
-    }
-    if (message?.serverContent?.outputTranscription?.text && this.currentStreamId) {
-      this.eventBus.publishLiveEvent('swarm.live.stream.transcription', {
-        streamId: this.currentStreamId, transcription: message.serverContent.outputTranscription.text, isFinal: true,
-      });
+      if (part.inlineData?.data) {
+        this.requestFloor(channel);
+        this.audioPlayer.play24kHzPCMBase64(channel, part.inlineData.data, () => this.intentManager.emitAudioTalking());
+      }
     }
   }
 
@@ -188,24 +186,21 @@ export class GeminiLiveSession {
     behavior: 'NON_BLOCKING' | 'BLOCKING' = 'NON_BLOCKING'
   ): void {
     const payload = { toolResponse: { functionResponses, behavior } };
-    if (this.activeSdkSession?.sendRealtimeInput) {
-      this.activeSdkSession.sendRealtimeInput(payload);
-    } else if (this.activeSdkSession?.send) {
-      this.activeSdkSession.send(JSON.stringify(payload));
-    }
-    this.eventBus.publishLiveEvent('swarm.live.tool.response', {
-      functionResponses, behavior, timestamp: new Date().toISOString(),
-    });
+    if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
+    this.eventBus.publishLiveEvent('swarm.live.tool.response', { functionResponses, behavior, timestamp: new Date().toISOString() });
   }
 
   public async disconnectLive(reason = 'Klientsession avslutad normalt'): Promise<void> {
     const streamId = this.currentStreamId || `stream-${Date.now()}`;
     if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch {} }
+    for (const sess of this.agentSessions.values()) { if (sess?.close) { try { sess.close(); } catch {} } }
+    this.agentSessions.clear();
     this.activeSdkSession = null;
     this.liveStatus = 'DISCONNECTED';
     this.audioPlayer.dispose();
+    this.floor.reset();
     this.deactivateIntent();
-    this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', reason, disconnectedAt: new Date().toISOString() });
+    this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', reason });
     this.currentStreamId = null;
   }
 
@@ -217,7 +212,6 @@ export class GeminiLiveSession {
     const userChunk: LiveStreamChunk = { streamId, sourceRole: 'user', force, textChunk: text, transcription: text, isFinal: true, timestamp: new Date().toISOString() };
     LiveStreamChunkSchema.parse(userChunk);
     this.eventBus.publishLiveEvent('swarm.live.stream.text', { ...userChunk });
-    this.eventBus.publishLiveEvent('swarm.live.stream.transcription', { streamId, transcription: text, force, isFinal: true });
     this.notifyListeners(userChunk);
     return userChunk;
   }
@@ -225,9 +219,7 @@ export class GeminiLiveSession {
   public async sendRealtimeAudio(audioChunkBase64: string, mimeType = 'audio/pcm;rate=16000'): Promise<LiveStreamChunk> {
     if (this.liveStatus === 'HALTED' || !this.aiClient) throw new Error('Gemini Live audio i HALTED-läge.');
     if (!this.isLiveConnected()) await this.connectLive();
-    if (this.activeSdkSession?.sendRealtimeInput) {
-      this.activeSdkSession.sendRealtimeInput(this.packRealtimeAudioChunk(audioChunkBase64, mimeType));
-    }
+    if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(this.packRealtimeAudioChunk(audioChunkBase64, mimeType));
     const streamId = this.currentStreamId || `stream-${Date.now()}`;
     const audioChunk: LiveStreamChunk = { streamId, sourceRole: 'user', audioChunkBase64, isFinal: false, timestamp: new Date().toISOString() };
     LiveStreamChunkSchema.parse(audioChunk);
