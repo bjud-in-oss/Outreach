@@ -1,14 +1,14 @@
-# Steg 2e: Syntetisera & Förlika Målkonflikter (TCK-020d)
+# Steg 2e: Syntetisera & Förlika Målkonflikter (TCK-021a)
 
 ## 1. Målkonflikter & Förlikning
-- **Konflikt**: Tidigare implementation förlitade sig på `modelName = 'gemini-3.8-flash'` som en dold fallback i `generateAgentTurn`, samtidigt som live-strömningen använde `gemini-3.8-live-extended-thinking`.
-  - **Förlikning**: Ta bort den hårdkodade `modelName`-variabeln helt. Låt `generateAgentTurn` använda explicit angiven modell eller falla tillbaka på `this.liveModelName`, vilket harmoniserar hela sessionen under samma försoningsmotor.
-- **Konflikt**: Standardanrop till `@google/genai` för WebSocket-kabeln kunde förhandla mot `v1beta`, vilket orsakade skillnader i protokollbeteende och saknat stöd för vissa Live API-funktioner.
-  - **Förlikning**: Explicit skicka `{ apiVersion: 'v1alpha' }` till `GoogleGenAI`, vilket garanterar att WebSocket-anslutningen alltid pekar på `v1alpha.generativeservice.BidiGenerateContent`.
+- **Konflikt**: Ska `applyPatch` modifiera filer tyst eller kasta tydliga, semantiska fel?
+  - **Förlikning**: `applyPatch` måste kasta explicita fel (`FILE_NOT_FOUND`, `AMBIGUOUS_SEARCH_BLOCK`, `SEARCH_BLOCK_NOT_FOUND`) för att skydda källkodens integritet (Fail Fast). Verktygslagret (TCK-021b) kan sedan fånga dessa fel och returnera informativa nudges till agenten utan krasch.
+- **Konflikt**: Ska `driveStore.ts` vara en ren React-hook eller också tillhandahålla en oberoende in-memory VFS?
+  - **Förlikning**: Modulen exporterar både fristående funktioner (`applyPatch`, `setVfsFile`, `getVfsFile`, etc.) och knyter dem till hooken `useDriveStore` samt ett samlat `driveStore`-objekt. Detta gör att både MCP-verktyg och React-komponenter kan interagera med VFS-tillståndet utan onödig koppling.
 
 ## 2. Konsistenskontroll
-- Inga brutna referenser i `swarmOrchestrator.ts` eller andra moduler.
-- `getApiVersion()` bekräftar `'v1alpha'`.
-- AST- och radgränser respekteras (filen hålls under 240 rader).
+- `driveStore.ts` utökas med deterministiska VFS-metoder.
+- Inga brutna referenser till befintliga `GoogleDriveClient` eller `useDriveStore`.
+- Filens radantal beräknas till ~170 rader (väl under 250 rader).
 
 MÄTTNAD: JA

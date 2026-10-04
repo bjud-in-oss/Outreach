@@ -25,6 +25,7 @@ import { runTransientTCK019Tests } from '../src/__tests__/transient_TCK-019.test
 import { runTransientTCK020Tests } from '../src/__tests__/transient_TCK-020.test.ts';
 import { runTransientTCK020cTests } from '../src/__tests__/transient_TCK-020c.test.ts';
 import { runTransientTCK020dTests } from '../src/__tests__/transient_TCK-020d.test.ts';
+import { runTransientTCK021aTests } from '../src/__tests__/transient_TCK-021a.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -60,6 +61,7 @@ async function main() {
     { name: '25. Transient E2E: TCK-020 Intent-Driven Audio, Responsive SplitPane & Adaptive Control Bar', runner: async () => runTransientTCK020Tests() },
     { name: '26. Transient E2E: TCK-020c Live Audio Piping, Extended Thinking & Bidi Tool Response', runner: async () => runTransientTCK020cTests() },
     { name: '27. Transient E2E: TCK-020d Sanering av geminiLiveSession.ts och tvingad v1alpha', runner: async () => runTransientTCK020dTests() },
+    { name: '28. Transient E2E: TCK-021a VFS Staging Code Patch Engine & Unikhetsskydd', runner: async () => runTransientTCK021aTests() },
   ];
 
   for (const suite of testSuites) {

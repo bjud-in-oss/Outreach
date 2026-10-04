@@ -1,11 +1,14 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-Inga aktiva ärenden.
+- [ ] TCK-021b | Domän: src/features/mcp_bridge/ | Mål: MCP Tool Wrapper for Code Patching (Pending)
+- [ ] TCK-022a | Domän: src/features/gemini_live_swarm/ | Mål: DSP Ring Buffer Mixer & Spatial Audio Floor (Pending)
+- [ ] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring (Pending)
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-021a | Domän: src/features/google_drive_sync/ | Mål: VFS Staging Code Patch Engine | Token: TCK-021A-VFS-PATCH-TOKEN
 - [VERIFIERAD] TCK-020d | Domän: Global / src/features/gemini_live_swarm/ | Mål: Sanering av geminiLiveSession.ts och tvingad v1alpha | Token: TCK-020D-SANERA-V1ALPHA-TOKEN
 - [VERIFIERAD] TCK-020c | Domän: Global / src/features/gemini_live_swarm/ | Mål: Gemini Live API WebSocket Bidi-renodling och extended thinking | Token: TCK-020C-BIDI-THINKING-TOKEN
 - [VERIFIERAD] TCK-020b | Domän: Global / src/features/gemini_live_swarm/ | Mål: Audio Handshake, 3-State SplitPane Gestures & Keyboard Shortcuts | Kvitto: 43f40652

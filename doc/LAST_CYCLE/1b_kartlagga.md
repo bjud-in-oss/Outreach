@@ -1,22 +1,22 @@
-# Steg 1b: Kartlägga Beroenden & Aktiva Vektorer (TCK-020d)
+# Steg 1b: Kartlägga Beroenden & Aktiva Vektorer (TCK-021a)
 
 ## 1. Aktiva Vektorer & Skills
-- **active_skill**: `gemini-live-api-dev`, `gemini-api-dev`
-- **mcp_docs_check**: Verifierat via `https://gemini-api-docs-mcp.dev` (`gemini_search_docs`):
-  - `GoogleGenAI` instansieras med `{ apiKey: string, apiVersion: 'v1alpha' }`.
-  - WebSocket Live ansluter via `v1alpha.generativeservice.BidiGenerateContent`.
+- **active_vectors**: `google_drive_sync`, `vfs_staging`, `code_patching`
+- **active_skill**: `none` (lokal domänlogik i `src/features/google_drive_sync/`)
 
 ## 2. Beroendekarta
 ```
-src/features/gemini_live_swarm/
-└── session/
-    ├── geminiLiveSession.ts (AKTIV FÖR FAS 2: Sanera modelName, tvinga apiVersion: 'v1alpha')
-    ├── sessionIntentAudio.ts (BEVARAS ORÖRD)
-    └── liveAudioPlayback.ts (BEVARAS ORÖRD)
+src/features/google_drive_sync/
+└── model/
+    └── driveStore.ts (AKTIV FÖR FAS 2: VFS file staging & applyPatch engine)
+src/__tests__/
+└── transient_TCK-021a.test.ts (SKAPAS I FAS 2)
 ```
+- Övriga domäner (`gemini_live_swarm`, `mcp_bridge`, `wal_logger`) lämnas helt orörda under TCK-021a.
 
 ## 3. Destruktiva Handlingssteg
-- **Källkod att radera**:
-  - Radera `private modelName = 'gemini-3.8-flash';` i `geminiLiveSession.ts`.
-  - Ersätt instansiering `new GoogleGenAI({ apiKey: key })` med `new GoogleGenAI({ apiKey: key, apiVersion: 'v1alpha' })`.
-  - Ersätt instansiering i `setApiKey` med `new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1alpha' })`.
+- **Källkod att utöka/modifiera**:
+  - `src/features/google_drive_sync/model/driveStore.ts`:
+    - Inför VFS Staging i minnet (`vfsFiles = new Map<string, string>()`).
+    - Exportera funktionerna `applyPatch`, `setVfsFile`, `getVfsFile`, `hasVfsFile`, `listVfsFiles`, `clearVfs`.
+    - Exportera objektet `driveStore` samt uppdatera returvärdet från `useDriveStore` med `applyPatch` och `vfs`.
