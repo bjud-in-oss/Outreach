@@ -1,32 +1,27 @@
-# Steg 2b: Modellera VAD & Continuous Stream (TCK-022c)
+# Steg 2b: Modellera Parallell 3-Agent Uppkoppling (TCK-022d)
 
-## 1. Uppdaterad VAD-logik (`detectSpeechPCM`)
+## 1. Parallell Uppkoppling i `connectLive`
 ```typescript
-export function detectSpeechPCM(
-  samples: Float32Array,
-  rmsThreshold = 0.015,
-  zcrThreshold = 0.05
-): VadAnalysisResult {
-  if (samples.length === 0) return { isSpeech: false, rms: 0, zcr: 0 };
-  let sumSquares = 0;
-  let zeroCrossings = 0;
-  for (let i = 0; i < samples.length; i++) {
-    sumSquares += samples[i] * samples[i];
-    if (i > 0 && ((samples[i] >= 0 && samples[i - 1] < 0) || (samples[i] < 0 && samples[i - 1] >= 0))) {
-      zeroCrossings++;
-    }
-  }
-  const rms = Math.sqrt(sumSquares / samples.length);
-  const zcr = zeroCrossings / samples.length;
-  const isSpeech = rms > (rmsThreshold * 1.5) || (rms > rmsThreshold && zcr > zcrThreshold);
-  return { isSpeech, rms, zcr };
-}
+const channels: Array<{ channel: SwarmAudioChannel; instruction: string }> = [
+  { channel: 'forlikas', instruction: 'Försoningsmotorns kompass aktiv.' },
+  { channel: 'folja', instruction: 'Att följa: Lösningen för närhet.' },
+  { channel: 'vanda_om', instruction: 'Att vända om: Inåtriktad ödmjulhet.' },
+];
+
+const sessions = await Promise.all(
+  channels.map(({ channel, instruction }) =>
+    (this.aiClient as any).live.connect(makeAgentConfig(channel, instruction))
+  )
+);
+
+channels.forEach(({ channel }, idx) => {
+  this.agentSessions.set(channel, sessions[idx]);
+});
+this.activeSdkSession = this.agentSessions.get('forlikas') || sessions[0];
 ```
 
-## 2. Kontinuerlig PCM-sampling utan Intent-lås
+## 2. Strikt thinkingConfig
 ```typescript
-this.audioProcessor.onaudioprocess = (e) => {
-  this.processIncomingChunk(e.inputBuffer.getChannelData(0));
-};
+thinkingConfig: { thinkingLevel: 'high' }
 ```
-Genom att ta bort `if (!this.activeIntent) return;` kan mikrofonen skicka PCM-paket (`swarm.live.stream.audio`) via `SwarmEventBus` direkt när tal detekteras av VAD.
+Inga redundanta nycklar eller felaktiga case-varianter.

@@ -1,18 +1,20 @@
-# Steg 1b: Kartlägga Beroenden & Aktiva Vektorer (TCK-022c)
+# Steg 1b: Kartlägga Beroenden & Aktiva Vektorer (TCK-022d)
 
 ## 1. Aktiva Vektorer & Skills
-- **active_vectors**: `gemini_live_swarm`, `session_intent_audio`, `vad_zcr_softening`, `continuous_mic_sync`, `pcm16_streaming`
+- **active_vectors**: `gemini_live_swarm`, `parallel_3_agent_live`, `thinking_config_schema_fix`, `bidi_multichannel_sessions`
 - **active_skill**: `gemini-api`
 
 ## 2. Beroendekarta
-- `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`:
-  - Funktion: `detectSpeechPCM(samples: Float32Array, rmsThreshold = 0.015, zcrThreshold = 0.05)`
-  - Klass: `SessionIntentManager` (`startPCM16Sampling`, `processIncomingChunk`, `onaudioprocess`)
-- `src/features/gemini_live_swarm/index.ts`: Exporterar `detectSpeechPCM`, `SessionIntentManager`, `AudioPreRollBuffer`, `floatTo16BitPCM`.
-- `src/__tests__/transient_TCK-022c.test.ts`: Transienta tester för TCK-022c.
+- `src/features/gemini_live_swarm/session/geminiLiveSession.ts`:
+  - `connectLive`: Parallell uppkoppling via `Promise.all` för `forlikas`, `folja`, `vanda_om`.
+  - `thinkingConfig`: `{ thinkingLevel: 'high' }`.
+  - `this.agentSessions`: Map med alla tre aktiva Bidi-sessioner.
+- `src/features/gemini_live_swarm/session/liveAudioPlayback.ts`: DSPRingBufferMixer för spatial stereouppspelning.
+- `src/features/gemini_live_swarm/session/floorController.ts`: Prioriterad golvkontroll.
+- `src/__tests__/transient_TCK-022d.test.ts`: Transienta tester för TCK-022d.
 
 ## 3. Destruktiva Handlingssteg
-- I `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`:
-  - Radera den strikta konjunktionen `rms > rmsThreshold && zcr > zcrThreshold` och ersätt med disjunktionen med volym-boost: `rms > (rmsThreshold * 1.5) || (rms > rmsThreshold && zcr > zcrThreshold)`.
-  - Radera spärren `if (!this.activeIntent) return;` i `audioProcessor.onaudioprocess`.
-  - Säkerställ att `processIncomingChunk` behandlar ljud oberoende av `activeIntent`.
+- I `src/features/gemini_live_swarm/session/geminiLiveSession.ts`:
+  - Radera `{ thinking_level: 'high', thinkingLevel: 'HIGH' }` och ersätt med `{ thinkingLevel: 'high' }`.
+  - Radera singel-agent `connect`-anropet för enbart `'forlikas'` och ersätt med parallell `Promise.all`-uppkoppling för alla tre kanaler.
+  - Spara och synkronisera alla tre sessioner i `this.agentSessions`.

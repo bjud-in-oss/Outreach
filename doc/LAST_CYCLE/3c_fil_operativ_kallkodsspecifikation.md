@@ -1,32 +1,26 @@
-# Steg 3c: Filoperativ Källkodsspecifikation (TCK-022c)
+# Steg 3c: Filoperativ Källkodsspecifikation (TCK-022d)
 
 ## 1. GROW Specifikation
-- **Goal (Mål)**: Mjuka upp talanalysen i `detectSpeechPCM` så att djupa mansröster och dova vokaler med låg ZCR klassas som tal vid tydlig volym (`rms > rmsThreshold * 1.5`), samt frikoppla mikrofonens sampling i `SessionIntentManager` från kravet på `activeIntent` för att möjliggöra kontinuerlig synkronisering med alla tre agenters Bidi-kablar.
-- **Reality (Nuläge)**: `detectSpeechPCM` har ett strikt konjunktivt villkor `rms > rmsThreshold && zcr > zcrThreshold` som klipper dova vokaler med få nollgenomgångar. Dessutom blockeras `onaudioprocess` av `if (!this.activeIntent) return;`, vilket hindrar kontinuerligt mikrofonlyssnande om användaren inte aktivt klickat på en av de tre försoningsknapparna.
-- **Options (Alternativ)**: Strikt ZCR med manuellt val vs adaptiv RMS-prioritering med kontinuerligt flöde. Vi väljer adaptiv RMS-prioritering och kontinuerlig sampling för att garantera sömlös och naturlig röstkommunikation.
-- **Will (Plan & Åtagande)**: Ändra `detectSpeechPCM` och `startPCM16Sampling`/`onaudioprocess` i `sessionIntentAudio.ts`, samt skapa en transient testsvit `src/__tests__/transient_TCK-022c.test.ts` som validerar röstdetektering av djupa vokaler och intent-oberoende sampling.
+- **Goal (Mål)**: Åtgärda Bidi WebSocket Handshake-felet genom att sanera `thinkingConfig` till strikt `{ thinkingLevel: 'high' }` samt ansluta alla tre försoningskrafter (`forlikas`, `folja`, `vanda_om`) parallellt via `Promise.all` så att hela stereosvärmen är vaken och redo för samtidig interaktion.
+- **Reality (Nuläge)**: `geminiLiveSession.ts` kopplar enbart upp primärkanalen `'forlikas'` vid `connectLive` och använder en `thinkingConfig` med redundant mix av `thinking_level` och `thinkingLevel`, vilket orsakar handshake-fel i vissa miljöer och lämnar de övriga två agenterna okopplade.
+- **Options (Alternativ)**: Sekventiell anslutning vs parallell `Promise.all`. Parallell uppkoppling är snabbare, minimerar fördröjning och garanterar att alla tre stereokanaler är synkroniserade vid start.
+- **Will (Plan & Åtagande)**: Ersätta den enkla anslutningen i `geminiLiveSession.ts` med en parallell 3-agent `Promise.all`-uppkoppling, sätta `{ thinkingLevel: 'high' }`, spara sessionerna i `this.agentSessions` och verifiera via `src/__tests__/transient_TCK-022d.test.ts`.
 
 ## 2. Operativt Delta (Bevara vs Sanera)
 - **Bevara**:
-  - 200 ms Pre-Roll buffert (`AudioPreRollBuffer`) och 500 ms Post-Roll.
-  - Befintliga signaturer för `detectSpeechPCM`, `VadAnalysisResult` och `SessionIntentManager`.
-  - Ingen nyckelordssökning eller mockning i produktionskod.
+  - `DSPRingBufferMixer` och kanalerna `folja: -0.4`, `forlikas: 0.0`, `vanda_om: 0.4`.
+  - `FloorController` för preemptive golvkontroll.
+  - Metoder för `handleAgentMessage`, `sendRealtimeAudio` och `sendRealtimeText`.
 - **Sanera / Ersätta**:
-  - Ersätt `rms > rmsThreshold && zcr > zcrThreshold` med `rms > (rmsThreshold * 1.5) || (rms > rmsThreshold && zcr > zcrThreshold)`.
-  - Radera `if (!this.activeIntent) return;` inuti `onaudioprocess`.
+  - Ersätt `{ thinking_level: 'high', thinkingLevel: 'HIGH' }` med `{ thinkingLevel: 'high' }`.
+  - Ersätt den singulära `live.connect` för endast `'forlikas'` med parallell `Promise.all` för de 3 krafterna.
 
 ## 3. Zod- och Typkontrakt
-```typescript
-export interface VadAnalysisResult {
-  isSpeech: boolean;
-  rms: number;
-  zcr: number;
-}
-```
+Befintliga kontrakt i `telemetrySchema.ts` och `floorController.ts` bibehålls.
 
 ## 4. Testkriterier (Transient Mikro-E2E)
-- `src/__tests__/transient_TCK-022c.test.ts`:
-  1. Kontrollera att låg ZCR med hög RMS (> 1.5 * threshold) detekteras som tal (`isSpeech === true`).
-  2. Kontrollera att låg RMS och låg ZCR detekteras som tystnad (`isSpeech === false`).
-  3. Kontrollera att normal röst (RMS > threshold && ZCR > threshold) detekteras som tal.
-  4. Kontrollera att `processIncomingChunk` i `SessionIntentManager` skickar PCM-händelser även när `activeIntent === null`.
+- `src/__tests__/transient_TCK-022d.test.ts`:
+  1. Verifiera att `connectLive` skapar och sparar sessioner för alla 3 kanaler (`forlikas`, `folja`, `vanda_om`) i `agentSessions`.
+  2. Verifiera att `thinkingConfig` i `makeAgentConfig` skapas med `{ thinkingLevel: 'high' }`.
+  3. Verifiera att meddelanden från varje kanal routas till korrekt ljudkanal i DSP-mixern.
+  4. AST-kontroll: radantal <= 250 rader och noll produktionsmockar.

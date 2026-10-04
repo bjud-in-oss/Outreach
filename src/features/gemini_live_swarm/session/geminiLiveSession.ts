@@ -56,16 +56,14 @@ export class GeminiLiveSession {
 
   private subscribeToMicPiping(): void {
     this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
-      const d = env.data as any;
-      const chunk = d?.audioChunkBase64;
+      const chunk = (env.data as any)?.audioChunkBase64;
       if (!this.isLiveConnected() || !chunk) return;
-      const payload = this.packRealtimeAudioChunk(chunk, d?.mimeType || 'audio/pcm;rate=16000');
+      const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
       try {
         if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
         for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
       } catch {
-        this.liveStatus = 'DISCONNECTED';
-        this.deactivateIntent();
+        this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
       }
     });
   }
@@ -73,28 +71,22 @@ export class GeminiLiveSession {
   public requestFloor(channel: SwarmAudioChannel): void {
     this.floor.requestFloor(
       channel,
-      (preempted, challenger) => {
-        this.audioPlayer.rampGain(preempted, 0, 18);
-        this.audioPlayer.rampGain(challenger, 1.0, 18);
-      },
+      (preempted, challenger) => { this.audioPlayer.rampGain(preempted, 0, 18); this.audioPlayer.rampGain(challenger, 1.0, 18); },
       (speaker) => this.audioPlayer.rampGain(speaker, 1.0, 18)
     );
   }
-
   public cancelFloor(channel: SwarmAudioChannel): void { this.floor.cancelFloor(channel); }
   public releaseFloor(channel?: SwarmAudioChannel): void {
     this.floor.releaseFloor(channel, (speaker) => this.audioPlayer.rampGain(speaker, 1.0, 18));
   }
   public getCurrentSpeaker(): SwarmAudioChannel | null { return this.floor.getCurrentSpeaker(); }
   public getAudioPlayer(): DSPRingBufferMixer { return this.audioPlayer; }
-
   public setApiKey(apiKey: string): void {
     if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || !apiKey.trim()) {
       this.aiClient = null; this.liveStatus = 'HALTED'; return;
     }
     this.aiClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1alpha' });
-    this.liveStatus = 'IDLE';
-    this.reconnectAttempts = 0;
+    this.liveStatus = 'IDLE'; this.reconnectAttempts = 0;
   }
 
   public getApiVersion(): string { return 'v1alpha'; }
@@ -102,21 +94,21 @@ export class GeminiLiveSession {
   public getLiveModel(): string { return this.liveModelName; }
   public getLiveStatus(): LiveSessionStatus { return this.liveStatus; }
   public getReconnectAttempts(): number { return this.reconnectAttempts; }
+  public getAgentSession(channel: SwarmAudioChannel): any { return this.agentSessions.get(channel); }
+  public getAgentSessions(): Map<SwarmAudioChannel, any> { return this.agentSessions; }
   public isLiveConnected(): boolean { return this.liveStatus === 'STREAMING' || this.liveStatus === 'CONNECTING'; }
   public getActiveIntent(): SwarmIntent | null { return this.intentManager.getActiveIntent(); }
   public getAudioContext(): AudioContext | null { return this.intentManager.getAudioContext(); }
   public getMediaStream(): MediaStream | null { return this.intentManager.getMediaStream(); }
-
-  public async activateIntent(intent: SwarmIntent): Promise<void> {
-    await this.intentManager.activateIntent(intent, async () => {
-      if (!this.isLiveConnected()) await this.connectLive();
-    });
-  }
-
   public deactivateIntent(): void { this.intentManager.deactivateIntent(); }
   public onStreamChunk(listener: (chunk: LiveStreamChunk) => void): () => void {
     this.streamListeners.add(listener);
     return () => { this.streamListeners.delete(listener); };
+  }
+  public async activateIntent(intent: SwarmIntent): Promise<void> {
+    await this.intentManager.activateIntent(intent, async () => {
+      if (!this.isLiveConnected()) await this.connectLive();
+    });
   }
 
   public async connectLive(config?: { responseModalities?: string[]; systemInstruction?: string; model?: string; }): Promise<boolean> {
@@ -140,7 +132,7 @@ export class GeminiLiveSession {
       config: {
         responseModalities: config?.responseModalities || ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
-        thinkingConfig: { thinking_level: 'high', thinkingLevel: 'HIGH' },
+        thinkingConfig: { thinkingLevel: 'high' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
       },
       callbacks: {
@@ -152,9 +144,16 @@ export class GeminiLiveSession {
     });
 
     try {
-      const primarySess = await (this.aiClient as any).live.connect(makeAgentConfig('forlikas', 'Försoningsmotorns kompass aktiv.'));
-      this.activeSdkSession = primarySess;
-      this.agentSessions.set('forlikas', primarySess);
+      const channelConfigs: Array<{ channel: SwarmAudioChannel; instruction: string }> = [
+        { channel: 'forlikas', instruction: 'Försoningsmotorns kompass aktiv.' },
+        { channel: 'folja', instruction: 'Att följa: Lösningen för närhet.' },
+        { channel: 'vanda_om', instruction: 'Att vända om: Inåtriktad ödmjulhet.' },
+      ];
+      const sessions = await Promise.all(
+        channelConfigs.map(({ channel, instruction }) => (this.aiClient as any).live.connect(makeAgentConfig(channel, instruction)))
+      );
+      channelConfigs.forEach(({ channel }, idx) => { this.agentSessions.set(channel, sessions[idx]); });
+      this.activeSdkSession = this.agentSessions.get('forlikas') || sessions[0];
       if (typeof window !== 'undefined') (window as any).geminiSession = this;
       return true;
     } catch (err) {
@@ -187,6 +186,7 @@ export class GeminiLiveSession {
   ): void {
     const payload = { toolResponse: { functionResponses, behavior } };
     if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
+    for (const s of this.agentSessions.values()) { if (s !== this.activeSdkSession && s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
     this.eventBus.publishLiveEvent('swarm.live.tool.response', { functionResponses, behavior, timestamp: new Date().toISOString() });
   }
 
@@ -207,7 +207,7 @@ export class GeminiLiveSession {
   public async sendRealtimeText(text: string, force?: ReconciliationForce): Promise<LiveStreamChunk> {
     if (this.liveStatus === 'HALTED' || !this.aiClient) throw new Error('Gemini Live session i HALTED-läge.');
     if (!this.isLiveConnected()) await this.connectLive();
-    if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput({ text });
+    for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput({ text }); }
     const streamId = this.currentStreamId || `stream-${Date.now()}`;
     const userChunk: LiveStreamChunk = { streamId, sourceRole: 'user', force, textChunk: text, transcription: text, isFinal: true, timestamp: new Date().toISOString() };
     LiveStreamChunkSchema.parse(userChunk);
@@ -219,7 +219,8 @@ export class GeminiLiveSession {
   public async sendRealtimeAudio(audioChunkBase64: string, mimeType = 'audio/pcm;rate=16000'): Promise<LiveStreamChunk> {
     if (this.liveStatus === 'HALTED' || !this.aiClient) throw new Error('Gemini Live audio i HALTED-läge.');
     if (!this.isLiveConnected()) await this.connectLive();
-    if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(this.packRealtimeAudioChunk(audioChunkBase64, mimeType));
+    const payload = this.packRealtimeAudioChunk(audioChunkBase64, mimeType);
+    for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
     const streamId = this.currentStreamId || `stream-${Date.now()}`;
     const audioChunk: LiveStreamChunk = { streamId, sourceRole: 'user', audioChunkBase64, isFinal: false, timestamp: new Date().toISOString() };
     LiveStreamChunkSchema.parse(audioChunk);

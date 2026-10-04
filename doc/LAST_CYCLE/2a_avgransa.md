@@ -1,9 +1,9 @@
-# Steg 2a: Avgränsa & Isolera (TCK-022c)
+# Steg 2a: Avgränsa & Isolera (TCK-022d)
 
 ## 1. Strikt Domän- och FSD-avgränsning
 - **Modul**: `src/features/gemini_live_swarm/`
 - **Exklusiva filer**:
-  - `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`
-  - `src/__tests__/transient_TCK-022c.test.ts`
-- **Inga externa beroenden**: Inga nya npm-paket eller externa VAD-bibliotek introduceras. All beräkning förblir ren TypeScript med Float32Array och Int16Array matematiska operationer.
-- **AST-gräns**: `sessionIntentAudio.ts` ska hålla sig under 250 rader och under 4 indenteringsnivåer.
+  - `src/features/gemini_live_swarm/session/geminiLiveSession.ts`
+  - `src/__tests__/transient_TCK-022d.test.ts`
+- **AST-gräns**: `geminiLiveSession.ts` har för närvarande 245 rader. Den uppdaterade koden måste ligga strikt under 250 rader och under 4 indenteringsnivåer.
+- **Inga externa beroenden**: Använder befintlig `@google/genai` JS SDK utan nya bibliotek.

@@ -295,4 +295,17 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   2. **Frikopplad Mikrofonströmning**: Ta bort beroendet av `activeIntent` i `startPCM16Sampling` och `onaudioprocess` så att mikrofonen kontinuerligt sänder PCM-paket via `SwarmEventBus` så fort tal detekteras.
 - **Konsekvens**: Betydligt mer robust taligenkänning som bevarar djupa stämmor och vokaler, samt eliminerar behovet av UI-knapptryckningar för röstinmatning.
 
+---
+
+## ADR-SWARM-022: Parallell 3-Agent Live Connection Setup & ThinkingConfig Schema Fix (TCK-022d)
+- **Status**: Beslutad och implementerad
+- **Datum**: 2026-10-04
+- **Kontext**: Gemini Live WebSocket Handshake i `geminiLiveSession.ts` drabbades av valideringsfel på grund av redundant payload-struktur i `thinkingConfig` (där både `thinking_level` och `thinkingLevel` skickades). Dessutom var enbart primärkanalen `forlikas` uppkopplad mot Live API, vilket gjorde att de övriga två försoningskrafterna (`folja`, `vanda_om`) saknade aktiva Bidi-kablar för stereosvärmen.
+- **Beslut**:
+  1. **Strikt thinkingConfig Schema**: Konfigurera `thinkingConfig` exakt som `{ thinkingLevel: 'high' }` enligt SDK-kontraktet för `@google/genai` JS SDK v1alpha.
+  2. **Parallell 3-Agent Live Connection via Promise.all**: Initiera alla tre kanaler samtidigt vid sessionens start (`forlikas` på pan 0.0, `folja` på pan -0.4, `vanda_om` på pan +0.4) och lagra sessionerna i `this.agentSessions`.
+  3. **Multi-Agent Broadcast & Preemption**: Sänd realtidsinmatning till alla tre sessioner samtidigt och låt inkommande talsvar från respektive kraft avlyssnas och styras via `FloorController` och `DSPRingBufferMixer`.
+- **Konsekvens**: Handshake-felen är helt eliminerade och alla 3 försoningskrafter talar med unika röster i stereofältet från oberoende, parallella Bidi-kablar.
+
+
 

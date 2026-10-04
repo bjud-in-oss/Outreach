@@ -1,11 +1,11 @@
-# Steg 2e: Syntetisera & Förlika Målkonflikter (TCK-022c)
+# Steg 2e: Syntetisera & Förlika Målkonflikter (TCK-022d)
 
 ## 1. Målkonflikter & Förlikning
-- **Konflikt 1**: Mjukare ZCR-krav vs Falska positiva röstutlösningar vid lågfrekvent bakgrundsbrus (t.ex. ventilation, brum).
-  - *Förlikning*: Den första grenen kräver `rms > (rmsThreshold * 1.5)`. Detta innebär att ljudet måste ha 50% högre energi än baströskeln för att kringgå ZCR-filtret. Svagt bakgrundsbrus (med RMS under 1.5x) måste fortfarande passera `zcr > zcrThreshold` för att klassificeras som tal. Djupa vokaler med kraftig energi släpps igenom utan att klippas.
-- **Konflikt 2**: Kontinuerlig mikrofonströmning vs UI-intent status.
-  - *Förlikning*: `activeIntent` representerar användarens UI-fokus och visualisering, medan mikrofonströmmen via EventBus transporterar röstdata så fort tal detekteras. Detta frikopplar agenternas lyssningsförmåga från knappsatsens tillstånd och ger ett organiskt samtalsflöde.
-- **Konflikt 3**: Pre-Roll och Post-Roll timing.
-  - *Förlikning*: Pre-roll på 200 ms och post-roll på 500 ms bevaras fullt ut för att fånga inledande konsonanter och hålla meningsavslut intakta.
+- **Konflikt 1**: 3 samtidiga Bidi-anslutningar vs Resursförbrukning och fellägen vid nätverksfel.
+  - *Förlikning*: Parallell uppkoppling via `Promise.all` initierar alla tre försoningskrafter samtidigt vid sessionens start. Om en misslyckas stängs de övriga via Fail Fast och felmeddelandet rapporteras omedelbart på `SwarmEventBus`.
+- **Konflikt 2**: SDK:ns tolerans för `thinkingConfig`-fält.
+  - *Förlikning*: Bidi Live API i v1alpha validerar strikt `thinkingConfig`. Genom att använda exakt `{ thinkingLevel: 'high' }` utan redundanta dupliceringar accepteras payloaden direkt vid handshaken.
+- **Konflikt 3**: Radantal och AST-komplexitet i `geminiLiveSession.ts`.
+  - *Förlikning*: Genom att samla kanaler och instruktioner i en array och köra en kompakt `map` bibehålls linjeantalet väl under 250 rader.
 
 MÄTTNAD: JA
