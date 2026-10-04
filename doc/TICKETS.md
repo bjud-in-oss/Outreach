@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-(Inga aktiva tickets för tillfället)
+- [IN PROGRESS] TCK-022c | Domän: src/features/gemini_live_swarm/ | Mål: VAD ZCR Softening & Continuous Microphone Stream Sync
 
 ---
 

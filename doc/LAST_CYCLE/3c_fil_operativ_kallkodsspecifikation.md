@@ -1,35 +1,32 @@
-# Steg 3c: Filoperativ Källkodsspecifikation (TCK-022b)
+# Steg 3c: Filoperativ Källkodsspecifikation (TCK-022c)
 
 ## 1. GROW Specifikation
-- **Goal (Mål)**: Integrera Svärmens Bidi WebSocket-kabel (`liveConfig.tools`) med `mcpServer` i `mcpSwarmBridge.ts`. Tillhandahålla dynamiska Bidi-funktionsdeklarationer, omedelbar `NON_BLOCKING` röstrespons vid `toolCall` och publicering av `mcp.tool.execution.completed` med `agentId`, `toolName` och `status` via `SwarmEventBus` för automatisk röstgolvsfrigörelse.
-- **Reality (Nuläge)**: `mcpSwarmBridge.ts` har en synkron `executeTool`-metod som väntar på MCP JSON-RPC innan den skapar Bidi-svaret. Det saknas dynamisk export av `functionDeclarations` för Bidi `liveConfig.tools` samt specifik händelse-signalering för `agentId` vid golvfrigörelse.
-- **Options (Alternativ)**: Synkrona blockerande svar vs asynkron `NON_BLOCKING`-routing med CloudEvents 1.0. Vi väljer omedelbara `NON_BLOCKING`-svar för att garantera att talströmmen aldrig klickar eller pausar under verktygskörning.
-- **Will (Plan & Åtagande)**: Utöka `mcpSwarmBridge.ts` med `getBidiFunctionDeclarations`, `routeToolCallNonBlocking`, och `mcp.tool.execution.completed`-emission, samt etablera en transient testsvit `src/__tests__/transient_TCK-022b.test.ts`.
+- **Goal (Mål)**: Mjuka upp talanalysen i `detectSpeechPCM` så att djupa mansröster och dova vokaler med låg ZCR klassas som tal vid tydlig volym (`rms > rmsThreshold * 1.5`), samt frikoppla mikrofonens sampling i `SessionIntentManager` från kravet på `activeIntent` för att möjliggöra kontinuerlig synkronisering med alla tre agenters Bidi-kablar.
+- **Reality (Nuläge)**: `detectSpeechPCM` har ett strikt konjunktivt villkor `rms > rmsThreshold && zcr > zcrThreshold` som klipper dova vokaler med få nollgenomgångar. Dessutom blockeras `onaudioprocess` av `if (!this.activeIntent) return;`, vilket hindrar kontinuerligt mikrofonlyssnande om användaren inte aktivt klickat på en av de tre försoningsknapparna.
+- **Options (Alternativ)**: Strikt ZCR med manuellt val vs adaptiv RMS-prioritering med kontinuerligt flöde. Vi väljer adaptiv RMS-prioritering och kontinuerlig sampling för att garantera sömlös och naturlig röstkommunikation.
+- **Will (Plan & Åtagande)**: Ändra `detectSpeechPCM` och `startPCM16Sampling`/`onaudioprocess` i `sessionIntentAudio.ts`, samt skapa en transient testsvit `src/__tests__/transient_TCK-022c.test.ts` som validerar röstdetektering av djupa vokaler och intent-oberoende sampling.
 
 ## 2. Operativt Delta (Bevara vs Sanera)
 - **Bevara**:
-  - Existerande `executeTool`-metod för direkt anrop.
-  - Zod-scheman i `src/features/mcp_bridge/contracts/mcpSchema.ts`.
-  - Feature-Sliced Design: Ingen direktkoppling till `gemini_live_swarm` i importledet.
+  - 200 ms Pre-Roll buffert (`AudioPreRollBuffer`) och 500 ms Post-Roll.
+  - Befintliga signaturer för `detectSpeechPCM`, `VadAnalysisResult` och `SessionIntentManager`.
+  - Ingen nyckelordssökning eller mockning i produktionskod.
 - **Sanera / Ersätta**:
-  - Ersätt synkron låsning av röstkabeln vid verktygsanrop med asynkron `NON_BLOCKING`-routing.
+  - Ersätt `rms > rmsThreshold && zcr > zcrThreshold` med `rms > (rmsThreshold * 1.5) || (rms > rmsThreshold && zcr > zcrThreshold)`.
+  - Radera `if (!this.activeIntent) return;` inuti `onaudioprocess`.
 
 ## 3. Zod- och Typkontrakt
 ```typescript
-import { z } from 'zod';
-
-export const ToolExecutionCompletedDataSchema = z.object({
-  toolCallId: z.string(),
-  agentId: z.string().default('unknown'),
-  toolName: z.string(),
-  status: z.enum(['COMMITTED', 'ERROR']),
-  success: z.boolean(),
-  output: z.unknown(),
-  timestamp: z.string(),
-});
-export type ToolExecutionCompletedData = z.infer<typeof ToolExecutionCompletedDataSchema>;
+export interface VadAnalysisResult {
+  isSpeech: boolean;
+  rms: number;
+  zcr: number;
+}
 ```
 
-## 4. Destruktiva Handlingssteg
-- Bygga ut `src/features/mcp_bridge/orchestrator/mcpSwarmBridge.ts` med asynkron `NON_BLOCKING` tool-routing och event-driven floor release.
-- Skapa `src/__tests__/transient_TCK-022b.test.ts`.
+## 4. Testkriterier (Transient Mikro-E2E)
+- `src/__tests__/transient_TCK-022c.test.ts`:
+  1. Kontrollera att låg ZCR med hög RMS (> 1.5 * threshold) detekteras som tal (`isSpeech === true`).
+  2. Kontrollera att låg RMS och låg ZCR detekteras som tystnad (`isSpeech === false`).
+  3. Kontrollera att normal röst (RMS > threshold && ZCR > threshold) detekteras som tal.
+  4. Kontrollera att `processIncomingChunk` i `SessionIntentManager` skickar PCM-händelser även när `activeIntent === null`.
