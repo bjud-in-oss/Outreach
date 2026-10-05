@@ -20,7 +20,8 @@ export class GeminiLiveSession {
   private aiClient: GoogleGenAI | null = null;
   private activeSdkSession: any = null;
   private agentSessions: Map<SwarmAudioChannel, any> = new Map();
-  private liveModelName = 'gemini-3.8-live-extended-thinking';
+  //private liveModelName = 'gemini-3.8-live-extended-thinking';
+  private liveModelName = 'gemini-3.8-live';
   private liveStatus: LiveSessionStatus = 'IDLE';
   private eventBus: SwarmEventBus;
   private streamListeners = new Set<(chunk: LiveStreamChunk) => void>();
@@ -132,7 +133,7 @@ export class GeminiLiveSession {
       config: {
         responseModalities: config?.responseModalities || ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
-        thinkingConfig: { thinkingLevel: 'low' },
+        //thinkingConfig: { thinkingLevel: 'low' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
       },
       callbacks: {
