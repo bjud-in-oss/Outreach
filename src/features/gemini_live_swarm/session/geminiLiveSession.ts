@@ -55,22 +55,22 @@ export class GeminiLiveSession {
     return { audio: { data, mimeType }, realtimeInput: { mediaChunks: [{ mimeType, data }] } };
   }
 
-  private subscribeToMicPiping(): void {
-    this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
-      const chunk = (env.data as any)?.audioChunkBase64;
-      if (!this.isLiveConnected() || !chunk) return;
-      const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
-      try {
-        if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
-        //for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
-        if (this.activeSdkSession?.sendRealtimeInput) {
-          this.activeSdkSession.sendRealtimeInput(payload);
+    private subscribeToMicPiping(): void {
+      this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
+        const chunk = (env.data as any)?.audioChunkBase64;
+        if (!this.isLiveConnected() || !chunk) return;
+        const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
+        try {
+          //if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
+          //for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
+          if (this.activeSdkSession?.sendRealtimeInput) {
+            this.activeSdkSession.sendRealtimeInput(payload);
+          }
+        } catch {
+          this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
         }
-      } catch {
-        this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
-      }
-    });
-  }
+      });
+    }
 
   public requestFloor(channel: SwarmAudioChannel): void {
     this.floor.requestFloor(
