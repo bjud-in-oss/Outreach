@@ -62,7 +62,10 @@ export class GeminiLiveSession {
       const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
       try {
         if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
-        for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
+        //for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
+        if (this.activeSdkSession?.sendRealtimeInput) {
+          this.activeSdkSession.sendRealtimeInput(payload);
+        }
       } catch {
         this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
       }
