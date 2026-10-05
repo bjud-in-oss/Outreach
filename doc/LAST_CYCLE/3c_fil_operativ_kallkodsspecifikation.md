@@ -1,26 +1,40 @@
-# Steg 3c: Filoperativ Källkodsspecifikation (TCK-022d)
+# Steg 3c: Filoperativ Källkodsspecifikation (TCK-023)
 
 ## 1. GROW Specifikation
-- **Goal (Mål)**: Åtgärda Bidi WebSocket Handshake-felet genom att sanera `thinkingConfig` till strikt `{ thinkingLevel: 'high' }` samt ansluta alla tre försoningskrafter (`forlikas`, `folja`, `vanda_om`) parallellt via `Promise.all` så att hela stereosvärmen är vaken och redo för samtidig interaktion.
-- **Reality (Nuläge)**: `geminiLiveSession.ts` kopplar enbart upp primärkanalen `'forlikas'` vid `connectLive` och använder en `thinkingConfig` med redundant mix av `thinking_level` och `thinkingLevel`, vilket orsakar handshake-fel i vissa miljöer och lämnar de övriga två agenterna okopplade.
-- **Options (Alternativ)**: Sekventiell anslutning vs parallell `Promise.all`. Parallell uppkoppling är snabbare, minimerar fördröjning och garanterar att alla tre stereokanaler är synkroniserade vid start.
-- **Will (Plan & Åtagande)**: Ersätta den enkla anslutningen i `geminiLiveSession.ts` med en parallell 3-agent `Promise.all`-uppkoppling, sätta `{ thinkingLevel: 'high' }`, spara sessionerna i `this.agentSessions` och verifiera via `src/__tests__/transient_TCK-022d.test.ts`.
+- **Goal (Mål)**: Harmonisera användargränssnittet under `src/features/gemini_live_swarm/ui/` med den spatiala 3-kanals stereosvärmen:
+  1. Panelnamn: "Dialog" (vänster) och "Verktyg" (höger).
+  2. Ikoner: Compass (`#38bdf8`), Försoningsfamnen/Two Joined Rays (`#facc15`), RotateCcw (`#a855f7`), och sanering av onödiga gula statusprickar.
+  3. Drag- och svepgester över hela delningsskenans yta (`touch-action: none`, `onPointerDown`/`onPointerMove`).
+  4. Sammanhängande prosaströmning utan avhuggna rader via tur-ackumulering.
+- **Reality (Nuläge)**: Gränssnittet använder fortfarande äldre termer ("Agentchatt & Dialog", "Exekveringskanvas"), visar gula statusprickar, begränsar svep-hitboxen till enskilda knappar och delar upp inkommande text i hackiga block per paket.
+- **Options (Alternativ)**: Partiella CSS-fixar vs full harmonisering i FSD UI-skiktet med dedikerade helpers. Vi väljer ren FSD-harmonisering med modulära hjälpfunktioner i `splitPaneHelper.ts` och renodlade komponenter.
+- **Will (Plan & Åtagande)**: Uppdatera `splitPaneHelper.ts`, `SplitPaneCanvas.tsx`, `SymbolCrown.tsx` och `ExecutionCard.tsx`, samt skapa transient testsvit `src/__tests__/transient_TCK-023.test.ts`.
 
 ## 2. Operativt Delta (Bevara vs Sanera)
 - **Bevara**:
-  - `DSPRingBufferMixer` och kanalerna `folja: -0.4`, `forlikas: 0.0`, `vanda_om: 0.4`.
-  - `FloorController` för preemptive golvkontroll.
-  - Metoder för `handleAgentMessage`, `sendRealtimeAudio` och `sendRealtimeText`.
+  - Integrationen mot `SwarmEventBus` och `useOptionalSwarmContext`.
+  - Piltangentnavigering och bas-snapping (0, 50, 100).
 - **Sanera / Ersätta**:
-  - Ersätt `{ thinking_level: 'high', thinkingLevel: 'HIGH' }` med `{ thinkingLevel: 'high' }`.
-  - Ersätt den singulära `live.connect` för endast `'forlikas'` med parallell `Promise.all` för de 3 krafterna.
+  - Ersätt gamla rubriker med "Dialog" och "Verktyg".
+  - Ersätt fragmenterad textrendering med ackumulerade prosastycken.
+  - Ersätt gamla emoji-ikoner och gula dvalaprickar med Lucide Compass, Försoningsfamnen SVG och Lucide RotateCcw.
+  - Ersätt den smala knapp-hitboxen med hela skenans yta.
 
 ## 3. Zod- och Typkontrakt
-Befintliga kontrakt i `telemetrySchema.ts` och `floorController.ts` bibehålls.
+```typescript
+export interface AccumulatedTurn {
+  id: string;
+  agentRole: string;
+  forceTitle: string;
+  text: string;
+  isComplete: boolean;
+  timestamp: string;
+}
+```
 
 ## 4. Testkriterier (Transient Mikro-E2E)
-- `src/__tests__/transient_TCK-022d.test.ts`:
-  1. Verifiera att `connectLive` skapar och sparar sessioner för alla 3 kanaler (`forlikas`, `folja`, `vanda_om`) i `agentSessions`.
-  2. Verifiera att `thinkingConfig` i `makeAgentConfig` skapas med `{ thinkingLevel: 'high' }`.
-  3. Verifiera att meddelanden från varje kanal routas till korrekt ljudkanal i DSP-mixern.
-  4. AST-kontroll: radantal <= 250 rader och noll produktionsmockar.
+- `src/__tests__/transient_TCK-023.test.ts`:
+  1. Verifiera att `appendStreamChunkToTurns` ackumulerar textkonkatenering för pågående tur och skapar nytt block vid ny talare eller efter `turnComplete`.
+  2. Verifiera att `computeSplitFromPointer` och `calculateRatioFromPointer` beräknar korrekta procentuella förhållanden för både horisontell och vertikal orientering.
+  3. Verifiera att panelnamn "Dialog" och "Verktyg" samt de tre ikonerna är definierade.
+  4. AST-kontroll: Samtliga berörda UI-filer håller sig under 250 rader och har noll produktionsmockar.

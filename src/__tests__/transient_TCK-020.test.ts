@@ -202,6 +202,17 @@ export async function runTransientTCK020Tests(): Promise<{ name: string; passed:
   try {
     const bus = new SwarmEventBus();
     const session = new GeminiLiveSession('test-key', bus);
+    (session as any).aiClient = {
+      live: {
+        connect: async (agentConfig: any) => {
+          agentConfig?.callbacks?.onopen?.();
+          return {
+            sendRealtimeInput: () => {},
+            close: () => {},
+          };
+        },
+      },
+    };
 
     await session.activateIntent('REFLECT');
     assert(session.getActiveIntent() === 'REFLECT', 'REFLECT ska vara aktiv');

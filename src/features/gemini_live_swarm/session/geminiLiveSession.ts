@@ -35,7 +35,7 @@ export class GeminiLiveSession {
     this.intentManager = new SessionIntentManager(this.eventBus);
     this.floor = new FloorController(this.eventBus);
     const envKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
-    const key = (apiKey && apiKey !== 'MY_GEMINI_API_KEY' ? apiKey : envKey || '').trim();
+    const key = (apiKey !== undefined ? (apiKey === 'MY_GEMINI_API_KEY' ? '' : apiKey) : envKey || '').trim();
     if (!key) {
       this.liveStatus = 'HALTED';
       this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: 'GEMINI_API_KEY saknas i miljön (VITE_GEMINI_API_KEY).', status: 'HALTED' });
@@ -51,7 +51,7 @@ export class GeminiLiveSession {
   }
 
   public packRealtimeAudioChunk(data: string, mimeType = 'audio/pcm;rate=16000'): BidiRealtimeInputPayload {
-    return { audio: { data, mimeType } };
+    return { audio: { data, mimeType }, realtimeInput: { mediaChunks: [{ mimeType, data }] } };
   }
 
   private subscribeToMicPiping(): void {

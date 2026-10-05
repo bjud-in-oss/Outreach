@@ -1,0 +1,87 @@
+🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...
+
+▶️ 1. Event Envelope Schema (CloudEvents)
+   ✅ PASS: Valid envelope parses successfully
+   ✅ PASS: Invalid envelope without id/source throws error
+   ✅ PASS: Invalid specversion rejected
+
+▶️ 2. Write-Ahead Logger & Crash Recovery
+   ✅ PASS: WAL append entry creates valid record with hash and sequence
+   ✅ PASS: WAL commit updates record status to COMMITTED
+   ✅ PASS: WAL replayer correctly discovers and replays uncommitted entries
+
+▶️ 3. Google Drive Sync & Workspace
+   ✅ PASS: GoogleDriveClient initializes with in-memory token
+   ✅ PASS: Resolve MIME type correctly identifies application/json
+   ✅ PASS: Workspace hierarchy contains standard subfolders
+
+▶️ 4. MCP Bridge & JSON-RPC 2.0
+   ✅ PASS: MCP Server responds to tools/list with registered tools
+   ✅ PASS: MCP Server executes tools/call correctly
+   ✅ PASS: Unknown method returns JSON-RPC -32601 error
+
+▶️ 5. Gemini Live Swarm Orchestration
+   ✅ PASS: Reconciliation units definition includes all 4 units and no legacy roles
+   ✅ PASS: Swarm orchestrator initializes exactly 4 reconciliation units
+   ✅ PASS: Campaign plan generated with stages and READY status
+
+▶️ 6. Swarm Telemetry & Reactive Event Bus
+   ✅ PASS: SwarmEventBus wildcard subscription filters correctly
+   ✅ PASS: SwarmEventBus unsubscribe cleanly removes handler
+   ✅ PASS: SwarmEventBus FIFO ring buffer limits capacity strictly
+   ✅ PASS: SwarmTelemetrySnapshotSchema validates valid snapshot
+   ✅ PASS: DevelopmentTicketSchema validates roadmap tickets
+
+▶️ 7. Transient E2E: TCK-004 Wayfinder & SI v10.0
+   ✅ PASS: Wayfinder skill manifest finns med giltigt YAML-frontmatter och regler
+   ✅ PASS: README.md dokumenterar pnpm-skript, Token Gate och Wayfinder-integrering
+   ✅ PASS: Token Gate godkännande verifierat i APPROVAL.md
+
+▶️ 8. Transient E2E: TCK-005 Standardisering av Domänbeslut
+   ✅ PASS: doc/DECISIONS.md konsoliderar ADR-004 och ADR-005
+   ✅ PASS: gemini_live_swarm dokumenterar ADR-SWARM-001..003 lokalt
+   ✅ PASS: google_drive_sync dokumenterar ADR-DRIVE-001..002 lokalt
+   ✅ PASS: mcp_bridge dokumenterar ADR-MCP-001..002 lokalt
+   ✅ PASS: wal_logger dokumenterar ADR-WAL-001..002 lokalt
+   ✅ PASS: Token Gate godkännande verifierat för TCK-005
+
+▶️ 9. Transient E2E: TCK-006 Agentkrafter & 4:e Seriell Motor
+   ✅ PASS: SERIELL_MOTOR och SI v10.0-krafter korrekt konfigurerade i DEFAULT_SWARM_ROLES
+   ✅ PASS: Tvåvägsmappning mellan krafter och roller fungerar deterministiskt
+   ✅ PASS: Zod-scheman för SerialExecutionMetric och AgentForce validerar strikt (Fail-Fast)
+   ✅ PASS: SwarmEventBus.publishSerialMetric kapslar in och sänder CloudEvents 1.0 korrekt
+   ✅ PASS: Token Gate godkännande verifierat för TCK-006 i APPROVAL.md
+
+▶️ 10. Transient E2E: TCK-007 UI & Dashboard-övervakning av Seriell Motor
+   ✅ PASS: DEFAULT_SWARM_ROLES innehåller alla 4 krafter och 5 enheter
+   ✅ PASS: SwarmEventBus distribuerar serialExecution-metrik deterministiskt till prenumeranter
+   ✅ PASS: SwarmDashboard.tsx implementerar 5 enheter, kraft-etiketter och seriell motor-sektion
+   ✅ PASS: TelemetrySidebar.tsx implementerar 4-krafters panel och reaktiv serialExecution med Token Gate
+   ✅ PASS: MasterDevelopmentPlan.tsx innehåller verifierade styrkort för TCK-006 och TCK-007
+   ✅ PASS: Token Gate godkännande verifierat för TCK-007 i APPROVAL.md
+   ✅ PASS: ADR-SWARM-005 dokumenterat i gemini_live_swarm/doc/DECISIONS.md
+
+▶️ 11. Transient E2E: TCK-008 Mognadsmodell & Försoningskrafter
+   ✅ PASS: SEMANTIC_INVARIANT överensstämmer ordagrant med det semantiska ankaret
+   ✅ PASS: DEFAULT_SWARM_ROLES har försoningskrafter, försoningstitlar och forceTitle för samtliga 5 enheter
+   ✅ PASS: mapRoleToForce och mapForceToRole bibehåller strikt dubbelriktad konsistens
+   ✅ PASS: SwarmDashboard.tsx visualiserar Kompass & Högsta Syfte samt de 3 försoningsvägarna
+   ✅ PASS: TelemetrySidebar.tsx presenterar försonande etiketter för samtliga 4 krafter
+   ✅ PASS: MasterDevelopmentPlan.tsx innehåller registrerat styrkort för TCK-008
+   ✅ PASS: Token Gate godkännande verifierat för TCK-008 i APPROVAL.md
+   ✅ PASS: ADR-SWARM-006 dokumenterat i gemini_live_swarm/doc/DECISIONS.md
+
+▶️ 12. Transient E2E: TCK-009 Konsolidering till 4 Försoningsenheter
+   ✅ PASS: TCK-009: Exakt 4 försoningsenheter definierade utan legacy-roller
+   ✅ PASS: TCK-009: De fyra exakta visningsnamnen för UI är definierade
+   ✅ PASS: TCK-009: SEMANTIC_INVARIANT bevaras ordagrant i intern systeminstruktion
+   ✅ PASS: TCK-009: Orkestrator & Zod-telemetri styrs av de 4 försoningsenheterna
+   ✅ PASS: TCK-009: Transient mikro-E2E-exekvering i minnet (< 3s)
+
+▶️ 13. Transient E2E: TCK-003 MCP Bridge & Gemini Live Swarm Djupintegration
+   ✅ PASS: TCK-003: createUnifiedMcpServer registrerar samtliga verktyg från Drive, WAL och Kvalitetsanalys
+   ✅ PASS: TCK-003: McpSwarmBridge exekverar verktyg med NON_BLOCKING Bidi-svar och Zod-validering
+   ✅ PASS: TCK-003: CloudEvents 1.0 sänds reaktivt till SwarmEventBus vid verktygsanrop
+   ✅ PASS: TCK-003: SwarmOrchestrator exekverar kampanj i samverkan med McpSwarmBridge och verktygsstöd
+
+▶️ 14. Transient E2E: TCK-010 Gemini Live Session Streaming & WebSocket Integration

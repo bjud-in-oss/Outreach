@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- [ ] TCK-023: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation (pending)
+(Inga aktiva tickets för tillfället)
 
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-023 | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation | Token: TCK-023-SPATIAL-UI-HARMONIZATION-TOKEN
 - [VERIFIERAD] TCK-022d | Domän: src/features/gemini_live_swarm/ | Mål: Parallel 3-Agent Live Connection Setup & ThinkingConfig Schema Fix | Token: TCK-022D-PARALLEL-BIDI-TOKEN
 - [VERIFIERAD] TCK-022c | Domän: src/features/gemini_live_swarm/ | Mål: VAD ZCR Softening & Continuous Microphone Stream Sync | Token: TCK-022C-VAD-MIC-SYNC-TOKEN
 - [VERIFIERAD] TCK-022b | Domän: src/features/mcp_bridge/ | Mål: Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release | Token: TCK-022B-BIDI-MCP-TOKEN

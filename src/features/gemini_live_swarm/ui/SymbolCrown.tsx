@@ -59,6 +59,7 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
     onToggleExpand(next);
   };
 
+  const cleanActivityText = state.activityText.replace(/^[🟡●\s]+/, '');
   const symbolClass = `${STATUS_LED_CLASSES[state.color]} font-bold text-base leading-none transition-colors`;
   const detailDisplay = getDetailDisplay(isExpanded);
   const forceText = getForceLabel(state.activeForce);
@@ -70,7 +71,7 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
     <div className="flex items-center gap-2">
       <span data-testid="crown-symbol" className={symbolClass}>{state.symbol}</span>
       <span data-testid="crown-colon" className="text-slate-500 font-bold">:</span>
-      <span data-testid="crown-activity" className="text-slate-300 font-mono truncate max-w-xs md:max-w-md">{state.activityText}</span>
+      <span data-testid="crown-activity" className="text-slate-300 font-mono truncate max-w-xs md:max-w-md">{cleanActivityText}</span>
     </div>
     <span data-testid="crown-expand-indicator" className="text-[10px] text-slate-500 font-mono">{getExpandIcon(isExpanded)}</span>
   </header>
@@ -79,7 +80,7 @@ export const SymbolCrown: React.FC<SymbolCrownProps> = ({
       <span>Aktiv kraft: {forceText}</span>
       <span className={STATUS_LED_CLASSES[state.color]}>Status: {state.color}</span>
     </div>
-    <div className="text-slate-400 truncate">Handling: {state.activityText}</div>
+    <div className="text-slate-400 truncate">Handling: {cleanActivityText}</div>
     <button type="button" data-testid="drive-reauth-btn" onClick={onDriveReauth} className={`${reauthClass} mt-1.5 px-2 py-0.5 bg-red-600/90 hover:bg-red-500 text-white rounded text-[10px] items-center gap-1 font-mono w-fit`}>
       ↺ Återanslut Google Drive
     </button>

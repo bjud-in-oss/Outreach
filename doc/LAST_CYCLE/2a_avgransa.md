@@ -1,9 +1,12 @@
-# Steg 2a: Avgränsa & Isolera (TCK-022d)
+# Steg 2a: Avgränsa & Isolera (TCK-023)
 
 ## 1. Strikt Domän- och FSD-avgränsning
 - **Modul**: `src/features/gemini_live_swarm/`
 - **Exklusiva filer**:
-  - `src/features/gemini_live_swarm/session/geminiLiveSession.ts`
-  - `src/__tests__/transient_TCK-022d.test.ts`
-- **AST-gräns**: `geminiLiveSession.ts` har för närvarande 245 rader. Den uppdaterade koden måste ligga strikt under 250 rader och under 4 indenteringsnivåer.
-- **Inga externa beroenden**: Använder befintlig `@google/genai` JS SDK utan nya bibliotek.
+  - `src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx`
+  - `src/features/gemini_live_swarm/ui/splitPaneHelper.ts`
+  - `src/features/gemini_live_swarm/ui/SymbolCrown.tsx`
+  - `src/features/gemini_live_swarm/ui/ExecutionCard.tsx`
+  - `src/__tests__/transient_TCK-023.test.ts`
+- **Inga ändringar under andra moduler**: Inga filer under `google_drive_sync/`, `mcp_bridge/`, `wal_logger/` eller `session/` modifieras.
+- **AST-gräns**: Samtliga berörda filer ska hålla sig strikt under 250 rader och under 4 indenteringsnivåer.

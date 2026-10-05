@@ -307,5 +307,19 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   3. **Multi-Agent Broadcast & Preemption**: Sänd realtidsinmatning till alla tre sessioner samtidigt och låt inkommande talsvar från respektive kraft avlyssnas och styras via `FloorController` och `DSPRingBufferMixer`.
 - **Konsekvens**: Handshake-felen är helt eliminerade och alla 3 försoningskrafter talar med unika röster i stereofältet från oberoende, parallella Bidi-kablar.
 
+---
+
+## ADR-SWARM-023: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation (TCK-023)
+- **Status**: Beslutad och implementerad
+- **Datum**: 2026-10-05
+- **Kontext**: UI i `SplitPaneCanvas.tsx` och `SymbolCrown.tsx` använde äldre etiketter ("Agentchatt & Dialog", "Exekveringskanvas", "Reflektera", "Kom ihåg", "Rådgör"), visade gula dvalaprickar, hackade upp inkommande textströmmar i brutna rader och begränsade drag/svep-ytan till enskilda små knappar i stället för hela delningsskenans yta.
+- **Beslut**:
+  1. **Harmoniserad Panelstruktur**: Renodla panelnamnen till **Dialog** (vänster) och **Verktyg** (höger).
+  2. **Ikonidentitet & Sanering av Statusprickar**: Använd Lucide `<Compass/>` för Att följa (`#38bdf8`), Custom SVG "Försoningsfamnen" (Two Joined Rays) för Att förlikas (`#facc15`), och Lucide `<RotateCcw/>` för Att vända om (`#a855f7`). Sanera alla störande gula statusprickar/LED-indikatorer från dvala och viloläge.
+  3. **Full Hitbox & Flytande Delningsdocka**: Utöka delningsskenans pekyta (`touch-action: none`, `onPointerDown`/`onPointerMove`) över hela skenan med adaptiv kompakt orientering i liggande läge (landscape) utan textetiketter.
+  4. **Sammanhängande Prosaströmning (Stream Concatenation)**: Ackumulera inkommande text-chunks per agenttur via `appendStreamChunkToTurns` till ett sammanhängande stycke per tur fram till `turnComplete`, vilket eliminerar radbrytande fragment.
+- **Konsekvens**: Gränssnittet speglar nu sömlöst den trekanaliga stereosvärmen och MCP-bakgrundsarbetet med intuitiva gester, rofylld estetik och ren läsbarhet.
+
+
 
 
