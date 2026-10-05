@@ -132,7 +132,7 @@ export class GeminiLiveSession {
       config: {
         responseModalities: config?.responseModalities || ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
-        thinkingConfig: { thinkingLevel: 'high' },
+        thinkingConfig: { thinkingLevel: 'low' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
       },
       callbacks: {
