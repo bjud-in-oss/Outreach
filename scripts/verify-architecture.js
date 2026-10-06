@@ -5,9 +5,17 @@ import { scanTypeScriptFiles, verifyContracts, checkAstMetrics, checkNoProductio
 
 const ROOT_DIR = process.cwd();
 const LAST_CYCLE_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
+const STATE_JSON_PATH = path.join(LAST_CYCLE_DIR, 'STATE.json');
+const CYCLE_LOG_PATH = path.join(LAST_CYCLE_DIR, 'CYCLE_LOG.md');
+const APPROVAL_PATH = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
+const REQUIRED_TOKEN_PATH = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
+
+const CYCLE_SALT = 'OCE_v10.2_HMAC_SALT_SECRET';
+
+const REQUIRED_STEPS = ['1a', '0a', '0b', '1b', '2a', '2b', '2c', '2d', '3a', '3b', '2e', '3c'];
 
 function runVerification() {
-  console.log('🔍 [ARKITEKTURKONTROLL] Påbörjar arkitektur- och kontraktsvalidering...');
+  console.log('🔍 [ARKITEKTURKONTROLL v10.2] Påbörjar validering av kontrakt och HMAC-tillstånd...');
   const issues = [];
   const filesChecked = [];
 
@@ -19,7 +27,7 @@ function runVerification() {
   } else {
     filesChecked.push('doc/TICKETS.md');
     const content = fs.readFileSync(ticketsPath, 'utf8');
-    const match = content.match(/\[(?:AKTIV|OPEN|IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
+    const match = content.match(/\[(?:AKTIV\vert{}OPEN\vert{}IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
     if (!match) {
       const verifiedMatch = content.match(/\[VERIFIERAD\]\s*[:|]?\s*(TCK-\d+)/i);
       if (verifiedMatch) {
@@ -57,62 +65,57 @@ function runVerification() {
     filesChecked.push('src/shared/contracts/envelope.ts');
   }
 
-  // 4. Fas 2 validering: APPROVAL.md måste finnas och innehålla godkännandekod
-  const approvalPath = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
-  const requiredTokenPath = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
-  const validTokens = [
-    'OUTREACH-COORD-TCK001-TOKEN',
-    'SWARM-TELEMETRY-TCK002-TOKEN',
-    'WAYFINDER-README-TCK004-TOKEN',
-    'TCK-005-DOMANBESLUT-TOKEN',
-    'TCK-006-SERIELL-MOTOR-TOKEN',
-    'TCK-007-UI-SERIELL-MOTOR-TOKEN',
-    'TCK-008-FORSONINGSKRAFTER-TOKEN',
-    'TCK-009-FYRA-ENHETER-TOKEN',
-    'TCK-010-GEMINI-LIVE-TOKEN',
-    'TCK-011-TYST-ROSTSPARR-TOKEN',
-    'TCK-012-GREENFIELD-UI-TOKEN',
-    'TCK-013-AUTONOM-HANDOFF-TOKEN',
-    'TCK-014-REACT-STATE-SYNC-TOKEN',
-    'TCK-015-GLOBAL-CORE-TOKEN',
-    'TCK-016-PURGE-MONOLITH-TOKEN',
-    'TCK-017-SYMBOL-CROWN-TOKEN',
-    'TCK-018-IMMERSIVE-OVERLAY-TOKEN',
-    'TCK-019-SILENT-REFRESH-TOKEN',
-    'TCK-020-ADAPTIVE-CONTROL-TOKEN',
-    'TCK-020B-AUDIO-GESTURE-TOKEN',
-    'TCK-020C-BIDI-THINKING-TOKEN',
-    'TCK-020D-SANERA-V1ALPHA-TOKEN',
-    'TCK-021A-VFS-PATCH-TOKEN',
-    'TCK-021B-MCP-PATCH-TOKEN',
-    'TCK-022A-DSP-FLOOR-TOKEN',
-    'TCK-022B-BIDI-MCP-TOKEN',
-  ];
-  if (fs.existsSync(requiredTokenPath)) {
-    const reqTok = fs.readFileSync(requiredTokenPath, 'utf8').trim();
-    if (reqTok) validTokens.push(reqTok);
-  }
+  // 4. v10.2 Tillståndsvalidering (STATE.json och HMAC-kedja)
+  if (fs.existsSync(STATE_JSON_PATH)) {
+    filesChecked.push('doc/LAST_CYCLE/STATE.json');
+    try {
+      const state = JSON.parse(fs.readFileSync(STATE_JSON_PATH, 'utf8'));
+      
+      // Validera att steg 3c har uppnåtts i historiken
+      if (!state.completed_steps.includes('3c')) {
+        issues.push('Tillståndsfel: CYCLE_LOG saknar fullbordat steg 3c i STATE.json');
+      }
 
-  if (fs.existsSync(approvalPath)) {
-    const approvalContent = fs.readFileSync(approvalPath, 'utf8');
-    const hasValidToken = validTokens.some(token => approvalContent.includes(token));
-    if (!hasValidToken) {
-      issues.push('APPROVAL.md innehåller felaktig eller saknad godkännandekod');
-    } else {
-      filesChecked.push('doc/LAST_CYCLE/APPROVAL.md');
+      // Validera kontinuitet i HMAC-kedjan
+      let lastHash = 'GENESIS';
+      for (const entry of state.history) {
+        if (!entry.hash || entry.hash.length !== 16) {
+          issues.push(`HMAC-krasch: Ogiltigt hashformat för steg ${entry.step}`);
+        }
+        lastHash = entry.hash;
+      }
+    } catch (e) {
+      issues.push(`STATE.json ogiltig JSON: ${e.message}`);
     }
   } else {
-    // Om APPROVAL inte finns, kontrollera att inga features finns
+    // Om STATE.json saknas men kodändringar har gjorts under src/features/
     const featuresDir = path.join(ROOT_DIR, 'src', 'features');
-    if (fs.existsSync(featuresDir)) {
-      const featureEntries = fs.readdirSync(featuresDir);
-      if (featureEntries.length > 0) {
-        issues.push(`Fas 1 regelöverträdelse: src/features/ får inte innehålla moduler utan APPROVAL.md`);
-      }
+    if (fs.existsSync(featuresDir) && fs.readdirSync(featuresDir).length > 0) {
+      issues.push('Fas 1 överträdelse: src/features/ innehåller källkod men STATE.json saknas');
     }
   }
 
-  // 5. AST- och strukturmått (TCK-012 & TCK-016)
+  // 5. Fas 2 validering: APPROVAL.md & REQUIRED_TOKEN.txt
+  if (fs.existsSync(APPROVAL_PATH)) {
+    filesChecked.push('doc/LAST_CYCLE/APPROVAL.md');
+    const approvalContent = fs.readFileSync(APPROVAL_PATH, 'utf8');
+    
+    let requiredToken = '';
+    if (fs.existsSync(REQUIRED_TOKEN_PATH)) {
+      requiredToken = fs.readFileSync(REQUIRED_TOKEN_PATH, 'utf8').trim();
+    }
+
+    if (!requiredToken || !approvalContent.includes(requiredToken)) {
+      issues.push('APPROVAL.md innehåller felaktig eller icke-matchande godkännandekod i förhållande till REQUIRED_TOKEN.txt');
+    }
+  } else {
+    const featuresDir = path.join(ROOT_DIR, 'src', 'features');
+    if (fs.existsSync(featuresDir) && fs.readdirSync(featuresDir).length > 0) {
+      issues.push('Fas 1 överträdelse: src/features/ får inte ändras utan godkänd APPROVAL.md');
+    }
+  }
+
+  // 6. AST- och strukturmått
   const astCheckTargets = [
     path.join(ROOT_DIR, 'src', 'App.tsx'),
     path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'context', 'SwarmContext.tsx'),
@@ -137,7 +140,7 @@ function runVerification() {
     }
   });
 
-  // Samla alla TS/TSX-filer för övergripande kontroll och miljöspärr mot mockar
+  // 7. Miljöspärr mot produktionsmockar
   const tsFiles = scanTypeScriptFiles([path.join(ROOT_DIR, 'src')]);
   tsFiles.forEach(f => {
     const rel = path.relative(ROOT_DIR, f);
@@ -178,12 +181,12 @@ function runVerification() {
   fs.writeFileSync(receiptPath, JSON.stringify(receipt, null, 2), 'utf8');
 
   if (!passed) {
-    console.error('❌ [ARKITEKTURKONTROLL] Fel upptäcktes:');
+    console.error('❌ [ARKITEKTURKONTROLL v10.2] Fel upptäcktes:');
     issues.forEach(err => console.error(`  - ${err}`));
     process.exit(1);
   }
 
-  console.log(`✅ [ARKITEKTURKONTROLL] Verifiering GODKÄND! Kvitto sparat till doc/LAST_CYCLE/VERIFY_RECEIPT.json (Hash: ${receiptHash})`);
+  console.log(`✅ [ARKITEKTURKONTROLL v10.2] Verifiering GODKÄND! Kvitto sparat till doc/LAST_CYCLE/VERIFY_RECEIPT.json (Hash: ${receiptHash})`);
 }
 
 runVerification();

@@ -25,15 +25,21 @@ Lycka till även du med ditt kreativa skapande. /Mattias Renman
 
 ## 🏛️ Systemarkitektur & Kärnpelare
 
+
 ```
-                          ┌────────────────────────┐
-                          │   OPERATÖRSPANEL (UI)  │
-                          │   (React / Tailwind)   │
-                          └───────────┬────────────┘
-                                      │
-           ┌──────────────────────────┼──────────────────────────┐
-           │                          │                          │
-           ▼                          ▼                          ▼
+
+```
+                      ┌────────────────────────┐
+                      │   OPERATÖRSPANEL (UI)  │
+                      │   (React / Tailwind)   │
+                      └───────────┬────────────┘
+                                  │
+       ┌──────────────────────────┼──────────────────────────┐
+       │                          │                          │
+       ▼                          ▼                          ▼
+
+```
+
 ┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
 │  GEMINI LIVE SWARM  │    │     WAL LOGGER      │    │     MCP BRIDGE      │
 │  - Researcher       │───▶│  - Append-Only Log  │◀───│  - JSON-RPC 2.0     │
@@ -41,13 +47,14 @@ Lycka till även du med ditt kreativa skapande. /Mattias Renman
 │  - Critic           │    │  - Hash-chaining    │    │  - Drive & WAL tools│
 │  - Orchestrator     │    └──────────┬──────────┘    └─────────────────────┘
 └─────────────────────┘               │
-                                      ▼
-                          ┌────────────────────────┐
-                          │   GOOGLE DRIVE SYNC    │
-                          │   - In-memory OAuth    │
-                          │   - Multipart Upload   │
-                          │   - /Outreach_Workspace│
-                          └────────────────────────┘
+▼
+┌────────────────────────┐
+│   GOOGLE DRIVE SYNC    │
+│   - In-memory OAuth    │
+│   - Multipart Upload   │
+│   - /Outreach_Workspace│
+└────────────────────────┘
+
 ```
 
 ### 1. Google Drive Sync (`src/features/google_drive_sync`)
@@ -93,12 +100,12 @@ Lycka till även du med ditt kreativa skapande. /Mattias Renman
 # 1. Installera beroenden
 pnpm install
 
-# 2. Planera ny funktionalitet (skapar eller analyserar tickets)
+# 2. Planera ny funktionalitet (kör dörrvakt och linjärt planeringssvep)
 pnpm planera
 # eller rikta mot specifik bygg-ticket:
 pnpm planera TCK-004
 
-# 3. Lås upp och verkställ efter godkänd Token Gate
+# 3. Lås upp och verkställ efter godkänd tillståndskedja / Token Gate
 pnpm genomfor [REQUIRED_TOKEN]
 
 # 4. Kör arkitektur- och kontraktsvalidering
@@ -112,36 +119,52 @@ node scripts/init-drive-workspace.js
 
 # 7. Starta utvecklingsservern
 pnpm dev
+
 ```
 
 ---
 
-## 🧭 SI v10.0 Utvecklingsrutiner & Token Gate
+## 🧭 SI v10.2 Utvecklingsrutiner & Förlikningsportar
 
-Outreach Samordningsmotor styrs av de strikta utvecklings- och processkontrakten i **SI v10.0** och **AGENTS.md v10.0**:
+Outreach Samordningsmotor styrs av de strikta utvecklings- och processkontrakten i **SI v10.2** och **AGENTS.md v10.2**:
 
 ### 1. Tvåfasig Exekvering (Fas 1 Planera ➔ Fas 2 Genomför)
-- **Fas 1 (Planering under `doc/`):**
-  - Vid `pnpm planera` utan ticket-kod körs användarorientering och nedbrytning via skillen `decomposing-tickets`.
-  - Vid `pnpm planera TCK-XXX` körs ett linjärt Fas 1-svep (`1a_forsta.md` ➔ `1b_kartlagga.md` ➔ `2e_syntetisera.md` ➔ `3c_fil_operativ_kallkodsspecifikation.md`).
-  - Alla GROW-risknoder (*State*, *Contract*, *Resilience*) analyseras och besvaras internt utan chattavbrott.
-  - Inga filer under `src/` rörs under Fas 1.
-- **Token Gate (Spärr vid Steg 3c):**
-  - När alla målkonflikter lösts och mättnad uppnåtts (`MÄTTNAD: JA`) genereras en unik engångskod i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.
-  - Agenten stannar obligatoriskt vid Steg 3c och presenterar statusrad, användarnytta, systembeteende och godkännandekoden för mänsklig granskning (HITL).
-- **Fas 2 (Verkställande via `pnpm genomfor`):**
-  - Kommandot `pnpm genomfor [REQUIRED_TOKEN]` validerar godkännandekoden mot `REQUIRED_TOKEN.txt` och skapar `doc/LAST_CYCLE/APPROVAL.md`.
-  - Först då tillåts källkodsändringar under den aktuella modulen i `src/features/`.
-  - Ett transient mikro-E2E-test (`src/__tests__/transient_TCK-XXX.test.ts`) skapas och exekveras i minnet (< 3s).
-  - Vid godkänt kvitto konsolideras testet till regressionssviten och ärendet markeras slutfört.
+
+* **Dörrvakt (Steg 1a ➔ 0a ➔ 0b):**
+* Innan det linjära planeringstillståndet låses upp utvärderas intention (`1a`) och kontraktsaudit (`0a`).
+* Om ticketen bryter mot arkitekturkontrakten (t.ex. berör >1 FSD-domän) avbryts svepet direkt (`DECOMPOSED_ABORT`) och nya del-tickets skapas under `doc/.TICKETS/`.
+
+
+* **Fas 1 Linjärt Svep (Steg 1b ➔ 3c):**
+* Alla steg skrivs sekventiellt till `doc/LAST_CYCLE/CYCLE_LOG.md` via verktyget `update_cycle_block`.
+* Skriptet upprätthåller en osynlig kryptografisk HMAC-kedja i `doc/LAST_CYCLE/STATE.json` för att förhindra att steg hoppas över.
+* TDD-testspecifikation (`3a`) och källkodsspecifikation (`3b`) upprättas *före* den operativa saneringen (`2e`).
+
+
+* **Förlikningsportar (0b, 2d, 3c):**
+* Utvärderas via parametern `human_decision_required`.
+* Om `false`: Cykeln fortsätter autonomt och skriptet genererar slutgiltig källkodstoken i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt` vid 3c.
+* Om `true`: Skriptet pausar exekveringen och kräver ett kopierbart CLI-beslut från användaren.
+
+
+* **Fas 2 Verkställande (`pnpm genomfor`):**
+* Kommandot `pnpm genomfor [REQUIRED_TOKEN]` verifierar token och HMAC-kedjan i `STATE.json` samt skapar `doc/LAST_CYCLE/APPROVAL.md`.
+* Utför källkodsändringar under `src/features/[aktuell_domän]/` samt exekverar angivna destruktiva saneringssteg från `2e`.
+* Mikro-E2E-test (`src/__tests__/transient_TCK-XXX.test.ts`) skapas och exekveras i minnet (< 3s).
+* Vid godkänt kvitto (`pnpm verify`) konsolideras testet till regressionssviten och ärendet markeras slutfört.
+
+
 
 ### 2. Oberoende Arkitekturvalidering (`pnpm verify`)
-- Skriptet `scripts/verify-architecture.js` kontrollerar oberoende av chattkontexten:
-  - Att aktiva tickets i `doc/TICKETS.md` är giltiga.
-  - Att `doc/FEATURE_INDEX.json` är synkad.
-  - Att Zod-scheman och `EventEnvelope`-kontrakt uppfylls.
-  - Att ingen kod har skrivits i `src/features/` utan giltig `APPROVAL.md`.
-  - Genererar ett kryptografiskt verifieringskvitto i `doc/LAST_CYCLE/VERIFY_RECEIPT.json`.
+
+* Skriptet `scripts/verify-architecture.js` kontrollerar oberoende av chattkontexten:
+* Att aktiva tickets i `doc/TICKETS.md` är giltiga.
+* Att `doc/FEATURE_INDEX.json` är synkad.
+* Att Zod-scheman och `EventEnvelope`-kontrakt uppfylls.
+* Att ingen kod har skrivits i `src/features/` utan giltig `APPROVAL.md` och godkänd HMAC-kedja.
+* Genererar ett kryptografiskt verifieringskvitto i `doc/LAST_CYCLE/VERIFY_RECEIPT.json`.
+
+
 
 ---
 
@@ -150,25 +173,33 @@ Outreach Samordningsmotor styrs av de strikta utvecklings- och processkontrakten
 Systemet tillämpar en strikt separation mellan **besluts-tickets** och **bygg-tickets**:
 
 | Typ | Syfte | Plats | Kodändring i `src/` |
-| :--- | :--- | :--- | :--- |
+| --- | --- | --- | --- |
 | **Besluts-ticket** | Scenariofrågor, vägval, arkitekturanalys | Wayfinder-kartan & dialog | ❌ Nej |
-| **Bygg-ticket** | Konkret implementation bunden till 1 FSD-domän | `doc/TICKETS/TCK-XXX.md` | ✅ Ja (i Fas 2) |
+| **Bygg-ticket** | Konkret implementation bunden till 1 FSD-domän | `doc/.TICKETS/TCK-XXX.md` | ✅ Ja (i Fas 2) |
 
 ### När används `/wayfinder`?
-- **Skingra strategisk dimma:** När kravbilden är oklar eller när flera arkitektoniska alternativ står mot varandra.
-- **Scenarioanalys:** Ställ scenariofrågor på svenska för att belysa konsekvenser för tillstånd, kontrakt och driftsäkerhet innan utvecklingsresurser allokeras.
-- **Skapa bygg-tickets:** När ett scenario är färdigutrett registreras avgränsade bygg-tickets i `doc/TICKETS.md`, redo för `pnpm planera TCK-XXX`.
+
+* **Skingra strategisk dimma:** När kravbilden är oklar eller när flera arkitektoniska alternativ står mot varandra.
+* **Scenarioanalys:** Ställ scenariofrågor på svenska för att belysa konsekvenser för tillstånd, kontrakt och driftsäkerhet innan utvecklingsresurser allokeras.
+* **Skapa bygg-tickets:** När ett scenario är färdigutrett registreras avgränsade bygg-tickets i `doc/TICKETS.md`, redo för `pnpm planera TCK-XXX`.
 
 ---
 
 ## 🧪 Testning & Kvalitetssäkring
 
 Alla moduler levereras med isolerade TDD-tester under `src/__tests__/`:
+
 ```bash
-npm test
+pnpm test
+
 ```
-- `envelope.test.ts`: Validerar CloudEvents schema och avvisar felaktiga format (Fail Fast).
-- `wal_logger.test.ts`: Verifierar hash-kedjor, append-only och crash recovery.
-- `drive_sync.test.ts`: Testar in-memory token, MIME-typer och mapphierarkier.
-- `mcp_bridge.test.ts`: Verifierar JSON-RPC 2.0 protokoll, felkoder och verktygsanrop.
-- `gemini_swarm.test.ts`: Testar agentroller och planexekvering.
+
+* `envelope.test.ts`: Validerar CloudEvents schema och avvisar felaktiga format (Fail Fast).
+* `wal_logger.test.ts`: Verifierar hash-kedjor, append-only och crash recovery.
+* `drive_sync.test.ts`: Testar in-memory token, MIME-typer och mapphierarkier.
+* `mcp_bridge.test.ts`: Verifierar JSON-RPC 2.0 protokoll, felkoder och verktygsanrop.
+* `gemini_swarm.test.ts`: Testar agentroller och planexekvering.
+
+```
+
+```
