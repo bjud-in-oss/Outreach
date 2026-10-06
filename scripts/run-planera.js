@@ -63,6 +63,42 @@ function saveState(state) {
 }
 
 /**
+ * Läser TCK-filen och säkerställer att den finns indexerad i doc/TICKETS.md utan manuellt dubbelarbete.
+ * Kraschar kontrollerat (Fail Fast) om TCK-filen saknas på disken.
+ */
+function ensureTicketIndexed(ticket) {
+  const ticketPath = path.join(ROOT_DIR, 'doc', '.TICKETS', `${ticket}.md`);
+  
+  // Hard Gate: Filen MÅSTE finnas på disken under doc/.TICKETS/
+  if (!fs.existsSync(ticketPath)) {
+    console.error(`❌ [FEL] Biljettfilen ${ticketPath} saknas. Skapa filen innan du kör planering.`);
+    process.exit(1);
+  }
+
+  // Extrahera rubrik från TCK-filen (första H1 eller rad)
+  const ticketContent = fs.readFileSync(ticketPath, 'utf8');
+  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) \vert{}\vert{} ticketContent.match(/^(.+)$/m);
+  const title = titleMatch ? titleMatch[1].trim() : ticket;
+
+  const ticketsMdPath = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
+  let ticketsMd = fs.existsSync(ticketsMdPath) ? fs.readFileSync(ticketsMdPath, 'utf8') : '# TICKETS INDEX\n\n';
+
+  const entryRegex = new RegExp(`\\[.*\\]\\s*:?\\s*${ticket}\\b.*`, 'gi');
+  const newEntry = `[IN PROGRESS] ${ticket}: ${title}`;
+
+  if (ticketsMd.match(entryRegex)) {
+    // Uppdatera befintlig rad till IN PROGRESS
+    ticketsMd = ticketsMd.replace(entryRegex, newEntry);
+  } else {
+    // Lägg till ny rad i indexet automatiskt
+    ticketsMd = ticketsMd.trim() + `\n- ${newEntry}\n`;
+  }
+
+  fs.writeFileSync(ticketsMdPath, ticketsMd, 'utf8');
+  console.log(`📝 [INDEX] ${ticket} verifierad och uppdaterad i doc/TICKETS.md`);
+}
+
+/**
  * Huvudfunktion för att skriva/uppdatera ett cykelblock i CYCLE_LOG.md och validera tillståndet
  */
 export function updateCycleBlock(rawInput) {
@@ -186,6 +222,9 @@ function runCLI() {
     console.log('📋 [PLANERA] Ingen ticket angiven. Läser PROMPT.md och aktiverar decomposing-tickets...');
     return;
   }
+
+  // Automatiskt säkerställ att TCK-filen finns och indexera i doc/TICKETS.md
+  ensureTicketIndexed(targetTicket);
 
   console.log(`🚀 [PLANERA] Redo för exekvering av Fas 1 för ${targetTicket}.`);
   console.log(`   State Machine redo för verifiering av update_cycle_block.`);
