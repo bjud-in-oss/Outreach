@@ -27,7 +27,7 @@ function runVerification() {
   } else {
     filesChecked.push('doc/TICKETS.md');
     const content = fs.readFileSync(ticketsPath, 'utf8');
-    const match = content.match(/\[(?:AKTIV\vert{}OPEN\vert{}IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
+    const match = content.match(/\[(?:AKTIV|OPEN|IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
     if (!match) {
       const verifiedMatch = content.match(/\[VERIFIERAD\]\s*[:|]?\s*(TCK-\d+)/i);
       if (verifiedMatch) {

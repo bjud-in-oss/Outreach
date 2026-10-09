@@ -2,20 +2,19 @@
 
 ## 1. MÅLDOMÄN OCH AVGRÄNSNING
 - **FSD-Måldomän:** `src/features/gemini_live_swarm/ui/`
-- **Syfte:** Harmonisera den rumsliga layouten (SplitPaneCanvas, SymbolCrown) och införa ett typsäkert Reflektions-reglage i den nedre rotraden för att styra agenternas autonoma oscillationsdjup.
+- **Syfte:** Harmonisera den rumsliga layouten (SplitPaneCanvas, SymbolCrown) och införa ett typsäkert Reflektions-reglage i den nedre rotraden. Reglagets tillstånd ska exporteras via `swarmEventBus` så att orkestratorn (i nästa TCK) kan läsa det utan cykliska komponentberoenden.
 
 ## 2. KRAVSPECIFIKATION
 
-### 2.1 Zod-Kontrakt & State (reflectionStateHelper)
+### 2.1 Zod-Kontrakt (reflectionStateHelper)
 - Skapa filen `src/features/gemini_live_swarm/ui/reflectionStateHelper.ts`.
-- Exportera ett Zod-schema: `ReflectionModeSchema = z.enum(['normal', 'mikro', 'makro', 'meta'])`.
-- Exportera typen `ReflectionMode` infererad från schemat.
+- Exportera Zod-schemat: `export const ReflectionModeSchema = z.enum(['normal', 'mikro', 'makro', 'meta']).default('normal');`
+- Exportera typen: `export type ReflectionMode = z.infer<typeof ReflectionModeSchema>;`
 
-### 2.2 Reflektions-Reglage (ReflectionModeSelector)
+### 2.2 Reflektions-Reglage & EventBus-integration
 - Skapa komponenten `src/features/gemini_live_swarm/ui/ReflectionModeSelector.tsx`.
-- Komponenten ska formges som en ren, horisontell knapprad (Segmented Control) med de fyra lägena: `normal | mikro | makro | meta`.
-- Den ska integreras i appens nedre rotrad (t.ex. `ControlBar.tsx` eller svävande docka i botten av `AppShell.tsx`).
-- Det valda tillståndet ska valideras mot `ReflectionModeSchema` och göras tillgängligt för prenumeration från överordnade komponenter (eller via appens befintliga `SwarmContext`/EventBus).
+- Formge den som en horisontell knapprad (Segmented Control) i nedre rotraden med lägena: `normal | mikro | makro | meta`.
+- **Kritisk State-Export:** När användaren klickar på ett läge ska komponenten inte bara uppdatera sitt lokala UI-state, utan även publicera en strängtyp-säker händelse till `swarmEventBus` (t.ex. `bus.emit('UI_REFLECTION_MODE_CHANGED', { mode })`). Detta är bron för orkestratorn.
 
 ### 2.3 Symbol Crown & Split Pane (Harmonisering)
 - **Symbol Crown:** Uppdatera `SymbolCrown.tsx` så att dess visuella tillstånd (animation/färg) speglar Orchestrator-agentens status, med Zod-validering i `crownStateHelper.ts`. Subtil visuell feedback ska visas när användaren byter läge på reglaget.

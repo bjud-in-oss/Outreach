@@ -77,7 +77,7 @@ function ensureTicketIndexed(ticket) {
 
   // Extrahera rubrik från TCK-filen (första H1 eller rad)
   const ticketContent = fs.readFileSync(ticketPath, 'utf8');
-  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) \vert{}\vert{} ticketContent.match(/^(.+)$/m);
+  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) || ticketContent.match(/^(.+)$/m);
   const title = titleMatch ? titleMatch[1].trim() : ticket;
 
   const ticketsMdPath = path.join(ROOT_DIR, 'doc', 'TICKETS.md');

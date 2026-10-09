@@ -1,0 +1,80 @@
+{
+  "ticket": "TCK-023a",
+  "completed_steps": [
+    "1a",
+    "0a",
+    "0b",
+    "1b",
+    "2a",
+    "2b",
+    "2c",
+    "2d",
+    "3a",
+    "3b",
+    "2e",
+    "3c"
+  ],
+  "current_hash": "42fce33ce54d1da1",
+  "history": [
+    {
+      "step": "1a",
+      "hash": "3814bf01699678c5",
+      "timestamp": "2026-10-09T22:23:17.245Z"
+    },
+    {
+      "step": "0a",
+      "hash": "9ccb24440fd7baac",
+      "timestamp": "2026-10-09T22:23:17.253Z"
+    },
+    {
+      "step": "0b",
+      "hash": "60a2ccb9ccfeba2a",
+      "timestamp": "2026-10-09T22:23:17.254Z"
+    },
+    {
+      "step": "1b",
+      "hash": "b5b5d25e3790de80",
+      "timestamp": "2026-10-09T22:23:17.254Z"
+    },
+    {
+      "step": "2a",
+      "hash": "03917e46a40242e9",
+      "timestamp": "2026-10-09T22:23:17.255Z"
+    },
+    {
+      "step": "2b",
+      "hash": "05d714b07a60d648",
+      "timestamp": "2026-10-09T22:23:17.255Z"
+    },
+    {
+      "step": "2c",
+      "hash": "74ca40db2d746fc6",
+      "timestamp": "2026-10-09T22:23:17.256Z"
+    },
+    {
+      "step": "2d",
+      "hash": "f3e8b1c3f42ee561",
+      "timestamp": "2026-10-09T22:23:17.256Z"
+    },
+    {
+      "step": "3a",
+      "hash": "7265292f8a522925",
+      "timestamp": "2026-10-09T22:23:17.258Z"
+    },
+    {
+      "step": "3b",
+      "hash": "07553692072167cf",
+      "timestamp": "2026-10-09T22:23:17.259Z"
+    },
+    {
+      "step": "2e",
+      "hash": "a29fe8eec89ef789",
+      "timestamp": "2026-10-09T22:23:17.259Z"
+    },
+    {
+      "step": "3c",
+      "hash": "42fce33ce54d1da1",
+      "timestamp": "2026-10-09T22:23:17.260Z"
+    }
+  ]
+}

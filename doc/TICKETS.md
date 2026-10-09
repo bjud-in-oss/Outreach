@@ -36,3 +36,4 @@
 - [VERIFIERAD] TCK-004 | Domän: Global | Mål: Wayfinder-installation & README-uppdatering | Spec: doc/TICKETS/TCK-004.md
 - [VERIFIERAD] TCK-002 | Domän: src/features/gemini_live_swarm/ | Mål: Swarm Telemetry & Reactive Status | Spec: doc/TICKETS/TCK-002.md
 - [VERIFIERAD] TCK-001 | Domän: Global | Mål: Initialisera Outreach Samordningsmotor | Spec: doc/TICKETS/TCK-001.md
+- [IN PROGRESS] TCK-023a: TCK-023a: Spatial UI & Reflektions-Reglage (Harmonization)
