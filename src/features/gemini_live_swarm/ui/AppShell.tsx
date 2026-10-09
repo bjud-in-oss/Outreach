@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SymbolCrown } from './SymbolCrown.tsx';
 import { SplitPaneCanvas } from './SplitPaneCanvas.tsx';
+import { ReflectionModeSelector } from './ReflectionModeSelector.tsx';
 
 export const AppShell: React.FC = () => {
   const [isPortrait, setIsPortrait] = useState<boolean>(true);
@@ -22,6 +23,9 @@ export const AppShell: React.FC = () => {
       <main className="flex-1 relative overflow-hidden">
         <SplitPaneCanvas />
       </main>
+      <footer className="z-30 flex-none p-2 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-center">
+        <ReflectionModeSelector />
+      </footer>
     </div>
   );
 };

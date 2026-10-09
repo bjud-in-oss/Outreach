@@ -20,8 +20,7 @@ export class GeminiLiveSession {
   private aiClient: GoogleGenAI | null = null;
   private activeSdkSession: any = null;
   private agentSessions: Map<SwarmAudioChannel, any> = new Map();
-  //private liveModelName = 'gemini-3.8-live-extended-thinking';
-  private liveModelName = 'gemini-3.8-live';
+  private liveModelName = 'gemini-3.8-live-extended-thinking';
   private liveStatus: LiveSessionStatus = 'IDLE';
   private eventBus: SwarmEventBus;
   private streamListeners = new Set<(chunk: LiveStreamChunk) => void>();
@@ -55,22 +54,19 @@ export class GeminiLiveSession {
     return { audio: { data, mimeType }, realtimeInput: { mediaChunks: [{ mimeType, data }] } };
   }
 
-    private subscribeToMicPiping(): void {
-      this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
-        const chunk = (env.data as any)?.audioChunkBase64;
-        if (!this.isLiveConnected() || !chunk) return;
-        const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
-        try {
-          //if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
-          //for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
-          if (this.activeSdkSession?.sendRealtimeInput) {
-            this.activeSdkSession.sendRealtimeInput(payload);
-          }
-        } catch {
-          this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
-        }
-      });
-    }
+  private subscribeToMicPiping(): void {
+    this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
+      const chunk = (env.data as any)?.audioChunkBase64;
+      if (!this.isLiveConnected() || !chunk) return;
+      const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
+      try {
+        if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
+        for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
+      } catch {
+        this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
+      }
+    });
+  }
 
   public requestFloor(channel: SwarmAudioChannel): void {
     this.floor.requestFloor(
@@ -136,7 +132,7 @@ export class GeminiLiveSession {
       config: {
         responseModalities: config?.responseModalities || ['AUDIO'],
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
-        //thinkingConfig: { thinkingLevel: 'low' },
+        thinkingConfig: { thinkingLevel: 'high' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
       },
       callbacks: {

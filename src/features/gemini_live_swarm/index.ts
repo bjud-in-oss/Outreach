@@ -92,3 +92,15 @@ export type { UserActivityLockReturn } from './ui/useUserActivityLock.ts';
 export { useImmersiveMode } from './ui/useImmersiveMode.ts';
 export type { ImmersiveModeReturn } from './ui/useImmersiveMode.ts';
 
+// Reflektions-Reglage & Oscillationsdjup (TCK-023a)
+export { ReflectionModeSelector } from './ui/ReflectionModeSelector.tsx';
+export type { ReflectionModeSelectorProps } from './ui/ReflectionModeSelector.tsx';
+export {
+  ReflectionModeSchema,
+  REFLECTION_MODE_EVENT,
+  REFLECTION_MODES,
+  parseReflectionMode,
+  isValidReflectionMode,
+} from './ui/reflectionStateHelper.ts';
+export type { ReflectionMode, ReflectionModeEventPayload } from './ui/reflectionStateHelper.ts';
+

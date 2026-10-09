@@ -1,16 +1,19 @@
+import { z } from 'zod';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 
 export type CrownStatusColor = 'ACTIVE' | 'THINKING' | 'ERROR';
 
-export interface CrownState {
-  symbol: '⇑' | '⇐' | '↔' | '●';
-  color: CrownStatusColor;
-  activityText: string;
-  activeForce?: string;
-  activeUnitId?: string;
-  updatedAt?: string;
-  isDriveAuthExpired?: boolean;
-}
+export const CrownStateSchema = z.object({
+  symbol: z.enum(['⇑', '⇐', '↔', '●']),
+  color: z.enum(['ACTIVE', 'THINKING', 'ERROR']),
+  activityText: z.string(),
+  activeForce: z.string().optional(),
+  activeUnitId: z.string().optional(),
+  updatedAt: z.string().optional(),
+  isDriveAuthExpired: z.boolean().optional(),
+});
+
+export type CrownState = z.infer<typeof CrownStateSchema>;
 
 export const CROWN_SYMBOLS = {
   ATT_FOLJA: '⇑',
@@ -87,6 +90,7 @@ export function resolveCrownFromEnvelope(
   const eventName = String(data.event || envelope.type || '');
   const isDriveExpired = eventName === 'DRIVE_AUTH_EXPIRED' || envelope.type === 'swarm.drive.auth.expired';
   const isDriveRefreshed = eventName === 'DRIVE_AUTH_REFRESHED' || envelope.type === 'swarm.drive.auth.refreshed';
+  const isReflectionMode = eventName === 'UI_REFLECTION_MODE_CHANGED' || envelope.type === 'UI_REFLECTION_MODE_CHANGED';
 
   let nextDriveExpired = current.isDriveAuthExpired || false;
   if (isDriveExpired) {
@@ -102,9 +106,12 @@ export function resolveCrownFromEnvelope(
   } else if (isDriveRefreshed) {
     nextColor = 'ACTIVE';
   }
-  const nextText = rawText.trim() ? rawText.trim() : current.activityText;
+  let nextText = rawText.trim() ? rawText.trim() : current.activityText;
+  if (isReflectionMode && data.mode) {
+    nextText = `Reflektionsläge: ${data.mode}`;
+  }
 
-  return {
+  const result: CrownState = {
     symbol: nextSymbol,
     color: nextColor,
     activityText: nextText,
@@ -113,4 +120,5 @@ export function resolveCrownFromEnvelope(
     updatedAt: envelope.time || new Date().toISOString(),
     isDriveAuthExpired: nextDriveExpired,
   };
+  return CrownStateSchema.parse(result);
 }

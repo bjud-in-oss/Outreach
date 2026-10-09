@@ -145,6 +145,13 @@ export class SwarmEventBus {
     this.subscriptions.clear();
   }
 
+  /**
+   * Enkel emit-metod för UI- och domänhändelser som paketeras som CloudEvents 1.0.
+   */
+  public emit(type: string, data: Record<string, unknown> = {}): EventEnvelope {
+    return this.publishLiveEvent(type, data, 'outreach/ui/event');
+  }
+
   private matchesPattern(pattern: string, eventType: string): boolean {
     if (pattern === '*' || pattern === eventType) {
       return true;

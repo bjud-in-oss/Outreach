@@ -6,6 +6,7 @@
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-023a | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI & Reflektions-Reglage (Harmonization) | Token: TCK-023a-VERIFIED-42fce33ce54d1da1
 - [VERIFIERAD] TCK-023 | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation | Token: TCK-023-SPATIAL-UI-HARMONIZATION-TOKEN
 - [VERIFIERAD] TCK-022d | Domän: src/features/gemini_live_swarm/ | Mål: Parallel 3-Agent Live Connection Setup & ThinkingConfig Schema Fix | Token: TCK-022D-PARALLEL-BIDI-TOKEN
 - [VERIFIERAD] TCK-022c | Domän: src/features/gemini_live_swarm/ | Mål: VAD ZCR Softening & Continuous Microphone Stream Sync | Token: TCK-022C-VAD-MIC-SYNC-TOKEN
@@ -36,4 +37,3 @@
 - [VERIFIERAD] TCK-004 | Domän: Global | Mål: Wayfinder-installation & README-uppdatering | Spec: doc/TICKETS/TCK-004.md
 - [VERIFIERAD] TCK-002 | Domän: src/features/gemini_live_swarm/ | Mål: Swarm Telemetry & Reactive Status | Spec: doc/TICKETS/TCK-002.md
 - [VERIFIERAD] TCK-001 | Domän: Global | Mål: Initialisera Outreach Samordningsmotor | Spec: doc/TICKETS/TCK-001.md
-- [IN PROGRESS] TCK-023a: TCK-023a: Spatial UI & Reflektions-Reglage (Harmonization)

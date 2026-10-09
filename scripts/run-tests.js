@@ -31,7 +31,7 @@ import { runTransientTCK022aTests } from '../src/__tests__/transient_TCK-022a.te
 import { runTransientTCK022bTests } from '../src/__tests__/transient_TCK-022b.test.ts';
 import { runTransientTCK022cTests } from '../src/__tests__/transient_TCK-022c.test.ts';
 import { runTransientTCK022dTests } from '../src/__tests__/transient_TCK-022d.test.ts';
-import { runTransientTCK023Tests } from '../src/__tests__/transient_TCK-023.test.ts';
+import { runTransientTCK023aTests } from '../src/__tests__/transient_TCK-023a.test.ts';
 
 async function main() {
   console.log('🧪 [TEST-RUNNER] Kör isolerade TDD-enhetstester i src/__tests__/...\n');
@@ -73,7 +73,7 @@ async function main() {
     { name: '31. Transient E2E: TCK-022b Bidi WebSocket Live MCP Wiring & Event-Driven Floor Release', runner: async () => runTransientTCK022bTests() },
     { name: '32. Transient E2E: TCK-022c VAD ZCR Softening & Continuous Microphone Stream Sync', runner: async () => runTransientTCK022cTests() },
     { name: '33. Transient E2E: TCK-022d Parallel 3-Agent Live Connection Setup & ThinkingConfig Schema Fix', runner: async () => runTransientTCK022dTests() },
-    { name: '34. Transient E2E: TCK-023 Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation', runner: async () => runTransientTCK023Tests() },
+    { name: '34. Transient E2E: TCK-023a Spatial UI & Reflektions-Reglage (Harmonization)', runner: async () => runTransientTCK023aTests() },
   ];
 
   for (const suite of testSuites) {
