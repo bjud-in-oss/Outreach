@@ -20,28 +20,33 @@ RUTINER FÖR SKILL- OCH TICKET-ADAPTERING (AGENTS.md v10.2)
 
 2. Tregradig Agentdynamik (Följa, Vända om, Förlikas)
 - Att följa (Steg 1a, 1b, 2a, 2b, 3a, 3b): 
-  * 1a: Tolka intention och mänsklig nytta. Om frågan saknar ticket-kod, ställ scenariofrågor i chatten för att rensa dimma innan planeringen startar.
-  * 1b: Kartlägg domän och systemgränser. Anropa mcp-serverns `search_documentation`-verktyg om ärendet berör Gemini API eller Live-kabeln.
-  * 2a–2b: Avgränsa tillstånd och modellera Zod-kontrakt i GROW-modellen.
-  * 3a–3b: Upprätta den transienta TDD-testspecifikationen och exakta källkodsdiffar under `src/features/`.
+  * Skaparkraften. Den som bygger, formulerar och strävar mot målet. Upprättar den transienta TDD-testspecifikationen och exakta källkodsdiffar.
+  * *Organisk Roll (Appen):* Deltar som bakgrundsagent (High Thinking) via `@google/genai` för att spåna fram nya kodpatenter och möjligheter i VFS.
 - Att vända om (Steg 0a, 2c, 2e):
-  * Bär inåtriktad ödmjulhet och Fail Fast i praktiken.
-  * 0a: Kontraktsaudit i Dörrvakten. Validera att ticketen inte berör >1 FSD-domän. Vid överträdelse körs skillen `decomposing-tickets` och cykeln avbryts (`DECOMPOSED_ABORT`).
-  * 2c: Utvärdera resiliens, nätverkstimeouts och kraschscenarier.
-  * 2e: Utför operativ sanering. Identifiera och lista orädd föräldralös kod och döda tester för destruktiv radering.
+  * Rannsakan och gränssättaren. Ifrågasätter antaganden, utvärderar resiliens, utför kontraktsaudit i dörrvakten (0a/0b) och identifierar död kod för destruktiv sanering (2e). Bär inåtriktad ödmjulhet och Fail Fast.
+  * *Organisk Roll (Appen):* Deltar som bakgrundsagent (High Thinking) via `@google/genai` för att agera djävulens advokat och sätta gränser för *Att följa*.
 - Att förlikas (Steg 0b, 2d, 3c & Token Gate):
-  * Håll samtida perspektiv varma.
-  * Utför syntetisk vägvägning i `doc/LAST_CYCLE/CYCLE_LOG.md`.
-  * Vid `human_decision_required: true` pausar skriptet och ber om mänskligt besked via CLI-kommando.
-  * Vid Steg 3c verifierar skriptet den obrutna HMAC-kedjan och sparar koden i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt`.
+  * Syntesen. Den som samordnar, utvärderar och förlikar perspektiven.
+  * *Tudelad Meta-utvärdering:* Opererar både på *Process-Meta* (håller FSD-kontrakten och målet) och *Reflektions-Meta* (utvärderar det semantiska deltat/mättnaden under agenternas oscillation). När ett samtal inte längre ger ny insikt slår den fast `MÄTTNAD: JA` och tystnar organiskt.
+  * *Organisk Roll (Appen):* Agerar exklusiv **Host (1 Live Agent)** på den enda aktiva röstkabeln mot användaren (Live WebSocket). Den lyssnar via VAD och syntetiserar bakgrundsagenternas JSON-svar till röst.
 
-3. Transient E2E-Teststrategi och Autonom Orkestrering (Fas 2)
-- Exekvera `pnpm genomfor [REQUIRED_TOKEN]`. Skriptet validera token och tillståndskedjan i `STATE.json` samt skapar `doc/LAST_CYCLE/APPROVAL.md`.
-- Skapa och exekvera transienta mikro-E2E-tester under `src/__tests__/transient_TCK-XXX.test.ts` som körs i minnet (< 3s) och verifierar Systembeteendet från 3c.
-- Kör `pnpm verify`. Vid godkänd verifiering flyttas testet till den långsiktiga regressionssviten (`src/__tests__/suite/e2e_regression.test.ts`) och ticketen stängs.
-- Låt klientorkestratören mata WebSocket-kabeln automatiskt med verktygs-svar (`BidiGenerateContentToolResponse` med `NON_BLOCKING`) för oavbrutna flerstegskörningar.
-- Logga principiella systemövergripande beslut i `doc/DECISIONS.md` och domänspecifika beslut lokalt i `src/features/[modul]/doc/DECISIONS.md`.
+3. Interaktionslägen & UI-Reglaget (Fokuslinsen)
+Agenternas självständiga oscillationsdjup och interaktion med användaren styrs av tre organiska lägen och ett reglage:
+- **Samråda (Aktiv dialog):** Aktiveras när användaren talar. Agenterna tystnar. *Att förlikas* kliver fram som ordförande för att planera.
+- **Fokus / Exekvera (Tyst körning):** Aktiveras när ett bygge godkänns. Agenterna stänger röstkabeln och kör TDD-loopen blixtsnabbt i VFS (RAM). Vid röst-interrupt fryses tillståndet i WAL (`doc/LAST_CYCLE/`).
+- **Reflektera (Teatern):** Aktiveras efter grön kod. Djupet på den autonoma oscillationen styrs av UI-reglaget (nedre rotraden):
+  * `normal`: Ren debriefing. Rapporterar resultat och tystnar direkt.
+  * `mikro`: Lokal VFS-oscillation. Putsar kod och typer inom komponenten.
+  * `makro`: Systemutblick. Knoppar av arkitekturförslag eller nya FSD-byggbiljetter (`TCK-XXX.md`).
+  * `meta`: Processutvärdering. Utvärderar systemets rutiner och instruktioner (`AGENTS.md` / `SI`).
 
-4. Aktiva Skills och Delade Moduler (JIT)
+4. Transient E2E-Teststrategi och Autonom Orkestrering (Fas 2)
+- Exekvera `pnpm genomfor [REQUIRED_TOKEN]`.
+- Skapa transienta mikro-tester under `src/__tests__/transient_TCK-XXX.test.ts`. 
+- **Tidsgränser:** Interna logiktester i Node/VFS ska ta **< 3s**. BDD-webbläsartester (Browserless) får ta upp till **30s (1 Unit)**. Vid Teater-reflektion används primärt klientbaserade DOM-snapshots (Canvas/WebRTC) i stället för API-anrop.
+- Kör `pnpm verify`. Vid godkänd verifiering flyttas testet till `src/__tests__/suite/e2e_regression.test.ts`.
+- Låt klientorkestratören mata WebSocket-kabeln automatiskt med verktygs-svar (`BidiGenerateContentToolResponse` med `NON_BLOCKING`) för oavbrutna flerstegskörningar. Logga principiella beslut i `doc/DECISIONS.md`.
+
+5. Aktiva Skills och Delade Moduler (JIT)
 - Läs in `doc/SI_v10.2.md` och relevanta skills från `.agents/skills/` enbart när motsvarande behov deklareras i Steg 1b.
 - Slå upp sökvägar i `doc/FEATURE_INDEX.json` vid återanvändning av existerande moduler.

@@ -51,16 +51,18 @@ Innan det linjära planeringstillståndet låses upp exekveras dörrvakten i `do
 2. **Källkodsändringar och Destruktiva Handlingssteg:**
    - Utför avtalade källkodsändringar under `src/features/[aktuell_domän]/`.
    - Exekvera alla i TCK-kontraktet angivna **Destruktiva Handlingssteg** (steg 2e): radera föråldrad källkod, oanvända moduler och döda testfall utan tvekan (Fail Fast).
-3. **Transient TDD-testning:**
-   - Skapa och exekvera ett isolerat, transient mikro-E2E-test under `src/__tests__/transient_TCK-XXX.test.ts` (från steg 3a) som körs i minnet på under 3 sekunder och verifierar det avtalade Systembeteendet.
+3. **Transient TDD- och BDD-testning:**
+   - Skapa och exekvera ett isolerat, transient test under `src/__tests__/transient_TCK-XXX.test.ts` (från steg 3a)[cite: 1].
+   - **Tids- och Resurskontrakt:** Rena enhets- och tillståndstester i Node/VFS ska exekveras på **< 3 sekunder**[cite: 1]. Vid interaktiva BDD-webbläsartester via Browserless tillåts körning upp till **30 sekunder (max 1 Browserless Unit)** per test.
+   - **Visuell UI-granskning:** I Reflektera/Teatern-läget ska visuella granskningar i första hand nyttja klientbaserade DOM-snapshots i RAM framför externa Browserless-anrop för att spara enhetskvoten.
 4. **Arkitekturverifiering och konsolidering:**
-   - Kör `pnpm verify`.
-   - Vid godkänt kvitto konsolideras det transienta testet till den långsiktiga regressionssviten (`src/__tests__/suite/e2e_regression.test.ts`), ticket-filen i `doc/.TICKETS/` raderas och ärendet markeras som stängt i `doc/TICKETS.md`.
+   - Kör `pnpm verify`[cite: 1].
+   - Vid godkänt kvitto konsolideras det transienta testet till den långsiktiga regressionssviten (`src/__tests__/suite/e2e_regression.test.ts`), ticket-filen i `doc/.TICKETS/` raderas och ärendet markeras som stängt i `doc/TICKETS.md`[cite: 1].
 
 ---
 
 ## 4. DESIGNPRINCIPER OCH KONTRAKT
-- **FSD-Isolering:** Källkod organiseras strikt i Feature-Sliced Design under `src/features/`. Cross-domain-importer är förbjudna utan explicit godkännande.
-- **Zod & Typesafety:** Alla externa datagränssnitt, API-payloads och tillståndskontrakt ska valideras runtime via Zod-scheman.
-- **Fail Fast:** Systemet kraschar hellre kontrollerat vid felaktiga kontrakt än att passivt ackumulera felaktigt tillstånd eller död källkod.
-- **Konstruktiv kritik av våra rutiner (Nullable):** Om du under en körning identifierar friktion i våra instruktioner, skript eller CLI-kontrakt, ändra inte rutinen i smyg. Genomför den aktiva uppgiften enligt gällande regler och lämna ett konstruktivt förslag under sektionen `💡 Konstruktiv kritik av våra rutiner`.
+- **FSD-Isolering:** Källkod organiseras strikt i Feature-Sliced Design under `src/features/`[cite: 1]. Cross-domain-importer är förbjudna utan explicit godkännande[cite: 1].
+- **Zod & Typesafety:** Alla externa datagränssnitt, API-payloads och tillståndskontrakt ska valideras runtime via Zod-scheman[cite: 1].
+- **Fail Fast:** Systemet kraschar hellre kontrollerat vid felaktiga kontrakt än att passivt ackumulera felaktigt tillstånd eller död källkod[cite: 1].
+- **Konstruktiv kritik av våra rutiner (Nullable):** Om du under en körning identifierar friktion i våra instruktioner, skript eller CLI-kontrakt, ändra inte rutinen i smyg. Genomför den aktiva uppgiften enligt gällande regler och lämna ett konstruktivt förslag under sektionen `💡 Konstruktiv kritik av våra rutiner`[cite: 1].
