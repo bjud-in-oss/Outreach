@@ -200,6 +200,26 @@ pnpm test
 * `mcp_bridge.test.ts`: Verifierar JSON-RPC 2.0 protokoll, felkoder och verktygsanrop.
 * `gemini_swarm.test.ts`: Testar agentroller och planexekvering.
 
-```
+---
 
-```
+## 🛡️ Architecture Governance & CI/CD Workflow
+
+### 💡 Varför har vi detta system?
+När AI-agenter (som i AI Studio) arbetar i kodbasen har de full CLI-tillgång. Om en agent stöter på ett testfel frestas den ibland att ändra i testskripten i stället för källkoden. GitHub Actions fungerar som en opåverkbar domare på servernivå som stoppar alla regeltöjningar.
+
+### 🚀 Steget mot autonoma Live-agenter (Swarm Architecture)
+Detta lägger grunden för flerstegs Gemini Live Swarm-agenter med HMAC-tillståndssignering. CI-gaten garanterar att autonoma agenter aldrig kan bryta FSD-strukturen eller degradera kodkvaliteten.
+
+### 🪄 De enkla skripten (för nybörjare och dagligt arbete)
+För att slippa lära sig Git-kommandon och manuella verifieringar sköter projektets inbyggda skript hela arbetsflödet automatiskt:
+- `pnpm planera`: Analyserar koden och skapar struktur och tickets.
+- `pnpm genomfor`: Kör arkitekturkontroller, genererar godkänd `APPROVAL.md` med HMAC-token och förbereder koden för merge.
+- `pnpm verify`: Kör den fullständiga lokala verifieringen av linjeantal, indenteringsdjup och FSD-regler.
+
+---
+
+### 📖 Snabbguide: Så jobbar du (och agenten)
+1. **Skapa arbetsgren:** `git checkout -b feature/min-funktion origin/main`
+2. **Kör förenklat skript:** `pnpm genomfor` (kör verifiering och signering i ett steg)
+3. **Pusha:** `git push -u origin feature/min-funktion` (via `${GIT_PAT}`)
+4. **Auto-Merge:** GitHub Actions verifierar (✅) och mergar automatiskt till main.
