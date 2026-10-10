@@ -17,10 +17,13 @@ function setupMockClient(session: GeminiLiveSession) {
     const reply = `[Att följa Guds son] Svar: ${input.text}`;
     agentConfig?.callbacks?.onmessage?.({ serverContent: { modelTurn: { parts: [{ text: reply }] } } });
   };
-  const connectFn = async (agentConfig: any) => ({
-    sendRealtimeInput: sendFn(agentConfig),
-    close: () => {},
-  });
+  const connectFn = async (agentConfig: any) => {
+    agentConfig?.callbacks?.onopen?.();
+    return {
+      sendRealtimeInput: sendFn(agentConfig),
+      close: () => {},
+    };
+  };
   (session as any).aiClient = { live: { connect: connectFn } };
 }
 
