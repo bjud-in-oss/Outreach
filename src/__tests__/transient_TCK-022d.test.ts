@@ -26,9 +26,9 @@ export async function runTransientTCK022dTests(): Promise<{ name: string; passed
 
     const connected = await session.connectLive();
     assert(connected === true, 'connectLive ska returnera true');
-    assert(connectCalls.length === 3, `Förväntade 3 parallella connect-anrop, fick ${connectCalls.length}`);
+    assert(connectCalls.length === 1, `Förväntade 1 connect-anrop, fick ${connectCalls.length}`);
 
-    // Kontrollera att alla 3 har korrekt thinkingConfig
+    // Kontrollera att anropet har korrekt thinkingConfig
     for (const call of connectCalls) {
       assert(
         call.config.thinkingConfig?.thinkingLevel === 'high',
@@ -44,17 +44,12 @@ export async function runTransientTCK022dTests(): Promise<{ name: string; passed
       );
     }
 
-    // Kontrollera att sessioner sparats för alla 3 kanaler
-    const agentSessions = session.getAgentSessions();
-    assert(agentSessions.size === 3, 'Alla 3 agent-sessioner ska finnas i agentSessions-mappen');
     assert(Boolean(session.getAgentSession('forlikas')), 'forlikas-session ska finnas');
-    assert(Boolean(session.getAgentSession('folja')), 'folja-session ska finnas');
-    assert(Boolean(session.getAgentSession('vanda_om')), 'vanda_om-session ska finnas');
 
     await session.disconnectLive();
-    results.push({ name: 'Parallell 3-agent Live connect och strikt thinkingConfig { thinkingLevel: "high" }', passed: true });
+    results.push({ name: 'Live connect och strikt thinkingConfig { thinkingLevel: "high" }', passed: true });
   } catch (err: any) {
-    results.push({ name: 'Parallell 3-agent Live connect och strikt thinkingConfig { thinkingLevel: "high" }', passed: false, error: err.message });
+    results.push({ name: 'Live connect och strikt thinkingConfig { thinkingLevel: "high" }', passed: false, error: err.message });
   }
 
   // Test 2: Inkommande agentmeddelanden routas korrekt till sin respektive ljudkanal och triggar floor preemption

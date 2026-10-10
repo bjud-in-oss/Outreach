@@ -320,6 +320,15 @@ Detta dokument samlar alla domänspecifika arkitekturbeslut för svärmorkestrer
   4. **Sammanhängande Prosaströmning (Stream Concatenation)**: Ackumulera inkommande text-chunks per agenttur via `appendStreamChunkToTurns` till ett sammanhängande stycke per tur fram till `turnComplete`, vilket eliminerar radbrytande fragment.
 - **Konsekvens**: Gränssnittet speglar nu sömlöst den trekanaliga stereosvärmen och MCP-bakgrundsarbetet med intuitiva gester, rofylld estetik och ren läsbarhet.
 
+---
 
-
-
+## ADR-SWARM-024: Single Live Agent & VAD Turn-Completion Fix (TCK-023b)
+- **Status**: Beslutad och implementerad
+- **Datum**: 2026-10-10
+- **Kontext**: Tre samtidiga Bidi-kablar orsakade krockar, osynkade timers och 50-sekunders timeouts vid tystnad. Dessutom behövde bakgrundsagenterna utnyttja High-Thinking via `@google/genai` och syntetiseras genom Host-agenten, samtidigt som oscillationsdjupet under Reflektera-fasen styrs av UI-reglagets `ReflectionMode`.
+- **Beslut**:
+  1. **En Enskild Live WebSocket (Host: Att förlikas)**: Exklusiv röstkabel för Att förlikas mot användaren.
+  2. **VAD Turn-Complete vid > 400 ms Tystnad**: VAD sänder `turnComplete` till Live API vid tystnad över 400 ms, vilket bryter 50s-timeouten deterministiskt.
+  3. **Bakgrundsagenter med High-Thinking**: Att följa och Att vända om anropas via standard Gemini API (`@google/genai`) med `thinkingConfig: { thinkingLevel: 'high' }`, och deras svar syntetiseras av Host-agenten.
+  4. **ReflectionMode Prenumeration & Mättnad**: `SwarmOrchestrator` prenumererar på `UI_REFLECTION_MODE_CHANGED` och styr oscillationsdjupet (`normal`: 0, `mikro`: 1, `makro`: 2, `meta`: 3 varv) fram till `MÄTTNAD: JA` med telemetri för token-genomströmning.
+- **Konsekvens**: Stabil och timeout-fri drift, ren röstkabel och harmonisk styrning av agenternas tankedjup.

@@ -6,6 +6,7 @@
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-023b | Domän: src/features/gemini_live_swarm/coordinator/ | Mål: Single Live Agent & VAD Turn-Completion Fix (Orchestration) | Token: TCK-023b-VERIFIED-37c8be788f5d710b
 - [VERIFIERAD] TCK-023a | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI & Reflektions-Reglage (Harmonization) | Token: TCK-023a-VERIFIED-42fce33ce54d1da1
 - [VERIFIERAD] TCK-023 | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation | Token: TCK-023-SPATIAL-UI-HARMONIZATION-TOKEN
 - [VERIFIERAD] TCK-022d | Domän: src/features/gemini_live_swarm/ | Mål: Parallel 3-Agent Live Connection Setup & ThinkingConfig Schema Fix | Token: TCK-022D-PARALLEL-BIDI-TOKEN
@@ -37,4 +38,3 @@
 - [VERIFIERAD] TCK-004 | Domän: Global | Mål: Wayfinder-installation & README-uppdatering | Spec: doc/TICKETS/TCK-004.md
 - [VERIFIERAD] TCK-002 | Domän: src/features/gemini_live_swarm/ | Mål: Swarm Telemetry & Reactive Status | Spec: doc/TICKETS/TCK-002.md
 - [VERIFIERAD] TCK-001 | Domän: Global | Mål: Initialisera Outreach Samordningsmotor | Spec: doc/TICKETS/TCK-001.md
-- [IN PROGRESS] TCK-023b: TCK-023b: Single Live Agent & VAD Turn-Completion Fix (Orchestration)
