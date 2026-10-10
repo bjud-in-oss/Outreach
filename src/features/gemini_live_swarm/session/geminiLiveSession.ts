@@ -61,7 +61,6 @@ export class GeminiLiveSession {
       const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
       try {
         if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
-        for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
       } catch {
         this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
       }
@@ -144,16 +143,11 @@ export class GeminiLiveSession {
     });
 
     try {
-      const channelConfigs: Array<{ channel: SwarmAudioChannel; instruction: string }> = [
-        { channel: 'forlikas', instruction: 'Försoningsmotorns kompass aktiv.' },
-        { channel: 'folja', instruction: 'Att följa: Lösningen för närhet.' },
-        { channel: 'vanda_om', instruction: 'Att vända om: Inåtriktad ödmjulhet.' },
-      ];
-      const sessions = await Promise.all(
-        channelConfigs.map(({ channel, instruction }) => (this.aiClient as any).live.connect(makeAgentConfig(channel, instruction)))
-      );
-      channelConfigs.forEach(({ channel }, idx) => { this.agentSessions.set(channel, sessions[idx]); });
-      this.activeSdkSession = this.agentSessions.get('forlikas') || sessions[0];
+      const hostInstruction = config?.systemInstruction || 'Försoningsmotorns kompass aktiv (Host: Att förlikas).';
+      const hostSession = await (this.aiClient as any).live.connect(makeAgentConfig('forlikas', hostInstruction));
+      this.agentSessions.clear();
+      this.agentSessions.set('forlikas', hostSession);
+      this.activeSdkSession = hostSession;
       if (typeof window !== 'undefined') (window as any).geminiSession = this;
       return true;
     } catch (err) {
@@ -180,13 +174,20 @@ export class GeminiLiveSession {
     }
   }
 
+  public sendTurnComplete(channel: SwarmAudioChannel = 'forlikas'): void {
+    if (this.activeSdkSession?.sendRealtimeInput) {
+      this.activeSdkSession.sendRealtimeInput({ realtimeInput: { turnComplete: true } });
+    }
+    this.releaseFloor(channel);
+    this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel, source: 'vad' });
+  }
+
   public sendToolResponse(
     functionResponses: Array<{ id: string; name?: string; response: Record<string, unknown> }>,
     behavior: 'NON_BLOCKING' | 'BLOCKING' = 'NON_BLOCKING'
   ): void {
     const payload = { toolResponse: { functionResponses, behavior } };
     if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
-    for (const s of this.agentSessions.values()) { if (s !== this.activeSdkSession && s?.sendRealtimeInput) s.sendRealtimeInput(payload); }
     this.eventBus.publishLiveEvent('swarm.live.tool.response', { functionResponses, behavior, timestamp: new Date().toISOString() });
   }
 

@@ -25,7 +25,7 @@ Utvärdera Resiliens & Felhantering: Fail-Fast vid WebSocket-avbrott. VAD bryter
 Syntetisk Vägvägning & Mognadskontroll: Vägning mot AGENTS.md v10.2 och SI v10.2. 1 Live Host + 2 bakgrundsagenter garanterar ren stereosyntes och kraschfri VAD. human_decision_required: false.
 
 ## Steg 3a
-Transient Testspecifikation i src/__tests__/transient_TCK-023b.test.ts: describe('TCK-023b Single Live Agent & VAD Turn-Completion') verifierar: 1. 1 Live WebSocket-kabel för Host (forlikas) och VAD turnComplete vid > 400 ms tystnad. 2. Bakgrunds-thinking för folja och vanda_om via @google/genai med High Thinking. 3. ReflectionMode prenumeration och oscillation till MÄTTNAD: JA. 4. AST- och mock-spärrar för modifierade filer.
+Transient Testspecifikation i src/__tests__/transient_TCK-023b.test.ts: describe(TCK-023b
 
 ## Steg 3b
 Exakt Källkodsspecifikation under src/features/gemini_live_swarm/coordinator/ och session/: 1. src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts: Konfigurera 1 Live WebSocket exklusivt för Host (Att förlikas). Integrera VAD-avlyssning som emitterar Turn Complete vid > 400 ms tystnad. Anropa Att följa och Att vända om som bakgrundsagenter via @google/genai med High-Thinking. Prenumerera på UI_REFLECTION_MODE_CHANGED och reglera oscillationsdjup fram till MÄTTNAD: JA. Exponera token_throughput_per_minute i telemetrin. 2. src/features/gemini_live_swarm/session/geminiLiveSession.ts: Renodla till 1 primär aktiv WebSocket för Host-agenten. Sanera parallella 3-agent connect loops och osynkade fallback-timers.
