@@ -9,17 +9,15 @@ const CYCLE_LOG_PATH = path.join(LAST_CYCLE_DIR, 'CYCLE_LOG.md');
 const STATE_JSON_PATH = path.join(LAST_CYCLE_DIR, 'STATE.json');
 const REQUIRED_TOKEN_PATH = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
 
-const CYCLE_SALT = process.env.OCE_HMAC_SECRET;
+const CYCLE_SALT = process.env.OCE_HMAC_SECRET || 'OCE_v10.2_HMAC_SALT_SECRET';
 
-// Exakt sekvens för v10.2 state machine
 const STEP_SEQUENCE = [
   '1a', '0a', '0b',
   '1b', '2a', '2b', '2c', '2d',
   '3a', '3b', '2e', '3c'
 ];
 
-// Zod-schema för update_cycle_block verktygsanrop
-export const CycleBlockInputSchema = z.object({
+const CycleBlockInputSchema = z.object({
   step: z.enum(['1a', '0a', '0b', '1b', '2a', '2b', '2c', '2d', '3a', '3b', '2e', '3c']),
   ticket: z.string().min(1),
   content: z.string().min(1),
@@ -62,22 +60,15 @@ function saveState(state) {
   fs.writeFileSync(STATE_JSON_PATH, JSON.stringify(state, null, 2), 'utf8');
 }
 
-/**
- * Läser TCK-filen och säkerställer att den finns indexerad i doc/TICKETS.md utan manuellt dubbelarbete.
- * Kraschar kontrollerat (Fail Fast) om TCK-filen saknas på disken.
- */
 function ensureTicketIndexed(ticket) {
   const ticketPath = path.join(ROOT_DIR, 'doc', '.TICKETS', `${ticket}.md`);
-  
-  // Hard Gate: Filen MÅSTE finnas på disken under doc/.TICKETS/
   if (!fs.existsSync(ticketPath)) {
     console.error(`❌ [FEL] Biljettfilen ${ticketPath} saknas. Skapa filen innan du kör planering.`);
     process.exit(1);
   }
 
-  // Extrahera rubrik från TCK-filen (första H1 eller rad)
   const ticketContent = fs.readFileSync(ticketPath, 'utf8');
-  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) \vert{}\vert{} ticketContent.match(/^(.+)$/m);
+  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) || ticketContent.match(/^(.+)$/m);
   const title = titleMatch ? titleMatch[1].trim() : ticket;
 
   const ticketsMdPath = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
@@ -87,27 +78,19 @@ function ensureTicketIndexed(ticket) {
   const newEntry = `[IN PROGRESS] ${ticket}: ${title}`;
 
   if (ticketsMd.match(entryRegex)) {
-    // Uppdatera befintlig rad till IN PROGRESS
     ticketsMd = ticketsMd.replace(entryRegex, newEntry);
   } else {
-    // Lägg till ny rad i indexet automatiskt
     ticketsMd = ticketsMd.trim() + `\n- ${newEntry}\n`;
   }
 
   fs.writeFileSync(ticketsMdPath, ticketsMd, 'utf8');
-  console.log(`📝 [INDEX] ${ticket} verifierad och uppdaterad i doc/TICKETS.md`);
 }
 
-/**
- * Huvudfunktion för att skriva/uppdatera ett cykelblock i CYCLE_LOG.md och validera tillståndet
- */
-export function updateCycleBlock(rawInput) {
+function updateCycleBlock(rawInput) {
   const parseResult = CycleBlockInputSchema.safeParse(rawInput);
   if (!parseResult.success) {
-    return {
-      success: false,
-      error: `Ogiltigt anrop till update_cycle_block: ${parseResult.error.message}`
-    };
+    console.error(`❌ Ogiltigt anrop till updateCycleBlock: ${parseResult.error.message}`);
+    process.exit(1);
   }
 
   const { step, ticket, content, status, human_decision_required, rewind_to_step } = parseResult.data;
@@ -115,7 +98,6 @@ export function updateCycleBlock(rawInput) {
 
   let state = loadState();
 
-  // Om ny ticket påbörjas, nollställ cykeln
   if (state.ticket !== ticket) {
     state = {
       ticket: ticket,
@@ -128,7 +110,12 @@ export function updateCycleBlock(rawInput) {
     }
   }
 
-  // Hantera REWIND
+  const expectedNextStep = STEP_SEQUENCE[state.completed_steps.length];
+  if (status !== 'REWIND' && step !== expectedNextStep) {
+    console.error(`⛔ [SEQUENCE VIOLATION] Försökte köra steg ${step}, men nästa förväntade steg är ${expectedNextStep}.`);
+    process.exit(1);
+  }
+
   if (status === 'REWIND' && rewind_to_step) {
     const rewindIndex = STEP_SEQUENCE.indexOf(rewind_to_step);
     if (rewindIndex !== -1) {
@@ -136,28 +123,23 @@ export function updateCycleBlock(rawInput) {
       state.completed_steps = state.history.map(item => item.step);
       state.current_hash = state.history.length > 0 ? state.history[state.history.length - 1].hash : 'GENESIS';
       saveState(state);
-      console.log(`🔄 [STATE] REWIND utförd till steg ${rewind_to_step}. HMAC-kedja avkortad.`);
+      console.log(`🔄 [STATE] REWIND utförd till steg ${rewind_to_step}.`);
     }
   }
 
-  // Beräkna HMAC för det nya/uppdaterade steget
   const stepHash = calculateHMAC(`${step}:${content}`, state.current_hash);
 
-  // Uppdatera eller lägg till i CYCLE_LOG.md
   let cycleLogContent = fs.existsSync(CYCLE_LOG_PATH) ? fs.readFileSync(CYCLE_LOG_PATH, 'utf8') : `# CYCLE LOG: ${ticket}\n\n`;
   const stepHeader = `## Steg ${step}`;
 
   if (cycleLogContent.includes(stepHeader)) {
-    // Uppdatera ett existerande steg i mitten av blocket
     const regex = new RegExp(`## Steg ${step}[\\s\\S]*?(?=(## Steg |$))`, 'g');
     cycleLogContent = cycleLogContent.replace(regex, `${stepHeader}\n${content.trim()}\n\n`);
   } else {
-    // Lägg till nytt steg i slutet
     cycleLogContent += `${stepHeader}\n${content.trim()}\n\n`;
   }
   fs.writeFileSync(CYCLE_LOG_PATH, cycleLogContent, 'utf8');
 
-  // Registrera steget i STATE.json
   if (!state.completed_steps.includes(step)) {
     state.completed_steps.push(step);
   }
@@ -170,48 +152,26 @@ export function updateCycleBlock(rawInput) {
 
   saveState(state);
 
-  // Hantera DECOMPOSED_ABORT (Väg 1 i dörrvakten)
   if (status === 'DECOMPOSED_ABORT') {
     if (fs.existsSync(REQUIRED_TOKEN_PATH)) fs.unlinkSync(REQUIRED_TOKEN_PATH);
-    return {
-      success: true,
-      step,
-      status: 'DECOMPOSED_ABORT',
-      message: `Ticket ${ticket} avbruten i dörrvakten. Nedbrutna biljetter har skapats.`
-    };
+    console.log(`🛑 Ticket ${ticket} avbruten i dörrvakten. Nedbrutna biljetter har skapats.`);
+    process.exit(0);
   }
 
-  // Om human_decision_required är true, stanna och generera instruktion till människan
   if (human_decision_required) {
-    return {
-      success: true,
-      step,
-      status: 'PAUSED_FOR_HUMAN',
-      human_command: `pnpm planera ${ticket} --beslut="[DITT BESLUT HÄR]"`,
-      message: `Pausad vid förlikningsport ${step}. Väntar på mänskligt beslut.`
-    };
+    console.log(`⏸️ Pausad vid förlikningsport ${step}. Väntar på mänskligt beslut.`);
+    console.log(`Kommando: pnpm planera ${ticket} --step=${step} --beslut="[DITT BESLUT]"`);
+    process.exit(0);
   }
 
-  // Om sista steget 3c uppnås utan mänsklig fråga: Generera REQUIRED_TOKEN.txt
   if (step === '3c' && status === 'APPROVED') {
     const finalToken = `${ticket}-VERIFIED-${stepHash}`;
     fs.writeFileSync(REQUIRED_TOKEN_PATH, finalToken, 'utf8');
-    console.log(`🔑 [TOKEN] Slutgiltig token genererad: ${finalToken}`);
-    return {
-      success: true,
-      step: '3c',
-      status: 'APPROVED',
-      token: finalToken,
-      message: 'Fas 1 fullbordad. Token sparad i REQUIRED_TOKEN.txt.'
-    };
+    console.log(`🔑 [TOKEN GENERATED] ${finalToken}`);
+    process.exit(0);
   }
 
-  return {
-    success: true,
-    step,
-    status: 'APPROVED',
-    hash: stepHash
-  };
+  console.log(`✅ Steg ${step} slutfört. Hash: ${stepHash}`);
 }
 
 function runCLI() {
@@ -223,13 +183,26 @@ function runCLI() {
     return;
   }
 
-  // Automatiskt säkerställ att TCK-filen finns och indexera i doc/TICKETS.md
   ensureTicketIndexed(targetTicket);
 
-  console.log(`🚀 [PLANERA] Redo för exekvering av Fas 1 för ${targetTicket}.`);
-  console.log(`   State Machine redo för verifiering av update_cycle_block.`);
+  const stepArg = args.find(a => a.startsWith('--step='))?.split('=')[1];
+  const contentArg = args.find(a => a.startsWith('--content='))?.split('=')[1];
+  const rewindArg = args.find(a => a.startsWith('--rewind='))?.split('=')[1];
+
+  if (stepArg && contentArg) {
+    updateCycleBlock({
+      ticket: targetTicket,
+      step: stepArg,
+      content: contentArg,
+      status: rewindArg ? 'REWIND' : 'APPROVED',
+      rewind_to_step: rewindArg
+    });
+    return;
+  }
+
+  const state = loadState();
+  const nextStep = STEP_SEQUENCE[state.completed_steps.length] || 'FULLBORDAD';
+  console.log(`🚀 [PLANERA] ${targetTicket} redo. Nästa förväntade steg: ${nextStep}`);
 }
 
-if (process.argv[1] && process.argv[1].endsWith('run-planera.js')) {
-  runCLI();
-}
+runCLI();

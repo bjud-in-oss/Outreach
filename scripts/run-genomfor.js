@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
 
 const ROOT_DIR = process.cwd();
@@ -8,59 +9,88 @@ const STATE_JSON_PATH = path.join(LAST_CYCLE_DIR, 'STATE.json');
 const REQUIRED_TOKEN_PATH = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
 const APPROVAL_PATH = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
 
+const CYCLE_SALT = process.env.OCE_HMAC_SECRET || 'OCE_v10.2_HMAC_SALT_SECRET';
+
+const STEP_SEQUENCE = [
+  '1a', '0a', '0b',
+  '1b', '2a', '2b', '2c', '2d',
+  '3a', '3b', '2e', '3c'
+];
+
+function failFast(reason) {
+  console.error(`❌ [GENOMFÖR - NEKAD EXECUTION] ${reason}`);
+  process.exit(1);
+}
+
 function runGenomfor() {
-  const inputToken = process.argv[2];
+  const args = process.argv.slice(2);
+  const inputToken = args[0];
 
   if (!fs.existsSync(REQUIRED_TOKEN_PATH)) {
-    console.error('❌ [FEL] REQUIRED_TOKEN.txt saknas. Fas 1 (pnpm planera) har inte slutförts.');
-    process.exit(1);
+    failFast('REQUIRED_TOKEN.txt saknas i doc/LAST_CYCLE/. Kör pnpm planera [TCK-XXX] först.');
   }
 
-  const requiredToken = fs.readFileSync(REQUIRED_TOKEN_PATH, 'utf-8').trim();
+  const requiredToken = fs.readFileSync(REQUIRED_TOKEN_PATH, 'utf8').trim();
 
-  if (!inputToken || inputToken !== requiredToken) {
-    console.error(`❌ [FEL] Ogiltig eller saknad token.\n   Angiven: ${inputToken || '(ingen)'}\n   Krävs:   ${requiredToken}`);
-    process.exit(1);
+  if (inputToken && inputToken !== requiredToken) {
+    failFast(`Angiven token (${inputToken}) matchar inte REQUIRED_TOKEN.txt (${requiredToken}).`);
   }
 
-  // Validera STATE.json och säkerställ att steg 3c är uppnått i HMAC-kedjan
-  if (fs.existsSync(STATE_JSON_PATH)) {
-    try {
-      const state = JSON.parse(fs.readFileSync(STATE_JSON_PATH, 'utf8'));
-      if (!state.completed_steps || !state.completed_steps.includes('3c')) {
-        console.error('❌ [FEL] Tillståndskedjan i STATE.json är ofullständig. Steg 3c har inte uppnåtts.');
-        process.exit(1);
-      }
-    } catch (e) {
-      console.error(`❌ [FEL] STATE.json är ogiltig JSON: ${e.message}`);
-      process.exit(1);
+  const activeToken = inputToken || requiredToken;
+  const tokenParts = activeToken.split('-VERIFIED-');
+  if (tokenParts.length !== 2) {
+    failFast(`Ogiltigt format på token: ${activeToken}.`);
+  }
+
+  const [ticket, expectedHash] = tokenParts;
+
+  if (!fs.existsSync(STATE_JSON_PATH)) {
+    failFast('STATE.json saknas i doc/LAST_CYCLE/. Tillståndskedjan kan inte verifieras.');
+  }
+
+  let state;
+  try {
+    state = JSON.parse(fs.readFileSync(STATE_JSON_PATH, 'utf8'));
+  } catch {
+    failFast('STATE.json är korrupt eller ogiltig JSON.');
+  }
+
+  if (state.ticket !== ticket) {
+    failFast(`STATE.json tillhör biljett ${state.ticket}, men token gäller ${ticket}.`);
+  }
+
+  if (!Array.isArray(state.completed_steps) || state.completed_steps.length !== STEP_SEQUENCE.length) {
+    failFast(`Inkomplett cykel i STATE.json. Genomförda steg: ${state.completed_steps?.length || 0}/12.`);
+  }
+
+  for (let i = 0; i < STEP_SEQUENCE.length; i++) {
+    if (state.completed_steps[i] !== STEP_SEQUENCE[i]) {
+      failFast(`Sekvensavvikelse i STATE.json vid index ${i}. Förväntat: ${STEP_SEQUENCE[i]}, Hittat: ${state.completed_steps[i]}.`);
     }
-  } else {
-    console.error('❌ [FEL] STATE.json saknas under doc/LAST_CYCLE/. Ingen giltig planeringscykel hittades.');
-    process.exit(1);
   }
 
-  // 1. Skapa eller uppdatera APPROVAL.md
-  let existingApprovals = '';
-  if (fs.existsSync(APPROVAL_PATH)) {
-    existingApprovals = fs.readFileSync(APPROVAL_PATH, 'utf-8');
+  if (state.current_hash !== expectedHash) {
+    failFast(`HMAC-manipulation upptäckt! Fil-hash (${state.current_hash}) matchar inte token-hash (${expectedHash}).`);
   }
 
-  const newEntry = `APPROVED: ${inputToken}\nDATE: ${new Date().toISOString()}`;
-  const fullApproval = existingApprovals.includes(inputToken)
+  // Skriv eller append till APPROVAL.md
+  let existingApprovals = fs.existsSync(APPROVAL_PATH) ? fs.readFileSync(APPROVAL_PATH, 'utf8') : '';
+  const newEntry = `APPROVED: ${activeToken}\nDATE: ${new Date().toISOString()}`;
+  const fullApproval = existingApprovals.includes(activeToken)
     ? existingApprovals
     : (existingApprovals ? existingApprovals.trim() + '\n' + newEntry : newEntry);
 
   fs.writeFileSync(APPROVAL_PATH, fullApproval, 'utf8');
-  console.log('🔓 [GENOMFÖR v10.2] Token och tillståndskedja verifierade. Redigering under src/ upplåst!');
 
-  // 2. Automatiskt Git-flöde vid tillgänglig PAT
+  console.log(`🔓 [GENOMFÖR] Token ${activeToken} verifierad. Redigering under src/ upplåst!`);
+
+  // Automatisk Git Push vid tillgänglig GIT_PAT
   const pat = process.env.GIT_PAT;
   if (pat) {
     try {
       console.log('🚀 [GIT] Exekverar automatisk commit och push till GitHub...');
       execSync('git add .', { stdio: 'inherit' });
-      execSync(`git commit -m "feat: slutförd ticket (${inputToken})"`, { stdio: 'inherit' });
+      execSync(`git commit -m "feat: slutförd ticket (${activeToken})"`, { stdio: 'inherit' });
       execSync(`git push https://${pat}@github.com/bjud-in-oss/Outreach.git main --force`, { stdio: 'inherit' });
       console.log('✅ [GIT] Push till bjud-in-oss/Outreach slutförd!');
     } catch (err) {
