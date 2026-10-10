@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { z } from 'zod';
 
 const ROOT_DIR = process.cwd();
@@ -25,6 +26,19 @@ const CycleBlockInputSchema = z.object({
   human_decision_required: z.boolean().default(false),
   rewind_to_step: z.enum(['1a', '0a', '0b', '1b', '2a', '2b', '2c', '2d', '3a', '3b', '2e', '3c']).optional()
 });
+
+function verifyScriptsNotModified() {
+  try {
+    const diff = execSync('git status --porcelain scripts/', { encoding: 'utf8' }).trim();
+    if (diff.length > 0) {
+      console.error('❌ [INTEGRITETSFEL] Ändringar upptäckta i scripts/-mappen! Agenten har redigerat sina egna styrskript.');
+      console.error(diff);
+      process.exit(1);
+    }
+  } catch (err) {
+    // Om git inte är initierat ignoreras kontrollen
+  }
+}
 
 function calculateHMAC(data, prevHash) {
   return crypto.createHmac('sha256', CYCLE_SALT)
@@ -68,7 +82,7 @@ function ensureTicketIndexed(ticket) {
   }
 
   const ticketContent = fs.readFileSync(ticketPath, 'utf8');
-  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) || ticketContent.match(/^(.+)$/m);
+  const titleMatch = ticketContent.match(/^#\s*(.+)$/m) \vert{}\vert{} ticketContent.match(/^(.+)$/m);
   const title = titleMatch ? titleMatch[1].trim() : ticket;
 
   const ticketsMdPath = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
@@ -87,6 +101,8 @@ function ensureTicketIndexed(ticket) {
 }
 
 function updateCycleBlock(rawInput) {
+  verifyScriptsNotModified();
+
   const parseResult = CycleBlockInputSchema.safeParse(rawInput);
   if (!parseResult.success) {
     console.error(`❌ Ogiltigt anrop till updateCycleBlock: ${parseResult.error.message}`);
@@ -175,6 +191,8 @@ function updateCycleBlock(rawInput) {
 }
 
 function runCLI() {
+  verifyScriptsNotModified();
+
   const args = process.argv.slice(2);
   const targetTicket = args[0];
 

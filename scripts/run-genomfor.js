@@ -17,12 +17,27 @@ const STEP_SEQUENCE = [
   '3a', '3b', '2e', '3c'
 ];
 
+function verifyScriptsNotModified() {
+  try {
+    const diff = execSync('git status --porcelain scripts/', { encoding: 'utf8' }).trim();
+    if (diff.length > 0) {
+      console.error('❌ [INTEGRITETSFEL] Ändringar upptäckta i scripts/-mappen! Agenten har redigerat sina egna styrskript.');
+      console.error(diff);
+      process.exit(1);
+    }
+  } catch (err) {
+    // Om git inte är initierat ignoreras kontrollen
+  }
+}
+
 function failFast(reason) {
   console.error(`❌ [GENOMFÖR - NEKAD EXECUTION] ${reason}`);
   process.exit(1);
 }
 
 function runGenomfor() {
+  verifyScriptsNotModified();
+
   const args = process.argv.slice(2);
   const inputToken = args[0];
 
@@ -73,7 +88,6 @@ function runGenomfor() {
     failFast(`HMAC-manipulation upptäckt! Fil-hash (${state.current_hash}) matchar inte token-hash (${expectedHash}).`);
   }
 
-  // Skriv eller append till APPROVAL.md
   let existingApprovals = fs.existsSync(APPROVAL_PATH) ? fs.readFileSync(APPROVAL_PATH, 'utf8') : '';
   const newEntry = `APPROVED: ${activeToken}\nDATE: ${new Date().toISOString()}`;
   const fullApproval = existingApprovals.includes(activeToken)
@@ -84,7 +98,6 @@ function runGenomfor() {
 
   console.log(`🔓 [GENOMFÖR] Token ${activeToken} verifierad. Redigering under src/ upplåst!`);
 
-  // Automatisk Git Push vid tillgänglig GIT_PAT
   const pat = process.env.GIT_PAT;
   if (pat) {
     try {

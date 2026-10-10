@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { scanTypeScriptFiles, verifyContracts, checkAstMetrics, checkNoProductionMocks } from './drivers/ts.js';
 
 const ROOT_DIR = process.cwd();
@@ -9,12 +10,26 @@ const STATE_JSON_PATH = path.join(LAST_CYCLE_DIR, 'STATE.json');
 const APPROVAL_PATH = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
 const REQUIRED_TOKEN_PATH = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
 
+function verifyScriptsNotModified() {
+  try {
+    const diff = execSync('git status --porcelain scripts/', { encoding: 'utf8' }).trim();
+    if (diff.length > 0) {
+      console.error('❌ [INTEGRITETSFEL] Ändringar upptäckta i scripts/-mappen! Agenten har redigerat sina egna styrskript.');
+      console.error(diff);
+      process.exit(1);
+    }
+  } catch (err) {
+    // Om git inte är initierat ignoreras kontrollen
+  }
+}
+
 function runVerification() {
+  verifyScriptsNotModified();
+
   console.log('🔍 [ARKITEKTURKONTROLL v10.2] Påbörjar validering av kontrakt, FSD och HMAC-tillstånd...');
   const issues = [];
   const filesChecked = [];
 
-  // 1. Verifiera doc/TICKETS.md
   let activeTicketMatch = 'TCK-001';
   const ticketsPath = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
   if (!fs.existsSync(ticketsPath)) {
@@ -22,16 +37,15 @@ function runVerification() {
   } else {
     filesChecked.push('doc/TICKETS.md');
     const content = fs.readFileSync(ticketsPath, 'utf8');
-    const match = content.match(/\[(?:AKTIV|OPEN|IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+[a-z]?)/i);
+    const match = content.match(/\[(?:AKTIV\vert{}OPEN\vert{}IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
     if (!match) {
-      const verifiedMatch = content.match(/\[VERIFIERAD\]\s*[:|]?\s*(TCK-\d+[a-z]?)/i);
+      const verifiedMatch = content.match(/[VERIFIERAD]\s*[:|]?\s*(TCK-\d+)/i);
       activeTicketMatch = verifiedMatch ? verifiedMatch[1] : activeTicketMatch;
     } else {
       activeTicketMatch = match[1];
     }
   }
 
-  // 2. Verifiera doc/FEATURE_INDEX.json
   const featureIndexPath = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
   if (!fs.existsSync(featureIndexPath)) {
     issues.push('Kritiskt: doc/FEATURE_INDEX.json saknas');
@@ -47,7 +61,6 @@ function runVerification() {
     }
   }
 
-  // 3. Verifiera src/shared/contracts/envelope.ts
   const envelopePath = path.join(ROOT_DIR, 'src', 'shared', 'contracts', 'envelope.ts');
   const contractCheck = verifyContracts(envelopePath);
   if (!contractCheck.valid) {
@@ -56,7 +69,6 @@ function runVerification() {
     filesChecked.push('src/shared/contracts/envelope.ts');
   }
 
-  // 4. Tillståndsvalidering (STATE.json)
   if (fs.existsSync(STATE_JSON_PATH)) {
     filesChecked.push('doc/LAST_CYCLE/STATE.json');
     try {
@@ -69,7 +81,6 @@ function runVerification() {
     }
   }
 
-  // 5. Fas 2 validering: APPROVAL.md & REQUIRED_TOKEN.txt
   if (fs.existsSync(APPROVAL_PATH)) {
     filesChecked.push('doc/LAST_CYCLE/APPROVAL.md');
     const approvalContent = fs.readFileSync(APPROVAL_PATH, 'utf8');
@@ -85,7 +96,6 @@ function runVerification() {
     }
   }
 
-  // 6. AST- och strukturmått (Max 250 rader per fil etc.)
   const tsFiles = scanTypeScriptFiles([path.join(ROOT_DIR, 'src')]);
   tsFiles.forEach(f => {
     const rel = path.relative(ROOT_DIR, f);
@@ -105,7 +115,6 @@ function runVerification() {
     }
   });
 
-  // 7. Generera VERIFY_RECEIPT.json
   if (!fs.existsSync(LAST_CYCLE_DIR)) {
     fs.mkdirSync(LAST_CYCLE_DIR, { recursive: true });
   }
