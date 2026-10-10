@@ -17,20 +17,18 @@ export const McpRequestSchema = z.object({
 
 export type McpRequest = z.infer<typeof McpRequestSchema>;
 
+export const McpContentItemSchema = z.object({
+  type: z.string(),
+  text: z.string().optional(),
+});
+
 export const McpResponseSchema = z.object({
   jsonrpc: z.literal('2.0').default('2.0'),
   id: z.union([z.string(), z.number()]),
   result: z
     .object({
       tools: z.array(McpToolDefinitionSchema).optional(),
-      content: z
-        .array(
-          z.object({
-            type: z.string(),
-            text: z.string().optional(),
-          })
-        )
-        .optional(),
+      content: z.array(McpContentItemSchema).optional(),
       isError: z.boolean().optional(),
     })
     .optional(),

@@ -144,20 +144,21 @@ export async function runSwarmTelemetryTests() {
 
   // Test 4: Zod TelemetrySnapshotSchema validerar ett giltigt tillstånd
   try {
+    const agentMetricItem = {
+      agentId: 'agent-orchestrator',
+      role: 'ORCHESTRATOR' as const,
+      status: 'IDLE' as const,
+      lastThought: 'Väntar på uppdrag',
+      lastActive: new Date().toISOString(),
+      totalEventsEmitted: 10,
+      averageLatencyMs: 120,
+    };
     const validSnapshot = {
       activeAgentsCount: 4,
       totalEventsCount: 42,
       eventsPerMinute: 12.5,
       agentMetrics: {
-        'agent-orchestrator': {
-          agentId: 'agent-orchestrator',
-          role: 'ORCHESTRATOR',
-          status: 'IDLE',
-          lastThought: 'Väntar på uppdrag',
-          lastActive: new Date().toISOString(),
-          totalEventsEmitted: 10,
-          averageLatencyMs: 120,
-        },
+        'agent-orchestrator': agentMetricItem,
       },
       recentEnvelopes: [],
       healthStatus: 'HEALTHY',

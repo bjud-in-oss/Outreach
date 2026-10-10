@@ -20,18 +20,9 @@ export function createWalToolHandlers(walEngine: WalEngine) {
       const pending = history.filter((h) => h.status === 'PENDING').length;
       const failed = history.filter((h) => h.status === 'FAILED').length;
 
+      const stats = { total: history.length, committed, pending, failed };
       return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              total: history.length,
-              committed,
-              pending,
-              failed,
-            }),
-          },
-        ],
+        content: [{ type: 'text', text: JSON.stringify(stats) }],
       };
     },
   };

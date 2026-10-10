@@ -37,12 +37,11 @@ export class SwarmEventBus {
 
     // Distribuera till matchande prenumeranter
     for (const sub of this.subscriptions.values()) {
-      if (this.matchesPattern(sub.pattern, validated.type)) {
-        try {
-          sub.handler(validated);
-        } catch (handlerErr) {
-          console.error(`[SwarmEventBus] Fel i prenumerationshanterare ${sub.id}:`, handlerErr);
-        }
+      if (!this.matchesPattern(sub.pattern, validated.type)) continue;
+      try {
+        sub.handler(validated);
+      } catch (handlerErr) {
+        console.error(`[SwarmEventBus] Fel i prenumerationshanterare ${sub.id}:`, handlerErr);
       }
     }
   }

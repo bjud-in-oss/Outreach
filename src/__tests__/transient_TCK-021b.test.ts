@@ -48,18 +48,19 @@ export async function runTransientTCK021bTests(): Promise<{ name: string; passed
       '## Bakgrund\nDetta är första versionen av utkastet.\n## Avslutning\nHälsningar teamet.'
     );
 
+    const patchParams = {
+      name: 'apply_code_patch',
+      arguments: {
+        filePath: testFile,
+        searchBlock: 'Detta är första versionen av utkastet.',
+        replaceBlock: 'Detta är en förädlad version styrd av försoningsmotorn.',
+      },
+    };
     const callRes = await server.handleJsonRpcRequest({
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',
-      params: {
-        name: 'apply_code_patch',
-        arguments: {
-          filePath: testFile,
-          searchBlock: 'Detta är första versionen av utkastet.',
-          replaceBlock: 'Detta är en förädlad version styrd av försoningsmotorn.',
-        },
-      },
+      params: patchParams,
     });
 
     assert(!('error' in callRes), 'Framgångsrik tools/call får inte returnera JSON-RPC fel');
@@ -86,18 +87,19 @@ export async function runTransientTCK021bTests(): Promise<{ name: string; passed
     const testFile = 'campaigns/wal_audit_test.txt';
     driveStore.setVfsFile(testFile, 'initial rad 1\ninitial rad 2');
 
+    const patchParams2 = {
+      name: 'apply_code_patch',
+      arguments: {
+        filePath: testFile,
+        searchBlock: 'initial rad 2',
+        replaceBlock: 'uppdaterad rad 2',
+      },
+    };
     await server.handleJsonRpcRequest({
       jsonrpc: '2.0',
       id: 3,
       method: 'tools/call',
-      params: {
-        name: 'apply_code_patch',
-        arguments: {
-          filePath: testFile,
-          searchBlock: 'initial rad 2',
-          replaceBlock: 'uppdaterad rad 2',
-        },
-      },
+      params: patchParams2,
     });
 
     const history = wal.getWalHistory();
@@ -119,18 +121,19 @@ export async function runTransientTCK021bTests(): Promise<{ name: string; passed
     const originalContent = 'dubblerad rad\nunikt innehåll\ndubblerad rad';
     driveStore.setVfsFile(testFile, originalContent);
 
+    const patchParams3 = {
+      name: 'apply_code_patch',
+      arguments: {
+        filePath: testFile,
+        searchBlock: 'dubblerad rad',
+        replaceBlock: 'ersättning',
+      },
+    };
     const callRes = await server.handleJsonRpcRequest({
       jsonrpc: '2.0',
       id: 4,
       method: 'tools/call',
-      params: {
-        name: 'apply_code_patch',
-        arguments: {
-          filePath: testFile,
-          searchBlock: 'dubblerad rad',
-          replaceBlock: 'ersättning',
-        },
-      },
+      params: patchParams3,
     });
 
     assert(!('error' in callRes), 'Ska inte kasta JSON-RPC -32603 protokollfel vid tvetydighet');
@@ -156,18 +159,19 @@ export async function runTransientTCK021bTests(): Promise<{ name: string; passed
     const wal = new WalEngine();
     const server = createUnifiedMcpServer(undefined, wal, driveStore);
 
+    const patchParams4 = {
+      name: 'apply_code_patch',
+      arguments: {
+        filePath: 'finns_inte.txt',
+        searchBlock: 'något',
+        replaceBlock: 'annat',
+      },
+    };
     const callRes = await server.handleJsonRpcRequest({
       jsonrpc: '2.0',
       id: 5,
       method: 'tools/call',
-      params: {
-        name: 'apply_code_patch',
-        arguments: {
-          filePath: 'finns_inte.txt',
-          searchBlock: 'något',
-          replaceBlock: 'annat',
-        },
-      },
+      params: patchParams4,
     });
 
     assert(!('error' in callRes), 'Ska inte kasta JSON-RPC protokollfel');
