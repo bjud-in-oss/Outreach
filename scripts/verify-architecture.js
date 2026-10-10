@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
 import { scanTypeScriptFiles, verifyContracts, checkAstMetrics, checkNoProductionMocks } from './drivers/ts.js';
 
 const ROOT_DIR = process.cwd();
@@ -10,7 +11,7 @@ const CYCLE_LOG_PATH = path.join(LAST_CYCLE_DIR, 'CYCLE_LOG.md');
 const APPROVAL_PATH = path.join(LAST_CYCLE_DIR, 'APPROVAL.md');
 const REQUIRED_TOKEN_PATH = path.join(LAST_CYCLE_DIR, 'REQUIRED_TOKEN.txt');
 
-const CYCLE_SALT = 'OCE_v10.2_HMAC_SALT_SECRET';
+const CYCLE_SALT = process.env.OCE_HMAC_SECRET;
 
 const REQUIRED_STEPS = ['1a', '0a', '0b', '1b', '2a', '2b', '2c', '2d', '3a', '3b', '2e', '3c'];
 
@@ -18,6 +19,15 @@ function runVerification() {
   console.log('🔍 [ARKITEKTURKONTROLL v10.2] Påbörjar validering av kontrakt och HMAC-tillstånd...');
   const issues = [];
   const filesChecked = [];
+
+  // 0. Säkerhet: Verifiera att inga tillfälliga skript skapats i scripts/
+  const scriptsDir = path.join(ROOT_DIR, 'scripts');
+  if (fs.existsSync(scriptsDir)) {
+    const tempFiles = fs.readdirSync(scriptsDir).filter(f => f.startsWith('temp-') || f.endsWith('.tmp.js'));
+    if (tempFiles.length > 0) {
+      issues.push(`Säkerhetsöverträdelse: Tillfälliga meta-skript upptäckta i scripts/: ${tempFiles.join(', ')}`);
+    }
+  }
 
   // 1. Verifiera doc/TICKETS.md
   let activeTicketMatch = 'TCK-001';
@@ -27,9 +37,9 @@ function runVerification() {
   } else {
     filesChecked.push('doc/TICKETS.md');
     const content = fs.readFileSync(ticketsPath, 'utf8');
-    const match = content.match(/\[(?:AKTIV|OPEN|IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+)/i);
+    const match = content.match(/\[(?:AKTIV|OPEN|IN PROGRESS)\]\s*[:|]?\s*(TCK-\d+[a-z]?)/i);
     if (!match) {
-      const verifiedMatch = content.match(/\[VERIFIERAD\]\s*[:|]?\s*(TCK-\d+)/i);
+      const verifiedMatch = content.match(/\[VERIFIERAD\]\s*[:|]?\s*(TCK-\d+[a-z]?)/i);
       if (verifiedMatch) {
         activeTicketMatch = verifiedMatch[1];
       } else {
@@ -71,12 +81,10 @@ function runVerification() {
     try {
       const state = JSON.parse(fs.readFileSync(STATE_JSON_PATH, 'utf8'));
       
-      // Validera att steg 3c har uppnåtts i historiken
       if (!state.completed_steps.includes('3c')) {
         issues.push('Tillståndsfel: CYCLE_LOG saknar fullbordat steg 3c i STATE.json');
       }
 
-      // Validera kontinuitet i HMAC-kedjan
       let lastHash = 'GENESIS';
       for (const entry of state.history) {
         if (!entry.hash || entry.hash.length !== 16) {
@@ -88,7 +96,6 @@ function runVerification() {
       issues.push(`STATE.json ogiltig JSON: ${e.message}`);
     }
   } else {
-    // Om STATE.json saknas men kodändringar har gjorts under src/features/
     const featuresDir = path.join(ROOT_DIR, 'src', 'features');
     if (fs.existsSync(featuresDir) && fs.readdirSync(featuresDir).length > 0) {
       issues.push('Fas 1 överträdelse: src/features/ innehåller källkod men STATE.json saknas');

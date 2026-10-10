@@ -1,7 +1,7 @@
 # CYCLE LOG: TCK-023b
 
 ## Steg 1a
-Intention & Mänsklig Nytta: Ställa om svärmens orkestrering till 1 Live-röstkabel (Host: Att förlikas) mot användaren och 2 High-Thinking underagenter (Att följa, Att vända om) via @google/genai. VAD sänder Turn Complete vid > 400 ms tystnad för att eliminera 50s-timeouten. Orkestratorn prenumererar på ReflectionMode och styr oscillationsdjupet till MÄTTNAD: JA.
+Intention & Mänsklig Nytta: Ställa om svärmens orkestrering till 1 Live-röstkabel (Host: Att förlikas) mot användaren och 2 High-Thinking underagenter (Att följa, Att vända om) via @google/genai. VAD sänder Turn Complete vid > 400 ms tystnad för att bryta 50s-timeouten. Orkestratorn prenumererar på ReflectionMode och styr oscillationsdjupet till MÄTTNAD: JA.
 
 ## Steg 0a
 Kontraktsaudit: 1. Max 1 FSD-domän: src/features/gemini_live_swarm/coordinator/. 2. API-skills: @google/genai med Live API och standard generationConfig.thinkingConfig. 3. Saneringskrav: Destruktiv sanering av tre parallella WebSocket-anslutningar och 50s-timeout spärrar.
@@ -25,10 +25,35 @@ Utvärdera Resiliens & Felhantering: Fail-Fast vid WebSocket-avbrott. VAD bryter
 Syntetisk Vägvägning & Mognadskontroll: Vägning mot AGENTS.md v10.2 och SI v10.2. 1 Live Host + 2 bakgrundsagenter garanterar ren stereosyntes och kraschfri VAD. human_decision_required: false.
 
 ## Steg 3a
-Transient Testspecifikation: src/__tests__/transient_TCK-023b.test.ts. Test 1: 1 Live Host & VAD Turn Complete vid > 400 ms tystnad. Test 2: High-Thinking bakgrundsagenter och syntes i Host. Test 3: ReflectionMode prenumeration och oscillation till MÄTTNAD: JA. Test 4: AST- och mock-regler.
+describe('TCK-023b Single Live Agent & VAD Turn-Completion', () => {
+  test('Single Live WebSocket cable for Att förlikas with VAD turnComplete', () => {
+    expect(orchestrator.getHostChannel()).toBe('forlikas');
+    expect(orchestrator.getLiveChannels().length).toBe(1);
+    expect(orchestrator.getVadSilenceMs()).toBe(400);
+  });
+  test('High-Thinking background agents for folja and vanda_om', async () => {
+    const res = await orchestrator.executeBackgroundThinking('folja', 'prompt');
+    expect(res.thinkingLevel).toBe('high');
+    expect(res.thought).toBeDefined();
+  });
+  test('ReflectionMode subscription and oscillation termination', () => {
+    orchestrator.setReflectionMode('mikro');
+    expect(orchestrator.getReflectionMode()).toBe('mikro');
+    expect(orchestrator.isSatiated()).toBe(true);
+  });
+});
 
 ## Steg 3b
-Exakt Källkodsspecifikation under src/features/gemini_live_swarm/: 1. swarmOrchestrator.ts ställs om till 1 Live Host + VAD + ReflectionMode. 2. geminiLiveSession.ts renodlas för 1 aktiv Bidi-kabel mot Host. 3. floorController.ts saneras från 50s loopar.
+Exakt Källkodsspecifikation under src/features/gemini_live_swarm/coordinator/ och session/:
+1. src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts:
+   - Konfigurera 1 Live WebSocket exklusivt för Host (Att förlikas).
+   - Integrera VAD-avlyssning som emitterar Turn Complete vid > 400 ms tystnad.
+   - Anropa Att följa och Att vända om som bakgrundsagenter via @google/genai med High-Thinking (thinkingConfig: { thinkingLevel: 'high' }).
+   - Prenumerera på UI_REFLECTION_MODE_CHANGED och reglera oscillationsdjup (normal: 0, mikro: 1, makro: 2, meta: 3) fram till MÄTTNAD: JA.
+   - Exponera token_throughput_per_minute i telemetrin.
+2. src/features/gemini_live_swarm/session/geminiLiveSession.ts:
+   - Renodla till 1 primär aktiv WebSocket för Host-agenten.
+   - Sanera parallella 3-agent connect loops och osynkade fallback-timers.
 
 ## Steg 2e
 Operativt Delta (Destruktiv Sanering): 1. Radera parallella 3-agent Bidi-connects i geminiLiveSession.ts. 2. Radera 50s timers i floorController.ts. 3. Radera döda testfall som kräver 3 parallella Bidi-kablar.
