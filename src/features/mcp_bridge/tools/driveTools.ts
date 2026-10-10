@@ -39,16 +39,12 @@ export function createDriveToolHandlers(driveClient: GoogleDriveClient) {
       };
     },
     drive_list_templates: async () => {
+      const templates = [
+        { id: 'tmpl-1', name: 'Partnerskapsförfrågan - B2B AI.md' },
+        { id: 'tmpl-2', name: 'Investerarsamordning Q3.md' },
+      ];
       return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify([
-              { id: 'tmpl-1', name: 'Partnerskapsförfrågan - B2B AI.md' },
-              { id: 'tmpl-2', name: 'Investerarsamordning Q3.md' },
-            ]),
-          },
-        ],
+        content: [{ type: 'text', text: JSON.stringify(templates) }],
       };
     },
   };

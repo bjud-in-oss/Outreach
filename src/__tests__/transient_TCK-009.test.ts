@@ -120,21 +120,22 @@ export function runTransientTCK009Tests(): { name: string; passed: boolean; erro
       valueProposition: 'Helande och värdedriven samverkan',
     });
 
+    const unitMetric = {
+      agentId: 'unit-att-folja',
+      force: 'ATT_FOLJA' as const,
+      displayName: 'Att följa Guds son',
+      reconciliationState: 'SOKER_NARHET' as const,
+      status: 'IDLE' as const,
+      lastActive: new Date().toISOString(),
+      totalEventsEmitted: 1,
+      averageLatencyMs: 45,
+    };
     const validSnapshot = {
       activeAgentsCount: 4,
       totalEventsCount: 5,
       eventsPerMinute: 2.5,
       agentMetrics: {
-        'unit-att-folja': {
-          agentId: 'unit-att-folja',
-          force: 'ATT_FOLJA',
-          displayName: 'Att följa Guds son',
-          reconciliationState: 'SOKER_NARHET',
-          status: 'IDLE',
-          lastActive: new Date().toISOString(),
-          totalEventsEmitted: 1,
-          averageLatencyMs: 45,
-        },
+        'unit-att-folja': unitMetric,
       },
       recentEnvelopes: [],
       healthStatus: 'HEALTHY',

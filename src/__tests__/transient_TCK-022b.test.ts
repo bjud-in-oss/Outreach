@@ -80,18 +80,16 @@ export async function runTransientTCK022bTests(): Promise<{ name: string; passed
       completedEventData = env.data;
     });
 
-    const routing = bridge.routeToolCallNonBlocking(
-      {
-        id: 'call-patch-routing-456',
-        name: 'apply_code_patch',
-        args: {
-          filePath: testFile,
-          searchBlock: 'const y = 2;',
-          replaceBlock: 'const y = 42;',
-        },
+    const toolCallObj = {
+      id: 'call-patch-routing-456',
+      name: 'apply_code_patch',
+      args: {
+        filePath: testFile,
+        searchBlock: 'const y = 2;',
+        replaceBlock: 'const y = 42;',
       },
-      'agent-vanda-om'
-    );
+    };
+    const routing = bridge.routeToolCallNonBlocking(toolCallObj, 'agent-vanda-om');
 
     await routing.executionPromise;
 

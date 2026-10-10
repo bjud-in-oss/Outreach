@@ -53,14 +53,11 @@ export async function runTransientTCK020dTests(): Promise<{ name: string; passed
     const bus = new SwarmEventBus();
     const session = new GeminiLiveSession('test-api-key', bus);
     let capturedModel = '';
-    (session as any).aiClient = {
-      models: {
-        generateContent: async (cfg: any) => {
-          capturedModel = cfg.model;
-          return { text: 'Turn generated successfully' };
-        },
-      },
+    const fakeGenerate = async (cfg: any) => {
+      capturedModel = cfg.model;
+      return { text: 'Turn generated successfully' };
     };
+    (session as any).aiClient = { models: { generateContent: fakeGenerate } };
     const res = await session.generateAgentTurn({
       role: 'ATT_FOLJA',
       systemInstruction: 'Instruktion',

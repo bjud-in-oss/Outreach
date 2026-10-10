@@ -18,17 +18,11 @@ export async function runTransientTCK022dTests(): Promise<{ name: string; passed
     const session = new GeminiLiveSession('test-api-key', bus);
 
     const connectCalls: any[] = [];
-    (session as any).aiClient = {
-      live: {
-        connect: async (agentConfig: any) => {
-          connectCalls.push(agentConfig);
-          return {
-            sendRealtimeInput: () => {},
-            close: () => {},
-          };
-        },
-      },
+    const fakeConnect = async (agentConfig: any) => {
+      connectCalls.push(agentConfig);
+      return { sendRealtimeInput: () => {}, close: () => {} };
     };
+    (session as any).aiClient = { live: { connect: fakeConnect } };
 
     const connected = await session.connectLive();
     assert(connected === true, 'connectLive ska returnera true');
@@ -76,14 +70,14 @@ export async function runTransientTCK022dTests(): Promise<{ name: string; passed
     for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
     const base64Audio = btoa(binary);
 
-    // folja börjar tala och tilldelas golvet efter arbitreringsfönstret (15 ms)
-    session.handleAgentMessage('folja', {
+    const audioMsg = {
       serverContent: {
-        modelTurn: {
-          parts: [{ inlineData: { data: base64Audio } }],
-        },
+        modelTurn: { parts: [{ inlineData: { data: base64Audio } }] },
       },
-    });
+    };
+
+    // folja börjar tala och tilldelas golvet efter arbitreringsfönstret (15 ms)
+    session.handleAgentMessage('folja', audioMsg);
 
     await new Promise((resolve) => setTimeout(resolve, 25));
     assert(session.getCurrentSpeaker() === 'folja', 'folja ska ha röstgolvet initialt');
@@ -92,13 +86,7 @@ export async function runTransientTCK022dTests(): Promise<{ name: string; passed
     let preemptedEmitted = false;
     bus.subscribe('swarm.floor.preempted', () => { preemptedEmitted = true; });
 
-    session.handleAgentMessage('forlikas', {
-      serverContent: {
-        modelTurn: {
-          parts: [{ inlineData: { data: base64Audio } }],
-        },
-      },
-    });
+    session.handleAgentMessage('forlikas', audioMsg);
 
     assert(session.getCurrentSpeaker() === 'forlikas', 'forlikas ska ha tagit över röstgolvet via preemption');
     assert(preemptedEmitted, 'swarm.floor.preempted ska ha emitterats');
