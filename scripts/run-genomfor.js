@@ -18,15 +18,43 @@ const STEP_SEQUENCE = [
 ];
 
 function verifyScriptsNotModified() {
+  const ROOT_DIR = process.cwd();
+  const SCRIPTS_DIR = path.join(ROOT_DIR, 'scripts');
+
+  // 1. HARD GATE: Git MÅSTE finnas initierat – inget tyst catch-block!
+  try {
+    const gitLog = execSync('git log -n 1 --oneline', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    if (!gitLog) {
+      console.error('❌ [INTEGRITETSFEL] Ingen Git-historik hittades.');
+      process.exit(1);
+    }
+  } catch {
+    console.error('❌ [INTEGRITETSFEL] Projektet är inte ett giltigt Git-arkiv eller saknar commits. Körning nekas.');
+    process.exit(1);
+  }
+
+  // 2. HARD GATE: Inga uncommitted ELLER staged ändringar i scripts/
   try {
     const diff = execSync('git status --porcelain scripts/', { encoding: 'utf8' }).trim();
     if (diff.length > 0) {
-      console.error('❌ [INTEGRITETSFEL] Ändringar upptäckta i scripts/-mappen! Agenten har redigerat sina egna styrskript.');
+      console.error('❌ [INTEGRITETSFEL] Ändringar upptäckta i scripts/-mappen!');
       console.error(diff);
       process.exit(1);
     }
   } catch (err) {
-    // Om git inte är initierat ignoreras kontrollen
+    console.error('❌ [INTEGRITETSFEL] Misslyckades att läsa git status.');
+    process.exit(1);
+  }
+
+  // 3. HARD GATE: Verifiera att inga nya commits skapades nyligen i scripts/ (t.ex. via git init)
+  try {
+    const lastCommitMessage = execSync('git log -1 --pretty=%B scripts/', { encoding: 'utf8' }).trim();
+    if (lastCommitMessage.includes('init scripts') || lastCommitMessage.includes('sync scripts')) {
+      console.error('❌ [INTEGRITETSFEL] Misstänkt ad-hoc commit upptäckt i scripts/: ' + lastCommitMessage);
+      process.exit(1);
+    }
+  } catch {
+    // Om inga specifika commits finns för scripts
   }
 }
 
