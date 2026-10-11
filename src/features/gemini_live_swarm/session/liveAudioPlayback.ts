@@ -1,3 +1,5 @@
+import { AudioWorkerManager } from './audioWorker.ts';
+
 export type SwarmAudioChannel = 'folja' | 'forlikas' | 'vanda_om';
 
 export const CHANNEL_PAN_CONFIG: Record<SwarmAudioChannel, number> = {
@@ -49,6 +51,7 @@ export class DSPRingBufferMixer {
   private audioCtx: AudioContext | null = null;
   private channels: Map<SwarmAudioChannel, ChannelNodes> = new Map();
   private ringBuffer = new SharedRingBuffer();
+  private workerManager = new AudioWorkerManager();
 
   constructor() {
     const keys: SwarmAudioChannel[] = ['folja', 'forlikas', 'vanda_om'];
@@ -61,6 +64,7 @@ export class DSPRingBufferMixer {
 
   public isThreadIsolated(): boolean { return true; }
   public getRingBuffer(): SharedRingBuffer { return this.ringBuffer; }
+  public getWorkerManager(): AudioWorkerManager { return this.workerManager; }
 
   private initChannelNode(key: SwarmAudioChannel, panVal: number): void {
     if (!this.audioCtx) return;
@@ -103,6 +107,7 @@ export class DSPRingBufferMixer {
       for (let i = 0; i < rawBinary.length; i++) bytes[i] = rawBinary.charCodeAt(i);
       const int16Array = new Int16Array(bytes.buffer);
       this.ringBuffer.push(int16Array);
+      this.workerManager.postMessage({ type: 'PUSH', channel, samples: int16Array });
       const float32Array = new Float32Array(int16Array.length);
       for (let i = 0; i < int16Array.length; i++) float32Array[i] = int16Array[i] / 32768.0;
 
@@ -164,6 +169,7 @@ export class DSPRingBufferMixer {
 
   public clearBuffer(channel?: SwarmAudioChannel): void {
     this.ringBuffer.clear();
+    this.workerManager.postMessage({ type: 'CLEAR', channel });
     const targets = channel ? [channel] : (Array.from(this.channels.keys()) as SwarmAudioChannel[]);
     for (const key of targets) {
       const ch = this.channels.get(key);
@@ -182,6 +188,7 @@ export class DSPRingBufferMixer {
 
   public dispose(): void {
     this.clearBuffer();
+    this.workerManager.terminate();
     if (this.audioCtx && this.audioCtx.state !== 'closed') {
       try { this.audioCtx.close(); } catch {}
       this.audioCtx = null;

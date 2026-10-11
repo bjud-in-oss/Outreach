@@ -196,6 +196,15 @@ export function handlePointerMoveOnDivider(
   onUpdate(clampSnapState(ratio));
 }
 
+export function getStartPauseProps(isPaused: boolean): { icon: string; label: string; bgClass: string; statusText: string } {
+  return {
+    icon: isPaused ? '▶️' : '⏸️',
+    label: isPaused ? 'Start' : 'Paus',
+    bgClass: isPaused ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm' : 'bg-amber-600 hover:bg-amber-500 text-white shadow-sm',
+    statusText: isPaused ? 'Röstmotorn pausad.' : 'Auto-Listen aktiv (VAD lyssnar).',
+  };
+}
+
 export async function toggleSwarmIntent(liveSession: any, current: SwarmIntent | null, target: SwarmIntent): Promise<SwarmIntent | null> {
   const next = current === target ? null : target;
   if (!liveSession) return next;

@@ -224,3 +224,20 @@ export class SessionIntentManager {
     if (this.audioContext) { try { this.audioContext.close(); } catch {} this.audioContext = null; }
   }
 }
+
+export function freezeStateToWal(): void {
+  if (typeof process === 'undefined' || !process.env) return;
+  try {
+    const fsMod = (globalThis as any).process?.versions?.node ? eval('require')('node:fs') : null;
+    const pathMod = (globalThis as any).process?.versions?.node ? eval('require')('node:path') : null;
+    if (!fsMod || !pathMod) return;
+    const stateFile = pathMod.join(process.cwd(), 'doc', 'LAST_CYCLE', 'STATE.json');
+    if (!fsMod.existsSync(stateFile)) return;
+    const raw = fsMod.readFileSync(stateFile, 'utf8');
+    const data = JSON.parse(raw);
+    data.is_paused = true;
+    data.paused_at = new Date().toISOString();
+    fsMod.writeFileSync(stateFile, JSON.stringify(data, null, 2), 'utf8');
+  } catch {}
+}
+

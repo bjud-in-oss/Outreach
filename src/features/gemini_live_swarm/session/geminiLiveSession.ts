@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { LiveSessionStatus, LiveStreamChunk, LiveStreamChunkSchema, ReconciliationForce } from '../telemetry/telemetrySchema.ts';
 import { SwarmEventBus, getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
-import { SessionIntentManager } from './sessionIntentAudio.ts';
+import { SessionIntentManager, freezeStateToWal } from './sessionIntentAudio.ts';
 import { DSPRingBufferMixer, SwarmAudioChannel } from './liveAudioPlayback.ts';
 import { FloorController, CHANNEL_PRIORITY, AGENT_VOICE_MAP } from './floorController.ts';
 import { SwarmIntent } from '../ui/splitPaneHelper.ts';
@@ -47,7 +47,6 @@ export class GeminiLiveSession {
       this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: `Init-fel: ${e?.message || String(e)}`, status: 'HALTED' });
     }
   }
-
   public packRealtimeAudioChunk(data: string, mimeType = 'audio/pcm;rate=16000'): BidiRealtimeInputPayload {
     return { audio: { data, mimeType }, realtimeInput: { mediaChunks: [{ mimeType, data }] } };
   }
@@ -77,7 +76,6 @@ export class GeminiLiveSession {
     this.aiClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1alpha' });
     this.liveStatus = 'IDLE'; this.reconnectAttempts = 0;
   }
-
   public getApiVersion(): string { return 'v1alpha'; }
   public setLiveModel(model: string): void { this.liveModelName = model; }
   public getLiveModel(): string { return this.liveModelName; }
@@ -189,12 +187,14 @@ export class GeminiLiveSession {
     this.currentStreamId = null;
   }
 
-  public isSessionPaused(): boolean { return this.isPaused; }
+  public isSessionPaused(): boolean { return this.isPaused; } public getAbortController(): AbortController | null { return this.abortController; }
   public pauseSession(): void {
     this.isPaused = true;
     this.abortController?.abort('User paused');
     this.audioPlayer.clearBuffer();
     this.releaseFloor();
+    freezeStateToWal();
+    this.eventBus.publishLiveEvent('swarm.session.wal.freeze', { status: 'FROZEN' });
     this.eventBus.publishLiveEvent('swarm.session.paused', { isPaused: true });
   }
   public resumeSession(): void {

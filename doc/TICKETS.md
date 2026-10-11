@@ -6,6 +6,7 @@
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-025 | Domän: src/features/gemini_live_swarm/ | Mål: BDD-First Voice Flow, Worker Threads & UI Start/Pause | Token: TCK-025-VERIFIED-ec5f6e6f29ceb27e
 - [VERIFIERAD] TCK-023b | Domän: src/features/gemini_live_swarm/coordinator/ | Mål: Single Live Agent & VAD Turn-Completion Fix (Orchestration) | Token: TCK-023b-VERIFIED-37c8be788f5d710b
 - [VERIFIERAD] TCK-023a | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI & Reflektions-Reglage (Harmonization) | Token: TCK-023a-VERIFIED-42fce33ce54d1da1
 - [VERIFIERAD] TCK-023 | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation | Token: TCK-023-SPATIAL-UI-HARMONIZATION-TOKEN
@@ -38,4 +39,3 @@
 - [VERIFIERAD] TCK-004 | Domän: Global | Mål: Wayfinder-installation & README-uppdatering | Spec: doc/TICKETS/TCK-004.md
 - [VERIFIERAD] TCK-002 | Domän: src/features/gemini_live_swarm/ | Mål: Swarm Telemetry & Reactive Status | Spec: doc/TICKETS/TCK-002.md
 - [VERIFIERAD] TCK-001 | Domän: Global | Mål: Initialisera Outreach Samordningsmotor | Spec: doc/TICKETS/TCK-001.md
-- [IN PROGRESS] TCK-025: TCK-025: BDD-First Voice Flow, Worker Threads & UI Start/Pause
