@@ -52,9 +52,12 @@ export type {
 } from './telemetry/telemetrySchema.ts';
 export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 
-// Audio Setup, DSP Mixer, VAD & Floor Control (TCK-020b & TCK-022a)
+// Audio Setup, DSP Mixer, VAD & Floor Control (TCK-020b & TCK-022a & TCK-025)
 export { createBidiSetupPayload, floatTo16BitPCM, detectSpeechPCM, AudioPreRollBuffer, SessionIntentManager } from './session/sessionIntentAudio.ts';
 export { DSPRingBufferMixer, LiveAudioPlayer, CHANNEL_PAN_CONFIG } from './session/liveAudioPlayback.ts';
+export { AudioWorkerManager } from './session/audioWorker.ts';
+export { VoiceFlowMetricsSchema, measureVoiceFlow } from './telemetry/voiceFlowSchema.ts';
+export type { VoiceFlowMetrics } from './telemetry/voiceFlowSchema.ts';
 export type { SwarmAudioChannel } from './session/liveAudioPlayback.ts';
 export { FloorController, CHANNEL_PRIORITY, AGENT_VOICE_MAP } from './session/floorController.ts';
 
