@@ -1,38 +1,38 @@
-# CYCLE LOG: TCK-023b
+# CYCLE LOG: TCK-025
 
 ## Steg 1a
-Intention & Mänsklig Nytta: Ställa om svärmens orkestrering till 1 Live-röstkabel (Host: Att förlikas) mot användaren och 2 High-Thinking underagenter (Att följa, Att vända om) via @google/genai. VAD sänder Turn Complete vid > 400 ms tystnad för att bryta 50s-timeouten. Orkestratorn prenumererar på ReflectionMode och styr oscillationsdjupet till MÄTTNAD: JA.
+Intention & Användarnytta: Eliminera rösthackande vid High-Thinking genom trådisolering via Node worker_threads och AudioWorklet i webbläsaren. Skapa deterministisk VAD som garanterar Engine TTFT < 1 200 ms och separerar VAD Detection (~800 ms). Ersätta mittskenans tre knappar med en enda Start/Paus-brytare synkad med SwarmEventBus och VAD Auto-Listen. Vid Paus avbryts pågående thinking via AbortController och fryser tillståndet deterministiskt.
 
 ## Steg 0a
-Kontraktsaudit: 1. Max 1 FSD-domän: src/features/gemini_live_swarm/coordinator/. 2. API-skills: @google/genai med Live API och standard generationConfig.thinkingConfig. 3. Saneringskrav: Destruktiv sanering av tre parallella WebSocket-anslutningar och 50s-timeout spärrar.
+Kontraktsaudit: 1. Max 1 FSD-domän: src/features/gemini_live_swarm/ (session/ och ui/). 2. API-skills: @google/genai med Live API och worker_threads/AudioWorklet isolering. 3. Saneringskrav: Destruktiv sanering av de tre gamla mittskeneknapparna i SymbolCrown.tsx och AppShell.tsx, samt eliminering av monolitiskt ljudblock i huvudtråden.
 
 ## Steg 0b
-Vägval & Förlikningsport: Å ena sidan kan man försöka lappa 3 samtidiga Bidi-kablar, å andra sidan leder det till krockar och 50s-timeouts. Att förlikas som Host (1 Live Agent) med bakgrunds-thinking är robust och följer AGENTS.md v10.2 exakt. Väg 2 (Godkänd för svep).
+Vägval & Förlikningsport: Att köra ljudbehandling och High-Thinking i samma JavaScript-huvudtråd leder till event loop-lagg och hackande röst. Trådisolering med Worker Threads/SharedArrayBuffer är den arkitektoniskt överlägsna vägen. Väg 2 (Godkänd för linjärt svep).
 
 ## Steg 1b
-Kartlägg Domän & Systemgränser: Existerande moduler i src/features/gemini_live_swarm/coordinator/ (swarmOrchestrator.ts) och session (geminiLiveSession.ts). UI-kontrakt läses från reflectionStateHelper.ts (UI_REFLECTION_MODE_CHANGED). Telemetri exporterar token_throughput_per_minute.
+Kartlägg Domän & Systemgränser: Källkod berör src/features/gemini_live_swarm/session/ (liveAudioPlayback.ts, audioWorker.ts) och ui/ (SymbolCrown.tsx, AppShell.tsx). BDD-låsning sker i doc/features/voice_flow.feature och src/__tests__/bdd/voice_flow.test.ts samt src/__tests__/bdd/helpers/pcmGenerator.ts. Telemetri exporterar vadLatencyMs och engineTtftMs.
 
 ## Steg 2a
-Avgränsa Tillstånd & Biverkningar: Host håller en aktiv Live WebSocket. VAD övervakar mikrofonströmmen och sänder Turn Complete vid > 400 ms tystnad. Bakgrundsagenter anropas asynkront med High-Thinking. UI-reflektionsläge styr djupet: normal (0 varv), mikro (1 varv), makro (2 varv), meta (3 varv) fram till MÄTTNAD: JA.
+Avgränsa Tillstånd & Biverkningar: Ljudmixning sker i isolerad tråd via SharedArrayBuffer. Start/Paus-knapp styr sessionens livscykel: start sätter session i Auto-Listen och öppnar VAD; paus sänder AbortController.abort() till bakgrundsagenter, tystar ljudbuffert och fryser tillstånd i WAL/STATE.json.
 
 ## Steg 2b
-Modellera Zod-kontrakt: OrchestratorConfigSchema
+Modellera Zod-kontrakt: VoiceFlowMetricsSchema
 
 ## Steg 2c
-Utvärdera Resiliens & Felhantering: Fail-Fast vid WebSocket-avbrott. VAD bryter automatiskt 50s timeout utan att hänga socketen. Respektera strikt AST-gränser (< 250 rader per .ts, noll produktionsmockar).
+Utvärdera Resiliens & Felhantering: Fail-Fast om worker_threads inte kan startas eller om Engine TTFT överstiger 1 200 ms. Ren abort-signal hanteras kraschfritt av GeminiLiveSession och SwarmOrchestrator. Strikt efterlevnad av AST-mått (< 250 rader per .ts, < 125 rader per .tsx, noll produktionsmockar).
 
 ## Steg 2d
-Syntetisk Vägvägning & Mognadskontroll: Vägning mot AGENTS.md v10.2 och SI v10.2. 1 Live Host + 2 bakgrundsagenter garanterar ren stereosyntes och kraschfri VAD. human_decision_required: false.
+Syntetisk Vägvägning & Mognadskontroll: Vägning mot kraven i TCK-025 och SI v10.2. BDD-låsning och trådisolering skapar förutsägbarhet och hög användarnyttig responsivitet. human_decision_required: false.
 
 ## Steg 3a
-Transient Testspecifikation i src/__tests__/transient_TCK-023b.test.ts: describe(TCK-023b
+Transient & BDD Testspecifikation: 1. doc/features/voice_flow.feature definierar BDD-scenarier för VAD (< 800 ms), Engine TTFT (< 1 200 ms) och Start/Paus-knappen. 2. src/__tests__/bdd/voice_flow.test.ts kör BDD-krav via pcmGenerator.ts (16kHz PCM-sinusvåg i minnet). 3. src/__tests__/transient_TCK-025.test.ts verifierar trådisolering, VAD/TTFT-mått, Start/Paus-knapp och AbortController.
 
 ## Steg 3b
-Exakt Källkodsspecifikation under src/features/gemini_live_swarm/coordinator/ och session/: 1. src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts: Konfigurera 1 Live WebSocket exklusivt för Host (Att förlikas). Integrera VAD-avlyssning som emitterar Turn Complete vid > 400 ms tystnad. Anropa Att följa och Att vända om som bakgrundsagenter via @google/genai med High-Thinking. Prenumerera på UI_REFLECTION_MODE_CHANGED och reglera oscillationsdjup fram till MÄTTNAD: JA. Exponera token_throughput_per_minute i telemetrin. 2. src/features/gemini_live_swarm/session/geminiLiveSession.ts: Renodla till 1 primär aktiv WebSocket för Host-agenten. Sanera parallella 3-agent connect loops och osynkade fallback-timers.
+Exakt Källkodsspecifikation under src/features/gemini_live_swarm/: 1. session/liveAudioPlayback.ts: Refaktorisera till trådisolerad DSP-ringbuffert med Worker/AudioWorklet stöd. 2. session/audioWorker.ts: Dedikerad trådkod för PCM-buffring och mixning. 3. ui/SymbolCrown.tsx & AppShell.tsx: Ersätt gamla mittknappar med 1 Start/Paus-knapp synkad via SwarmEventBus (swarm.session.toggle). 4. session/geminiLiveSession.ts: Integrera AbortController vid paus.
 
 ## Steg 2e
-Operativt Delta (Destruktiv Sanering): 1. Radera parallella 3-agent Bidi-connects i geminiLiveSession.ts. 2. Radera 50s timers i floorController.ts. 3. Radera döda testfall som kräver 3 parallella Bidi-kablar.
+Operativt Delta (Destruktiv Sanering): 1. Radera mittskenans 3 gamla knappar i SymbolCrown.tsx och AppShell.tsx. 2. Radera synkron blockering i liveAudioPlayback.ts och ersätt med trådavlastning.
 
 ## Steg 3c
-Slutgiltigt Byggkontrakt: Samtliga steg i v10.2 linjärt svep är fullbordade och HMAC-kedjan är intakt. human_decision_required: false. Token genereras.
+Slutgiltigt Byggkontrakt: Samtliga steg i Fas 1 är fullbordade och HMAC-kedjan är intakt. human_decision_required: false. Token genereras i doc/LAST_CYCLE/REQUIRED_TOKEN.txt.
 

@@ -79,9 +79,19 @@ export const SplitPaneCanvas: React.FC<SplitPaneCanvasProps> = () => {
     return () => window.removeEventListener('keydown', handleKey);
   }, [isPortrait, splitPos]);
 
-  const handleIntentClick = async (intentId: SwarmIntent) => {
-    const next = await toggleSwarmIntent(swarmCtx?.liveSession, activeIntent, intentId);
-    setActiveIntent(next);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+
+  useEffect(() => {
+    return swarmCtx?.eventBus.subscribe('swarm.session.*', (env) => {
+      if (env.type === 'swarm.session.paused') setIsPaused(true);
+      if (env.type === 'swarm.session.resumed') setIsPaused(false);
+    });
+  }, [swarmCtx]);
+
+  const handleStartPauseToggle = () => {
+    if (!swarmCtx?.liveSession) return;
+    const nextPaused = swarmCtx.liveSession.togglePause();
+    setIsPaused(nextPaused);
   };
 
   const arrows = computeSplitArrows(isPortrait ? 'portrait' : 'landscape', splitPos);
@@ -91,7 +101,7 @@ export const SplitPaneCanvas: React.FC<SplitPaneCanvasProps> = () => {
   <div style={getPaneSizeStyle(isPortrait ? 'portrait' : 'landscape', splitPos, true)} className="transition-all duration-300 overflow-hidden bg-slate-900/40 p-4 border-slate-800 flex flex-col">
     <div className="text-xs font-mono text-emerald-400 mb-2">Dialog</div>
     <div className="flex-1 bg-slate-950/60 rounded border border-slate-800/80 p-3 overflow-y-auto text-sm text-slate-300 flex flex-col gap-2">
-      <p className="text-emerald-300 font-mono text-xs">{activeIntent ? `Aktiv röstström: ${activeIntent}` : 'Välj ett läge på delningsraden.'}</p>
+      <p className="text-emerald-300 font-mono text-xs">{isPaused ? 'Röstmotorn pausad.' : 'Auto-Listen aktiv (VAD lyssnar).'}</p>
       {turns.map(renderTurn)}
     </div>
   </div>
@@ -103,11 +113,17 @@ export const SplitPaneCanvas: React.FC<SplitPaneCanvasProps> = () => {
     onPointerUp={() => { isDraggingRef.current = false; }}
   >
     <button data-testid="snap-toggle-button" onClick={() => setSplitPos(stepSnapState(splitPos, 'prev'))} disabled={!arrows.showFirst} className="px-3 py-1.5 rounded text-xs font-bold bg-slate-700 hover:bg-slate-600 text-slate-100 disabled:opacity-20"><span data-testid="snap-handle-icon">{arrows.firstIcon}</span></button>
-    <div className={`flex items-center gap-2 ${isPortrait ? 'flex-row' : 'flex-col'}`}>
-      {SWARM_INTENTS.map((item) => (
-        <button key={item.id} onPointerDown={(e) => e.stopPropagation()} onClick={() => handleIntentClick(item.id)} className={getIntentButtonClass(item.id, activeIntent)}>{INTENT_ICONS[item.id]}<span className={getIntentTextClass(isPortrait)}>{item.label}</span></button>
-      ))}
-    </div>
+    <button
+      data-testid="start-pause-button"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={handleStartPauseToggle}
+      className={`px-3 py-1.5 rounded text-xs font-mono font-bold transition-colors flex items-center gap-1.5 ${
+        isPaused ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm' : 'bg-amber-600 hover:bg-amber-500 text-white shadow-sm'
+      }`}
+    >
+      <span>{isPaused ? '▶️' : '⏸️'}</span>
+      <span className={getIntentTextClass(isPortrait)}>{isPaused ? 'Start' : 'Paus'}</span>
+    </button>
     <button onClick={() => setSplitPos(stepSnapState(splitPos, 'next'))} disabled={!arrows.showSecond} className="px-3 py-1.5 rounded text-xs font-bold bg-slate-700 hover:bg-slate-600 text-slate-100 disabled:opacity-20">{arrows.secondIcon}</button>
   </div>
 
