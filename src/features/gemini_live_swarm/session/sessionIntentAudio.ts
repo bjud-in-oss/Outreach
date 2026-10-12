@@ -24,11 +24,7 @@ export function floatTo16BitPCM(input: Float32Array): Int16Array {
   return output;
 }
 
-export interface VadAnalysisResult {
-  isSpeech: boolean;
-  rms: number;
-  zcr: number;
-}
+export interface VadAnalysisResult { isSpeech: boolean; rms: number; zcr: number; }
 
 export function detectSpeechPCM(samples: Float32Array, rmsThreshold = 0.015, zcrThreshold = 0.05): VadAnalysisResult {
   if (samples.length === 0) return { isSpeech: false, rms: 0, zcr: 0 };
@@ -74,11 +70,7 @@ export class AudioPreRollBuffer {
     return result;
   }
 
-  public clear(): void {
-    this.buffer.fill(0);
-    this.writePointer = 0;
-    this.isFull = false;
-  }
+  public clear(): void { this.buffer.fill(0); this.writePointer = 0; this.isFull = false; }
 }
 
 export class SessionIntentManager {
@@ -90,16 +82,23 @@ export class SessionIntentManager {
   private preRollBuffer = new AudioPreRollBuffer(3200);
   private isVadStreaming = false;
   private lastSpeechTime = 0;
+  private isMicMutedState = false;
+  private isVadPausedState = false;
   private readonly postRollMs = 500;
 
-  constructor(eventBus: SwarmEventBus) {
-    this.eventBus = eventBus;
-  }
+  constructor(eventBus: SwarmEventBus) { this.eventBus = eventBus; }
 
   public getActiveIntent(): SwarmIntent | null { return this.activeIntent; }
   public getAudioContext(): AudioContext | null { return this.audioContext; }
   public getMediaStream(): MediaStream | null { return this.mediaStream; }
   public getPreRollBuffer(): AudioPreRollBuffer { return this.preRollBuffer; }
+  public setMicMuted(muted: boolean): void {
+    this.isMicMutedState = muted;
+    if (this.mediaStream) this.mediaStream.getAudioTracks().forEach((t) => { t.enabled = !muted; });
+  }
+  public isMicMuted(): boolean { return this.isMicMutedState; }
+  public setVadPaused(paused: boolean): void { this.isVadPausedState = paused; }
+  public isVadPaused(): boolean { return this.isVadPausedState; }
 
   public async activateIntent(intent: SwarmIntent, onAudioConnect?: () => Promise<void>): Promise<void> {
     if (this.activeIntent === intent) {
@@ -160,6 +159,7 @@ export class SessionIntentManager {
   }
 
   public processIncomingChunk(inputData: Float32Array): void {
+    if (this.isMicMutedState || this.isVadPausedState) return;
     const currentRate = this.audioContext?.sampleRate || 16000;
     let target16k = inputData;
     if (currentRate !== 16000 && currentRate > 0) {

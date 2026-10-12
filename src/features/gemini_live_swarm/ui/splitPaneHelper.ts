@@ -25,6 +25,8 @@ export interface AccumulatedTurn {
   text: string;
   isComplete: boolean;
   timestamp: string;
+  walCheckpointId?: string;
+  actionHistory?: Array<{ id: string; name: string }>;
 }
 
 export const PANEL_TITLES = { LEFT: 'Dialog', RIGHT: 'Verktyg' } as const;

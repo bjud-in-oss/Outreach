@@ -76,17 +76,13 @@ export class GeminiLiveSession {
     this.aiClient = new GoogleGenAI({ apiKey: apiKey.trim(), apiVersion: 'v1alpha' });
     this.liveStatus = 'IDLE'; this.reconnectAttempts = 0;
   }
-  public getApiVersion(): string { return 'v1alpha'; }
-  public setLiveModel(model: string): void { this.liveModelName = model; }
-  public getLiveModel(): string { return this.liveModelName; }
-  public getLiveStatus(): LiveSessionStatus { return this.liveStatus; }
+  public getApiVersion(): string { return 'v1alpha'; } public setLiveModel(model: string): void { this.liveModelName = model; }
+  public getLiveModel(): string { return this.liveModelName; } public getLiveStatus(): LiveSessionStatus { return this.liveStatus; }
   public getReconnectAttempts(): number { return this.reconnectAttempts; }
-  public getAgentSession(ch: SwarmAudioChannel): any { return this.agentSessions.get(ch); }
-  public getAgentSessions(): Map<SwarmAudioChannel, any> { return this.agentSessions; }
+  public getAgentSession(ch: SwarmAudioChannel): any { return this.agentSessions.get(ch); } public getAgentSessions(): Map<SwarmAudioChannel, any> { return this.agentSessions; }
   public isLiveConnected(): boolean { return this.liveStatus === 'STREAMING' || this.liveStatus === 'CONNECTING'; }
   public getActiveIntent(): SwarmIntent | null { return this.intentManager.getActiveIntent(); }
-  public getAudioContext(): AudioContext | null { return this.intentManager.getAudioContext(); }
-  public getMediaStream(): MediaStream | null { return this.intentManager.getMediaStream(); }
+  public getAudioContext(): AudioContext | null { return this.intentManager.getAudioContext(); } public getMediaStream(): MediaStream | null { return this.intentManager.getMediaStream(); }
   public deactivateIntent(): void { this.intentManager.deactivateIntent(); }
   public onStreamChunk(fn: (c: LiveStreamChunk) => void): () => void { this.streamListeners.add(fn); return () => { this.streamListeners.delete(fn); }; }
   public async activateIntent(intent: SwarmIntent): Promise<void> {
@@ -108,6 +104,8 @@ export class GeminiLiveSession {
     const onOpen = () => {
       this.liveStatus = 'STREAMING'; this.reconnectAttempts = 0;
       this.eventBus.publishLiveEvent('swarm.live.session.connected', { streamId, status: 'CONNECTED', model: modelToUse });
+      this.eventBus.emit('WS_CONNECTED', { streamId, status: 'CONNECTED' });
+      this.triggerProactiveGreeting();
     };
     const makeAgentConfig = (channel: SwarmAudioChannel, defaultInstruction: string) => ({
       model: modelToUse,
@@ -188,24 +186,25 @@ export class GeminiLiveSession {
   }
   public async start(): Promise<boolean> { return this.connectLive(); } public async stop(): Promise<void> { return this.disconnectLive(); }
   public isSessionPaused(): boolean { return this.isPaused; } public getAbortController(): AbortController | null { return this.abortController; }
+  public setMicMuted(m: boolean): void { this.intentManager.setMicMuted(m); } public isMicMuted(): boolean { return this.intentManager.isMicMuted(); }
+  public setVadPaused(p: boolean): void { this.intentManager.setVadPaused(p); } public isVadPaused(): boolean { return this.intentManager.isVadPaused(); }
+  public triggerProactiveGreeting(): void {
+    this.eventBus.emit('PROACTIVE_TRIGGER_SENT', { timestamp: new Date().toISOString() });
+    this.eventBus.emit('swarm.session.text_delta', {
+      sourceRole: 'assistant', text: 'Hej! Jag är redo. Vad vill du utforska tillsammans?', isGreeting: true, timestamp: new Date().toISOString(),
+    });
+  }
   public pauseSession(): void {
-    this.isPaused = true;
-    this.abortController?.abort('User paused');
-    this.audioPlayer.clearBuffer();
-    this.releaseFloor();
+    this.isPaused = true; this.abortController?.abort('User paused'); this.audioPlayer.clearBuffer(); this.releaseFloor();
     freezeStateToWal();
     this.eventBus.publishLiveEvent('swarm.session.wal.freeze', { status: 'FROZEN' });
     this.eventBus.publishLiveEvent('swarm.session.paused', { isPaused: true });
   }
   public resumeSession(): void {
-    this.isPaused = false;
-    this.abortController = new AbortController();
+    this.isPaused = false; this.abortController = new AbortController();
     this.eventBus.publishLiveEvent('swarm.session.resumed', { isPaused: false });
   }
-  public togglePause(): boolean {
-    if (this.isPaused) this.resumeSession(); else this.pauseSession();
-    return this.isPaused;
-  }
+  public togglePause(): boolean { if (this.isPaused) this.resumeSession(); else this.pauseSession(); return this.isPaused; }
 
   public async sendRealtimeText(text: string, force?: ReconciliationForce): Promise<LiveStreamChunk> {
     if (this.liveStatus === 'HALTED' || !this.aiClient) throw new Error('Gemini Live session i HALTED-läge.');
