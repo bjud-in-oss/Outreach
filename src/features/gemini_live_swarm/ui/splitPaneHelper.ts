@@ -160,11 +160,11 @@ export function computeSnapTarget(currentRatio: number, toMin: boolean): number 
 }
 
 export function getDividerContainerClass(isPortrait: boolean): string {
-  const base = 'flex-none bg-slate-800 border-slate-700/60 z-20 shadow-lg touch-none select-none';
+  const base = 'flex-none bg-slate-800 hover:bg-sky-500/80 transition-colors z-20 touch-none select-none';
   if (isPortrait) {
-    return `${base} h-11 w-full border-y px-3 flex flex-row items-center justify-between cursor-row-resize`;
+    return `${base} h-[3px] w-full cursor-row-resize`;
   }
-  return `${base} w-14 h-full border-x py-3 flex flex-col items-center justify-between cursor-col-resize`;
+  return `${base} w-[3px] h-full cursor-col-resize`;
 }
 
 export function getPaneSizeStyle(orientation: SplitOrientation, ratio: number, isFirstPane: boolean): Record<string, string> {

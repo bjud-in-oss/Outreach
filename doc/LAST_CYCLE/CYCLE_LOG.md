@@ -1,38 +1,38 @@
-# CYCLE LOG: TCK-025
+# CYCLE LOG: TCK-026
 
 ## Steg 1a
-Intention & Användarnytta: Eliminera rösthackande vid High-Thinking genom trådisolering via Node worker_threads och AudioWorklet i webbläsaren. Skapa deterministisk VAD som garanterar Engine TTFT < 1 200 ms och separerar VAD Detection (~800 ms). Ersätta mittskenans tre knappar med en enda Start/Paus-brytare synkad med SwarmEventBus och VAD Auto-Listen. Vid Paus avbryts pågående thinking via AbortController och fryser tillståndet deterministiskt.
+Intention & UX-Sanering: Åtgärda tystnaden vid sidladdning genom att tillämpa passivt startläge där mikrofonbehörighet och Gemini Live WebSocket-anslutning kräver explicit User Gesture (klick på Live-knappen). Smalna av mittdelaren till en ultra-tunn linje (< 4px, 3px) utan mekaniska pilknappar. Ersätta den 4-knappars reflektionslisten i botten med en kompakt Dropdown ([ Reflektion: Normal ∨ ]) integrerad i en enhetlig prompt-bar. Separera STT-diktering (mikrofon-ikon för textinmatning utan WebSocket) från realtids Live-Agent (Live-knapp).
 
 ## Steg 0a
-Kontraktsaudit: 1. Max 1 FSD-domän: src/features/gemini_live_swarm/ (session/ och ui/). 2. API-skills: @google/genai med Live API och worker_threads/AudioWorklet isolering. 3. Saneringskrav: Destruktiv sanering av de tre gamla mittskeneknapparna i SymbolCrown.tsx och AppShell.tsx, samt eliminering av monolitiskt ljudblock i huvudtråden.
+Kontraktsaudit: 1. Max 1 FSD-domän: src/features/gemini_live_swarm/ (ui/ och session/). 2. API-skills: @google/genai Live API och standard Web Speech / MediaStreams. 3. Saneringskrav: Destruktiv sanering av de mekaniska pilknapparna på SplitPaneCanvas-delaren och borttagning av den horisontella 4-knappars ReflectionModeSelector-listen från footern till förmån för en integrerad dropdown i prompt-baren.
 
 ## Steg 0b
-Vägval & Förlikningsport: Att köra ljudbehandling och High-Thinking i samma JavaScript-huvudtråd leder till event loop-lagg och hackande röst. Trådisolering med Worker Threads/SharedArrayBuffer är den arkitektoniskt överlägsna vägen. Väg 2 (Godkänd för linjärt svep).
+Vägval & Förlikningsport: Att kräva explicit User Gesture förhindrar webbläsarblockering av AudioContext och onödiga WebSocket-anslutningar. Den ultra-tunna delaren (< 4px) renodlar vyerna och den enhetliga prompt-baren maximerar arbetsytan. Kontrakten hålls fullständigt inom 1 FSD-domän. Väg 2 (Godkänd för linjärt svep).
 
 ## Steg 1b
-Kartlägg Domän & Systemgränser: Källkod berör src/features/gemini_live_swarm/session/ (liveAudioPlayback.ts, audioWorker.ts) och ui/ (SymbolCrown.tsx, AppShell.tsx). BDD-låsning sker i doc/features/voice_flow.feature och src/__tests__/bdd/voice_flow.test.ts samt src/__tests__/bdd/helpers/pcmGenerator.ts. Telemetri exporterar vadLatencyMs och engineTtftMs.
+Kartlägg Domän & Systemgränser: Källkodsändringar isolerade till src/features/gemini_live_swarm/ui/ (SplitPaneCanvas.tsx, AppShell.tsx, splitPaneHelper.ts, ReflectionModeSelector.tsx) och session/ (geminiLiveSession.ts). BDD-låsning i doc/features/unified_chat_input.feature och src/__tests__/bdd/unified_chat_input.test.ts. Telemetri och SwarmContext synkroniseras via SwarmEventBus.
 
 ## Steg 2a
-Avgränsa Tillstånd & Biverkningar: Ljudmixning sker i isolerad tråd via SharedArrayBuffer. Start/Paus-knapp styr sessionens livscykel: start sätter session i Auto-Listen och öppnar VAD; paus sänder AbortController.abort() till bakgrundsagenter, tystar ljudbuffert och fryser tillstånd i WAL/STATE.json.
+Avgränsa Tillstånd & Biverkningar: Starttillstånd är strikt PASSIVT (isLiveConnected=false, AudioContext suspended/stängd, ingen mikrofonaktivitet). Klick på Live-knapp triggar User Gesture som anropar getUserMedia, resume AudioContext och initierar WebSocket. Dropdown styr ReflectionMode (normal, mikro, makro, meta) via SwarmContext utan att koppla från. STT-knapp dikterar text till meddelandefältet utan att öppna Live WebSocket.
 
 ## Steg 2b
-Modellera Zod-kontrakt: VoiceFlowMetricsSchema
+Modellera Zod-kontrakt: UnifiedChatInputStateSchema definierar lägen (isLiveActive: boolean, isListeningSTT: boolean, reflectionMode: ReflectionModeSchema, inputText: string). Verifierar typ- och tillståndskontrakt.
 
 ## Steg 2c
-Utvärdera Resiliens & Felhantering: Fail-Fast om worker_threads inte kan startas eller om Engine TTFT överstiger 1 200 ms. Ren abort-signal hanteras kraschfritt av GeminiLiveSession och SwarmOrchestrator. Strikt efterlevnad av AST-mått (< 250 rader per .ts, < 125 rader per .tsx, noll produktionsmockar).
+Utvärdera Resiliens & Felhantering: Fail-Fast vid avvisad mikrofonbehörighet med mjuk felindikering i SymbolCrown. Ren hantering av klick under pågående session (Start/Paus växlar läge deterministiskt utan att krascha). Strikt efterlevnad av AST-mått (< 250 rader per .ts, < 125 rader per .tsx, indenteringsdjup <= 4, förgreningar <= 5 i .tsx, noll produktionsmockar).
 
 ## Steg 2d
-Syntetisk Vägvägning & Mognadskontroll: Vägning mot kraven i TCK-025 och SI v10.2. BDD-låsning och trådisolering skapar förutsägbarhet och hög användarnyttig responsivitet. human_decision_required: false.
+Syntetisk Vägvägning & Mognadskontroll: Kraven i TCK-026 är fullt harmoniserade med SI v10.2 och BDD-specifikationen i unified_chat_input.feature. Ingen mänsklig fråga krävs för vägvalet. human_decision_required: false.
 
 ## Steg 3a
-Transient & BDD Testspecifikation: 1. doc/features/voice_flow.feature definierar BDD-scenarier för VAD (< 800 ms), Engine TTFT (< 1 200 ms) och Start/Paus-knappen. 2. src/__tests__/bdd/voice_flow.test.ts kör BDD-krav via pcmGenerator.ts (16kHz PCM-sinusvåg i minnet). 3. src/__tests__/transient_TCK-025.test.ts verifierar trådisolering, VAD/TTFT-mått, Start/Paus-knapp och AbortController.
+Transient & BDD Testspecifikation: 1. doc/features/unified_chat_input.feature definierar 5 BDD-scenarier: Passiv laddning, Live-knapp User Gesture, Reflektionsdropdown, STT-diktering och Tunn mittdelare (< 4px). 2. src/__tests__/bdd/unified_chat_input.test.ts exekverar scenarierna programmatiskt. 3. src/__tests__/transient_TCK-026.test.ts verifierar delarens dimensioner (< 4px, noll pilar), prompt-bar integration och passiv sessionsstart.
 
 ## Steg 3b
-Exakt Källkodsspecifikation under src/features/gemini_live_swarm/: 1. session/liveAudioPlayback.ts: Refaktorisera till trådisolerad DSP-ringbuffert med Worker/AudioWorklet stöd. 2. session/audioWorker.ts: Dedikerad trådkod för PCM-buffring och mixning. 3. ui/SymbolCrown.tsx & AppShell.tsx: Ersätt gamla mittknappar med 1 Start/Paus-knapp synkad via SwarmEventBus (swarm.session.toggle). 4. session/geminiLiveSession.ts: Integrera AbortController vid paus.
+Exakt Källkodsspecifikation under src/features/gemini_live_swarm/: 1. ui/SplitPaneCanvas.tsx: Minska delarens bredd till 3px (w-[3px] i landscape, h-[3px] i portrait), radera alla pilknappar och behåll endast drag-avgränsaren. 2. ui/AppShell.tsx: Bygg en enhetlig prompt-bar med reflektionsdropdown, STT-knapp, Live-knapp och textinmatning. 3. ui/splitPaneHelper.ts: Uppdatera getDividerContainerClass till ultratunn styling utan knappar. 4. session/geminiLiveSession.ts: Tillhandahåll explicit start()/stop() och säkerställ passiv standardstatus vid konstruktion.
 
 ## Steg 2e
-Operativt Delta (Destruktiv Sanering): 1. Radera mittskenans 3 gamla knappar i SymbolCrown.tsx och AppShell.tsx. 2. Radera synkron blockering i liveAudioPlayback.ts och ersätt med trådavlastning.
+Operativt Delta (Destruktiv Sanering): 1. Radera mekaniska pil-knappar på delaren i SplitPaneCanvas.tsx (snap-toggle-button och relaterad pil-rendering). 2. Radera fristående 4-knappars reflektionslist från footern i AppShell.tsx och ersätt med dropdown. 3. Radera automatisk start/mikrofonöppning vid sidladdning.
 
 ## Steg 3c
-Slutgiltigt Byggkontrakt: Samtliga steg i Fas 1 är fullbordade och HMAC-kedjan är intakt. human_decision_required: false. Token genereras i doc/LAST_CYCLE/REQUIRED_TOKEN.txt.
+Slutgiltigt Byggkontrakt: Samtliga steg i Fas 1 är fullbordade och HMAC-kedjan är intakt. human_decision_required: false. Byggtoken genereras i doc/LAST_CYCLE/REQUIRED_TOKEN.txt.
 

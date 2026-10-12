@@ -6,6 +6,7 @@
 ---
 
 ## SLUTFÖRDA TICKETS
+- [VERIFIERAD] TCK-026 | Domän: src/features/gemini_live_swarm/ | Mål: Passive Start BDD, Clean Splitter & Unified Input Bar | Token: TCK-026-VERIFIED-74c95d237f5e8f0b
 - [VERIFIERAD] TCK-025 | Domän: src/features/gemini_live_swarm/ | Mål: BDD-First Voice Flow, Worker Threads & UI Start/Pause | Token: TCK-025-VERIFIED-ec5f6e6f29ceb27e
 - [VERIFIERAD] TCK-023b | Domän: src/features/gemini_live_swarm/coordinator/ | Mål: Single Live Agent & VAD Turn-Completion Fix (Orchestration) | Token: TCK-023b-VERIFIED-37c8be788f5d710b
 - [VERIFIERAD] TCK-023a | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI & Reflektions-Reglage (Harmonization) | Token: TCK-023a-VERIFIED-42fce33ce54d1da1
