@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-(Inga aktiva tickets för tillfället)
+- [IN PROGRESS] TCK-026: Passive Start BDD, Clean Splitter & Unified Input Bar
 
 ---
 
