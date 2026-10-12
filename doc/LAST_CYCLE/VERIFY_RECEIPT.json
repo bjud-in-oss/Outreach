@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "095d66ba",
+  "receipt_hash": "bc6acb6e",
   "status": "PASSED",
-  "verified_at": "2026-10-12T07:04:17.548Z",
+  "verified_at": "2026-10-12T19:12:44.175Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -49,6 +49,7 @@
     "src/__tests__/transient_TCK-023b.test.ts",
     "src/__tests__/transient_TCK-025.test.ts",
     "src/__tests__/transient_TCK-026.test.ts",
+    "src/__tests__/transient_TCK-027.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -69,6 +70,7 @@
     "src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx",
     "src/features/gemini_live_swarm/ui/SymbolCrown.tsx",
     "src/features/gemini_live_swarm/ui/TouchOverlayMenu.tsx",
+    "src/features/gemini_live_swarm/ui/TurnContainer.tsx",
     "src/features/gemini_live_swarm/ui/UnifiedPromptBar.tsx",
     "src/features/gemini_live_swarm/ui/crownStateHelper.ts",
     "src/features/gemini_live_swarm/ui/promptBarHelper.ts",

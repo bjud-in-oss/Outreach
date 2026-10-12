@@ -32,6 +32,7 @@ export class AudioWorkerManager {
         : null;
       if (wt?.Worker) {
         this.worker = new wt.Worker(WORKER_INLINE_SCRIPT, { eval: true });
+        try { this.worker.unref?.(); } catch {}
         this.isSupported = true;
       }
     } catch {
@@ -41,6 +42,12 @@ export class AudioWorkerManager {
 
   public isWorkerActive(): boolean {
     return this.isSupported && this.worker !== null;
+  }
+
+  public flush(): void {
+    if (this.worker) {
+      try { this.worker.postMessage({ type: 'CLEAR' }); } catch {}
+    }
   }
 
   public postMessage(msg: AudioWorkerMessage): void {
@@ -54,3 +61,5 @@ export class AudioWorkerManager {
     }
   }
 }
+
+export const audioWorker = new AudioWorkerManager();

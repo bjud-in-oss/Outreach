@@ -11,15 +11,9 @@ import {
   handlePointerMoveOnDivider,
 } from './splitPaneHelper.ts';
 import { ExecutionCard } from './ExecutionCard.tsx';
+import { TurnContainer } from './TurnContainer.tsx';
 
-const renderTurn = (t: AccumulatedTurn) => (
-  <div key={t.id} className="p-2 rounded bg-slate-900/80 text-slate-200 border border-slate-800">
-    <div className="font-semibold text-slate-400 text-xs mb-1 flex justify-between">
-      <span>{t.agentRole}</span><span className="text-[10px] text-slate-500">{t.forceTitle}</span>
-    </div>
-    <p className="leading-relaxed text-xs">{t.text}</p>
-  </div>
-);
+const renderTurn = (t: AccumulatedTurn) => <TurnContainer key={t.id} turn={t} />;
 
 export interface SplitPaneCanvasProps {
   upperContent?: React.ReactNode; lowerContent?: React.ReactNode; initialSplitRatio?: number; isImmersive?: boolean; className?: string;

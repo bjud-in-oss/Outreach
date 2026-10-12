@@ -5,13 +5,17 @@ import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 export { REFLECTION_MODES };
 export type { ReflectionMode };
 
-export function getLiveButtonProps(isConnected: boolean, isPaused: boolean): { label: string; icon: string; bgClass: string } {
-  if (!isConnected) {
-    return { label: 'Starta Live', icon: '🎙️', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
-  }
-  if (isPaused) {
-    return { label: 'Start', icon: '▶️', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
-  }
+export function getMicButtonProps(isLiveActive: boolean, isMuted: boolean, isSTTActive: boolean, isDebounced: boolean) {
+  if (isDebounced) return { title: 'Låst (debounce)', bgClass: 'bg-slate-700 text-slate-400 opacity-60 cursor-not-allowed' };
+  if (isSTTActive) return { title: 'STT Aktiv', bgClass: 'bg-red-600 text-white animate-pulse' };
+  if (isLiveActive && !isMuted) return { title: 'Mikrofon Aktiv', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
+  if (isLiveActive && isMuted) return { title: 'Muted (Zoom-läge)', bgClass: 'bg-amber-600 hover:bg-amber-500 text-white' };
+  return { title: 'Starta Mikrofon', bgClass: 'bg-slate-800 hover:bg-slate-700 text-slate-300' };
+}
+
+export function getLiveButtonProps(isConnected: boolean, isPaused: boolean) {
+  if (!isConnected) return { label: 'Starta Live', icon: '🎙️', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
+  if (isPaused) return { label: 'Start', icon: '▶️', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
   return { label: 'Aktiv/Paus', icon: '⏸️', bgClass: 'bg-amber-600 hover:bg-amber-500 text-white' };
 }
 
@@ -52,72 +56,173 @@ export function createSTTRecognizer(
   }
 }
 
+export function initDictationRecognizer(
+  setInputText: (fn: (prev: string) => string) => void,
+  bus?: SwarmEventBus | null,
+  onEnd?: () => void
+) {
+  return createSTTRecognizer((w) => {
+    setInputText((prev) => (prev ? `${prev} ${w}` : w));
+    bus?.emit('swarm.session.text_delta', {
+      sourceRole: 'user', text: w, isLocalSTT: true, timestamp: new Date().toISOString(),
+    });
+  }, onEnd || (() => {}));
+}
+
 export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) => void) {
   const [inputText, setInputText] = useState('');
   const [reflectionMode, setReflectionMode] = useState<ReflectionMode>('normal');
   const [isLiveActive, setIsLiveActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [isSTTActive, setIsSTTActive] = useState(false);
+  const [isTextareaFocused, setIsTextareaFocused] = useState(false);
+  const [wasLiveUnmutedBeforeFocus, setWasLiveUnmutedBeforeFocus] = useState(false);
+  const [isTogglingMutex, setIsTogglingMutex] = useState(false);
+  const [isToolsExpanded, setIsToolsExpanded] = useState(false);
+
   const sttRef = useRef<{ start: () => void; stop: () => void } | null>(null);
+  const wasUnmutedRef = useRef(false);
+  const isTogglingRef = useRef(false);
 
   useEffect(() => {
     return swarmCtx?.eventBus.subscribe('*', (env: any) => {
-      if (env.type === 'swarm.live.session.connected') setIsLiveActive(true);
-      if (env.type === 'swarm.live.session.disconnected') setIsLiveActive(false);
-      if (env.type === 'swarm.session.paused') setIsPaused(true);
-      if (env.type === 'swarm.session.resumed') setIsPaused(false);
+      if (env.type === 'swarm.live.session.connected') {
+        setIsLiveActive(true);
+        setIsMuted(false);
+      }
+      if (env.type === 'swarm.live.session.disconnected') {
+        setIsLiveActive(false);
+        setIsMuted(false);
+      }
+      if (env.type === 'MUTEX_TOGGLED') {
+        if (env.data?.mode === 'MUTED') setIsMuted(true);
+        if (env.data?.mode === 'LIVE_ACTIVE') setIsMuted(false);
+      }
     });
   }, [swarmCtx]);
 
-  const handleLiveToggle = async () => {
-    if (!swarmCtx?.liveSession) return;
-    if (!isLiveActive) {
-      await swarmCtx.liveSession.activateIntent('forlikas');
-      setIsLiveActive(true);
-    } else {
-      const next = swarmCtx.liveSession.togglePause();
-      setIsPaused(next);
+  const handleFocus = () => {
+    setIsTextareaFocused(true);
+    const wasUnmuted = isLiveActive && !isMuted;
+    wasUnmutedRef.current = wasUnmuted;
+    setWasLiveUnmutedBeforeFocus(wasUnmuted);
+    if (swarmCtx?.liveSession?.setVadPaused) {
+      swarmCtx.liveSession.setVadPaused(true);
     }
+    swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { focus: 'textarea', vad_paused: true });
   };
 
-  const handleSTTToggle = () => {
-    if (!sttRef.current) {
-      sttRef.current = createSTTRecognizer(
-        (word) => setInputText((prev) => (prev ? `${prev} ${word}` : word)),
-        () => setIsSTTActive(false)
-      );
+  const handleBlur = () => {
+    setIsTextareaFocused(false);
+    const shouldResume = wasUnmutedRef.current;
+    if (swarmCtx?.liveSession?.setVadPaused && shouldResume) {
+      swarmCtx.liveSession.setVadPaused(false);
     }
-    const next = !isSTTActive;
-    setIsSTTActive(next);
-    if (next) sttRef.current?.start();
-    else sttRef.current?.stop();
+    swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', {
+      focus: 'blurred',
+      vad_paused: !shouldResume,
+      resumed_vad: shouldResume,
+    });
+  };
+
+  const handleMicToggle = async () => {
+    if (isTogglingRef.current) return;
+    isTogglingRef.current = true;
+    setIsTogglingMutex(true);
+    setTimeout(() => {
+      isTogglingRef.current = false;
+      setIsTogglingMutex(false);
+    }, 150);
+
+    if (isTextareaFocused) {
+      const nextStt = !isSTTActive;
+      setIsSTTActive(nextStt);
+      if (!sttRef.current) {
+        sttRef.current = initDictationRecognizer(setInputText, swarmCtx?.eventBus, () => setIsSTTActive(false));
+      }
+      if (nextStt) sttRef.current?.start();
+      else sttRef.current?.stop();
+      swarmCtx?.eventBus?.emit('MUTEX_TOGGLED', { mode: 'STT_DICTATION' });
+      swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { mode: 'STT_DICTATION', isSTTActive: nextStt });
+      return;
+    }
+
+    if (!isLiveActive) {
+      if (swarmCtx?.liveSession) {
+        await swarmCtx.liveSession.activateIntent('forlikas');
+        swarmCtx.liveSession.setMicMuted?.(false);
+      }
+      setIsLiveActive(true);
+      setIsMuted(false);
+      swarmCtx?.eventBus?.emit('MUTEX_TOGGLED', { mode: 'LIVE_ACTIVE' });
+      swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { mic: 'UNMUTED' });
+      return;
+    }
+
+    if (!isMuted) {
+      swarmCtx?.liveSession?.setMicMuted?.(true);
+      setIsMuted(true);
+      swarmCtx?.eventBus?.emit('MUTEX_TOGGLED', { mode: 'MUTED' });
+      swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { mic: 'MUTED' });
+    } else {
+      swarmCtx?.liveSession?.setMicMuted?.(false);
+      setIsMuted(false);
+      swarmCtx?.eventBus?.emit('MUTEX_TOGGLED', { mode: 'LIVE_ACTIVE' });
+      swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { mic: 'UNMUTED' });
+    }
   };
 
   const handleSend = () => {
     const text = inputText.trim();
     if (!text) return;
-    swarmCtx?.liveSession?.sendRealtimeText(text);
+    const clientMessageId = `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    swarmCtx?.eventBus?.emit('USER_COMMIT', { clientMessageId, text, timestamp: new Date().toISOString() });
+    swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { textarea: 'cleared', clientMessageId });
+    swarmCtx?.eventBus?.emit('swarm.session.text_delta', {
+      clientMessageId, text, sourceRole: 'user', timestamp: new Date().toISOString(),
+    });
+    if (swarmCtx?.liveSession?.isLiveConnected?.()) {
+      swarmCtx.liveSession.sendRealtimeText(text);
+    }
     if (onSendMessage) onSendMessage(text);
     setInputText('');
+    swarmCtx?.eventBus?.emit('SWARM_TRANSCRIPT_MATCH', { clientMessageId, timestamp: new Date().toISOString() });
   };
 
   const handleModeChange = (modeVal: string) => {
     const mode = handleModeSelect(modeVal, swarmCtx?.eventBus);
     setReflectionMode(mode);
+    swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { element: 'reflection_dropdown', mode: mode.toUpperCase() });
+    swarmCtx?.eventBus?.emit('SESSION_CONFIG_UPDATED', {
+      mode, thinkingConfig: { thinkingLevel: mode === 'mikro' ? 'low' : 'high' },
+    });
   };
 
-  const liveProps = getLiveButtonProps(isLiveActive, isPaused);
-  const sttClass = isSTTActive ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-800 hover:bg-slate-700 text-slate-300';
+  const handleToolsToggle = () => {
+    const next = !isToolsExpanded;
+    setIsToolsExpanded(next);
+    swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { element: 'action_history', expanded: next });
+  };
+
+  const micProps = getMicButtonProps(isLiveActive, isMuted, isSTTActive, isTogglingMutex);
 
   return {
     inputText,
     setInputText,
     reflectionMode,
-    handleModeChange,
-    handleLiveToggle,
-    handleSTTToggle,
+    isLiveActive,
+    isMuted,
+    isSTTActive,
+    isTextareaFocused,
+    wasLiveUnmutedBeforeFocus,
+    isTogglingMutex,
+    isToolsExpanded,
+    micProps,
+    handleFocus,
+    handleBlur,
+    handleMicToggle,
     handleSend,
-    liveProps,
-    sttClass,
+    handleModeChange,
+    handleToolsToggle,
   };
 }

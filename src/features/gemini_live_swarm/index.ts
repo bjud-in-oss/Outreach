@@ -55,7 +55,7 @@ export { useSwarmTelemetry } from './telemetry/useSwarmTelemetry.ts';
 // Audio Setup, DSP Mixer, VAD & Floor Control (TCK-020b & TCK-022a & TCK-025)
 export { createBidiSetupPayload, floatTo16BitPCM, detectSpeechPCM, AudioPreRollBuffer, SessionIntentManager } from './session/sessionIntentAudio.ts';
 export { DSPRingBufferMixer, LiveAudioPlayer, CHANNEL_PAN_CONFIG } from './session/liveAudioPlayback.ts';
-export { AudioWorkerManager } from './session/audioWorker.ts';
+export { AudioWorkerManager, audioWorker } from './session/audioWorker.ts';
 export { VoiceFlowMetricsSchema, measureVoiceFlow } from './telemetry/voiceFlowSchema.ts';
 export type { VoiceFlowMetrics } from './telemetry/voiceFlowSchema.ts';
 export type { SwarmAudioChannel } from './session/liveAudioPlayback.ts';
@@ -110,6 +110,8 @@ export type { ReflectionMode, ReflectionModeEventPayload } from './ui/reflection
 // Enhetlig Prompt-Bar & STT/Live-Styrning (TCK-026)
 export { UnifiedPromptBar } from './ui/UnifiedPromptBar.tsx';
 export type { UnifiedPromptBarProps } from './ui/UnifiedPromptBar.tsx';
+export { TurnContainer } from './ui/TurnContainer.tsx';
+export type { TurnContainerProps } from './ui/TurnContainer.tsx';
 export { usePromptBarState, getLiveButtonProps } from './ui/promptBarHelper.ts';
 
 
