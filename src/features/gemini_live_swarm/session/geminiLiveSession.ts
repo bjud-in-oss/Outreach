@@ -186,7 +186,7 @@ export class GeminiLiveSession {
     this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', reason });
     this.currentStreamId = null;
   }
-
+  public async start(): Promise<boolean> { return this.connectLive(); } public async stop(): Promise<void> { return this.disconnectLive(); }
   public isSessionPaused(): boolean { return this.isPaused; } public getAbortController(): AbortController | null { return this.abortController; }
   public pauseSession(): void {
     this.isPaused = true;
