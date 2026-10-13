@@ -1,5 +1,5 @@
 {
-  "ticket": "TCK-027",
+  "ticket": "TCK-028",
   "completed_steps": [
     "1a",
     "0a",
@@ -14,69 +14,67 @@
     "2e",
     "3c"
   ],
-  "current_hash": "d15f291e7314867b",
+  "current_hash": "0c4d1087da8a36ea",
   "history": [
     {
       "step": "1a",
-      "hash": "cf97bcea8e805105",
-      "timestamp": "2026-10-12T18:38:27.987Z"
+      "hash": "e9943eb891545052",
+      "timestamp": "2026-10-12T19:45:35.121Z"
     },
     {
       "step": "0a",
-      "hash": "a996412838404c57",
-      "timestamp": "2026-10-12T18:38:52.027Z"
+      "hash": "2bc41771ac1ad8cd",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "0b",
-      "hash": "37209885f306aae9",
-      "timestamp": "2026-10-12T18:38:57.088Z"
+      "hash": "f5f72dadbbb921eb",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "1b",
-      "hash": "7261e6eb39aac204",
-      "timestamp": "2026-10-12T18:39:02.290Z"
+      "hash": "755837a0dc1112ee",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "2a",
-      "hash": "3ae7697fae18d360",
-      "timestamp": "2026-10-12T18:39:09.773Z"
+      "hash": "428e16e35a376324",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "2b",
-      "hash": "2f64b1d27b5e62db",
-      "timestamp": "2026-10-12T18:39:14.688Z"
+      "hash": "f547d8c97ec1fee8",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "2c",
-      "hash": "e130e76a043422b2",
-      "timestamp": "2026-10-12T18:39:20.919Z"
+      "hash": "630198b51c6b06c5",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "2d",
-      "hash": "3b7f5ed6a387fb64",
-      "timestamp": "2026-10-12T18:39:26.176Z"
+      "hash": "ed7a4ae67d489a8e",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "3a",
-      "hash": "2fe5ab108e67994e",
-      "timestamp": "2026-10-12T18:39:33.967Z"
+      "hash": "f4fbb28f6484e1b9",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "3b",
-      "hash": "381e40ede7c938e2",
-      "timestamp": "2026-10-12T18:39:40.240Z"
+      "hash": "823722acdf1a803b",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "2e",
-      "hash": "ec17b13dcab7cd38",
-      "timestamp": "2026-10-12T18:39:46.146Z"
+      "hash": "75114cc03b41d76d",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     },
     {
       "step": "3c",
-      "hash": "d15f291e7314867b",
-      "timestamp": "2026-10-12T18:39:51.458Z"
+      "hash": "0c4d1087da8a36ea",
+      "timestamp": "2026-10-12T19:45:35.122Z"
     }
-  ],
-  "is_paused": true,
-  "paused_at": "2026-10-12T19:00:19.830Z"
+  ]
 }
