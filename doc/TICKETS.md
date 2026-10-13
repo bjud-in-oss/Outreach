@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-(Inga aktiva tickets för tillfället)
+- [IN PROGRESS] TCK-029: Empati-driven WAL-Diagnostik & Cirkulär Mätbuffert
 
 ---
 
