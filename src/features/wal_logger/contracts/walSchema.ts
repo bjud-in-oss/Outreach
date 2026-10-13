@@ -15,3 +15,18 @@ export const WalEntrySchema = z.object({
 });
 
 export type WalEntry = z.infer<typeof WalEntrySchema>;
+
+export const TransientDiagnosticEntrySchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  timestamp: z.string(),
+  data: z.record(z.string(), z.any()),
+  pcmAudioRef: z.object({
+    durationMs: z.number().default(3000),
+    sampleRate: z.number().default(16000),
+    hasAudio: z.boolean(),
+    byteLength: z.number().optional(),
+  }).optional(),
+});
+
+export type TransientDiagnosticEntryType = z.infer<typeof TransientDiagnosticEntrySchema>;
