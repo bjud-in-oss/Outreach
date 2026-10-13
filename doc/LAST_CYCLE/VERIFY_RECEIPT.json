@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "4c5faee1",
+  "receipt_hash": "962469a7",
   "status": "PASSED",
-  "verified_at": "2026-10-13T07:16:00.822Z",
+  "verified_at": "2026-10-13T20:11:53.671Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -51,6 +51,7 @@
     "src/__tests__/transient_TCK-026.test.ts",
     "src/__tests__/transient_TCK-027.test.ts",
     "src/__tests__/transient_TCK-028.test.ts",
+    "src/__tests__/transient_TCK-029.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -93,9 +94,11 @@
     "src/features/mcp_bridge/tools/driveTools.ts",
     "src/features/mcp_bridge/tools/walTools.ts",
     "src/features/wal_logger/contracts/walSchema.ts",
+    "src/features/wal_logger/engine/transientRingBuffer.ts",
     "src/features/wal_logger/engine/walEngine.ts",
     "src/features/wal_logger/index.ts",
     "src/features/wal_logger/replay/walReplay.ts",
+    "src/features/wal_logger/walUiTelemetry.ts",
     "src/main.tsx"
   ],
   "active_ticket": "TCK-001",

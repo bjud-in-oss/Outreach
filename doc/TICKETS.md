@@ -5,6 +5,7 @@
 
 ---
 
+- [VERIFIERAD] TCK-029 | Domän: src/features/wal_logger/ | Mål: Empati-driven WAL-Diagnostik & Cirkulär Mätbuffert | Token: TCK-029-VERIFIED-1ee77ec1ab90f423
 - [VERIFIERAD] TCK-028 | Domän: src/features/gemini_live_swarm/ | Mål: Lyssna/Prata-pendeln & Semantisk Överlämning | Token: TCK-028-VERIFIED-0c4d1087da8a36ea
 - [VERIFIERAD] TCK-027 | Domän: src/features/gemini_live_swarm/ | Mål: Clean PromptBar, Audio Mutex & Sticky TurnContainer | Token: TCK-027-VERIFIED-d15f291e7314867b
 - [VERIFIERAD] TCK-026 | Domän: src/features/gemini_live_swarm/ | Mål: Passive Start BDD, Clean Splitter & Unified Input Bar | Token: TCK-026-VERIFIED-74c95d237f5e8f0b

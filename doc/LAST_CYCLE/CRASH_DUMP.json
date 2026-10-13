@@ -1,0 +1,25 @@
+{
+  "capacity": 5,
+  "count": 1,
+  "timestamp": "2026-10-13T20:10:30.381Z",
+  "entries": [
+    {
+      "id": "evt-live-1791922230381-t4kjxo",
+      "type": "SESSION_CONFIG_UPDATED",
+      "timestamp": "2026-10-13T20:10:30.381Z",
+      "data": {
+        "mode": "makro",
+        "thinkingConfig": {
+          "thinkingLevel": "high",
+          "depth": "deep"
+        }
+      },
+      "pcmAudioRef": {
+        "durationMs": 3000,
+        "sampleRate": 16000,
+        "hasAudio": true,
+        "byteLength": 96000
+      }
+    }
+  ]
+}
