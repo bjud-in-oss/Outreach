@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "bc6acb6e",
+  "receipt_hash": "4c5faee1",
   "status": "PASSED",
-  "verified_at": "2026-10-12T19:12:44.175Z",
+  "verified_at": "2026-10-13T07:16:00.822Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -50,6 +50,7 @@
     "src/__tests__/transient_TCK-025.test.ts",
     "src/__tests__/transient_TCK-026.test.ts",
     "src/__tests__/transient_TCK-027.test.ts",
+    "src/__tests__/transient_TCK-028.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -60,7 +61,9 @@
     "src/features/gemini_live_swarm/session/floorController.ts",
     "src/features/gemini_live_swarm/session/geminiLiveSession.ts",
     "src/features/gemini_live_swarm/session/liveAudioPlayback.ts",
+    "src/features/gemini_live_swarm/session/pendulumStore.ts",
     "src/features/gemini_live_swarm/session/sessionIntentAudio.ts",
+    "src/features/gemini_live_swarm/session/turnBoundaryDetector.ts",
     "src/features/gemini_live_swarm/telemetry/telemetrySchema.ts",
     "src/features/gemini_live_swarm/telemetry/useSwarmTelemetry.ts",
     "src/features/gemini_live_swarm/telemetry/voiceFlowSchema.ts",

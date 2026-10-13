@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus.ts';
 import { GeminiLiveSession } from '../features/gemini_live_swarm/session/geminiLiveSession.ts';
 import { audioWorker } from '../features/gemini_live_swarm/session/audioWorker.ts';
@@ -191,10 +193,8 @@ export async function runTransientTCK027Tests(): Promise<{ name: string; passed:
     bus.emit('UI_STATE_CHANGED', { element: 'action_history', expanded: true });
 
     // Verifiera att TurnContainer källkod använder CSS position: sticky
-    const fsMod = (globalThis as any).process?.versions?.node ? eval('require')('node:fs') : null;
-    const pathMod = (globalThis as any).process?.versions?.node ? eval('require')('node:path') : null;
-    const turnContainerPath = pathMod ? pathMod.join(process.cwd(), 'src', 'features', 'gemini_live_swarm', 'ui', 'TurnContainer.tsx') : '';
-    const turnContainerContent = fsMod && fsMod.existsSync(turnContainerPath) ? fsMod.readFileSync(turnContainerPath, 'utf8') : '';
+    const turnContainerPath = path.join(process.cwd(), 'src', 'features', 'gemini_live_swarm', 'ui', 'TurnContainer.tsx');
+    const turnContainerContent = fs.existsSync(turnContainerPath) ? fs.readFileSync(turnContainerPath, 'utf8') : '';
     const hasCssSticky = turnContainerContent.includes('position: sticky') || turnContainerContent.includes('sticky top-0');
 
     results.push({
