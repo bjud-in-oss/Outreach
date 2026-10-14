@@ -32,6 +32,7 @@ export class GeminiLiveSession {
     this.eventBus = eventBus || getGlobalSwarmEventBus();
     this.intentManager = new SessionIntentManager(this.eventBus);
     this.floor = new FloorController(this.eventBus);
+    this.subscribeToPendulumState();
     const envKey = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_GEMINI_API_KEY) || (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : '');
     const key = (apiKey !== undefined ? (apiKey === 'MY_GEMINI_API_KEY' ? '' : apiKey) : envKey || '').trim();
     if (!key) {
@@ -47,6 +48,16 @@ export class GeminiLiveSession {
       this.eventBus.publishLiveEvent('swarm.live.session.halted', { reason: `Init-fel: ${e?.message || String(e)}`, status: 'HALTED' });
     }
   }
+
+  private subscribeToPendulumState(): void {
+    this.eventBus.subscribe('PENDULUM_STATE_CHANGED', (env) => {
+      const data = env.data as any;
+      if (data?.mode === 'TALK' && (data?.reason === 'USER_COMMIT' || data?.reason === 'SEMANTIC_QUESTION')) {
+        this.sendTurnComplete();
+      }
+    });
+  }
+
   public packRealtimeAudioChunk(data: string, mimeType = 'audio/pcm;rate=16000'): BidiRealtimeInputPayload {
     return { audio: { data, mimeType }, realtimeInput: { mediaChunks: [{ mimeType, data }] } };
   }
@@ -175,12 +186,8 @@ export class GeminiLiveSession {
   public async disconnectLive(reason = 'Klientsession avslutad normalt'): Promise<void> {
     const streamId = this.currentStreamId || `stream-${Date.now()}`;
     if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch {} }
-    this.agentSessions.clear();
-    this.activeSdkSession = null;
-    this.liveStatus = 'DISCONNECTED';
-    this.audioPlayer.dispose();
-    this.floor.reset();
-    this.deactivateIntent();
+    this.agentSessions.clear(); this.activeSdkSession = null; this.liveStatus = 'DISCONNECTED';
+    this.audioPlayer.dispose(); this.floor.reset(); this.deactivateIntent();
     this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', reason });
     this.currentStreamId = null;
   }
@@ -190,9 +197,7 @@ export class GeminiLiveSession {
   public setVadPaused(p: boolean): void { this.intentManager.setVadPaused(p); } public isVadPaused(): boolean { return this.intentManager.isVadPaused(); }
   public triggerProactiveGreeting(): void {
     this.eventBus.emit('PROACTIVE_TRIGGER_SENT', { timestamp: new Date().toISOString() });
-    this.eventBus.emit('swarm.session.text_delta', {
-      sourceRole: 'assistant', text: 'Hej! Jag är redo. Vad vill du utforska tillsammans?', isGreeting: true, timestamp: new Date().toISOString(),
-    });
+    this.eventBus.emit('swarm.session.text_delta', { sourceRole: 'assistant', text: 'Hej! Jag är redo. Vad vill du utforska tillsammans?', isGreeting: true, timestamp: new Date().toISOString() });
   }
   public pauseSession(): void {
     this.isPaused = true; this.abortController?.abort('User paused'); this.audioPlayer.clearBuffer(); this.releaseFloor();
@@ -200,10 +205,7 @@ export class GeminiLiveSession {
     this.eventBus.publishLiveEvent('swarm.session.wal.freeze', { status: 'FROZEN' });
     this.eventBus.publishLiveEvent('swarm.session.paused', { isPaused: true });
   }
-  public resumeSession(): void {
-    this.isPaused = false; this.abortController = new AbortController();
-    this.eventBus.publishLiveEvent('swarm.session.resumed', { isPaused: false });
-  }
+  public resumeSession(): void { this.isPaused = false; this.abortController = new AbortController(); this.eventBus.publishLiveEvent('swarm.session.resumed', { isPaused: false }); }
   public togglePause(): boolean { if (this.isPaused) this.resumeSession(); else this.pauseSession(); return this.isPaused; }
 
   public async sendRealtimeText(text: string, force?: ReconciliationForce): Promise<LiveStreamChunk> {
@@ -233,9 +235,7 @@ export class GeminiLiveSession {
     return audioChunk;
   }
 
-  private notifyListeners(chunk: LiveStreamChunk): void {
-    for (const listener of this.streamListeners) { try { listener(chunk); } catch {} }
-  }
+  private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch {} } }
 
   public async generateAgentTurn(params: { role: string; systemInstruction: string; prompt: string; context?: string; model?: string; }): Promise<AgentThoughtResponse> {
     if (!this.aiClient || this.liveStatus === 'HALTED') throw new Error(`API-nyckel saknas för ${params.role}.`);

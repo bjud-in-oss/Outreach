@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "962469a7",
+  "receipt_hash": "5a0f535c",
   "status": "PASSED",
-  "verified_at": "2026-10-13T20:11:53.671Z",
+  "verified_at": "2026-10-14T07:59:33.400Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -52,10 +52,12 @@
     "src/__tests__/transient_TCK-027.test.ts",
     "src/__tests__/transient_TCK-028.test.ts",
     "src/__tests__/transient_TCK-029.test.ts",
+    "src/__tests__/transient_TCK-030a.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
     "src/features/gemini_live_swarm/context/SwarmContext.tsx",
+    "src/features/gemini_live_swarm/context/swarmContextHelper.ts",
     "src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts",
     "src/features/gemini_live_swarm/index.ts",
     "src/features/gemini_live_swarm/session/audioWorker.ts",
