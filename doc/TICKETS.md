@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-(Inga aktiva tickets för tillfället)
+- [IN PROGRESS] TCK-030a: Runtime Injackning & Bidi Cable TurnComplete
 
 ---
 
