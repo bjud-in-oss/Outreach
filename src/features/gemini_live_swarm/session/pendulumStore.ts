@@ -104,7 +104,7 @@ export class PendulumStore {
         this.setMode('LISTEN', 'SOCKET_ERROR');
       } else if (type === 'swarm.live.stream.audio' && data?.sourceRole !== 'user') {
         this.resetWatchdog();
-      } else if (type === 'swarm.session.turn.completed' || type === 'swarm.live.turn.complete') {
+      } else if (type === 'swarm.session.turn.completed' || (type === 'swarm.live.turn.complete' && data?.source !== 'vad' && data?.source !== 'user')) {
         this.setMode('LISTEN', 'TURN_COMPLETED');
       }
     });
