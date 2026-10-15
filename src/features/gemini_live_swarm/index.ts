@@ -65,9 +65,11 @@ export type { PendulumMode, PendulumOptions } from './session/pendulumStore.ts';
 export { analyzeTurnBoundary, handleIncomingTranscript, isSemanticQuestion } from './session/turnBoundaryDetector.ts';
 export type { TurnBoundaryInput, TurnBoundaryResult } from './session/turnBoundaryDetector.ts';
 
-// Symbol-Krona & Split-Pane Layout (TCK-017, TCK-018, TCK-020 & TCK-020b)
+// Symbol-Krona & TurnContainer Sphere (TCK-017, TCK-030b)
 export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';
 export type { SymbolCrownProps, CrownStatusColor, CrownState } from './ui/SymbolCrown.tsx';
+export { TurnContainer } from './ui/TurnContainer.tsx';
+export type { TurnContainerProps } from './ui/TurnContainer.tsx';
 export {
   appendStreamChunkToTurns,
   extractTurnEventData,
@@ -81,6 +83,7 @@ export type {
   SwarmIntentDef,
 } from './ui/turnContainerHelper.ts';
 
+// Bakåtkompatibla Split-Pane Helpers (utan dubblerade intents)
 export {
   computeSplitArrows,
   getIntentButtonClass,
@@ -95,12 +98,10 @@ export {
   stepSnapState,
   handleKeyboardNavigation,
   handleSwipeGesture,
-  SWARM_INTENTS,
-  INTENT_FORCE_MAP,
 } from './ui/splitPaneHelper.ts';
-export type { SwarmIntent, SplitOrientation, SplitArrowConfig, SwarmIntentDef, SplitSnapState } from './ui/splitPaneHelper.ts';
+export type { SplitOrientation, SplitArrowConfig, SplitSnapState } from './ui/splitPaneHelper.ts';
 
-// Immersiv Touch-Overlay, Exekveringskort & Användarlås (TCK-018)
+// Exekveringskort & Användarlås (TCK-018)
 export { ExecutionCard } from './ui/ExecutionCard.tsx';
 export type { ExecutionCardProps } from './ui/ExecutionCard.tsx';
 export { useUserActivityLock } from './ui/useUserActivityLock.ts';
@@ -123,8 +124,4 @@ export type { ReflectionMode, ReflectionModeEventPayload } from './ui/reflection
 // Enhetlig Prompt-Bar & STT/Live-Styrning (TCK-026)
 export { UnifiedPromptBar } from './ui/UnifiedPromptBar.tsx';
 export type { UnifiedPromptBarProps } from './ui/UnifiedPromptBar.tsx';
-export { TurnContainer } from './ui/TurnContainer.tsx';
-export type { TurnContainerProps } from './ui/TurnContainer.tsx';
 export { usePromptBarState, getLiveButtonProps } from './ui/promptBarHelper.ts';
-
-
