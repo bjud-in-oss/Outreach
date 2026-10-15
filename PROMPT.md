@@ -1,15 +1,17 @@
-AKTIVT UPPDRAG: TCK-020c
-Titel: Live Audio Piping & Fail-Fast Error Rendering via Gemini Docs MCP
-Domän: Global / src/features/gemini_live_swarm/
-Active Skills: gemini-live-api-dev, gemini-api-dev
+AKTIVT UPPDRAG: TCK-031
+Titel: Tursfär & Negativ Telemetrifiltrering (Härdning mot Interna Eventbussläckor)
+Domän: src/features/gemini_live_swarm/
+Active Skills: gemini-live-api-dev, decomposing-tickets
 
-Mål för TCK-020c:
-1. Validera API-kontrakt via gemini-docs MCP:
-   - Anropa search_documentation på MCP-servern gemini-docs för att verifiera @google/genai Live API-mönster för sendRealtimeInput (PCM16 16kHz mono base64) och anslutningsfel.
-2. Bidi Audio Piping & Fail-Fast UI Alignment:
-   - Vidarebefordra base64-kodade PCM16-mikrofonpaket direkt till WebSocket-sessionen vid aktiv röstström.
-   - Rendera alla HALTED-, ERROR- och anslutningsfel i klartext i chattfönstret (SplitPaneCanvas.tsx < 125 rader, < 5 förgreningar).
-   - Nollställ activeIntent i UI omedelbart vid frånkoppling eller fel.
-3. Obrutet Svep & Token Gate (Steg 3c):
-   - Driv kedjan 1a -> 1b -> 2a -> 2b -> 2e -> 3c i ett obrutet svep under doc/.
-   - Stanna vid Steg 3c och redovisa statusraden, Användarnytta, Systembeteende samt godkännandekoden från REQUIRED_TOKEN.txt.
+Mål för TCK-031:
+1. Härdning av `extractTurnEventData` i `src/features/gemini_live_swarm/ui/turnContainerHelper.ts`:
+   - Filtrera bort alla interna kontrollhändelser och klockor (`WATCHDOG_TIMEOUT`, `USER_COMMIT`, `PENDULUM_STATE_CHANGED`, `UI_STATE_CHANGED`, `SWARM_TRANSCRIPT_MATCH`).
+   - Extrahera enbart genuint talade yttranden och faktiska användarmeddelanden så att systemkoder inte läcker in i användarens pratbubbla.
+2. Frigörande av Audio-Mutex och Pendel:
+   - Säkerställ att PendulumStore inte låser sig i evigt TALK-läge vid interna händelser, så att mikrofonen och VAD förblir öppna för tal.
+3. Negativ WAL Replay E2E-verifiering (90 % regeln):
+   - Skapa `src/__tests__/transient_TCK-031.test.ts`.
+   - Testa med en negativ EventBus-ström innehållande WATCHDOG_TIMEOUT och USER_COMMIT, och bevisa att tursfären förblir 100 % ren från systembrus.
+4. Destruktiva handlingssteg:
+   - Ersätt den permissiva regex/fallback-logiken i `extractTurnEventData`.
+   - Genomför obligatorisk Barrel Audit av `src/features/gemini_live_swarm/index.ts`.

@@ -9,8 +9,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "planera": "node scripts/run-planera.js",
-    "genomfor": "node scripts/run-genomfor.js",
+    "planera": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm planera är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
+    "genomfor": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm genomfor är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
+    "bygg": "node scripts/run-bygg.js",
     "verify": "node scripts/verify-architecture.js",
     "test": "node --import tsx scripts/run-tests.js"
   },

@@ -9,7 +9,7 @@ Fullständig arkitektur och rutiner läses vid behov från `AGENTS.md` och `doc/
 
 ## 1. PREMISSVALIDERING & VÄGVAL (DÖRRVAKT FÖRE SVEP)
 
-Utförs i `doc/LAST_CYCLE/CYCLE_LOG.md` via skriptet `update_cycle_block` innan linjärt planeringstillstånd låses upp.
+Utförs i `doc/LAST_CYCLE/CYCLE_LOG.md` via skriptet innan källkodsarbete påbörjas:
 
 * **1a Att följa:** Förstå Intention & Mänsklig Nytta (Tolka TCK-promptens avsedda funktion och värde).
 * **0a Att vända om:** Kontraktsaudit:
@@ -22,10 +22,10 @@ Utförs i `doc/LAST_CYCLE/CYCLE_LOG.md` via skriptet `update_cycle_block` innan 
 
 ---
 
-## 2. FAS 1: LINJÄRT PLANERINGSSVEP (`pnpm planera TCK-XXX`)
+## 2. FAS 1: LINJÄRT PLANERINGSSVEP (Internt i `pnpm bygg [TCK-XXX]`)
 
 Vid anrop utan ticket-kod läses `PROMPT.md` och `decomposing-tickets` körs direkt.
-Vid `pnpm planera TCK-XXX` läses `doc/.TICKETS/TCK-XXX.md`. Samtliga steg skrivs sekventiellt som enskilda block till slutet av `doc/LAST_CYCLE/CYCLE_LOG.md` via skriptet:
+Vid `pnpm bygg TCK-XXX` läses `doc/.TICKETS/TCK-XXX.md`. Samtliga steg skrivs sekventiellt som enskilda block till slutet av `doc/LAST_CYCLE/CYCLE_LOG.md` via skriptet:
 
 * **1b Att följa:** Kartlägga Domän & Systemgränser (Existerande moduler, scheman, importer).
 * **2a Att följa:** Avgränsa Tillstånd & Biverkningar (State i GROW-riskanalys).
@@ -34,7 +34,7 @@ Vid `pnpm planera TCK-XXX` läses `doc/.TICKETS/TCK-XXX.md`. Samtliga steg skriv
 * **2d Att förlikas:** Syntetisk Vägvägning & Mognadskontroll (Väga nya kontraktet mot befintlig källkodsskuld; tillåtelse för makro-loop bakåt vid oklara beroenden. Skriptet genererar del-token om inga mänskliga frågor krävs).
 * **3a Att följa (Försoningsdriven Målbild & E2E-planering):** Transient Testspecifikation. Ingressens tre vägar till försoning utgör den enda giltiga kompassen.
   * **Röd (Mål):** Identifiera i användarens upplevelse (Given / When / Then) hur nästa steg i koden konkretiserar försoningsvägarna för användaren i detta scenario.
-  * **Grön (Verifiering via 90/10 E2E):** Skriv BDD-scenarier. Planera 90 % av verifieringen som snabba WAL-replay-tester (händelsedrivet i RAM, < 3s) för att bevisa att systemets inre tillståndshantering och dynamik uppfyller ingressens syfte. Skall alltid innehålla negativa kontrollfixtures (timeouts, commits, avbrott) för att bevisa att telemetri inte läcker till tursfären. Planera resterande 10 % som ett visuellt Browserless/DOM-test (< 30s) för att bevisa att gränssnittet eliminerar kognitiva klyftor och främjar närhet enligt ingressen.
+  * **Grön (Verifiering via 90/10 E2E):** Skriv BDD-scenarier. Planera 90 % av verifieringen som snabba WAL-replay-tester (händelsedrivet i RAM, < 3s) för att bevisa att systemets inre tillståndshantering och dynamik uppfyller ingressens syfte. Skall alltid innehålla negativa kontrollfixtures (timeouts, commits, avbrott) för att mekaniskt bevisa att systemtelemetri inte läcker till tursfären. Planera resterande 10 % som ett visuellt Browserless/DOM-test (< 30s) för att bevisa att gränssnittet eliminerar kognitiva klyftor och främjar närhet enligt ingressen.
 * **3b Att följa:** Exakt Källkodsspecifikation (Moduländringar och diffar under `src/features/`). Inkludera alltid en obligatorisk Barrel Audit av domänens `index.ts` mot filsystemet.
 * **2e Att vända om:** Operativt Delta (Tabell över Bevara vs Sanera destruktivt baserat på 3a/3b). Deklarerar även vilka historiska testinvarianter i `src/__tests__/` som ska uppdateras eller omankras till den nya komponenten för att förhindra regressionshaveri mot raderad kod.
 * **3c Att förlikas:** Slutgiltigt Byggkontrakt (Förberedelse för Token Gate & REQUIRED_TOKEN).
@@ -44,7 +44,7 @@ Vid `pnpm planera TCK-XXX` läses `doc/.TICKETS/TCK-XXX.md`. Samtliga steg skriv
 ## 3. FÖRLIKNINGSPORTAR & TOKEN GATE
 
 Vid varje *Att förlikas*-steg (0b, 2d, 3c) utvärderar skriptet parametern `human_decision_required`:
-* **Vid `false` (Inga mänskliga vägval krävs):** Skriptet validerar tillståndet, stämplar HMAC-kedjan i `STATE.json` och tillåter cykeln att fortsätta direkt. Vid steg 3c genereras `REQUIRED_TOKEN.txt` automatiskt.
+* **Vid `false` (Inga mänskliga vägval krävs):** Skriptet validerar tillståndet, stämplar HMAC-kedjan i `STATE.json` och tillåter cykeln att fortsätta direkt. Vid steg 3c genereras `REQUIRED_TOKEN.txt` automatiskt och Fas 2 låses upp utan paus.
 * **Vid `true` (Strategiskt vägval eller osäkerhet krävs):** Skriptet pausar exekveringen vid porten och kräver mänskligt besked via ett unikt CLI-kommando som kopieras till terminalen.
 
 Redigera eller skapa INGA filer under `src/` förrän godkänd tillståndskedja eller manuellt godkännande föreligger vid Token Gate 3c.
@@ -56,18 +56,18 @@ Chatt-output vid 3c ska bestå ENBART av:
 
 ---
 
-## 4. FAS 2: KÄLLKODSEXEKVERING (`pnpm genomfor [REQUIRED_TOKEN]` / `pnpm bygg TCK-XXX`)
+## 4. FAS 2: KÄLLKODSEXEKVERING & TDD (Internt i `pnpm bygg [TCK-XXX]`)
 
 1. **Verifiering av Token & Hash-kedja:**
    * Verifiera token mot `REQUIRED_TOKEN.txt` samt validera den kryptografiska HMAC-kedjan i `STATE.json`, och skapa `doc/LAST_CYCLE/APPROVAL.md`.
 2. **Mekanisk TDD-ordning (Fail First):**
-   * Committa först enbart testfilen `src/__tests__/transient_TCK-XXX.test.ts`. Kör testet för att bevisa rött utfall.
+   * Skapa `src/__tests__/transient_TCK-XXX.test.ts` och exekvera testet. Det MÅSTE fallera rött innan källkoden under `src/features/` implementeras.
 3. **Källkodsändringar under `src/features/[aktuell_domän]/`:**
    * Utför källkodsändringar och exekvera angivna Destruktiva Handlingssteg (inklusive omankring av historiska tester vars filer sanerats och audit av `index.ts`). Rör ALDRIG filer utanför den godkända FSD-domänen.
 4. **Transient E2E- och BDD-testning (90 % WAL / 10 % Browserless):**
    * Exekvera de BDD-scenarier som planerades i steg 3a inuti `src/__tests__/transient_TCK-XXX.test.ts`.
-   * **90 % WAL-verifiering (Händelsebaserad E2E):** Simulera händelseflöde och tillstånd via WAL-strömmar (EventBus) i Node/VFS (< 3 sekunder) inklusive negativa felströmmar.
-   * **10 % Browserless E2E (Visuell E2E-validering):** Verifiera visuell helhet, DOM och frånvaro av kognitiva klyftor i webbläsarmiljö (max 30 sekunder / 1 Unit). (I Teatern-läget nyttjas lokala DOM-snapshots i RAM).
+   * **90 % WAL-verifiering (Händelsebaserad E2E):** Simulera händelseflöde och tillstånd via WAL-strömmar (EventBus) i Node/VFS (< 3 sekunder) inklusive negativa felströmmar för att verifiera att tursfären hålls ren.
+   * **10 % Browserless E2E (Visuell E2E-validering):** Verifiera visuell helhet, DOM och frånvaro av kognitiva klyftor i webbläsarmiljö (max 30 sekunder / 1 Unit). (I Teatern-läget nyttjas lokala DOM-snapshots i RAM framför externa Browserless-anrop för att spara enhetskvoten).
 5. **Verifiering & Stängning:**
    * Kör `pnpm verify`. Vid godkänt kvitto konsolideras testet till `e2e_regression.test.ts` och ticketen stängs i `doc/TICKETS.md`.
 

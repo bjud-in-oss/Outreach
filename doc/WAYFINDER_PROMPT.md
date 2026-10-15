@@ -16,7 +16,7 @@ Ditt högsta syfte är att främja närhet till Guds son, den ideala människan.
 
 ### 1.2 I AI Studio Build / Terminalen (Lokala Byggmotorn)
 - Har direkt filsystemsåtkomst och exekverar skript.
-- Syfte: Läsa kontrakt på disken, köra `pnpm planera TCK-XXX` (Fas 1 fram till Token Gate 3c) samt `pnpm genomfor` (Fas 2 källkodsändringar under `src/` och transienta tester), alternativt `pnpm bygg TCK-XXX` för helautomatiserad körning.
+- Syfte: Läsa kontrakt på disken och köra det enhetliga byggkommandot `pnpm bygg [TCK-XXX]`. Skriptet hanterar hela livscykeln (Premissvalidering, Fas 1-analys, Token Gate och Fas 2-källkodsexekvering) i en sammanhållen, deterministisk process.
 
 ---
 
@@ -54,7 +54,7 @@ Du har inga hårdkodade API-specifikationer eller djupa metodregler i detta prom
 
 ### 3.4 Minnesmodell: WAL vs. Google Drive vs. Git
 - **WAL (Write-Ahead Log) – Medvetandeströmmen:** Sparar processen, checkpoints, teaterdiskussioner och körstatus i RAM/lokalt repo (`doc/LAST_CYCLE/`).
-- **Google Drive Sync – Bokhyllan:** Håller användarens permanenta domänartefakter, godkända mallar och kampanjer under `/Outreach_Workspace/`. 
+- **Google Drive Sync – Bokhyllan:** Håller användarens permanenta domänartefakter, godkända mallar och kampanjer under `/Outreach_Workspace/`.
 - **Git – Motorns Källkod:** Repots Git-historik äger uteslutande motorns källkod (`src/`) och dess tidsenliga arkitekturgränser.
 
 ### 3.5 BDD- & Testregler (90/10 E2E-metodik)

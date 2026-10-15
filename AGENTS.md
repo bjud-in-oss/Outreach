@@ -17,7 +17,7 @@ RUTINER FÖR SKILL- OCH TICKET-ADAPTERING (AGENTS.md v10.3)
 - Knyt varje bygg-ticket strikt till max 1 domän under src/features/ (eller Global).
 - Deklarera alltid explicita "Destruktiva Handlingssteg" i steg 2e (Operativt Delta): ange exakt vilka filer, funktioner, tester eller kodblock under src/ som skall raderas eller ersättas helt baserat på TDD-specifikationen (3a) och källkodsspecifikationen (3b).
 - Vid destruktiv ersättning av en UI-komponent eller modul har Byggmotorn explicit mandat och skyldighet att uppdatera eller avregistrera historiska testinvarianter (i `src/__tests__/`) som kräver den raderade filens fysiska existens, så att regressionssviten hålls grön mot den nya arkitekturen.
-- Förlikningsportarna (0b, 2d, 3c) styrs mekaniskt via skriptet `update_cycle_block` och HMAC-kedjan i `doc/LAST_CYCLE/STATE.json`. Om ingen mänsklig fråga krävs (`human_decision_required: false`) genererar skriptet tillståndstokens automatiskt för ett autonomt flöde.
+- Förlikningsportarna (0b, 2d, 3c) styrs mekaniskt via orkestreringsskriptet och HMAC-kedjan i `doc/LAST_CYCLE/STATE.json`. Om ingen mänsklig fråga krävs (`human_decision_required: false`) hanterar `pnpm bygg [TCK-XXX]` övergången till Fas 2 i en obruten, deterministisk körning.
 
 2. Tregradig Agentdynamik (Följa, Vända om, Förlikas)
 - Att följa (Steg 1a, 1b, 2a, 2b, 3a, 3b): 
@@ -42,9 +42,9 @@ Agenternas självständiga oscillationsdjup och interaktion med användaren styr
   * `meta`: Processutvärdering. Utvärderar systemets rutiner och instruktioner (`AGENTS.md` / `SI`).
 
 4. Transient E2E-Teststrategi, Minnesmodell och Autonom Orkestrering (Fas 2)
-- Exekvera `pnpm genomfor [REQUIRED_TOKEN]` (eller det konsoliderade `pnpm bygg TCK-XXX`).
+- Exekvera `pnpm bygg [TCK-XXX]`.
 - Skapa och exekvera transienta E2E- och BDD-scenarier (90 % WAL / 10 % Browserless) under `src/__tests__/transient_TCK-XXX.test.ts`.
-- **Mekanisk TDD-ordning (Fail First):** Testfilen committas först med rött utfall. Först därefter implementeras källkoden under `src/features/` för att göra testet grönt.
+- **Mekanisk TDD-ordning (Fail First):** Testfilen committas eller exekveras först med rött utfall. Först därefter implementeras källkoden under `src/features/` för att göra testet grönt.
 - **90 % WAL-verifiering (Händelsebaserad E2E):** Simulera användarens händelseflöde och tillstånd via autentiska EventBus-strömmar i Node/VFS (< 3s) för att bevisa att systemets inre dynamik uppfyller ingressens syfte. Skall alltid innehålla negativa kontrollfixtures (timeouts, commits, avbrott) för att mekaniskt bevisa att systemtelemetri inte läcker in i tursfären.
 - **10 % Browserless E2E (Visuell E2E-validering):** Verifiera visuell helhet, DOM och frånvaro av kognitiva klyftor i webbläsarmiljö (upp till 30s / max 1 Browserless Unit per cykel) för att främja närhet enligt ingressen. Vid Teater-reflektion används primärt klientbaserade DOM-snapshots i RAM framför externa API-anrop.
 - **Minnesuppdelning:** Repots Git-historik äger källkoden (`src/`), Google Drive äger användarens bokhylla (`/Outreach_Workspace/`), och WAL äger körtidstillståndet och teatern.
