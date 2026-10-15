@@ -72,12 +72,15 @@ export {
   appendStreamChunkToTurns,
   extractTurnEventData,
   toggleSwarmIntent,
+  SWARM_INTENTS,
+  INTENT_FORCE_MAP,
 } from './ui/turnContainerHelper.ts';
 export type {
   AccumulatedTurn,
+  SwarmIntent,
+  SwarmIntentDef,
 } from './ui/turnContainerHelper.ts';
-export { SplitPaneCanvas } from './ui/SplitPaneCanvas.tsx';
-export type { SplitPaneCanvasProps } from './ui/SplitPaneCanvas.tsx';
+
 export {
   computeSplitArrows,
   getIntentButtonClass,
