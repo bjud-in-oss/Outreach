@@ -103,8 +103,6 @@ export type { SwarmIntent, SplitOrientation, SplitArrowConfig, SwarmIntentDef, S
 // Immersiv Touch-Overlay, Exekveringskort & Användarlås (TCK-018)
 export { ExecutionCard } from './ui/ExecutionCard.tsx';
 export type { ExecutionCardProps } from './ui/ExecutionCard.tsx';
-export { TouchOverlayMenu } from './ui/TouchOverlayMenu.tsx';
-export type { TouchOverlayMenuProps } from './ui/TouchOverlayMenu.tsx';
 export { useUserActivityLock } from './ui/useUserActivityLock.ts';
 export type { UserActivityLockReturn } from './ui/useUserActivityLock.ts';
 export { useImmersiveMode } from './ui/useImmersiveMode.ts';
