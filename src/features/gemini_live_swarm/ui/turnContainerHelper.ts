@@ -17,6 +17,7 @@ export interface AccumulatedTurn {
   isComplete: boolean;
   timestamp: string;
   walCheckpointId?: string;
+  clientMessageId?: string;
   actionHistory?: Array<{ id: string; name: string }>;
 }
 
@@ -37,24 +38,42 @@ export function appendStreamChunkToTurns(
   chunkText: string,
   agentRole = 'Att förlikas',
   forceTitle = 'Harmonisk syntes',
-  isTurnComplete = false
+  isTurnComplete = false,
+  clientMessageId?: string
 ): AccumulatedTurn[] {
   if (!chunkText && !isTurnComplete) return currentTurns;
+
+  if (clientMessageId) {
+    const existing = currentTurns.find((t) => t.clientMessageId === clientMessageId);
+    if (existing && (existing.text === chunkText || existing.text.includes(chunkText))) {
+      return currentTurns;
+    }
+  }
+
   const last = currentTurns[currentTurns.length - 1];
   if (last && !last.isComplete && last.agentRole === agentRole) {
+    if (clientMessageId && last.clientMessageId === clientMessageId && (last.text === chunkText || last.text.endsWith(chunkText))) {
+      return currentTurns;
+    }
     const updated = [...currentTurns];
-    updated[updated.length - 1] = { ...last, text: last.text + chunkText, isComplete: isTurnComplete };
+    updated[updated.length - 1] = {
+      ...last,
+      text: last.text + chunkText,
+      isComplete: isTurnComplete,
+      clientMessageId: clientMessageId ?? last.clientMessageId,
+    };
     return updated;
   }
   return [
     ...currentTurns,
     {
-      id: `turn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: clientMessageId || `turn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       agentRole,
       forceTitle,
       text: chunkText,
       isComplete: isTurnComplete,
       timestamp: new Date().toISOString(),
+      clientMessageId,
     },
   ];
 }
@@ -82,7 +101,10 @@ const INTERNAL_TELEMETRY_TYPES = new Set([
   'WS_CONNECTED',
 ]);
 
-export function extractTurnEventData(data: any, eventType = ''): { text: string; role: string; force: string; isComplete: boolean; shouldReset: boolean } {
+export function extractTurnEventData(
+  data: any,
+  eventType = ''
+): { text: string; role: string; force: string; isComplete: boolean; shouldReset: boolean; clientMessageId?: string } {
   const shouldReset = eventType.includes('deactivated') || eventType.includes('disconnected');
   if (INTERNAL_TELEMETRY_TYPES.has(eventType)) {
     return { text: '', role: '', force: '', isComplete: false, shouldReset };
@@ -93,7 +115,8 @@ export function extractTurnEventData(data: any, eventType = ''): { text: string;
   const role = String(data?.agentRole ?? data?.sourceRole ?? data?.agent ?? data?.force ?? 'Att förlikas');
   const force = String(data?.forceTitle ?? data?.title ?? 'Harmonisk syntes');
   const isComplete = Boolean(data?.isTurnComplete ?? data?.turnComplete ?? data?.isComplete ?? data?.isFinal);
-  return { text, role, force, isComplete, shouldReset };
+  const clientMessageId = data?.clientMessageId;
+  return { text, role, force, isComplete, shouldReset, clientMessageId };
 }
 
 export async function toggleSwarmIntent(liveSession: any, current: SwarmIntent | null, target: SwarmIntent): Promise<SwarmIntent | null> {
