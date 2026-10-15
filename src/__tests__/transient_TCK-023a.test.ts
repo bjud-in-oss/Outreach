@@ -119,7 +119,7 @@ export async function runTransientTCK023aTests(): Promise<{ name: string; passed
       'src/features/gemini_live_swarm/ui/AppShell.tsx',
       'src/features/gemini_live_swarm/ui/crownStateHelper.ts',
       'src/features/gemini_live_swarm/ui/SymbolCrown.tsx',
-      'src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx',
+      'src/features/gemini_live_swarm/ui/TurnContainer.tsx',
     ];
 
     for (const relPath of filesToAudit) {

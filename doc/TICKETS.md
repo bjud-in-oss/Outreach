@@ -1,11 +1,12 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-(Igen är just ni in progress)
+- (Inga aktiva tickets)
 
 ---
 
-- [VERIFIERAD]  : TCK-030b: Destruktiv UI-Sanering & Unified TurnContainer Sphere
+- [VERIFIERAD] TCK-031 | Domän: src/features/gemini_live_swarm/ | Mål: Tursfär & Negativ Telemetrifiltrering | Token: TCK-031-VERIFIED-0b6164623f49bbb7 | Kvitto: 2cd295a9
+- [VERIFIERAD] TCK-030b | Domän: src/features/gemini_live_swarm/ | Mål: Destruktiv UI-Sanering & Unified TurnContainer Sphere | Token: TCK-030b-VERIFIED-14cca6fde9d780b9
 - [VERIFIERAD] TCK-030a | Domän: src/features/gemini_live_swarm/ | Mål: Runtime Injackning & Bidi Cable TurnComplete | Token: TCK-030a-VERIFIED-1c37057f1267fd56
 - [VERIFIERAD] TCK-029 | Domän: src/features/wal_logger/ | Mål: Empati-driven WAL-Diagnostik & Cirkulär Mätbuffert | Token: TCK-029-VERIFIED-1ee77ec1ab90f423
 - [VERIFIERAD] TCK-028 | Domän: src/features/gemini_live_swarm/ | Mål: Lyssna/Prata-pendeln & Semantisk Överlämning | Token: TCK-028-VERIFIED-0c4d1087da8a36ea

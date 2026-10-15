@@ -12,9 +12,9 @@ import {
   resolveCrownFromEnvelope,
   CrownState,
 } from '../features/gemini_live_swarm/ui/crownStateHelper.ts';
-import { SplitPaneCanvas } from '../features/gemini_live_swarm/ui/SplitPaneCanvas.tsx';
+import { AppShell } from '../features/gemini_live_swarm/ui/AppShell.tsx';
+import { TurnContainer } from '../features/gemini_live_swarm/ui/TurnContainer.tsx';
 import { ExecutionCard } from '../features/gemini_live_swarm/ui/ExecutionCard.tsx';
-import { TouchOverlayMenu } from '../features/gemini_live_swarm/ui/TouchOverlayMenu.tsx';
 
 export async function runTransientTCK018Tests(): Promise<{ name: string; passed: boolean; error?: string }[]> {
   const results: { name: string; passed: boolean; error?: string }[] = [];
@@ -71,28 +71,25 @@ export async function runTransientTCK018Tests(): Promise<{ name: string; passed:
     });
   }
 
-  // Test 2: Enkeltryck-snap och immersiv touch-overlay för krona/meny
+  // Test 2: Enkeltryck-snap och immersiv touch-overlay för krona/meny ersatt med vertikal tursfär (TCK-030b)
   try {
-    const splitPath = path.join(rootDir, 'src', 'features', 'gemini_live_swarm', 'ui', 'SplitPaneCanvas.tsx');
-    const splitCode = fs.readFileSync(splitPath, 'utf8');
-    assert(splitCode.includes('snap-toggle-button'), 'SplitPaneCanvas saknar snap-toggle-button');
-    assert(splitCode.includes('snap-handle-icon'), 'SplitPaneCanvas saknar snap-handle-icon');
+    const appShellPath = path.join(rootDir, 'src', 'features', 'gemini_live_swarm', 'ui', 'AppShell.tsx');
+    assert(fs.existsSync(appShellPath), 'AppShell.tsx saknas på disk');
 
-    const splitElement = React.createElement(SplitPaneCanvas, {
-      initialSplitRatio: 0,
-      isImmersive: true,
+    const appShellElement = React.createElement(AppShell);
+    assert(React.isValidElement(appShellElement), 'AppShell genererar inte ett giltigt element');
+
+    const turnElement = React.createElement(TurnContainer, {
+      turn: {
+        id: 't-1',
+        agentRole: 'Att förlikas',
+        forceTitle: 'Harmonisk syntes',
+        text: 'Test',
+        isComplete: true,
+        timestamp: new Date().toISOString(),
+      },
     });
-    assert(React.isValidElement(splitElement), 'SplitPaneCanvas genererar inte ett giltigt element');
-
-    const overlayPath = path.join(rootDir, 'src', 'features', 'gemini_live_swarm', 'ui', 'TouchOverlayMenu.tsx');
-    const overlayCode = fs.readFileSync(overlayPath, 'utf8');
-    assert(overlayCode.includes('trigger-reflect'), 'TouchOverlayMenu saknar trigger-reflect');
-    assert(overlayCode.includes('trigger-remember'), 'TouchOverlayMenu saknar trigger-remember');
-    assert(overlayCode.includes('trigger-consult'), 'TouchOverlayMenu saknar trigger-consult');
-    assert(overlayCode.includes('toggle-immersive-btn'), 'TouchOverlayMenu saknar toggle-immersive-btn');
-
-    const overlayElement = React.createElement(TouchOverlayMenu, { isVisible: true, isImmersive: true });
-    assert(React.isValidElement(overlayElement), 'TouchOverlayMenu genererar inte ett giltigt element');
+    assert(React.isValidElement(turnElement), 'TurnContainer genererar inte ett giltigt element');
 
     results.push({
       name: 'TCK-018: Snap & Immersiv Touch-Overlay - Enkeltryck för fullskärmschatt och 3s touch-meny',

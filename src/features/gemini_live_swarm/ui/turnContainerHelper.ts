@@ -59,12 +59,40 @@ export function appendStreamChunkToTurns(
   ];
 }
 
+const INTERNAL_TELEMETRY_TYPES = new Set([
+  'WATCHDOG_TIMEOUT',
+  'USER_COMMIT',
+  'PENDULUM_STATE_CHANGED',
+  'UI_STATE_CHANGED',
+  'SWARM_TRANSCRIPT_MATCH',
+  'MUTEX_TOGGLED',
+  'SESSION_CONFIG_UPDATED',
+  'PROACTIVE_TRIGGER_SENT',
+  'swarm.pendulum.mode.changed',
+  'swarm.live.stream.audio',
+  'swarm.live.session.connected',
+  'swarm.live.session.disconnected',
+  'swarm.live.session.halted',
+  'swarm.live.session.error',
+  'swarm.session.wal.freeze',
+  'swarm.session.paused',
+  'swarm.session.resumed',
+  'swarm.live.turn.complete',
+  'swarm.session.turn.completed',
+  'WS_CONNECTED',
+]);
+
 export function extractTurnEventData(data: any, eventType = ''): { text: string; role: string; force: string; isComplete: boolean; shouldReset: boolean } {
-  const text = String(data?.transcription ?? data?.delta ?? data?.text ?? data?.error ?? data?.reason ?? '').trim();
-  const role = String(data?.agentRole ?? data?.agent ?? data?.force ?? 'Att förlikas');
-  const force = String(data?.forceTitle ?? data?.title ?? 'Harmonisk syntes');
-  const isComplete = Boolean(data?.isTurnComplete ?? data?.turnComplete ?? data?.isComplete);
   const shouldReset = eventType.includes('deactivated') || eventType.includes('disconnected');
+  if (INTERNAL_TELEMETRY_TYPES.has(eventType)) {
+    return { text: '', role: '', force: '', isComplete: false, shouldReset };
+  }
+
+  const rawText = data?.transcription ?? data?.delta ?? data?.textChunk ?? data?.text;
+  const text = typeof rawText === 'string' ? rawText.trim() : '';
+  const role = String(data?.agentRole ?? data?.sourceRole ?? data?.agent ?? data?.force ?? 'Att förlikas');
+  const force = String(data?.forceTitle ?? data?.title ?? 'Harmonisk syntes');
+  const isComplete = Boolean(data?.isTurnComplete ?? data?.turnComplete ?? data?.isComplete ?? data?.isFinal);
   return { text, role, force, isComplete, shouldReset };
 }
 

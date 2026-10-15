@@ -88,6 +88,7 @@ export class PendulumStore {
 
   public handleWatchdogTimeout(): void {
     if (this.mode === 'TALK') {
+      this.eventBus?.emit('WATCHDOG_TIMEOUT', { timestamp: new Date().toISOString() });
       this.setMode('LISTEN', 'WATCHDOG_TIMEOUT');
     }
   }
@@ -100,6 +101,8 @@ export class PendulumStore {
 
       if (type === 'USER_COMMIT' || (type === 'swarm.session.text_delta' && data?.clientMessageId && data?.sourceRole === 'user')) {
         this.setMode('TALK', 'USER_COMMIT');
+      } else if (type === 'WATCHDOG_TIMEOUT' || type === 'swarm.watchdog.timeout') {
+        this.setMode('LISTEN', 'WATCHDOG_TIMEOUT');
       } else if (type === 'swarm.live.session.disconnected' || type === 'swarm.live.session.error') {
         this.setMode('LISTEN', 'SOCKET_ERROR');
       } else if (type === 'swarm.live.stream.audio' && data?.sourceRole !== 'user') {
