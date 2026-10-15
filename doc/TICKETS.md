@@ -5,6 +5,7 @@
 
 ---
 
+- [VERIFIERAD] TCK-032 | Domän: src/features/gemini_live_swarm/ | Mål: Dubbelinmatningssanering, Live-Textlyssnare & Intent-Harmonisering | Token: TCK-032-VERIFIED-6ed5e47732a3c5ca | Kvitto: f4dbe9ad
 - [VERIFIERAD] TCK-031 | Domän: src/features/gemini_live_swarm/ | Mål: Tursfär & Negativ Telemetrifiltrering | Token: TCK-031-VERIFIED-0b6164623f49bbb7 | Kvitto: 2cd295a9
 - [VERIFIERAD] TCK-030b | Domän: src/features/gemini_live_swarm/ | Mål: Destruktiv UI-Sanering & Unified TurnContainer Sphere | Token: TCK-030b-VERIFIED-14cca6fde9d780b9
 - [VERIFIERAD] TCK-030a | Domän: src/features/gemini_live_swarm/ | Mål: Runtime Injackning & Bidi Cable TurnComplete | Token: TCK-030a-VERIFIED-1c37057f1267fd56

@@ -151,27 +151,18 @@ export class GeminiLiveSession {
   }
 
   public handleAgentMessage(channel: SwarmAudioChannel, message: any): void {
-    if (message?.serverContent?.interrupted) {
-      this.audioPlayer.clearBuffer(channel); this.releaseFloor(channel); this.intentManager.emitAudioThinking(); return;
-    }
-    if (message?.serverContent?.turnComplete) {
-      this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel });
-    }
+    if (message?.serverContent?.interrupted) { this.audioPlayer.clearBuffer(channel); this.releaseFloor(channel); this.intentManager.emitAudioThinking(); return; }
+    if (message?.serverContent?.turnComplete) { this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel }); }
     const parts = message?.serverContent?.modelTurn?.parts || [];
     for (const part of parts) {
-      if (part.inlineData?.data) {
-        this.requestFloor(channel);
-        this.audioPlayer.play24kHzPCMBase64(channel, part.inlineData.data, () => this.intentManager.emitAudioTalking());
-      }
+      if (part.inlineData?.data) { this.requestFloor(channel); this.audioPlayer.play24kHzPCMBase64(channel, part.inlineData.data, () => this.intentManager.emitAudioTalking()); }
+      if (part.text) { this.eventBus.emit('swarm.session.text_delta', { sourceRole: 'assistant', agentRole: 'Att förlikas', text: part.text, timestamp: new Date().toISOString() }); }
     }
   }
 
   public sendTurnComplete(channel: SwarmAudioChannel = 'forlikas'): void {
-    if (this.activeSdkSession?.sendRealtimeInput) {
-      this.activeSdkSession.sendRealtimeInput({ realtimeInput: { turnComplete: true } });
-    }
-    this.releaseFloor(channel);
-    this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel, source: 'vad' });
+    if (this.activeSdkSession?.sendRealtimeInput) { this.activeSdkSession.sendRealtimeInput({ realtimeInput: { turnComplete: true } }); }
+    this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel, source: 'vad' });
   }
 
   public sendToolResponse(
@@ -208,7 +199,7 @@ export class GeminiLiveSession {
   public resumeSession(): void { this.isPaused = false; this.abortController = new AbortController(); this.eventBus.publishLiveEvent('swarm.session.resumed', { isPaused: false }); }
   public togglePause(): boolean { if (this.isPaused) this.resumeSession(); else this.pauseSession(); return this.isPaused; }
 
-  public async sendRealtimeText(text: string, force?: ReconciliationForce): Promise<LiveStreamChunk> {
+  public async sendRealtimeText(text: string, force?: ReconciliationForce, clientMessageId?: string): Promise<LiveStreamChunk> {
     if (this.liveStatus === 'HALTED' || !this.aiClient) throw new Error('Gemini Live session i HALTED-läge.');
     if (!this.isLiveConnected()) await this.connectLive();
     for (const s of this.agentSessions.values()) { if (s?.sendRealtimeInput) s.sendRealtimeInput({ text }); }
@@ -216,7 +207,7 @@ export class GeminiLiveSession {
     const userChunk: LiveStreamChunk = LiveStreamChunkSchema.parse({
       streamId, sourceRole: 'user', force, textChunk: text, transcription: text, isFinal: true, timestamp: new Date().toISOString(),
     });
-    this.eventBus.publishLiveEvent('swarm.live.stream.text', { ...userChunk });
+    this.eventBus.publishLiveEvent('swarm.live.stream.text', { ...userChunk, clientMessageId });
     this.notifyListeners(userChunk);
     return userChunk;
   }

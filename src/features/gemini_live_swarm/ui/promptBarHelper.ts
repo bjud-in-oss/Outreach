@@ -149,7 +149,7 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
 
     if (!isLiveActive) {
       if (swarmCtx?.liveSession) {
-        await swarmCtx.liveSession.activateIntent('forlikas');
+        await swarmCtx.liveSession.activateIntent('CONSULT');
         swarmCtx.liveSession.setMicMuted?.(false);
       }
       setIsLiveActive(true);
@@ -178,11 +178,8 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
     const clientMessageId = `msg-${Date.now()}-${Math.random().toString(36).substring(7)}`;
     swarmCtx?.eventBus?.emit('USER_COMMIT', { clientMessageId, text, timestamp: new Date().toISOString() });
     swarmCtx?.eventBus?.emit('UI_STATE_CHANGED', { textarea: 'cleared', clientMessageId });
-    swarmCtx?.eventBus?.emit('swarm.session.text_delta', {
-      clientMessageId, text, sourceRole: 'user', timestamp: new Date().toISOString(),
-    });
-    if (swarmCtx?.liveSession?.isLiveConnected?.()) {
-      swarmCtx.liveSession.sendRealtimeText(text);
+    if (swarmCtx?.liveSession) {
+      swarmCtx.liveSession.sendRealtimeText(text, undefined, clientMessageId);
     }
     if (onSendMessage) onSendMessage(text);
     setInputText('');

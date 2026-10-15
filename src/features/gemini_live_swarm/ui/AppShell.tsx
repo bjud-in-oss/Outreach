@@ -22,9 +22,9 @@ export const AppShell: React.FC = () => {
 
   useEffect(() => {
     return swarmCtx?.eventBus.subscribe('*', (env) => {
-      const { text, role, force, isComplete, shouldReset } = extractTurnEventData(env.data, env.type);
+      const { text, role, force, isComplete, shouldReset, clientMessageId } = extractTurnEventData(env.data, env.type);
       if (shouldReset) { setTurns([]); return; }
-      if (text) setTurns((prev) => appendStreamChunkToTurns(prev, text, role, force, isComplete));
+      if (text) setTurns((prev) => appendStreamChunkToTurns(prev, text, role, force, isComplete, clientMessageId));
     });
   }, [swarmCtx]);
 
