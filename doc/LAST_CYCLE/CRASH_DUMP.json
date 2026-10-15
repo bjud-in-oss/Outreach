@@ -1,12 +1,12 @@
 {
   "capacity": 5,
   "count": 1,
-  "timestamp": "2026-10-14T07:58:02.838Z",
+  "timestamp": "2026-10-14T09:12:58.588Z",
   "entries": [
     {
-      "id": "evt-live-1791964682838-trgis",
+      "id": "evt-live-1791969178588-8rsulo",
       "type": "SESSION_CONFIG_UPDATED",
-      "timestamp": "2026-10-14T07:58:02.838Z",
+      "timestamp": "2026-10-14T09:12:58.588Z",
       "data": {
         "mode": "makro",
         "thinkingConfig": {

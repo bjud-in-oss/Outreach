@@ -68,6 +68,14 @@ export type { TurnBoundaryInput, TurnBoundaryResult } from './session/turnBounda
 // Symbol-Krona & Split-Pane Layout (TCK-017, TCK-018, TCK-020 & TCK-020b)
 export { SymbolCrown, CROWN_SYMBOLS, STATUS_LED_CLASSES } from './ui/SymbolCrown.tsx';
 export type { SymbolCrownProps, CrownStatusColor, CrownState } from './ui/SymbolCrown.tsx';
+export {
+  appendStreamChunkToTurns,
+  extractTurnEventData,
+  toggleSwarmIntent,
+} from './ui/turnContainerHelper.ts';
+export type {
+  AccumulatedTurn,
+} from './ui/turnContainerHelper.ts';
 export { SplitPaneCanvas } from './ui/SplitPaneCanvas.tsx';
 export type { SplitPaneCanvasProps } from './ui/SplitPaneCanvas.tsx';
 export {

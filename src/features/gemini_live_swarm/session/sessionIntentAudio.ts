@@ -1,5 +1,5 @@
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
-import { SwarmIntent, INTENT_FORCE_MAP } from '../ui/splitPaneHelper.ts';
+import { SwarmIntent, INTENT_FORCE_MAP } from '../ui/turnContainerHelper.ts';
 
 export function createBidiSetupPayload(systemInstruction?: string, model = 'models/gemini-3.8-live') {
   return {

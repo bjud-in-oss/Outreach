@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RotateCcw, ChevronDown, ChevronRight, CheckCircle } from 'lucide-react';
 import { audioWorker } from '../session/audioWorker.ts';
 import { useOptionalSwarmContext } from '../context/SwarmContext.tsx';
-import { AccumulatedTurn } from './splitPaneHelper.ts';
+import { AccumulatedTurn } from './turnContainerHelper.ts';
 
 export interface TurnContainerProps {
   turn: AccumulatedTurn;

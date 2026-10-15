@@ -4,7 +4,7 @@ import { SwarmEventBus, getGlobalSwarmEventBus } from '../bus/swarmEventBus.ts';
 import { SessionIntentManager, freezeStateToWal } from './sessionIntentAudio.ts';
 import { DSPRingBufferMixer, SwarmAudioChannel } from './liveAudioPlayback.ts';
 import { FloorController, CHANNEL_PRIORITY, AGENT_VOICE_MAP } from './floorController.ts';
-import { SwarmIntent } from '../ui/splitPaneHelper.ts';
+import { SwarmIntent } from '../ui/turnContainerHelper.ts';
 
 export type { SwarmIntent, SwarmAudioChannel }; export { CHANNEL_PRIORITY, AGENT_VOICE_MAP };
 export interface AgentThoughtResponse { agentRole: string; thought: string; content: string; score?: number; }
