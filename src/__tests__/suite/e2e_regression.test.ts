@@ -34,6 +34,7 @@ import { runTransientTCK028Tests } from '../transient_TCK-028.test.ts';
 import { runTransientTCK029Tests } from '../transient_TCK-029.test.ts';
 import { runTransientTCK030aTests } from '../transient_TCK-030a.test.ts';
 import { runTransientTCK030bTests } from '../transient_TCK-030b.test.ts';
+import { runTransientTCK031Tests } from '../transient_TCK-031.test.ts';
 
 export async function runE2eRegressionSuite(): Promise<{ name: string; passed: boolean; error?: string }[]> {
   const results = [];
@@ -73,5 +74,6 @@ export async function runE2eRegressionSuite(): Promise<{ name: string; passed: b
   results.push(...(await runTransientTCK029Tests()));
   results.push(...(await runTransientTCK030aTests()));
   results.push(...(await runTransientTCK030bTests()));
+  results.push(...(await runTransientTCK031Tests()));
   return results;
 }

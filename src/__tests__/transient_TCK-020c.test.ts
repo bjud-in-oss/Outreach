@@ -116,29 +116,29 @@ export async function runTransientTCK020cTests(): Promise<{ name: string; passed
     const sessionPath = path.join(rootDir, 'src/features/gemini_live_swarm/session/geminiLiveSession.ts');
     const audioPath = path.join(rootDir, 'src/features/gemini_live_swarm/session/sessionIntentAudio.ts');
     const orchestratorPath = path.join(rootDir, 'src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts');
-    const canvasPath = path.join(rootDir, 'src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx');
+    const appShellPath = path.join(rootDir, 'src/features/gemini_live_swarm/ui/AppShell.tsx');
 
     const sessionContent = fs.readFileSync(sessionPath, 'utf8');
     const audioContent = fs.readFileSync(audioPath, 'utf8');
     const orchestratorContent = fs.readFileSync(orchestratorPath, 'utf8');
-    const canvasContent = fs.readFileSync(canvasPath, 'utf8');
+    const appShellContent = fs.readFileSync(appShellPath, 'utf8');
 
     const sessionLines = sessionContent.split('\n').length;
     const audioLines = audioContent.split('\n').length;
     const orchestratorLines = orchestratorContent.split('\n').length;
-    const canvasLines = canvasContent.split('\n').length;
+    const appShellLines = appShellContent.split('\n').length;
 
     assert(sessionLines <= 250, `geminiLiveSession.ts har ${sessionLines} rader (> 250)`);
     assert(audioLines <= 250, `sessionIntentAudio.ts har ${audioLines} rader (> 250)`);
     assert(orchestratorLines <= 250, `swarmOrchestrator.ts har ${orchestratorLines} rader (> 250)`);
-    assert(canvasLines <= 125, `SplitPaneCanvas.tsx har ${canvasLines} rader (> 125)`);
+    assert(appShellLines <= 125, `AppShell.tsx har ${appShellLines} rader (> 125)`);
 
     const astSession = checkAstMetrics('src/features/gemini_live_swarm/session/geminiLiveSession.ts', sessionContent);
     assert(astSession.valid, astSession.error || 'AST session ogiltig');
     const astOrchestrator = checkAstMetrics('src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts', orchestratorContent);
     assert(astOrchestrator.valid, astOrchestrator.error || 'AST orchestrator ogiltig');
-    const astCanvas = checkAstMetrics('src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx', canvasContent);
-    assert(astCanvas.valid, astCanvas.error || 'AST canvas ogiltig');
+    const astAppShell = checkAstMetrics('src/features/gemini_live_swarm/ui/AppShell.tsx', appShellContent);
+    assert(astAppShell.valid, astAppShell.error || 'AST AppShell ogiltig');
 
     results.push({ name: 'AST- och radgränser strikt respekterade för modifierade filer', passed: true });
   } catch (err: any) {

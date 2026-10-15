@@ -13,7 +13,7 @@ import {
   CrownState,
   LED_BG_CLASSES,
 } from '../features/gemini_live_swarm/ui/crownStateHelper.ts';
-import { SplitPaneCanvas } from '../features/gemini_live_swarm/ui/SplitPaneCanvas.tsx';
+import { AppShell } from '../features/gemini_live_swarm/ui/AppShell.tsx';
 
 export async function runTransientTCK017Tests(): Promise<{ name: string; passed: boolean; error?: string }[]> {
   const results: { name: string; passed: boolean; error?: string }[] = [];
@@ -133,34 +133,27 @@ export async function runTransientTCK017Tests(): Promise<{ name: string; passed:
 
   // Test 3: Dragbar Split-Pane Layout och Gränskontroll (15%–85%)
   try {
-    const splitPanePath = path.join(rootDir, 'src', 'features', 'gemini_live_swarm', 'ui', 'SplitPaneCanvas.tsx');
-    assert(fs.existsSync(splitPanePath), 'SplitPaneCanvas.tsx saknas på disk');
+    const appShellPath = path.join(rootDir, 'src', 'features', 'gemini_live_swarm', 'ui', 'AppShell.tsx');
+    assert(fs.existsSync(appShellPath), 'AppShell.tsx saknas på disk');
 
-    const fileContent = fs.readFileSync(splitPanePath, 'utf8');
+    const fileContent = fs.readFileSync(appShellPath, 'utf8');
 
     // STRIKT REGEL: Inga rubriker eller förklarande textnamn på zonerna i DOM
-    assert(!fileContent.includes('<h1>'), 'Otillåten <h1> rubrik i SplitPaneCanvas');
-    assert(!fileContent.includes('<h2>'), 'Otillåten <h2> rubrik i SplitPaneCanvas');
-    assert(!fileContent.includes('<h3>'), 'Otillåten <h3> rubrik i SplitPaneCanvas');
+    assert(!fileContent.includes('<h1>'), 'Otillåten <h1> rubrik i AppShell');
+    assert(!fileContent.includes('<h2>'), 'Otillåten <h2> rubrik i AppShell');
+    assert(!fileContent.includes('<h3>'), 'Otillåten <h3> rubrik i AppShell');
     assert(!fileContent.includes('Agent-Kanvas'), 'Förbjudet zonnamn "Agent-Kanvas" i DOM');
     assert(!fileContent.includes('Chattflöde'), 'Förbjudet zonnamn "Chattflöde" i DOM');
 
-    // Validera AST-mått på SplitPaneCanvas.tsx
-    const splitMetrics = checkAstMetrics('SplitPaneCanvas.tsx', fileContent);
-    assert(splitMetrics.valid, `AST-fel i SplitPaneCanvas.tsx: ${splitMetrics.error}`);
+    // Validera AST-mått på AppShell.tsx
+    const splitMetrics = checkAstMetrics('AppShell.tsx', fileContent);
+    assert(splitMetrics.valid, `AST-fel i AppShell.tsx: ${splitMetrics.error}`);
 
-    // Validera att SplitPaneCanvas är en giltig React-komponent
-    assert(typeof SplitPaneCanvas === 'function', 'SplitPaneCanvas måste vara en funktion');
+    // Validera att AppShell är en giltig React-komponent
+    assert(typeof AppShell === 'function', 'AppShell måste vara en funktion');
 
-    const upperMock = React.createElement('div', { id: 'mock-upper' }, 'Innehåll 1');
-    const lowerMock = React.createElement('div', { id: 'mock-lower' }, 'Innehåll 2');
-
-    const element = React.createElement(SplitPaneCanvas, {
-      upperContent: upperMock,
-      lowerContent: lowerMock,
-      initialSplitRatio: 40,
-    });
-    assert(React.isValidElement(element), 'SplitPaneCanvas skapar inte ett giltigt element');
+    const element = React.createElement(AppShell);
+    assert(React.isValidElement(element), 'AppShell skapar inte ett giltigt element');
 
     // Validera clamping-funktionen matematiskt
     const clampRatio = (val: number) => Math.max(15, Math.min(85, Math.round(val)));

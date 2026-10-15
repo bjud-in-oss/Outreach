@@ -159,7 +159,7 @@ export async function runTransientTCK020Tests(): Promise<{ name: string; passed:
   // Test 6: AST- och strukturmått (max 125 rader, djup <= 4, förgreningar <= 5 i TSX)
   try {
     const filesToAudit = [
-      'src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx',
+      'src/features/gemini_live_swarm/ui/TurnContainer.tsx',
       'src/features/gemini_live_swarm/ui/AppShell.tsx',
       'src/features/gemini_live_swarm/ui/splitPaneHelper.ts',
       'src/features/gemini_live_swarm/session/sessionIntentAudio.ts',

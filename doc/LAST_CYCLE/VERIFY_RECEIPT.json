@@ -1,7 +1,7 @@
 {
-  "receipt_hash": "4822216e",
+  "receipt_hash": "7db169c0",
   "status": "PASSED",
-  "verified_at": "2026-10-14T09:13:02.599Z",
+  "verified_at": "2026-10-15T07:55:35.488Z",
   "files_checked": [
     "doc/TICKETS.md",
     "doc/FEATURE_INDEX.json",
@@ -54,6 +54,7 @@
     "src/__tests__/transient_TCK-029.test.ts",
     "src/__tests__/transient_TCK-030a.test.ts",
     "src/__tests__/transient_TCK-030b.test.ts",
+    "src/__tests__/transient_TCK-031.test.ts",
     "src/__tests__/wal_logger.test.ts",
     "src/features/gemini_live_swarm/agents/roleDefinitions.ts",
     "src/features/gemini_live_swarm/bus/swarmEventBus.ts",
@@ -74,9 +75,7 @@
     "src/features/gemini_live_swarm/ui/AppShell.tsx",
     "src/features/gemini_live_swarm/ui/ExecutionCard.tsx",
     "src/features/gemini_live_swarm/ui/ReflectionModeSelector.tsx",
-    "src/features/gemini_live_swarm/ui/SplitPaneCanvas.tsx",
     "src/features/gemini_live_swarm/ui/SymbolCrown.tsx",
-    "src/features/gemini_live_swarm/ui/TouchOverlayMenu.tsx",
     "src/features/gemini_live_swarm/ui/TurnContainer.tsx",
     "src/features/gemini_live_swarm/ui/UnifiedPromptBar.tsx",
     "src/features/gemini_live_swarm/ui/crownStateHelper.ts",
