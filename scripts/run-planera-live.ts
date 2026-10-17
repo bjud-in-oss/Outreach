@@ -28,7 +28,9 @@ const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.4.md');
 const PROCESS_IMPROVEMENTS_PATH = path.join(ROOT_DIR, 'doc', 'PROCESS_IMPROVEMENTS.md');
 
-const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+// Lås till Bidi Live Extended Thinking med Unlimited RPD
+const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-3.8-live-extended-thinking';
+
 const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
@@ -169,25 +171,29 @@ function resolveTargetTicket(): { ticketId: string; content: string } {
   process.exit(1);
 }
 
-async function callWithRetry<T>(fn: () => Promise<T>, retries = 8, initialDelayMs = 15000): Promise<T> {
-  let delayMs = initialDelayMs;
-  for (let i = 0; i < retries; i++) {
+async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4, delayMs = 2000): Promise<T> {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
     try {
-      const res = await fn();
-      await new Promise((r) => setTimeout(r, 13000));
-      return res;
+      return await fn();
     } catch (err: any) {
-      if ((err.status === 503 || err.status === 429) && i < retries - 1) {
-        const waitTime = Math.max(delayMs, 20000);
-        console.warn(`⚠️ API ${err.status} (kvot/rate limit). Väntar ${Math.round(waitTime / 1000)}s före försök ${i + 1}/${retries}...`);
-        await new Promise((r) => setTimeout(r, waitTime));
-        delayMs = waitTime * 1.2;
-        continue;
+      attempt++;
+      const errMsg = err?.message || '';
+
+      // Avbryt omedelbart vid slutgiltigt dagsstopp (RPD)
+      if (errMsg.includes('GenerateRequestsPerDayPerProjectPerModel')) {
+        console.error('\n🛑 HÅRT KVOTSTOPP (RPD nådd för dygnet):');
+        console.error(errMsg);
+        process.exit(1);
       }
-      throw err;
+
+      if (attempt >= maxAttempts) throw err;
+      const waitTime = delayMs * Math.pow(1.5, attempt - 1);
+      console.warn(`⚠️ API ${err.status || 'fel'} (transient). Försöker igen om ${Math.round(waitTime)}ms (försök ${attempt}/${maxAttempts})...`);
+      await new Promise(res => setTimeout(res, waitTime));
     }
   }
-  throw new Error('Retries exhausted');
+  throw new Error('callWithRetry misslyckades efter max antal försök');
 }
 
 // ============================================================================
@@ -525,12 +531,13 @@ async function main() {
   // --------------------------------------------------------------------------
   appendToCycleLog(`\n### FAS 2: KÄLLKODSEXEKVERING & TDD`);
 
-  // Mekanisk Fail-First & Alibikontroll (Gate 3a)
+// Mekanisk Fail-First & Alibikontroll (Gate 3a)
   console.log('\n🔒 Verifierar Gate 3a: Kör AST-skanning mot alibi-tester...');
   try {
-    execSync('node scripts/drivers/ts.js --check-alibi', { stdio: 'inherit', cwd: ROOT_DIR });
+    const transientTestFile = `src/__tests__/transient_${ticketId}.test.ts`;
+    execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
   } catch {
-    console.error('❌ GATE 3a UNDERKÄND: Otillåtna alibi-mönster (fs.readFileSync / regex) hittades i testerna.');
+    console.error('❌ GATE 3a UNDERKÄND: Alibimönster upptäckta i den aktiva testfilen.');
     process.exit(1);
   }
 

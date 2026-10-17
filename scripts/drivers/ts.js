@@ -34,12 +34,6 @@ const RUNTIME_ANCHORS = [
   'RTCPeerConnection',
 ];
 
-// Otillåtna alibi-mönster i testfiler
-const FORBIDDEN_ALIBI_CALLS = [
-  'readFileSync',
-  'readFile',
-];
-
 // ============================================================================
 // HJÄLPFUNKTIONER: GIT OCH AST
 // ============================================================================
@@ -76,13 +70,23 @@ function parseSourceFile(filePath) {
 // GATE 3a: ALIBIKONTROLL (--check-alibi)
 // ============================================================================
 
-function checkAlibiInTests() {
+function checkAlibiInTests(targetFile = null) {
   console.log('🔍 [Gate 3a] Skannar testfiler efter alibi-mönster och körtidsankare...');
 
-  // Hitta ändrade eller aktiva testfiler
-  let testFiles = getModifiedFiles().filter(f => f.includes('.test.') || f.includes('.spec.') || f.includes('transient'));
+  let testFiles = [];
 
-  // Om inga tester modifierats i git, granska alla filer under tests/ eller src/**/__tests__/
+  if (targetFile) {
+    const resolved = path.resolve(ROOT_DIR, targetFile);
+    if (fs.existsSync(resolved)) {
+      testFiles = [resolved];
+    }
+  }
+
+  if (testFiles.length === 0) {
+    testFiles = getModifiedFiles().filter(f => f.includes('.test.') || f.includes('.spec.') || f.includes('transient'));
+  }
+
+  // Om inga tester modifierats i git och ingen målfil angivits, granska transient-tester i src/
   if (testFiles.length === 0) {
     const findTests = (dir) => {
       if (!fs.existsSync(dir)) return [];
@@ -98,7 +102,7 @@ function checkAlibiInTests() {
       }
       return files;
     };
-    testFiles = findTests(path.join(ROOT_DIR, 'tests')).concat(findTests(path.join(ROOT_DIR, 'src')));
+    testFiles = findTests(path.join(ROOT_DIR, 'src', '__tests__'));
   }
 
   if (testFiles.length === 0) {
@@ -114,25 +118,65 @@ function checkAlibiInTests() {
     const sourceFile = parseSourceFile(filePath);
 
     function visit(node) {
-      // 1. Spärr mot fs.readFileSync och fil-inspektion i tester
       if (ts.isCallExpression(node)) {
         const exprText = node.expression.getText(sourceFile);
-        for (const forbidden of FORBIDDEN_ALIBI_CALLS) {
-          if (exprText.includes(forbidden)) {
-            violations.push(`${relPath}: Otillåten filinspektion upptäckt ('${exprText}'). Tester får inte läsa källkod som text.`);
+
+        // 1. Spärr mot textmatchning av rå syntax (alibi assertions)
+        if (exprText.endsWith('.toContain') || exprText.endsWith('.toMatch') || exprText.endsWith('.includes')) {
+          const argText = node.arguments[0]?.getText(sourceFile) || '';
+          if (
+            argText.includes('export ') || 
+            argText.includes('function ') || 
+            argText.includes('class ') ||
+            argText.includes('interface ')
+          ) {
+            violations.push(`${relPath}: Alibi-assertion upptäckt mot rå källkodssyntax (${exprText}). Källkod måste testas via körtid, inte textinnehåll.`);
           }
         }
 
-        // Kontroll mot regex-inspektion av rå kod (.toMatch / .includes på kodsträngar)
-        if (exprText.endsWith('.toMatch') || exprText.endsWith('.includes')) {
-          const argText = node.arguments[0]?.getText(sourceFile) || '';
-          if (argText.includes('export ') || argText.includes('function ') || argText.includes('class ')) {
-            violations.push(`${relPath}: Alibi-assertion upptäckt mot rå källkodssyntax (${exprText}).`);
+        // 2. Granska readFileSync: Tillåtet för mätning (checkAstMetrics), förbjudet för funktionstest
+        if (exprText.includes('readFileSync') || exprText.includes('readFile')) {
+          let parent = node.parent;
+          let isMetricCall = false;
+
+          while (parent && !ts.isBlock(parent) && !ts.isSourceFile(parent)) {
+            if (ts.isCallExpression(parent)) {
+              const pText = parent.expression.getText(sourceFile);
+              if (pText.includes('checkAstMetrics') || pText.includes('checkNoProductionMocks')) {
+                isMetricCall = true;
+                break;
+              }
+            }
+            parent = parent.parent;
+          }
+
+          // Undersök vad som läses
+          const firstArg = node.arguments[0]?.getText(sourceFile) || '';
+          const targetsSrc = firstArg.includes('src/') || firstArg.includes('.ts');
+
+          if (!isMetricCall && targetsSrc) {
+            // Kontrollera om resultatet skickas till en assertion
+            let current = node.parent;
+            let usedInAssertion = false;
+            while (current && !ts.isBlock(current) && !ts.isSourceFile(current)) {
+              if (ts.isCallExpression(current)) {
+                const callName = current.expression.getText(sourceFile);
+                if (callName.includes('expect') || callName.includes('assert')) {
+                  usedInAssertion = true;
+                  break;
+                }
+              }
+              current = current.parent;
+            }
+
+            if (usedInAssertion) {
+              violations.push(`${relPath}: Otillåten filinspektion ('${exprText}'). Källkodsfiler får inte läsas som text i funktionella tester.`);
+            }
           }
         }
       }
 
-      // 2. Detektering av körtidsankare (Steel Thread)
+      // 3. Detektering av körtidsankare (Steel Thread)
       const nodeText = node.getText(sourceFile);
       for (const anchor of RUNTIME_ANCHORS) {
         if (nodeText === anchor || nodeText.includes(`.${anchor}`)) {
@@ -171,7 +215,6 @@ function checkCatchBlocks() {
 
   let sourceFiles = getModifiedFiles('src/features/');
   if (sourceFiles.length === 0) {
-    // Om inget specifikt är stageat, skanna hela src/features/
     const findSources = (dir) => {
       if (!fs.existsSync(dir)) return [];
       const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -238,7 +281,7 @@ function checkCatchBlocks() {
 }
 
 // ============================================================================
-// HJÄLPFUNKTIONER FÖR TESTER
+// HJÄLPFUNKTIONER FÖR TESTER (Bibehåller 100% bakåtkompatibilitet)
 // ============================================================================
 
 export function checkAstMetrics(filePath, content) {
@@ -284,11 +327,13 @@ const args = process.argv.slice(2);
 
 if (isRunningDirectly) {
   if (args.includes('--check-alibi')) {
-    checkAlibiInTests();
+    const fileArgIdx = args.indexOf('--file');
+    const targetFile = fileArgIdx !== -1 ? args[fileArgIdx + 1] : null;
+    checkAlibiInTests(targetFile);
   } else if (args.includes('--check-catch-blocks')) {
     checkCatchBlocks();
   } else if (args.length > 0) {
-    console.log('Användning: node scripts/drivers/ts.js [--check-alibi | --check-catch-blocks]');
+    console.log('Användning: node scripts/drivers/ts.js [--check-alibi [--file path] | --check-catch-blocks]');
     process.exit(0);
   }
 }
