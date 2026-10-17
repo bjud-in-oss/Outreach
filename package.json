@@ -11,9 +11,10 @@
     "lint": "tsc --noEmit",
     "planera": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm planera är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
     "genomfor": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm genomfor är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
-    "bygg": "node scripts/run-bygg.js",
-    "verify": "node scripts/verify-architecture.js",
-    "test": "node --import tsx scripts/run-tests.js"
+    "bygg": "tsx scripts/run-planera-live.ts",
+    "test:transient": "vitest run tests/transient --passWithNoTests",
+    "verify": "pnpm test && node scripts/verify-architecture.js",
+}   "test": "node --import tsx scripts/run-tests.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

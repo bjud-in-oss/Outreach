@@ -11,7 +11,7 @@ Du har inga hårdkodade API-specifikationer i detta promptminne. När ett ämne 
 1. Agentdynamik (Att följa, Att vända om, Att förlikas) & Ticket-logistik: -> Läs `AGENTS.md`
 2. Feature-Sliced Design och modulåteranvändning: -> Slå upp sökvägar i `doc/FEATURE_INDEX.json`
 3. Ticket-nedbrytning (1 ticket = 1 FSD-domän): -> Läs `.agents/skills/decomposing-tickets/SKILL.md`
-4. Augmented Coding Patterns (Reverse Direction, Check Alignment, m.fl.): -> Läs under `.agents/skills/patterns/`
+4. Augmented Coding Patterns (reverse-direction, check-alignment, steel-thread): -> Läs mönstren under `.agents/skills/patterns/`
 5. Gemini Live API / WebSockets / PCM-ljud: -> Läs `.agents/skills/gemini-live-api-dev/SKILL.md`
 6. Standard Gemini API / SDK: -> Läs `.agents/skills/gemini-api-dev/SKILL.md`
 
@@ -19,7 +19,7 @@ Du har inga hårdkodade API-specifikationer i detta promptminne. När ett ämne 
 
 ## 2. BDD- & TESTREGLER (TVÅLAGSVERIFIERING & MEKANISK ALIBISPÄRR)
 - **Händelsereplay (Protokoll & Tillstånd i Node/VFS):** Händelsedriven uppspelning av autentiska EventBus-strömmar ska exekveras på **< 3 sekunder**. Verifierar att systemets inre tillståndshantering och dynamik uppfyller syftet. Skall alltid inkludera negativa kontrollfixtures (avbrott, commits, timeouts) för att verifiera att protokollbrus filtreras bort och inte läcker till tursfären.
-- **Körtidsankare (Skarp Liveline):** När en biljett berör användarinteraktion eller externa gränssnitt MÅSTE testet innehålla minst ett **erkänt körtidsankare** (ex. `getUserMedia`, `AudioContext`, `WebSocket`, `userEvent`, `eventBus.emit`, `Browserless`). Skriptet avvisar mekaniskt testfiler som saknar fysisk koppling till körtids-API:er.
+- **Körtidsankare (Steel Thread / Skarp Liveline):** När en biljett berör användarinteraktion eller externa gränssnitt MÅSTE testet innehålla minst ett **erkänt körtidsankare** (ex. `getUserMedia`, `AudioContext`, `WebSocket`, `userEvent`, `eventBus.emit`, `Browserless`). Skriptet avvisar mekaniskt testfiler som saknar fysisk koppling till körtids-API:er enligt mönstret `steel-thread`.
 - **Mekanisk Alibispärr (Omedelbart avbrott):** Följande mönster är strikt förbjudna och underkänns automatiskt av terminalens AST-granskare före testkörning:
   1. Inspektion av källkodssträngar via `fs.readFileSync`, `readFile` eller regex-matchningar (`.includes()`, `.toMatch()`) mot rå `.ts`-kod.
   2. Testsviter som enbart assertar på mockade hjälpfunktioner utan att instansiera komponenten eller exekvera dess logik i minnet.
@@ -41,24 +41,21 @@ Makrokanalen öppnas och behåller sitt kontextminne genom hela planeringen. Utf
 
 ### 3.2 Fas 1: Linjärt Planeringssvep med Inre Triadisk Mikro-oscillation
 Makrostegen skrivs sekventiellt till `doc/LAST_CYCLE/CYCLE_LOG.md`. 
-För varje makrosteg initieras oberoende, efemära mikrokanaler i VFS med ett magert startankare (biljett, Feature-index, domänens index.ts). 
+För varje makrosteg initieras oberoende, efemära mikrokanaler i VFS med ett magert startankare (biljett, Feature-index, domänens index.ts). Mikrokanalerna har autonom tillgång till filer i domänen och shared via parallella JIT-verktygsanrop.
 - **Exploration Budget:** Mikrokanalerna tillåts max 2 sekventiella tool-turns. Makrokanalen tillåts max 4 sekventiella tool-turns. Parallella verktygsanrop i samma turn är obegränsade inom domänen och shared.
 - 1b Att följa: Kartlägga Domän & Systemgränser (Existerande moduler, scheman, importer via JIT-startankare).
 - 2a Att följa: Avgränsa Tillstånd & Biverkningar (State i GROW-riskanalys).
-- 2b Att följa: Modellera Kontrakt (Tvingas formulera 3 distinkta alternativ på Zod-kontrakt och datastrukturer för att bryta förankring).
-- 2c Att vända om: Utvärdera Resiliens & Felhantering (Tvingas pröva de 3 alternativen mot tysta catch-block, nätverkskrascher och FSD-gränser).
+- 2b Att följa: Modellera Kontrakt (Formulerar 3 ortogonala alternativ med genuint skilda arkitektoniska avvägningar enligt mönstret `reverse-direction` för att bryta kognitiv förankring).
+- 2c Att vända om: Utvärdera Resiliens & Felhantering (Granskar alternativen enligt `check-alignment` mot latenta haverier, nätverkskrascher och FSD-gränser).
 - 2d Att förlikas: Syntetisk Vägvägning & Mognadskontroll (Väger spänningsfältet, mäter semantiskt delta och låser det vinnande kontraktet).
-- 3a Att följa: Transient Testspecifikation (Formulerar 3 teststrategier baserade på Händelsereplay, varav den primära strategin tvingas inkludera ett Körtidsankare med Skarp Liveline och Fail First om biljetten berör UI eller extern I/O).
+- 3a Att följa: Transient Testspecifikation (Formulerar teststrategi enligt `steel-thread`: tvingas inkludera ett Körtidsankare och Fail-First om biljetten berör UI eller extern I/O).
 - 3b Att följa: Exakt Källkodsspecifikation inklusive obligatorisk Barrel Audit av domänens `index.ts`.
-- 2e Att vända om: Operativt Delta (Granskar källkod och tester mot alibi-mönster, deklarerar destruktiv sanering och omankrar historiska testinvarianter vars filer raderats).
+- 2e Att vända om: Operativt Delta (Synar källkod och tester enligt `check-alignment`: avslöjar alibi-tester, deklarerar destruktiv sanering och omankrar historiska testinvarianter).
 - 3c Att förlikas: Slutgiltigt Byggkontrakt & Portvärdering.
+  * Om `human_decision_required: true`: Processen pausar här och ställer en konkret fråga till användaren via CLI.
+  * Om `human_decision_required: false`: Byggkontraktet kristalliseras i WAL. Samtliga planeringssockets stängs och rensas permanent inför Fas 2.
 
-### 3.3 Token Gate & Kristalliseringspunkt
-Mellan Fas 1 och Fas 2 sker den mekaniska portprövningen:
-- Om `human_decision_required: true`: Processen pausar här och ställer en konkret fråga till användaren via CLI. Bygget återupptas först vid explicit godkännande.
-- Om `human_decision_required: false`: Byggkontraktet kristalliseras i WAL (`CYCLE_LOG.md`). Samtliga planeringssockets stängs och rensas permanent. Ingen kasserad planeringshistorik tillåts följa med in i kodningen.
-
-### 3.4 Fas 2: Källkodsexekvering & TDD (Renad isolerad session)
+### 3.3 Fas 2: Källkodsexekvering & TDD (Renad isolerad session)
 Startar med ett renat kontextminne som enbart innehåller källkoden, det spikade byggkontraktet från 3c och testkravet från 3a.
 1. **Mekanisk Fail-First & Alibikontroll (Gate 3a):** 
    - AST-skannern verifierar att testet innehåller minst ett erkänt Körtidsankare och är 100 % fritt från alibimönster (`fs.readFileSync` etc.).
@@ -69,10 +66,10 @@ Startar med ett renat kontextminne som enbart innehåller källkoden, det spikad
 5. **Grönt Testutfall:** Kör transient-testet igen – det måste nu bli 100 % grönt.
 6. **Slutverifiering:** Kör `pnpm verify`. Vid godkänt kvitto konsolideras testet till regressionssviten och ticketen stängs i `doc/TICKETS.md`.
 
-### 3.5 Fas 3: Reflektion & Teater (Program & Process)
+### 3.4 Fas 3: Reflektion & Teater (Program & Process)
 Körs automatiskt efter grön regressionssvit. Minnet rensas från källkod och laddas enbart med körningens telemetri, git-diff-statistik och `CYCLE_LOG.md`.
 1. **Dialog med *Att förlikas* som värd:**
-   - *Att förlikas* leder berättelsen och bjuder in *Att följa* och *Att vända om* vid behov via taggen `<TALA kraft="följa|vända-om">fråga</TALA>`.
+   - *Att förlikas* leder berättelsen och bjuder in *Att följa* och *Att vända om* för att belysa specifika brytpunkter via taggen `<TALA kraft="följa|vända-om">fråga</TALA>`.
    - Både **programmet** (hur koden främjar närhet och mänsklig nytta) och **processen** (verktygsanrop, grindar och friktion i skripten) utvärderas i ett sammanhållet steg.
 2. **Barge-In via CLI:** Användaren kan när som helst trycka Enter under textströmningen för att bryta in, ställa frågor eller styra reflektionen.
 3. **Loggning av lärdomar:** Konkreta processjusteringar förs in under `💡 Konstruktiv kritik av våra rutiner` i `CYCLE_LOG.md` samt sparas i `doc/PROCESS_IMPROVEMENTS.md`.
@@ -88,5 +85,4 @@ Körs automatiskt efter grön regressionssvit. Minnet rensas från källkod och 
 - **Zod & Typesafety:** Alla externa datagränssnitt, API-payloads och tillståndskontrakt ska valideras runtime via Zod-scheman.
 - **Fail Fast:** Systemet kraschar hellre kontrollerat vid brutna kontrakt än att passivt ackumulera felaktigt tillstånd eller död källkod.
 - **Minnesansvar:** Git äger motorns källkod (`src/`), Google Drive äger användarens dokument och mallar (`/Outreach_Workspace/`), och WAL äger körtidstillståndet och teatern.
-- **Konstruktiv kritik av våra rutiner (Nullable):** Om du under en körning identifierar friktion i våra instruktioner, skript eller CLI-kontrakt, ändra inte rutinen i smyg. Genomför den aktiva uppgiften enligt gällande regler och lämna ett konstruktivt förslag under sektionen:
-  `💡 Konstruktiv kritik av våra rutiner: [Observation & Konkret förslag]`
+- **Konstruktiv kritik av våra rutiner (Nullable):** Om du under en körning identifierar friktion i våra instruktioner, skript eller CLI-kontrakt, ändra inte rutinen i smyg. Genomför den aktiva uppgiften enligt gällande regler och lämna ett konstruktivt förslag under sektionen `💡 Konstruktiv kritik av våra rutiner`.

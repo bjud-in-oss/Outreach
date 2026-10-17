@@ -7,50 +7,79 @@ tools:
       description: "Official Gemini API and Live API real-time documentation and code patterns"
 ---
 
-Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.
+# AGENTS.md – Verktygs- & Agentmanifest (v10.4)
 
-   (AGENTS.md v10.3)
+Detta manifest styr verktygsanvändning och agentbeteende för autonoma och assisterande agenter (Byggmotorn, Claude Code, Cursor, terminalskript och körtider).
 
-1. Central ticket-logistik (doc/.TICKETS/)
-- Särskilj besluts-tickets (Wayfinder scenariofrågor, prototyper och research utan kodändring) från bygg-tickets (specifika källkodsändringar under src/features/).
-- Registrera enbart aktiva ärenden (Open, In Progress) i doc/TICKETS.md och spara enskilda filer under doc/.TICKETS/TCK-XXX.md. Radera filen under doc/.TICKETS/ och rensa raden i doc/TICKETS.md vid cykelavslut efter Fas 2.
-- Knyt varje bygg-ticket strikt till max 1 domän under src/features/ (eller Global).
-- Deklarera alltid explicita "Destruktiva Handlingssteg" i steg 2e (Operativt Delta): ange exakt vilka filer, funktioner, tester eller kodblock under src/ som skall raderas eller ersättas helt baserat på TDD-specifikationen (3a) och källkodsspecifikationen (3b).
-- Vid destruktiv ersättning av en UI-komponent eller modul har Byggmotorn explicit mandat och skyldighet att uppdatera eller avregistrera historiska testinvarianter (i `src/__tests__/`) som kräver den raderade filens fysiska existens, så att regressionssviten hålls grön mot den nya arkitekturen.
-- Förlikningsportarna (0b, 2d, 3c) styrs mekaniskt via orkestreringsskriptet och HMAC-kedjan i `doc/LAST_CYCLE/STATE.json`. Om ingen mänsklig fråga krävs (`human_decision_required: false`) hanterar `pnpm bygg [TCK-XXX]` övergången till Fas 2 i en obruten, deterministisk körning.
+*(Behåll ditt lokala MCP/Verktygskodblock i JSON/YAML här om det krävs av din IDE/server)*
 
-2. Tregradig Agentdynamik (Följa, Vända om, Förlikas)
-- Att följa (Steg 1a, 1b, 2a, 2b, 3a, 3b): 
-  * Skaparkraften. Den som bygger, formulerar och strävar mot målet. Upprättar den transienta TDD-testspecifikationen och exakta källkodsdiffar. Genomför obligatorisk Barrel Audit i domänens `index.ts`.
-  * *Organisk Roll (Appen):* Deltar som bakgrundsagent (High Thinking) via `@google/genai` för att spåna fram nya kodpatenter och möjligheter i VFS.
-- Att vända om (Steg 0a, 2c, 2e):
-  * Rannsakan och gränssättaren. Ifrågasätter antaganden, utvärderar resiliens, utför kontraktsaudit i dörrvakten (0a/0b) och identifierar död kod för destruktiv sanering (2e). Bär inåtriktad ödmjulhet och Fail Fast.
-  * *Organisk Roll (Appen):* Deltar som bakgrundsagent (High Thinking) via `@google/genai` för att agera djävulens advokat och sätta gränser för *Att följa*.
-- Att förlikas (Steg 0b, 2d, 3c & Token Gate):
-  * Syntesen. Den som samordnar, utvärderar och förlikar perspektiven.
-  * *Tudelad Meta-utvärdering:* Opererar både på *Process-Meta* (håller FSD-kontrakten och målet) och *Reflektions-Meta* (utvärderar det semantiska deltat/mättnaden under agenternas oscillation). När ett samtal inte längre ger ny insikt slår den fast `MÄTTNAD: JA` och tystnar organiskt.
-  * *Organisk Roll (Appen):* Agerar exklusiv **Host (1 Live Agent)** på den enda aktiva röstkabeln mot användaren (Live WebSocket). Den lyssnar via VAD och syntetiserar bakgrundsagenternas JSON-svar till röst.
+---
 
-3. Interaktionslägen & UI-Reglaget (Fokuslinsen)
-Agenternas självständiga oscillationsdjup och interaktion med användaren styrs av tre organiska lägen och ett reglage:
-- **Samråda (Aktiv dialog):** Aktiveras när användaren talar. Agenterna tystnar. *Att förlikas* kliver fram som ordförande för att planera.
-- **Fokus / Exekvera (Tyst körning):** Aktiveras när ett bygge godkänns. Agenterna stänger röstkabeln och kör TDD-loopen blixtsnabbt i VFS (RAM). Vid röst-interrupt fryses tillståndet i WAL (`doc/LAST_CYCLE/`).
-- **Reflektera (Teatern):** Aktiveras efter grön kod. Djupet på den autonoma oscillationen styrs av UI-reglaget (nedre rotraden):
-  * `normal`: Ren debriefing. Rapporterar resultat och tystnar direkt.
-  * `mikro`: Lokal VFS-oscillation. Putsar kod och typer inom komponenten.
-  * `makro`: Systemutblick. Knoppar av arkitekturförslag eller nya FSD-byggbiljetter (`TCK-XXX.md`).
-  * `meta`: Processutvärdering. Utvärderar systemets rutiner och instruktioner (`AGENTS.md` / `SI`).
+## 1. VERKTYG, MILJÖ & EXPLORATION BUDGET
 
-4. Transient E2E-Teststrategi, Minnesmodell och Autonom Orkestrering (Fas 2)
-- Exekvera `pnpm bygg [TCK-XXX]`.
-- Skapa och exekvera transienta E2E- och BDD-scenarier (90 % WAL / 10 % Browserless) under `src/__tests__/transient_TCK-XXX.test.ts`.
-- **Mekanisk TDD-ordning (Fail First):** Testfilen committas eller exekveras först med rött utfall. Först därefter implementeras källkoden under `src/features/` för att göra testet grönt.
-- **90 % WAL-verifiering (Händelsebaserad E2E):** Simulera användarens händelseflöde och tillstånd via autentiska EventBus-strömmar i Node/VFS (< 3s) för att bevisa att systemets inre dynamik uppfyller ingressens syfte. Skall alltid innehålla negativa kontrollfixtures (timeouts, commits, avbrott) för att mekaniskt bevisa att systemtelemetri inte läcker in i tursfären.
-- **10 % Browserless E2E (Visuell E2E-validering):** Verifiera visuell helhet, DOM och frånvaro av kognitiva klyftor i webbläsarmiljö (upp till 30s / max 1 Browserless Unit per cykel) för att främja närhet enligt ingressen. Vid Teater-reflektion används primärt klientbaserade DOM-snapshots i RAM framför externa API-anrop.
-- **Minnesuppdelning:** Repots Git-historik äger källkoden (`src/`), Google Drive äger användarens bokhylla (`/Outreach_Workspace/`), och WAL äger körtidstillståndet och teatern.
-- Kör `pnpm verify`. Vid godkänd verifiering flyttas testet till `src/__tests__/suite/e2e_regression.test.ts`.
-- Låt klientorkestratören mata WebSocket-kabeln automatiskt med verktygs-svar (`BidiGenerateContentToolResponse` med `NON_BLOCKING`) för oavbrutna flerstegskörningar. Logga principiella beslut i `doc/DECISIONS.md`.
+### 1.1 Tillåtna Verktyg & Exekvering
+- **Filinspektion:** `read_file`, `list_dir`, `search_code`.
+- **Körtid & Byggkommando:** All kodning och verifiering styrs deterministiskt via `pnpm bygg [TCK-XXX]`.
+- **Inga gissningar (JIT-laddning):** All domänkunskap hämtas runtime från repot:
+  * Fullständigt körtidskontrakt & fasregler: `doc/SI_v10.4.md`
+  * Modul- och exportöversikt: `doc/FEATURE_INDEX.json`
+  * Biljettklyvning: `.agents/skills/decomposing-tickets/SKILL.md`
+  * Augmented Coding Patterns (reverse-direction, check-alignment, steel-thread): `.agents/skills/patterns/`
 
-5. Aktiva Skills och Delade Moduler (JIT)
-- Läs in `doc/SI_v10.3.md` och relevanta skills från `.agents/skills/` enbart när motsvarande behov deklareras i Steg 1b.
-- Slå upp sökvägar i `doc/FEATURE_INDEX.json` vid återanvändning av existerande moduler.
+### 1.2 Exploration Budget per Steg
+- **Mikrokanaler (Att följa / Att vända om):** Max **2 sekventiella tool-turns** per makrosteg. Parallella verktygsanrop i samma turn är obegränsade inom domänen och shared.
+- **Makrokanal (Att förlikas):** Max **4 sekventiella tool-turns** för syntes och sammanvägning.
+- **Domänspärr:** Verktyg får aldrig användas för att läsa eller modifiera källkod i en annan feature-mapp än den som tilldelats biljetten.
+
+---
+
+## 2. CENTRAL TICKET-LOGISTIK (`doc/.TICKETS/`)
+
+Eftersom repot saknar externa ärendehanteringssystem (Jira/GitHub Issues) MÅSTE agenter respektera det lokala filsystemet för all ticket-hantering.
+
+### 2.1 Huvudindex (`doc/TICKETS.md`)
+- Detta är den centrala liggaren. Agenten MÅSTE alltid hålla statusen uppdaterad här.
+- Statusflaggor: `[DRAFT]`, `[PLANNED]`, `[IN PROGRESS]`, `[DONE]`, `[SUPERSEDED]`.
+
+### 2.2 Byggbiljetter (`doc/.TICKETS/TCK-XXX.md`)
+- Själva byggkontraktet som läses in av Byggmotorn via `pnpm bygg TCK-XXX`.
+- Max 1 FSD-domän per biljett är tillåten.
+
+### 2.3 Ticket-klyvning vid kontraktsbrott
+Om en agent upptäcker att ett uppdrag bryter mot FSD-gränsen utförs följande rutin via `decomposing-tickets`:
+1. Markera biljetten som `[SUPERSEDED]` i `doc/TICKETS.md`.
+2. Skapa sekventiella biljetter under `doc/.TICKETS/` och infoga dem i huvudindexet.
+
+---
+
+## 3. TRIADENS DYNAMIK I KÖRTID
+
+1. **Att följa (Framdrift):** Efemär mikrosession. Skapar 3 ortogonala alternativ enligt `reverse-direction` för att bryta kognitiv förankring.
+2. **Att vända om (Granskaren):** Efemär mikrosession. Synar alibin och prövar alternativen enligt `check-alignment` mot tysta felblock, nätverkskrascher och kräver destruktiv sanering.
+3. **Att förlikas (Makro-värd):** Håller sammanhängande session. Väger spänningsfältet och låser byggkontraktet.
+
+---
+
+## 4. ARKITEKTURBEGRÄNSNINGAR (FSD)
+
+- **Max 1 FSD-domän per TCK:** En biljett får endast röra filer under en enskild katalog i `src/features/[domän]/`.
+- **Samverkan sker via 4 vägar:** EventBus (CloudEvents), Shared-lagret, Överliggande komposition (Widgets), eller Biljettklyvning.
+
+---
+
+## 5. TDD-REGLER & MEKANISKA GRINDAR
+
+- **Tvålagsverifiering:**
+  1. *Händelsereplay (Node/VFS, < 3s)* med negativa kontrollfixtures.
+  2. *Körtidsankare (Skarp Liveline, < 30s):* Kräver fysisk koppling till körtids-API (ex. `Browserless`, `WebSocket`) vid UI/I-O enligt mönstret `steel-thread`.
+- **Mekanisk Alibispärr:** AST-granskaren underkänner tester som använder `fs.readFileSync` eller regex mot källkodssträngar.
+- **Fail First (Gate 3a):** Transient-testet MÅSTE krascha med exit-kod 1 mot befintlig kod innan implementering påbörjas.
+
+---
+
+## 6. FAS 3: REFLEKTION & CLI-AVBROTT
+
+Efter grön källkod körs Fas 3 automatiskt:
+- *Att förlikas* leder dialogen och bjuder in övriga krafter via `<TALA kraft="följa|vända-om">fråga</TALA>`.
+- Terminalen stödjer **Barge-In** (Enter) för användarstyrning.
+- Lärdomar sparas i `doc/PROCESS_IMPROVEMENTS.md` och i WAL.
