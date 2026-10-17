@@ -25,6 +25,11 @@
       "description": "Realtidsorkestrering av multi-agent svärm baserad på Gemini Live API med samordnad problemlösning",
       "source_reference": "https://github.com/bjud-in-oss/Ouroboros-Agent",
       "status": "active"
+    },
+    "telemetry": {
+      "path": "src/features/telemetry",
+      "description": "Telemetri- och livscykelhändelser inklusive Ping/Pong via EventBus och Zod-validering",
+      "status": "active"
     }
   },
   "shared": {

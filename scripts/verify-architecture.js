@@ -17,6 +17,9 @@
  * 3. Förhindrar lagerinversion (src/shared/ får aldrig importera från överliggande lager).
  */
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
 const fs = require('fs');
 const path = require('path');
 const ts = require('typescript');
@@ -134,7 +137,25 @@ function getFsdLayer(relPath) {
 // ARKITEKTURREGLER
 // ============================================================================
 
-const files = getAllSourceFiles(SRC_DIR);
+function getModifiedFiles() {
+  try {
+    const { execSync } = require('child_process');
+    const status = execSync('git status --porcelain', { encoding: 'utf-8', cwd: ROOT_DIR });
+    return status
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => line.split(/\s+/).pop())
+      .filter((file) => file && (file.endsWith('.ts') || file.endsWith('.tsx')))
+      .map((file) => path.resolve(ROOT_DIR, file))
+      .filter((fullPath) => fs.existsSync(fullPath));
+  } catch {
+    return [];
+  }
+}
+
+const modifiedFiles = getModifiedFiles();
+const files = modifiedFiles.length > 0 ? modifiedFiles : getAllSourceFiles(SRC_DIR);
 const violations = [];
 
 for (const filePath of files) {

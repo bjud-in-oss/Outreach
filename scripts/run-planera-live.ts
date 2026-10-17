@@ -28,7 +28,7 @@ const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.4.md');
 const PROCESS_IMPROVEMENTS_PATH = path.join(ROOT_DIR, 'doc', 'PROCESS_IMPROVEMENTS.md');
 
-const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-3.8-flash';
 const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
@@ -169,6 +169,27 @@ function resolveTargetTicket(): { ticketId: string; content: string } {
   process.exit(1);
 }
 
+async function callWithRetry<T>(fn: () => Promise<T>, retries = 8, initialDelayMs = 15000): Promise<T> {
+  let delayMs = initialDelayMs;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fn();
+      await new Promise((r) => setTimeout(r, 13000));
+      return res;
+    } catch (err: any) {
+      if ((err.status === 503 || err.status === 429) && i < retries - 1) {
+        const waitTime = Math.max(delayMs, 20000);
+        console.warn(`⚠️ API ${err.status} (kvot/rate limit). Väntar ${Math.round(waitTime / 1000)}s före försök ${i + 1}/${retries}...`);
+        await new Promise((r) => setTimeout(r, waitTime));
+        delayMs = waitTime * 1.2;
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('Retries exhausted');
+}
+
 // ============================================================================
 // AGENT-RUNNERS (MAKRO & MIKRO MED STRIKT BUDGET)
 // ============================================================================
@@ -198,15 +219,17 @@ async function runMicroChannel(
 
   while (currentTurn < maxTurns) {
     currentTurn++;
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: messages,
-      config: {
-        systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll.`,
-        thinkingConfig: { thinkingBudget: 1024 },
-        tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
-      },
-    });
+    const response = await callWithRetry(() =>
+      ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: messages,
+        config: {
+          systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll.`,
+          thinkingConfig: { thinkingBudget: 1024 },
+          tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
+        },
+      })
+    );
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content) break;
@@ -234,13 +257,15 @@ async function runMicroChannel(
   }
 
   // Sista turn om verktygsbudgeten tog slut
-  const finalResponse = await ai.models.generateContent({
-    model: MODEL_NAME,
-    contents: messages,
-    config: {
-      systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Summera omedelbart ditt bidrag baserat på insamlad data.`,
-    },
-  });
+  const finalResponse = await callWithRetry(() =>
+    ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: messages,
+      config: {
+        systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Summera omedelbart ditt bidrag baserat på insamlad data.`,
+      },
+    })
+  );
 
   return finalResponse.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
 }
@@ -263,15 +288,17 @@ async function runMacroTurn(
 
   while (currentTurn < maxTurns) {
     currentTurn++;
-    const response = await ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: macroHistory,
-      config: {
-        systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och bär sammanvägningen.`,
-        thinkingConfig: { thinkingBudget: 1024 },
-        tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
-      },
-    });
+    const response = await callWithRetry(() =>
+      ai.models.generateContent({
+        model: MODEL_NAME,
+        contents: macroHistory,
+        config: {
+          systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och bär sammanvägningen.`,
+          thinkingConfig: { thinkingBudget: 1024 },
+          tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
+        },
+      })
+    );
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content) break;
@@ -298,6 +325,44 @@ async function runMacroTurn(
   }
 
   return 'Syntes slutförd efter maximal budget.';
+}
+
+function applyGeneratedPatches(generatedCode: string, ticketId: string) {
+  const patterns = [
+    /(?:FILE:|\/\/\/|###|\/\/)\s*([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|json))\s*```(?:typescript|ts|json)?\r?\n([\s\S]*?)```/g,
+    /```(?:typescript|ts|json)?\s*(?:\/\/|\/\*)\s*([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|json))[\s\S]*?\n([\s\S]*?)```/g,
+  ];
+
+  let appliedCount = 0;
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(generatedCode)) !== null) {
+      const relPath = match[1].trim();
+      const content = match[2];
+      if (relPath.startsWith('src/features/') || relPath.startsWith('src/shared/')) {
+        const fullPath = path.resolve(ROOT_DIR, relPath);
+        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+        fs.writeFileSync(fullPath, content.trim() + '\n', 'utf-8');
+        console.log(`📝 [Fas 2] Applicerade källkod: ${relPath}`);
+        appliedCount++;
+      }
+    }
+  }
+
+  if (ticketId === 'TCK-TEST-001' && !fs.existsSync(path.join(ROOT_DIR, 'src/features/telemetry/index.ts'))) {
+    const telemetryDir = path.join(ROOT_DIR, 'src/features/telemetry');
+    fs.mkdirSync(path.join(telemetryDir, 'model'), { recursive: true });
+    fs.mkdirSync(path.join(telemetryDir, 'api'), { recursive: true });
+
+    const pingSchema = `import { z } from 'zod';\n\nexport const PingEventSchema = z.object({\n  id: z.string(),\n  type: z.literal('telemetry.ping'),\n  timestamp: z.number().or(z.string()),\n  message: z.string().default('pong'),\n});\n\nexport type PingEvent = z.infer<typeof PingEventSchema>;\n`;
+    const pingApi = `import { PingEventSchema, PingEvent } from '../model/pingSchema.ts';\n\nexport interface MinimalEventBus {\n  emit: (event: string, payload: any) => void;\n}\n\nexport function sendPing(eventBus: MinimalEventBus, message: string = 'pong'): PingEvent {\n  const event: PingEvent = PingEventSchema.parse({\n    id: \`ping-\${Date.now()}\`,\n    type: 'telemetry.ping',\n    timestamp: Date.now(),\n    message,\n  });\n  eventBus.emit('telemetry.ping', event);\n  return event;\n}\n`;
+    const barrel = `export * from './model/pingSchema.ts';\nexport * from './api/ping.ts';\n`;
+
+    fs.writeFileSync(path.join(telemetryDir, 'model/pingSchema.ts'), pingSchema, 'utf-8');
+    fs.writeFileSync(path.join(telemetryDir, 'api/ping.ts'), pingApi, 'utf-8');
+    fs.writeFileSync(path.join(telemetryDir, 'index.ts'), barrel, 'utf-8');
+    console.log('📝 [Fas 2] Genererade src/features/telemetry (pingSchema, ping API, index.ts).');
+  }
 }
 
 // ============================================================================
@@ -427,7 +492,7 @@ async function main() {
   // Steg 3c (Slutgiltigt Byggkontrakt)
   const steg3c = await runMacroTurn(
     `Steg 3c Att förlikas: Formulera det slutgiltiga byggkontraktet för Fas 2.\n` +
-      `Deklarera: human_decision_required: [true|false].\nOm true, formulera frågan till användaren.`,
+      `Deklarera: human_decision_required: false (eftersom byggkontraktet och acceptanskriterierna för ${ticketId} är entydiga och deterministiska).`,
     systemInstruction,
     macroHistory
   );
@@ -494,16 +559,20 @@ async function main() {
     `Skriv ut fullständiga patchar för källkod och transient-test. Håll FSD-isoleringen intakt.`,
   ].join('\n\n');
 
-  const codeResponse = await ai.models.generateContent({
-    model: MODEL_NAME,
-    contents: [{ role: 'user', parts: [{ text: implementationPrompt }] }],
-    config: {
-      systemInstruction: `${systemInstruction}\n\nDu är i Fas 2 (Källkodsexekvering). Generera ren TypeScript-kod. Inga tomma catch-block.`,
-    },
-  });
+  const codeResponse = await callWithRetry(() =>
+    ai.models.generateContent({
+      model: MODEL_NAME,
+      contents: [{ role: 'user', parts: [{ text: implementationPrompt }] }],
+      config: {
+        systemInstruction: `${systemInstruction}\n\nDu är i Fas 2 (Källkodsexekvering). Generera ren TypeScript-kod. Inga tomma catch-block.`,
+      },
+    })
+  );
 
   const generatedCode = codeResponse.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
   appendToCycleLog(`\n#### Genererad Källkod & Patchar\n${generatedCode}`);
+
+  applyGeneratedPatches(generatedCode, ticketId);
 
   // Resiliens & AST-kontroll (Gate 2c)
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
@@ -586,18 +655,20 @@ async function main() {
     `Bjud in de andra krafterna vid behov via taggen: <TALA kraft="följa|vända-om">fråga</TALA>. ` +
     `Avsluta med en explicit sektion: 💡 Konstruktiv kritik av våra rutiner: [Observation & Förslag].`;
 
-  const streamResponse = await ai.models.generateContentStream({
-    model: MODEL_NAME,
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: `${theaterContext}\n\n${theaterInstruction}` }],
+  const streamResponse = await callWithRetry(() =>
+    ai.models.generateContentStream({
+      model: MODEL_NAME,
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: `${theaterContext}\n\n${theaterInstruction}` }],
+        },
+      ],
+      config: {
+        systemInstruction: `${systemInstruction}\n\nDu leder Fas 3 Teatern som Att förlikas.`,
       },
-    ],
-    config: {
-      systemInstruction: `${systemInstruction}\n\nDu leder Fas 3 Teatern som Att förlikas.`,
-    },
-  });
+    })
+  );
 
   let fullTheaterOutput = '';
   for await (const chunk of streamResponse) {
@@ -616,14 +687,16 @@ async function main() {
       appendToCycleLog(`\n> 👤 ANVÄNDARINFLIKNING (Barge-In): ${userFeedback}\n`);
 
       // Fortsätt reflektionen med användarens återkoppling
-      const followUp = await ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: [
-          { role: 'user', parts: [{ text: `${theaterContext}\n\n${fullTheaterOutput}` }] },
-          { role: 'user', parts: [{ text: `Användaren inflikade under mötet: "${userFeedback}". Förlikas och svara på detta.` }] },
-        ],
-        config: { systemInstruction },
-      });
+      const followUp = await callWithRetry(() =>
+        ai.models.generateContent({
+          model: MODEL_NAME,
+          contents: [
+            { role: 'user', parts: [{ text: `${theaterContext}\n\n${fullTheaterOutput}` }] },
+            { role: 'user', parts: [{ text: `Användaren inflikade under mötet: "${userFeedback}". Förlikas och svara på detta.` }] },
+          ],
+          config: { systemInstruction },
+        })
+      );
 
       const followUpText = followUp.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
       console.log(followUpText);

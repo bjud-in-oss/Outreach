@@ -1,7 +1,7 @@
 # TICKETS & LEVERANSPLAN
 
 ## AKTIVA TICKETS
-- (Inga aktiva tickets)
+- [IN PROGRESS] TCK-TEST-001: Verifiera v10.4 Livscykeln (src/features/telemetry/)
 
 ---
 

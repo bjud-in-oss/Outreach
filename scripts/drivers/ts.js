@@ -9,6 +9,9 @@
  * - Gate 2c: `--check-catch-blocks` (Förbjuder tomma och tysta catch-block)
  */
 
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -235,16 +238,57 @@ function checkCatchBlocks() {
 }
 
 // ============================================================================
+// HJÄLPFUNKTIONER FÖR TESTER
+// ============================================================================
+
+export function checkAstMetrics(filePath, content) {
+  const lineCount = content.split('\n').length;
+  const isTsx = filePath.endsWith('.tsx');
+  const maxLines = isTsx ? 120 : 250;
+  if (lineCount > maxLines) {
+    return {
+      valid: false,
+      error: `Överträdelse av radgräns (${lineCount} rader, max är ${maxLines} för ${isTsx ? '.tsx' : '.ts'})`,
+    };
+  }
+  return { valid: true };
+}
+
+export function checkNoProductionMocks(filePath, content) {
+  if (filePath.includes('__tests__') || filePath.includes('.test.') || filePath.includes('.spec.')) {
+    return { valid: true };
+  }
+  if (content.includes('isTestMode')) {
+    return { valid: false, error: 'isTestMode är otillåtet i produktionskod' };
+  }
+  if (content.includes('generateDeterministicFallback')) {
+    return { valid: false, error: 'generateDeterministicFallback är otillåtet i produktionskod' };
+  }
+  if (content.includes('mock-folder')) {
+    return { valid: false, error: 'mock-folder är otillåtet i produktionskod' };
+  }
+  if (content.includes('vi.mock(') || content.includes('jest.mock(')) {
+    return { valid: false, error: 'Produktionsmockar är otillåtna' };
+  }
+  return { valid: true };
+}
+
+export { checkAlibiInTests, checkCatchBlocks };
+
+// ============================================================================
 // CLI-DISPATCHER
 // ============================================================================
 
+const isRunningDirectly = process.argv[1] && process.argv[1].endsWith('ts.js');
 const args = process.argv.slice(2);
 
-if (args.includes('--check-alibi')) {
-  checkAlibiInTests();
-} else if (args.includes('--check-catch-blocks')) {
-  checkCatchBlocks();
-} else {
-  console.log('Användning: node scripts/drivers/ts.js [--check-alibi | --check-catch-blocks]');
-  process.exit(0);
+if (isRunningDirectly) {
+  if (args.includes('--check-alibi')) {
+    checkAlibiInTests();
+  } else if (args.includes('--check-catch-blocks')) {
+    checkCatchBlocks();
+  } else if (args.length > 0) {
+    console.log('Användning: node scripts/drivers/ts.js [--check-alibi | --check-catch-blocks]');
+    process.exit(0);
+  }
 }
