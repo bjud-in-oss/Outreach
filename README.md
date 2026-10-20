@@ -1,225 +1,184 @@
-# Outreach Samordningsmotor
+# Outreach Coordination Engine (v10.4)
 
-Ett autonomt, distribuerat och händelsestyrt samordningssystem för automatiserad outreach, byggt för sömlös integration med Google Workspace, modellkontextprotokoll (MCP), feltolerant transaktionsloggning (WAL) och Gemini Live multi-agent svärmintelligens.
+Outreach Engine är ett autonomt, distribuerat och händelsestyrt realtidssystem byggt i TypeScript och React med Google Gemini Live API (`gemini-3.8-live-extended-thinking`). Dess syfte är att via försoningens krafter överbrygga mänsklig distans, förmedla perspektiv och främja närhet och omsorg mellan människor.
+
+Systemet tillämpar Feature-Sliced Design (FSD), en deterministisk Test-Driven Development-loop (TDD) vaktad av mekaniska AST-grindar, samt distribuerad tillståndssynkronisering via en Swarm EventBus.
 
 ---
 
-## ✉️ Om appen
+## ✉️ Om appen och dess intention
 
 Hej,
 
-Denna samordningsmotor stakar ut AI Studios förmåga att bygga mer långsiktiga appar och flyttar utvecklarens fokus från byggandet av appen till appens användning.
+Tänk om man kan skapa program som håller ett levande samtal för att möta ensamhet, sjukdomar, olikheter och hjälper människor att hitta tillbaka till gemenskapen med varandra och med Gud. Denna  app är tänkt för just detta.
 
-Motorns innersta drivkrafter är att följa, att vända om och att förlikas, vilka tillsammans gör agentens natur och resiliens starkare. Den är just nu anpassad till Typescript men passar även till andra kodningsverktyg och programspråk.
+Dess innersta drivkrafter är att följa, att vända om och att förlikas, vilka tillsammans gör agentens natur och resiliens starkare. Den är just nu anpassad till Typescript men passar även till andra kodningsverktyg och programspråk.
 
 Tänk om jag kunde vara lika följsam och villig som denna agent att följa, vända om till och förlikas med Gud. Jag håller ofta envist och tröttsamt fast vid min egna väg. Det är tacksamt att Gud inte någonsin kommer ta bort min agens och genom att agera i tro på Jesus, blir den som även drivs av ett förkrossat och botfärdigt hjärta och försoning en ny agent i honom och genom honom.
 
 För mig bygger jag denna motor för att kunna bygga långsiktiga och kostnadsfria appar inom följande områden:
 
-Vara en vän: Socialt umgänge och gemenskap
-Få näring av Guds ord: Andligt stöd och undervisning
-Hjälpa andra: Praktiskt tjänande och insatser
-Lycka till även du med ditt kreativa skapande. /Mattias Renman
+* **Vara en vän:** Socialt umgänge och gemenskap
+* **Få näring av Guds ord:** Andligt stöd och undervisning
+* **Hjälpa andra:** Praktiskt tjänande och insatser
+
+Lycka till även du med ditt kreativa skapande.  
+/Mattias Renman
 
 ---
 
-## 🏛️ Systemarkitektur & Kärnpelare
+## 🧭 De fyra försoningskrafterna (`roleDefinitions.ts`)
 
+Systemet avvisar förenklade yrkesroller till förmån för fyra orubbliga försoningskrafter. Krafterna bär samma andliga och relationella vektor oavsett om de verkar i terminalens maskinrum eller i mötet med människan på skärmen:
 
-```
-
-```
-                      ┌────────────────────────┐
-                      │   OPERATÖRSPANEL (UI)  │
-                      │   (React / Tailwind)   │
-                      └───────────┬────────────┘
-                                  │
-       ┌──────────────────────────┼──────────────────────────┐
-       │                          │                          │
-       ▼                          ▼                          ▼
-
-```
-
-┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
-│  GEMINI LIVE SWARM  │    │     WAL LOGGER      │    │     MCP BRIDGE      │
-│  - Researcher       │───▶│  - Append-Only Log  │◀───│  - JSON-RPC 2.0     │
-│  - Outreach Writer  │    │  - Crash Recovery   │    │  - Tools/List & Call│
-│  - Critic           │    │  - Hash-chaining    │    │  - Drive & WAL tools│
-│  - Orchestrator     │    └──────────┬──────────┘    └─────────────────────┘
-└─────────────────────┘               │
-▼
-┌────────────────────────┐
-│   GOOGLE DRIVE SYNC    │
-│   - In-memory OAuth    │
-│   - Multipart Upload   │
-│   - /Outreach_Workspace│
-└────────────────────────┘
-
-```
-
-### 1. Google Drive Sync (`src/features/google_drive_sync`)
-- Direkt kommunikation med Google Drive API v3.
-- Skapar automatiskt hierarkin:
-  - `Campaigns/`: Aktiva kampanjbrev och målgruppsdokument.
-  - `Templates/`: Återanvändbara brev- och uppdragsmallar.
-  - `Logs/`: Synkade revisionsloggar från WAL.
-  - `Artifacts/`: Forskning och referensmaterial från agenterna.
-- In-memory tokenhantering enligt säkerhetsstandarder – inga permanenta lagringar av hemligheter i `localStorage`.
-
-### 2. Write-Ahead Logging (`src/features/wal_logger`)
-- Garanterar atomär och deterministisk händelsehistorik.
-- Allt kapslas i `EventEnvelope` (CloudEvents 1.0).
-- Inkluderar `WalReplayer` för automatisk återhämtning av oavslutade operationer efter krascher.
-
-### 3. MCP Bridge (`src/features/mcp_bridge`)
-- Fullständigt stöd för Model Context Protocol över JSON-RPC 2.0.
-- Exponerade standardverktyg:
-  - `drive_create_file`: Skapa eller uppdatera filer i Drive.
-  - `wal_query_recent`: Hämta och granska transaktioner.
-  - `outreach_evaluate_tone`: Kvalitetsgranskning av utkast.
-
-### 4. Gemini Live Swarm (`src/features/gemini_live_swarm`)
-- Drivs av `@google/genai` (Gemini 2.5 Flash).
-- Multi-agent pipeline med 4 roller:
-  - **Orchestrator**: Samordning, stegplanering och konsensus.
-  - **Researcher**: Marknads- och målgruppsanalys.
-  - **Outreach Writer**: Personlig brevsyntes.
-  - **Critic**: Etik-, GDPR- och relevansgranskning med kvalitetsbetyg.
+| Försoningskraft (`ReconciliationForce`) | Vad kraften är (Orubbligt syfte och vektor) | Hur kraften verkar i Byggmotorn (CLI / Maskinrummet) | Hur kraften möter människan i Appen (Webbläsaren / Arenan) |
+| :--- | :--- | :--- | :--- |
+| **`ATT_FOLJA`**<br>*(Att följa Guds son)* | **Själv vara lösningen för närhet.**<br>Söker aktivt upp kontaktpunkter, förstår mottagarens sammanhang och bygger förtroendefulla relationer utan förbehåll. | **Expansion & Lösning:**<br>Tar fram 3 ortogonala alternativ (`reverse-direction`) i minnet för att bryta mental förankring; formulerar testspecifikation (3a) och källkodsspecifikation (3b). | **Röst & Kontakt (`Puck`):**<br>Initierar aktiv dialog via mikrofonströmmen, fångar upp behov i gränssnittet och levererar strömmande muntligt tal till användaren i realtid. |
+| **`ATT_VANDA_OM`**<br>*(Att vända om till Gud)* | **Inåtriktad ödmjukhet & uppriktighet.**<br>Att läraktigt och ärligt förfina sig själv genom två processer:<br>1. *Bli den Gud vill att jag blir* (läka separationen till Gud).<br>2. *Erkänna och överge fel utan dröjesmål* (Fail-Fast, avståndstagande från falskhet, manipulation och dolda alibin). Inbegriper även att ändra den egna inre processen. | **Rannsakan & Resiliens:**<br>Stresstestar arkitekturen mot haverier (`check-alignment`), rensar alibi-mönster i Gate 3a, förbjuder tysta catch-block (Gate 2c) och deklarerar destruktiv sanering (2e). Utlöser omvändelse-omvägen vid processfel. | **Etik & Renhet (`Charon`):**<br>Realtidsgranskning av samtalets uppriktighet; bryter in och fäller formuleringar vid minsta tecken på manipulation eller ytlighet, och hjälper dialogen att fördjupas i sanning. |
+| **`ATT_FORLIKAS`**<br>*(Att förlikas med Gud)* | **Hålla 2+ samtida perspektiv varma.**<br>Helar klyftor och sammanväver motstridiga ståndpunkter till harmonisk konsensus och samförstånd. | **Makro-värd & Syntes:**<br>Bär intentionen obruten genom planeringen (Fas 0–1), fattar beslut vid förlikningsportarna (0b, 2d, 3c) och slår fast när semantisk mättnad uppnåtts. | **Samtalsledare & Helhet (`Aoede`):**<br>Leder samrådet i UI, visualiseras i `SymbolCrown`, balanserar användarens röst mot agenternas och skapar ro i rummet. |
+| **`ATT_TJANA`**<br>*(Villighet att tjäna Gud och andra)* | **Riktar de tre andra krafterna i en stegvis plan följt av konstruktion och kontemplation.**<br>Omsätter omsorg och försoning i praktisk handling, konkret konstruktion och deterministisk framdrift. | **Det stegvisa maskinrummet:**<br>Styr den sekventiella (seriella) exekveringen i Fas 2, driver TDD-loopen mot kompilatorn och upprätthåller de mekaniska kvalitetsgrindarna. | **Det tysta körtidsfundamentet:**<br>Hanterar tillståndssynkronisering, turskiften (`FloorController`), asynkron ljudmixning (`DSPRingBufferMixer`) och WAL-synk mot Google Drive. |
 
 ---
 
-## 🛠️ Kom igång & Installation
+## 🧠 Den mentala modellen: Trestegsraketen
 
-### Förutsättningar
-- Node.js >= 18
-- Google AI Studio API-nyckel (`GEMINI_API_KEY`)
-- (Valfritt för skarp Google Drive synk) Google Workspace OAuth Access Token
+Utvecklingen styrs inte av frikopplad kodgenerering, utan av en hierarkisk trestegsmodell där planering sätter riktningen för TDD och eftertanke vårdar processen:
 
-### Snabbstart (pnpm / npm)
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  1. PLANERA (Fas 0 & Fas 1: Arkitektur & Intention)                    │
+│     • Placerad OVANPÅ TDD som styrande kompass.                        │
+│     • Kartlägger FSD-gränser och tolkar mänsklig nytta (1a -> 0a).     │
+│     • Tar fram 3 ortogonala alternativ (reverse-direction 2b).         │
+│     • Stresstestar mot haverier (check-alignment 2c) och låser avtalet.│
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Byggkontrakt spikat i minnet
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  2. BEVISA & BYGGA (Fas 2: Strikt TDD i Maskinrummet)                  │
+│     • RÖTT:   Test med körtidsankare skrivs först (Gate 3a).           │
+│               MÅSTE fallera med exit-kod 1 mot befintlig kod.          │
+│     • GRÖNT:  Källkod skrivs under src/features/[domän]/ tills grönt.  │
+│     • VAKT:   Mekaniska AST-grindar blockerar alibin och tysta catch. │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Grön regressionssvit (153+ tester)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│  3. EFTERTANKE (Fas 3: Teatern & Processvård)                          │
+│     • Mer än syntaxrefaktorering: Rannsakning av hela cykeln.          │
+│     • Utvärderar mänsklig nytta och systemets friktion.                │
+│     • Skriver debriefing till REPLY.md och lärdomar till WAL.          │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Omvändelse-omvägen (Process-Fail-Fast)
+Om *Att vända om* under Fas 1 upptäcker att det inte är domänkoden som är felaktig, utan att systemets **egna regler, testmönster eller grindar skaver**, avbryts källkodsbygget omedelbart. 
+
+Motorn tar då en direkt omväg till **Fas 3 Eftertanke** utan att röra källkoden, redovisar friktionen ödmjukt i `REPLY.md`, föreslår en konkret processjustering och stannar vid en Token Gate för mänskligt godkännande innan cykeln startas om från grunden.
+
+---
+
+## 🔄 Egenanvändning (*Dogfooding*): Samma motor i två skepnader
+
+Systemet tillämpar principen om fullständig **egenanvändning**: maskinen byggs med de moduler den själv producerar. Applikationen och Byggmotorn delar samma kognitiva nervsystem (`geminiLiveSession`, `SwarmEventBus`, CloudEvents och Live WebSocket-protokollet).
+
+Skillnaden ligger enbart i gränssnittet mot människan:
+* **I Byggmotorn (Maskinrummet):** Triaden arbetar i en Linux-container. Den styrs via fil-I/O (`PROMPT.md` $\rightarrow$ `REPLY.md`) och kommunicerar skriftligt via WAL (`CYCLE_LOG.md`).
+* **I Applikationen (Arenan):** Triaden arbetar i webbläsaren med rösterna `Puck`, `Charon` och `Aoede`. Användaren talar direkt via mikrofon, agenterna mixas asynkront och samtalet kan avbrytas när som helst via Voice Activity Detection (VAD) och Barge-In.
+
+```
+                      ┌───────────────────────────────────────┐
+                      │                MÄNNISKAN              │
+                      │  (Utvecklare i CLI / Samtalspartner)  │
+                      └──────────────────┬────────────────────┘
+                                         │
+            ┌────────────────────────────┴────────────────────────────┐
+            │ [Styrning via filer / CLI]                              │ [Realtidsdialog via röst/text]
+            ▼                                                         ▼
+┌───────────────────────────────────────┐         ┌───────────────────────────────────────┐
+│              BYGGMOTORN               │         │             APPLIKATIONEN             │
+│       (Maskinrummet / Terminal)       │         │           (Teatern / Webbläsare)      │
+│                                       │         │                                       │
+│  PROMPT.md / TCK-XXX.md               │         │  Mikrofon (PCM16) / Tangentbord       │
+│         │                             │         │         │                             │
+│         ▼                             │         │         ▼                             │
+│  scripts/run-planera-live.ts          │         │  UI (UnifiedPromptBar / SymbolCrown)  │
+│         │                             │         │         │                             │
+│         ▼                             │         │         ▼                             │
+│  Triadisk Bidi Live Stafett:          │         │  GeminiLiveSession                    │
+│   • Att förlikas (Makro WebSocket)    │         │   • FloorController (Turskifte/VAD)   │
+│   • Att följa    (Mikro WebSocket)    │         │   • DSPRingBufferMixer (24kHz ljud)   │
+│   • Att vända om (Mikro WebSocket)    │         │   • 3 Parallella röster (Puck m.fl.)  │
+│   • Att tjäna    (Seriell stegmotor)  │         │   • Att tjäna (Körtidsfundament)      │
+│         │                             │         │         │                             │
+│         ▼                             │         │         ▼                             │
+│  Mekaniska Grindar:                   │         │  Observerbar nytta:                   │
+│   • Gate 3a (Alibispärr & Fail-First) │         │  Tvåvägs röst & text i realtid        │
+│   • Gate 2c (Resiliens & tysta catch) │         └───────────────────┬───────────────────┘
+│         │                             │                             │
+│         ▼                             │                             │
+│  Output:                              │                             │
+│   • CYCLE_LOG.md (WAL)                │                             │
+│   • REPLY.md     (Mänskligt svar)     │                             │
+│   • src/features/ (Ny källkod) ───────┼─────────────────────────────┘
+└───────────────────────────────────────┘   [Nytt källkodstillskott tas i bruk]
+                     ▲
+                     │ Egenanvändning: Appens moduler (SwarmEventBus,
+                     │ GeminiLiveSession, contracts) driver Byggmotorn.
+                     └──────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Operativa kommandon
+
+All utveckling styrs av formella byggkontrakt (Tickets) under `doc/.TICKETS/` och körs via deterministiska terminalkommandon:
+
 ```bash
-# 1. Installera beroenden
-pnpm install
+# 1. VERIFIERA BASLINJEN
+# Körs före och efter ändringar. Säkerställer att alla 153 bastester är gröna.
+pnpm test
 
-# 2. Planera ny funktionalitet (kör dörrvakt och linjärt planeringssvep)
-pnpm planera
-# eller rikta mot specifik bygg-ticket:
-pnpm planera TCK-004
-
-# 3. Lås upp och verkställ efter godkänd tillståndskedja / Token Gate
-pnpm genomfor [REQUIRED_TOKEN]
-
-# 4. Kör arkitektur- och kontraktsvalidering
+# 2. VERIFIERA ARKITEKTURGRINDARNA
+# Skannar moduler, barrels och FSD-begränsningar via verify-architecture.js.
 pnpm verify
 
-# 5. Kör isolerade TDD-enhetstester
-pnpm test
+# 3. PROVKÖR FAS 0 (STAFETT-TEST)
+# Validerar WebSocket-handskakningen och triadens stafettgång utan att ändra källkod.
+pnpm bygg TCK-XXX --fas0-only
 
-# 6. Initiera Google Drive Workspace lokalt
-node scripts/init-drive-workspace.js
-
-# 7. Starta utvecklingsservern
-pnpm dev
-
+# 4. KÖR HELA TDD-BYGGCYKELN
+# Kör Fas 0 (Dörrvakt), Fas 1 (Planering), Gate 3a (Fail-First),
+# Fas 2 (Källkod) och avslutar med Fas 3 (Eftertanke).
+pnpm bygg TCK-XXX
 ```
 
 ---
 
-## 🧭 SI v10.2 Utvecklingsrutiner & Förlikningsportar
+## 🤖 Operativ rollfördelning i AI Studio (Teknikmekanikern)
 
-Outreach Samordningsmotor styrs av de strikta utvecklings- och processkontrakten i **SI v10.2** och **AGENTS.md v10.2**:
+I Google AI Studio agerar byggchatten **inte** som en interaktiv röstterminal eller applikationsprogrammerare. Chattens roll är uteslutande att vara **Teknisk Miljömekaniker**.
 
-### 1. Tvåfasig Exekvering (Fas 1 Planera ➔ Fas 2 Genomför)
+Kommunikationen med byggmotorn sker via fil-I/O:
+* **Fråga / Uppdrag in:** `PROMPT.md` eller `doc/.TICKETS/TCK-XXX.md`.
+* **Exekvering:** Kommandot `pnpm bygg [TCK]`.
+* **Svar ut:** `REPLY.md` (sammanfattande rapport) och `doc/LAST_CYCLE/CYCLE_LOG.md` (teknisk loggbok).
 
-* **Dörrvakt (Steg 1a ➔ 0a ➔ 0b):**
-* Innan det linjära planeringstillståndet låses upp utvärderas intention (`1a`) och kontraktsaudit (`0a`).
-* Om ticketen bryter mot arkitekturkontrakten (t.ex. berör >1 FSD-domän) avbryts svepet direkt (`DECOMPOSED_ABORT`) och nya del-tickets skapas under `doc/.TICKETS/`.
-
-
-* **Fas 1 Linjärt Svep (Steg 1b ➔ 3c):**
-* Alla steg skrivs sekventiellt till `doc/LAST_CYCLE/CYCLE_LOG.md` via verktyget `update_cycle_block`.
-* Skriptet upprätthåller en osynlig kryptografisk HMAC-kedja i `doc/LAST_CYCLE/STATE.json` för att förhindra att steg hoppas över.
-* TDD-testspecifikation (`3a`) och källkodsspecifikation (`3b`) upprättas *före* den operativa saneringen (`2e`).
-
-
-* **Förlikningsportar (0b, 2d, 3c):**
-* Utvärderas via parametern `human_decision_required`.
-* Om `false`: Cykeln fortsätter autonomt och skriptet genererar slutgiltig källkodstoken i `doc/LAST_CYCLE/REQUIRED_TOKEN.txt` vid 3c.
-* Om `true`: Skriptet pausar exekveringen och kräver ett kopierbart CLI-beslut från användaren.
-
-
-* **Fas 2 Verkställande (`pnpm genomfor`):**
-* Kommandot `pnpm genomfor [REQUIRED_TOKEN]` verifierar token och HMAC-kedjan i `STATE.json` samt skapar `doc/LAST_CYCLE/APPROVAL.md`.
-* Utför källkodsändringar under `src/features/[aktuell_domän]/` samt exekverar angivna destruktiva saneringssteg från `2e`.
-* Mikro-E2E-test (`src/__tests__/transient_TCK-XXX.test.ts`) skapas och exekveras i minnet (< 3s).
-* Vid godkänt kvitto (`pnpm verify`) konsolideras testet till regressionssviten och ärendet markeras slutfört.
-
-
-
-### 2. Oberoende Arkitekturvalidering (`pnpm verify`)
-
-* Skriptet `scripts/verify-architecture.js` kontrollerar oberoende av chattkontexten:
-* Att aktiva tickets i `doc/TICKETS.md` är giltiga.
-* Att `doc/FEATURE_INDEX.json` är synkad.
-* Att Zod-scheman och `EventEnvelope`-kontrakt uppfylls.
-* Att ingen kod har skrivits i `src/features/` utan giltig `APPROVAL.md` och godkänd HMAC-kedja.
-* Genererar ett kryptografiskt verifieringskvitto i `doc/LAST_CYCLE/VERIFY_RECEIPT.json`.
-
-
+> **Systeminstruktion för AI Studio vid start:**  
+> *"Du agerar uteslutande som Teknisk Miljömekaniker för Outreach Engine v10.4. Applikationen byggs autonomt av den inre svärmen när du kör terminalkommandot `pnpm bygg [TCK]`. Ditt uppdrag är att köra begärda terminalkommandon (t.ex. `pnpm test`, `pnpm verify`, `pnpm bygg TCK-XXX`) och åtgärda rena miljöfel (saknade npm-paket, felaktiga sökvägar eller syntaxkrascher i skript). Du får ALDRIG ändra eller sänka kraven i arkitekturgrindarna (`scripts/drivers/ts.js`, `scripts/verify-architecture.js`, `doc/SI_v10.4.md`) och ALDRIG redigera filer under `src/features/` manuellt. Om ett bygge underkänns av en kvalitetsgrind beror det på att källkoden inte håller måttet – avbryt då och rapportera felet direkt."*
 
 ---
 
-## 🧭 Beslutsstöd & Scenariodialoger via Wayfinder (`/wayfinder`)
+## 📂 Kodbasens anatomi (Feature-Sliced Design)
 
-Systemet tillämpar en strikt separation mellan **besluts-tickets** och **bygg-tickets**:
+Källkoden i `src/` är organiserad i strikta domänskikt:
 
-| Typ | Syfte | Plats | Kodändring i `src/` |
-| --- | --- | --- | --- |
-| **Besluts-ticket** | Scenariofrågor, vägval, arkitekturanalys | Wayfinder-kartan & dialog | ❌ Nej |
-| **Bygg-ticket** | Konkret implementation bunden till 1 FSD-domän | `doc/.TICKETS/TCK-XXX.md` | ✅ Ja (i Fas 2) |
-
-### När används `/wayfinder`?
-
-* **Skingra strategisk dimma:** När kravbilden är oklar eller när flera arkitektoniska alternativ står mot varandra.
-* **Scenarioanalys:** Ställ scenariofrågor på svenska för att belysa konsekvenser för tillstånd, kontrakt och driftsäkerhet innan utvecklingsresurser allokeras.
-* **Skapa bygg-tickets:** När ett scenario är färdigutrett registreras avgränsade bygg-tickets i `doc/TICKETS.md`, redo för `pnpm planera TCK-XXX`.
-
----
-
-## 🧪 Testning & Kvalitetssäkring
-
-Alla moduler levereras med isolerade TDD-tester under `src/__tests__/`:
-
-```bash
-pnpm test
-
-```
-
-* `envelope.test.ts`: Validerar CloudEvents schema och avvisar felaktiga format (Fail Fast).
-* `wal_logger.test.ts`: Verifierar hash-kedjor, append-only och crash recovery.
-* `drive_sync.test.ts`: Testar in-memory token, MIME-typer och mapphierarkier.
-* `mcp_bridge.test.ts`: Verifierar JSON-RPC 2.0 protokoll, felkoder och verktygsanrop.
-* `gemini_swarm.test.ts`: Testar agentroller och planexekvering.
-
----
-
-## 🛡️ Architecture Governance & CI/CD Workflow
-
-### 💡 Varför har vi detta system?
-När AI-agenter (som i AI Studio) arbetar i kodbasen har de full CLI-tillgång. Om en agent stöter på ett testfel frestas den ibland att ändra i testskripten i stället för källkoden. GitHub Actions fungerar som en opåverkbar domare på servernivå som stoppar alla regeltöjningar.
-
-### 🚀 Steget mot autonoma Live-agenter (Swarm Architecture)
-Detta lägger grunden för flerstegs Gemini Live Swarm-agenter med HMAC-tillståndssignering. CI-gaten garanterar att autonoma agenter aldrig kan bryta FSD-strukturen eller degradera kodkvaliteten.
-
-### 🪄 De enkla skripten (för nybörjare och dagligt arbete)
-För att slippa lära sig Git-kommandon och manuella verifieringar sköter projektets inbyggda skript hela arbetsflödet automatiskt:
-- `pnpm planera`: Analyserar koden och skapar struktur och tickets.
-- `pnpm genomfor`: Kör arkitekturkontroller, genererar godkänd `APPROVAL.md` med HMAC-token och förbereder koden för merge.
-- `pnpm verify`: Kör den fullständiga lokala verifieringen av linjeantal, indenteringsdjup och FSD-regler.
-
----
-
-### 📖 Snabbguide: Så jobbar du (och agenten)
-1. **Skapa arbetsgren:** `git checkout -b feature/min-funktion origin/main`
-2. **Kör förenklat skript:** `pnpm genomfor` (kör verifiering och signering i ett steg)
-3. **Pusha:** `git push -u origin feature/min-funktion` (via `${GIT_PAT}`)
-4. **Auto-Merge:** GitHub Actions verifierar (✅) och mergar automatiskt till main.
+* `src/features/` – Isolerade affärsdomäner. Varje byggbiljett (TCK) rör max en domänkatalog. Korsvisa importer mellan features är förbjudna.
+  * `gemini_live_swarm/` – Rösthantering, WebSockets, FloorController och UI-skal.
+  * `google_drive_sync/` – In-memory OAuth och filsynk mot Google Drive.
+  * `wal_logger/` – Feltolerant Write-Ahead Loggning och transaktionsbuffert.
+  * `mcp_bridge/` – Model Context Protocol-gränssnitt över JSON-RPC 2.0.
+* `src/shared/` – Universella kontrakt, CloudEvent-enveloper och delade primitives.
+* `scripts/drivers/` – Deterministiska AST-granskare (`ts.js` för Gate 3a alibikontroll och Gate 2c catch-blockskontroll).
+* `doc/` – Styrdokumentation, backlogg (`TICKETS.md`), biljetter (`.TICKETS/`) och WAL (`LAST_CYCLE/`).
+* `REPLY.md` – Slutgiltig mänsklig rapport från den senaste genomförda byggcykeln.

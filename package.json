@@ -11,7 +11,7 @@
     "lint": "tsc --noEmit",
     "planera": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm planera är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
     "genomfor": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm genomfor är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
-    "bygg": "GEMINI_MODEL=gemini-3.8-flash tsx scripts/run-planera-live.ts",
+    "bygg": "tsx scripts/run-planera-live.ts",
     "test:transient": "vitest run src/__tests__/transient_TCK-TEST-001.test.ts",
     "verify": "pnpm test && node scripts/verify-architecture.js",
     "test": "node --import tsx scripts/run-tests.js"
