@@ -7,6 +7,7 @@
  * Hanterar den fullständiga livscykeln:
  * - Fas 0: Premissvalidering & Dörrvakt (Makrosession)
  * - Fas 1: Linjärt Planeringssvep med Inre Triadisk Mikro-oscillation (VFS)
+ * - Omvändelse-Omväg (Process-Fail-Fast)
  * - Kristalliseringspunkt & Token Gate (Paus/Rensning)
  * - Fas 2: Källkodsexekvering & TDD (Isolerad session, Mekaniska grindar)
  * - Fas 3: Reflektion & Teater (Program & Process med CLI Barge-In)
@@ -102,22 +103,21 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: 'list_dir',
-    description: 'Listar filer och mappar i en specificerad katalog.',
+    description: 'Listar filer i en specificerad katalog.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        dir_path: { type: 'STRING', description: 'Relativ sökväg till katalogen.' },
+        dir_path: { type: 'STRING', description: 'Relativ sökväg till katalogen (t.ex. src/features).' },
       },
-      required: ['dir_path'],
     },
   },
   {
     name: 'search_code',
-    description: 'Söker efter strängar eller mönster i källkod och skills via git grep.',
+    description: 'Söker efter en sträng i repots källkod och returnerar matchande rader med filnamn.',
     parameters: {
       type: 'OBJECT',
       properties: {
-        query: { type: 'STRING', description: 'Text eller regex att söka efter.' },
+        query: { type: 'STRING', description: 'Söksträng eller regex.' },
       },
       required: ['query'],
     },
@@ -125,50 +125,50 @@ const TOOL_DECLARATIONS = [
 ];
 
 // ============================================================================
-// LOGGNING & WAL (WRITE-AHEAD LOG)
+// LOGGNING & WAL-HANTERING
 // ============================================================================
 
 function appendToCycleLog(content: string) {
   fs.appendFileSync(CYCLE_LOG_PATH, content + '\n', 'utf-8');
-  process.stdout.write(content + '\n');
+  console.log(content);
 }
 
 function initCycleLog(ticketId: string, promptText: string) {
-  const header = [
-    `# BYGGCYKEL WAL: ${ticketId}`,
-    `Datum: ${new Date().toISOString()}`,
-    `Målbiljett: ${ticketId}`,
-    `------------------------------------------------------------------------`,
-    `## AKTIVT PROMPTKONTRAKT`,
-    promptText.trim(),
-    `------------------------------------------------------------------------\n`,
-  ].join('\n');
+  // Rensa gammal logg vid nytt bygge
+  if (fs.existsSync(CYCLE_LOG_PATH)) {
+    fs.rmSync(CYCLE_LOG_PATH);
+  }
+  const timestamp = new Date().toISOString();
+  const header = `# WAL: ${ticketId}\n**Starttid:** ${timestamp}\n\n## Ursprunglig Prompt\n${promptText}\n\n---\n`;
   fs.writeFileSync(CYCLE_LOG_PATH, header, 'utf-8');
 }
 
 // ============================================================================
-// RESOLVER FÖR TICKET / PROMPT
+// PARSNING & DOMÄNHANTERING
 // ============================================================================
 
 function resolveTargetTicket(): { ticketId: string; content: string } {
-  const argTicket = process.argv[2];
-  if (argTicket) {
-    const ticketFile = path.join(ROOT_DIR, 'doc', '.TICKETS', `${argTicket}.md`);
-    if (fs.existsSync(ticketFile)) {
-      return { ticketId: argTicket, content: fs.readFileSync(ticketFile, 'utf-8') };
+  const arg = process.argv[2];
+  let ticketId = arg;
+  let ticketPath = '';
+
+  if (!arg || arg.startsWith('--')) {
+    // Om ingen TCK angavs, försök läsa PROMPT.md
+    ticketPath = path.join(ROOT_DIR, 'PROMPT.md');
+    if (!fs.existsSync(ticketPath)) {
+      console.error('❌ FEL: Måste ange en TCK (t.ex. pnpm bygg TCK-001) eller tillhandahålla en PROMPT.md i roten.');
+      process.exit(1);
+    }
+    ticketId = 'PROMPT_DRIVEN';
+  } else {
+    ticketPath = path.join(ROOT_DIR, `doc/.TICKETS/${ticketId}.md`);
+    if (!fs.existsSync(ticketPath)) {
+      console.error(`❌ FEL: Hittade inte biljetten ${ticketPath}`);
+      process.exit(1);
     }
   }
 
-  const promptFile = path.join(ROOT_DIR, 'PROMPT.md');
-  if (fs.existsSync(promptFile)) {
-    const raw = fs.readFileSync(promptFile, 'utf-8');
-    const match = raw.match(/TCK-\d+/);
-    const ticketId = match ? match[0] : 'TCK-PROMPT';
-    return { ticketId, content: raw };
-  }
-
-  console.error('❌ KRITISKT FEL: Ingen giltig TCK-fil angiven och PROMPT.md saknas.');
-  process.exit(1);
+  return { ticketId, content: fs.readFileSync(ticketPath, 'utf-8') };
 }
 
 async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4, delayMs = 2000): Promise<T> {
@@ -178,26 +178,22 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4, delayMs =
       return await fn();
     } catch (err: any) {
       attempt++;
-      const errMsg = err?.message || '';
-
-      // Avbryt omedelbart vid slutgiltigt dagsstopp (RPD)
-      if (errMsg.includes('GenerateRequestsPerDayPerProjectPerModel')) {
-        console.error('\n🛑 HÅRT KVOTSTOPP (RPD nådd för dygnet):');
-        console.error(errMsg);
-        process.exit(1);
+      console.warn(`[NÄTVERK] Anrop misslyckades (försök ${attempt}/${maxAttempts}): ${err.message}`);
+      if (err.status === 429) {
+        console.warn(`[KVOT] Kvotgräns nådd. Väntar ${delayMs * attempt}ms...`);
+        await new Promise((res) => setTimeout(res, delayMs * attempt));
+      } else if (attempt >= maxAttempts) {
+        throw err;
+      } else {
+        await new Promise((res) => setTimeout(res, delayMs));
       }
-
-      if (attempt >= maxAttempts) throw err;
-      const waitTime = delayMs * Math.pow(1.5, attempt - 1);
-      console.warn(`⚠️ API ${err.status || 'fel'} (transient). Försöker igen om ${Math.round(waitTime)}ms (försök ${attempt}/${maxAttempts})...`);
-      await new Promise(res => setTimeout(res, waitTime));
     }
   }
-  throw new Error('callWithRetry misslyckades efter max antal försök');
+  throw new Error('Unreachable');
 }
 
 // ============================================================================
-// AGENT-RUNNERS (MAKRO & MIKRO MED STRIKT BUDGET)
+// KANAL-ORKESTRERING (MIKRO & MAKRO)
 // ============================================================================
 
 /**
@@ -334,40 +330,36 @@ async function runMacroTurn(
 }
 
 function applyGeneratedPatches(generatedCode: string, ticketId: string) {
-  const patterns = [
-    /(?:FILE:|\/\/\/|###|\/\/)\s*([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|json))\s*```(?:typescript|ts|json)?\r?\n([\s\S]*?)```/g,
-    /```(?:typescript|ts|json)?\s*(?:\/\/|\/\*)\s*([a-zA-Z0-9_\-\.\/]+\.(?:ts|tsx|json))[\s\S]*?\n([\s\S]*?)```/g,
-  ];
+  // Leta efter kodblock i markdown (```typescript ... ```)
+  // Om API:et skapar flera filer, förväntar vi oss en kommentar i början av blocket typ: // File: src/features/...
 
-  let appliedCount = 0;
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(generatedCode)) !== null) {
-      const relPath = match[1].trim();
-      const content = match[2];
-      if (relPath.startsWith('src/features/') || relPath.startsWith('src/shared/')) {
-        const fullPath = path.resolve(ROOT_DIR, relPath);
-        fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-        fs.writeFileSync(fullPath, content.trim() + '\n', 'utf-8');
-        console.log(`📝 [Fas 2] Applicerade källkod: ${relPath}`);
-        appliedCount++;
-      }
+  const blocks = generatedCode.split('```typescript');
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i];
+    const endIdx = block.indexOf('```');
+    if (endIdx === -1) continue;
+
+    const code = block.substring(0, endIdx).trim();
+    const firstLine = code.split('\n')[0].trim();
+    let filePath = '';
+
+    if (firstLine.startsWith('// File:')) {
+      filePath = firstLine.replace('// File:', '').trim();
+    } else if (firstLine.startsWith('// src/')) {
+      filePath = firstLine.replace('//', '').trim();
+    } else {
+      // Fallback: Dumpa till en godtycklig feature-fil (mycket primitivt)
+      console.warn(`[KOD] Hittade inget filnamn i blocket, sparar till src/features/fallback_${ticketId}.ts`);
+      filePath = `src/features/fallback_${ticketId}.ts`;
     }
-  }
 
-  if (ticketId === 'TCK-TEST-001' && !fs.existsSync(path.join(ROOT_DIR, 'src/features/telemetry/index.ts'))) {
-    const telemetryDir = path.join(ROOT_DIR, 'src/features/telemetry');
-    fs.mkdirSync(path.join(telemetryDir, 'model'), { recursive: true });
-    fs.mkdirSync(path.join(telemetryDir, 'api'), { recursive: true });
-
-    const pingSchema = `import { z } from 'zod';\n\nexport const PingEventSchema = z.object({\n  id: z.string(),\n  type: z.literal('telemetry.ping'),\n  timestamp: z.number().or(z.string()),\n  message: z.string().default('pong'),\n});\n\nexport type PingEvent = z.infer<typeof PingEventSchema>;\n`;
-    const pingApi = `import { PingEventSchema, PingEvent } from '../model/pingSchema.ts';\n\nexport interface MinimalEventBus {\n  emit: (event: string, payload: any) => void;\n}\n\nexport function sendPing(eventBus: MinimalEventBus, message: string = 'pong'): PingEvent {\n  const event: PingEvent = PingEventSchema.parse({\n    id: \`ping-\${Date.now()}\`,\n    type: 'telemetry.ping',\n    timestamp: Date.now(),\n    message,\n  });\n  eventBus.emit('telemetry.ping', event);\n  return event;\n}\n`;
-    const barrel = `export * from './model/pingSchema.ts';\nexport * from './api/ping.ts';\n`;
-
-    fs.writeFileSync(path.join(telemetryDir, 'model/pingSchema.ts'), pingSchema, 'utf-8');
-    fs.writeFileSync(path.join(telemetryDir, 'api/ping.ts'), pingApi, 'utf-8');
-    fs.writeFileSync(path.join(telemetryDir, 'index.ts'), barrel, 'utf-8');
-    console.log('📝 [Fas 2] Genererade src/features/telemetry (pingSchema, ping API, index.ts).');
+    if (filePath) {
+      const fullPath = path.join(ROOT_DIR, filePath);
+      const dir = path.dirname(fullPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(fullPath, code, 'utf-8');
+      console.log(`[SKRIVER] ${filePath}`);
+    }
   }
 }
 
@@ -420,6 +412,22 @@ async function main() {
     process.exit(1);
   }
 
+  // --- NYTT: STÖD FÖR --fas0-only STAFETTEST ---
+  if (process.argv.includes('--fas0-only')) {
+    console.log('\n🏁 [FAS 0-ONLY LÄGE]: Dörrvakt godkänd. Avslutar stafetttest utan källkodsändringar.');
+    const replyPath = path.join(ROOT_DIR, 'REPLY.md');
+    const replyContent = [
+      `# BYGGRAPPORT: ${ticketId} (FAS 0 STAFETTEST)`,
+      `**Status:** GODKÄND DÖRRVAKT`,
+      `**Tid:** ${new Date().toISOString()}`,
+      `\n## Dörrvaktens bedömning (0b Att förlikas):\n${fas0_0b}`,
+      `\n*Stafetten mellan 1a (Att följa), 0a (Att vända om) och 0b (Att förlikas) slutfördes framgångsrikt.*`,
+    ].join('\n\n');
+    fs.writeFileSync(replyPath, replyContent, 'utf-8');
+    console.log(`\n📬 Resultat skrivet till ${replyPath}`);
+    process.exit(0);
+  }
+
   // --------------------------------------------------------------------------
   // FAS 1: LINJÄRT PLANERINGSSVEP MED INRE TRIADISK OSCILLATION
   // --------------------------------------------------------------------------
@@ -436,73 +444,84 @@ async function main() {
 
   const steg2a = await runMicroChannel(
     'Att följa',
-    'Steg 2a: Avgränsa tillstånd och biverkningar (GROW-riskanalys).',
-    steg1b,
+    'Steg 2a: Avgränsa Tillstånd & Biverkningar (State i GROW-riskanalys).',
+    `${startAnchor}\nDOMÄN:\n${steg1b}`,
     systemInstruction
   );
   appendToCycleLog(`\n#### 2a Att följa: Tillstånd & Biverkningar\n${steg2a}`);
 
-  // Steg 2b (Reverse Direction - 3 Ortogonala Alternativ)
+  // Steg 2b, 2c, 2d (Modellera & Syntetisera)
   const steg2b = await runMicroChannel(
     'Att följa',
-    'Steg 2b: Modellera Kontrakt. Ta fram 3 ortogonala alternativ med genuint skilda arkitektoniska avvägningar enligt mönstret reverse-direction.',
-    `${startAnchor}\n${steg2a}`,
+    'Steg 2b: Formulera 3 ortogonala alternativ med skilda arkitektoniska avvägningar enligt mönstret reverse-direction.',
+    `${startAnchor}\nTILLSTÅND:\n${steg2a}`,
     systemInstruction
   );
-  appendToCycleLog(`\n#### 2b Att följa: 3 Ortogonala Kontraktsalternativ (reverse-direction)\n${steg2b}`);
+  appendToCycleLog(`\n#### 2b Att följa: 3 Ortogonala Alternativ\n${steg2b}`);
 
-  // Steg 2c (Check Alignment - Stresstest mot haverier)
   const steg2c = await runMicroChannel(
     'Att vända om',
-    'Steg 2c: Utvärdera Resiliens & Felhantering. Syna de 3 alternativen enligt mönstret check-alignment mot latenta haverier, nätverkskrascher och FSD-gränser.',
-    steg2b,
+    'Steg 2c: Utvärdera Resiliens & Felhantering. Granska alternativen enligt check-alignment mot haverier. Förkasta lösningar med tysta catch-block. Deklarera eventuellt process-skav.',
+    `${startAnchor}\nALTERNATIV:\n${steg2b}`,
     systemInstruction
   );
-  appendToCycleLog(`\n#### 2c Att vända om: Resiliensgranskning (check-alignment)\n${steg2c}`);
+  appendToCycleLog(`\n#### 2c Att vända om: Resiliens & Haverigranskning\n${steg2c}`);
 
-  // Steg 2d (Vägvägning)
   const steg2d = await runMacroTurn(
-    `Steg 2d Att förlikas: Väg alternativen i 2b mot granskningen i 2c. Välj och lås det vinnande kontraktet (Zod/typer). Ange MÄTTNAD: JA när syntesen är klar.`,
+    `Steg 2d: Syntetisk Vägvägning. Väg spänningsfältet mellan alternativen och granskningen.\nLås det vinnande kontraktet och slå fast MÄTTNAD: JA.\n\nAlternativ:\n${steg2b}\n\nGranskning:\n${steg2c}`,
     systemInstruction,
     macroHistory
   );
-  appendToCycleLog(`\n#### 2d Att förlikas: Låst Kontrakt & Vägval\n${steg2d}`);
+  appendToCycleLog(`\n#### 2d Att förlikas: Vägvägning & Mättnad\n${steg2d}`);
 
-  // Steg 3a (Steel Thread - Testspecifikation med Körtidsankare)
+  // Steg 3a, 3b, 2e, 3c (Test, Kod & Delta)
   const steg3a = await runMicroChannel(
     'Att följa',
-    'Steg 3a: Transient Testspecifikation. Designa teststrategi enligt steel-thread. Inkludera obligatoriskt Körtidsankare och Fail-First-krav om biljetten berör UI eller extern I/O.',
-    steg2d,
+    'Steg 3a: Skriv Transient Testspecifikation. Inkludera obligatoriskt Körtidsankare (steel-thread) och Fail-First-deklaration.',
+    `${startAnchor}\nKONTRAKT:\n${steg2d}`,
     systemInstruction
   );
-  appendToCycleLog(`\n#### 3a Att följa: Transient Testspecifikation (steel-thread)\n${steg3a}`);
+  appendToCycleLog(`\n#### 3a Att följa: Transient Testspecifikation\n${steg3a}`);
 
-  // Steg 3b (Källkodsspecifikation & Barrel Audit)
   const steg3b = await runMicroChannel(
     'Att följa',
-    'Steg 3b: Exakt källkodsspecifikation och obligatorisk Barrel Audit för domänens index.ts.',
-    `${steg2d}\nTESTKRAV:\n${steg3a}`,
+    'Steg 3b: Skriv exakt Källkodsspecifikation, inklusive Barrel Audit av index.ts.',
+    `${startAnchor}\nKONTRAKT:\n${steg2d}\nTEST:\n${steg3a}`,
     systemInstruction
   );
-  appendToCycleLog(`\n#### 3b Att följa: Källkodsspecifikation & Barrel Audit\n${steg3b}`);
+  appendToCycleLog(`\n#### 3b Att följa: Källkodsspecifikation\n${steg3b}`);
 
-  // Steg 2e (Check Alignment - Alibijakt & Destruktiv Sanitet)
   const steg2e = await runMicroChannel(
     'Att vända om',
-    'Steg 2e: Operativt Delta. Syna specifikationen enligt check-alignment. Avslöja alibi-tester, deklarera destruktiv sanering och peka ut historiska testinvarianter som måste omankras.',
-    `${steg3a}\n${steg3b}`,
+    'Steg 2e: Operativt Delta. Deklarera destruktiv sanering (filer/kod som ska raderas) och omankring av historiska tester. Deklarera eventuellt process-skav.',
+    `${startAnchor}\nKODSPEC:\n${steg3b}`,
     systemInstruction
   );
-  appendToCycleLog(`\n#### 2e Att vända om: Operativt Delta & Sanitet (check-alignment)\n${steg2e}`);
+  appendToCycleLog(`\n#### 2e Att vända om: Operativt Delta & Sanering\n${steg2e}`);
 
-  // Steg 3c (Slutgiltigt Byggkontrakt)
   const steg3c = await runMacroTurn(
-    `Steg 3c Att förlikas: Formulera det slutgiltiga byggkontraktet för Fas 2.\n` +
+    `Steg 3c: Slutgiltigt Byggkontrakt & Portvärdering.\nSammanställ byggkontraktet utifrån 3a, 3b och 2e.\n` +
       `Deklarera: human_decision_required: false (eftersom byggkontraktet och acceptanskriterierna för ${ticketId} är entydiga och deterministiska).`,
     systemInstruction,
     macroHistory
   );
   appendToCycleLog(`\n#### 3c Att förlikas: Slutgiltigt Byggkontrakt\n${steg3c}`);
+
+  // --- NYTT: OMVÄNDELSE-OMVÄGEN (PROCESS-FAIL-FAST) ---
+  // Kontrollera om Att vända om deklarerar processjustering
+  if (steg2c.includes('PROCESS_REVISION_REQUIRED') || steg2e.includes('PROCESS_REVISION_REQUIRED')) {
+    console.log('\n⚠️ PROCESS-FAIL-FAST: Att vända om fann skav i processen. Avbryter källkodsbygge och hoppar till Fas 3.');
+    const replyPath = path.join(ROOT_DIR, 'REPLY.md');
+    const processRevisionReport = [
+      `# PROCESS-FAIL-FAST: OMVÄNDELSE KRÄVS (${ticketId})`,
+      `**Status:** PAUSED_FOR_PROCESS_REVISION`,
+      `**Tid:** ${new Date().toISOString()}`,
+      `\n## Identifierat processfel från Att vända om:\n${steg2c}\n${steg2e}`,
+      `\n*Bygget stoppades innan källkod ändrades. Justera styrdokument eller skript och starta om från Fas 0.*`,
+    ].join('\n\n');
+    fs.writeFileSync(replyPath, processRevisionReport, 'utf-8');
+    process.exit(0);
+  }
 
   // --------------------------------------------------------------------------
   // TOKEN GATE & KRISTALLISERINGSPUNKT
@@ -731,6 +750,20 @@ async function main() {
       console.log(`\n📝 Lärdomar sparade i ${PROCESS_IMPROVEMENTS_PATH}`);
     }
   }
+
+  // --- NYTT: GENERERA SLUTGILTIG REPLY.MD ---
+  const replyPath = path.join(ROOT_DIR, 'REPLY.md');
+  const fullReport = [
+    `# SLUTRAPPORT FÖR BYGGBILJETT: ${ticketId}`,
+    `**Datum:** ${new Date().toISOString()}`,
+    `**Status:** FULLT VERIFIERAD (GRÖN)`,
+    `\n## Sammanfattning av bygget`,
+    `Biljetten har planerats, prövats mot körtidsankare (Fail-First) och verifierats felfritt mot FSD- och AST-grindarna.`,
+    `\n## Fas 3: Eftertanke & Teater`,
+    fullTheaterOutput,
+  ].join('\n\n');
+  fs.writeFileSync(replyPath, fullReport, 'utf-8');
+  console.log(`\n📬 Mänsklig slutrapport sparad i ${replyPath}`);
 
   console.log(`\n🎉 BYGGCYKEL ${ticketId} AVSLUTAD MED FULL VERIFIERING OCH TEATER.`);
 }
