@@ -1,0 +1,26 @@
+# ==============================================================================
+# OUTREACH ENGINE: CODEOWNERS (v10.4)
+# Förhindrar att autonoma agenter eller automatiserade tokens kan merga
+# ändringar i systemets styrdokument, kvalitetsgrindar och acceptanstester
+# utan manuellt godkännande.
+# ==============================================================================
+
+# Global fallback: Ägaren måste godkänna allt i repot (om branch protection kräver det)
+* @bjud-in-oss
+
+# 1. Kärnkontrakt och acceptansspecifikationer (VAD systemet ska göra)
+/doc/features/ @bjud-in-oss
+/src/__tests__/bdd/ @bjud-in-oss
+/src/shared/contracts/ @bjud-in-oss
+/src/features/mcp_bridge/contracts/ @bjud-in-oss
+
+# 2. Arkitekturstyrning och systemlagar (SI och Agentmanifest)
+/doc/SI_v10.4.md @bjud-in-oss
+/AGENTS.md @bjud-in-oss
+/doc/FEATURE_INDEX.json @bjud-in-oss
+
+# 3. Kvalitetsgrindar och CI-infrastruktur
+/scripts/drivers/ @bjud-in-oss
+/scripts/verify-architecture.js @bjud-in-oss
+/.github/workflows/ @bjud-in-oss
+/.github/CODEOWNERS @bjud-in-oss
