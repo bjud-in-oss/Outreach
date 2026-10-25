@@ -97,3 +97,63 @@ export const RECONCILIATION_UNITS: Record<ReconciliationForce, ReconciliationUni
     systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Villighet att tjäna Gud och andra. Du riktar de tre andra krafterna i en stegvis plan följt av praktisk konstruktion och kontemplation.`,
   },
 };
+/**
+ * Bakåtkompatibel adapter för UI och befintliga tester
+ */
+export const DEFAULT_SWARM_ROLES = {
+  ORCHESTRATOR: {
+    ...RECONCILIATION_UNITS.ATT_FORLIKAS,
+    id: 'agent-orchestrator',
+    role: 'ATT_FORLIKAS' as const,
+  },
+  RESEARCHER: {
+    ...RECONCILIATION_UNITS.ATT_FOLJA,
+    id: 'agent-researcher',
+    role: 'ATT_FOLJA' as const,
+  },
+  OUTREACH_WRITER: {
+    ...RECONCILIATION_UNITS.ATT_FOLJA,
+    id: 'agent-writer',
+    role: 'ATT_FOLJA' as const,
+  },
+  CRITIC: {
+    ...RECONCILIATION_UNITS.ATT_VANDA_OM,
+    id: 'agent-critic',
+    role: 'ATT_VANDA_OM' as const,
+  },
+  SERIELL_MOTOR: {
+    ...RECONCILIATION_UNITS.ATT_TJANA,
+  },
+};
+
+export function mapRoleToForce(role: string): ReconciliationForce {
+  switch (role) {
+    case 'ATT_FORLIKAS':
+    case 'ORCHESTRATOR':
+      return 'ATT_FORLIKAS';
+    case 'ATT_FOLJA':
+    case 'RESEARCHER':
+    case 'OUTREACH_WRITER':
+      return 'ATT_FOLJA';
+    case 'ATT_VANDA_OM':
+    case 'CRITIC':
+      return 'ATT_VANDA_OM';
+    case 'ATT_TJANA':
+    case 'SERIELL_MOTOR':
+    default:
+      return 'ATT_TJANA';
+  }
+}
+
+export function mapForceToRole(force: ReconciliationForce): string {
+  switch (force) {
+    case 'ATT_FORLIKAS':
+      return 'ORCHESTRATOR';
+    case 'ATT_FOLJA':
+      return 'RESEARCHER';
+    case 'ATT_VANDA_OM':
+      return 'CRITIC';
+    case 'ATT_TJANA':
+      return 'SERIELL_MOTOR';
+  }
+}
