@@ -27,7 +27,7 @@ export class SwarmEventBus {
    * Publicerar ett händelsekuvert till bussen med strikt Zod-validering (Fail Fast)
    */
   public publish(envelope: EventEnvelope): void {
-    const validated = EventEnvelopeSchema.parse(envelope);
+    const validated = EventEnvelopeSchema.parse(envelope) as EventEnvelope;
 
     // Lägg till i ringbuffert (FIFO)
     this.history.push(validated);
