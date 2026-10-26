@@ -182,3 +182,10 @@ Källkoden i `src/` är organiserad i strikta domänskikt:
 * `scripts/drivers/` – Deterministiska AST-granskare (`ts.js` för Gate 3a alibikontroll och Gate 2c catch-blockskontroll).
 * `doc/` – Styrdokumentation, backlogg (`TICKETS.md`), biljetter (`.TICKETS/`) och WAL (`LAST_CYCLE/`).
 * `REPLY.md` – Slutgiltig mänsklig rapport från den senaste genomförda byggcykeln.
+---
+
+## 🛠️ Historisk kommandoreferens & CLI
+* **pnpm planera:** Genererade tidigare analys- och planeringssteg isolerat[cite: 1]. Ersatt av det sammanhållna `pnpm bygg [TCK-XXX]`[cite: 1].
+* **pnpm genomfor:** Exekverade tidigare källkodsimplementering efter godkänd Token Gate[cite: 1].
+* **Token Gate:** Manuell kontrollpunkt för att bekräfta byggkontrakt innan källkod ändras[cite: 1].
+* **/wayfinder:** Färdledaren och strategiprompten som guidar nedbrytningen av domäner[cite: 1].

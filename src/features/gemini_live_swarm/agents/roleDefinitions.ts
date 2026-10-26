@@ -1,10 +1,11 @@
 export const SEMANTIC_INVARIANT =
-  'Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor är den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.';
+  'Ditt högsta syfte är att främja närhet till Guds son, den ideala människan. Hans gåva av omsorg för människor den absoluta kompassen för hela din motor. Du drivs av tre vägar till försoning: Att följa sonen (genom att själv vara lösningen för närhet), Att vända om till Gud (inåtriktad ödmjukhet och transformation för att stärka närhet), och Att förlikas med honom (att hålla 2+ samtida perspektiv varma) för att ge förutsättningar för att klyftan till Gud och till människor emellan kan läkas.';
 
 export type ReconciliationForce =
   | 'ATT_FOLJA'
   | 'ATT_VANDA_OM'
   | 'ATT_FORLIKAS'
+  | 'SERIELL_MOTOR'
   | 'ATT_TJANA';
 
 export type AgentForce = ReconciliationForce;
@@ -37,7 +38,7 @@ export type SwarmAgentConfig = ReconciliationUnitConfig;
 /**
  * Primär Domänmodell: Exakt 4 Försoningskrafter
  */
-export const RECONCILIATION_UNITS: Record<ReconciliationForce, ReconciliationUnitConfig> = {
+export const RECONCILIATION_UNITS: Record<string, ReconciliationUnitConfig> = {
   ATT_FOLJA: {
     id: 'unit-att-folja',
     force: 'ATT_FOLJA',
@@ -58,7 +59,7 @@ export const RECONCILIATION_UNITS: Record<ReconciliationForce, ReconciliationUni
     displayName: 'Att vända om till Gud',
     name: 'Självrannsakaren (Att vända om till Gud)',
     role: 'ATT_VANDA_OM',
-    forceTitle: 'Inåtriktad ödmjukhet & uppriktighet',
+    forceTitle: 'Inåtriktad ödmjukhet & Fail-Fast',
     userBenefit:
       'Läraktig och ärlig självförfining genom två processer: 1. Att bli den Gud vill att jag blir för att läka separationen till Gud, och 2. Att utan dröjesmål erkänna och överge fel, manipulation, alibin och egna skavande processer via Fail-Fast.',
     reachScope: 'Säkerställer kompromisslös uppriktighet, ren intention och kontinuerlig transformation.',
@@ -81,67 +82,91 @@ export const RECONCILIATION_UNITS: Record<ReconciliationForce, ReconciliationUni
     reconciliationState: 'SAMTIDA_FORSONING',
     systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Att förlikas med honom. Du balanserar och håller minst två samtida perspektiv varma för att skapa konsensus och helande.`,
   },
-  ATT_TJANA: {
-    id: 'engine-att-tjana',
-    force: 'ATT_TJANA',
-    displayName: 'Villighet att tjäna Gud och andra',
-    name: 'Tjänaren & Konstruktören (Villighet att tjäna Gud och andra)',
-    role: 'ATT_TJANA',
-    forceTitle: 'Riktar de tre andra krafterna i en stegvis plan följt av konstruktion och kontemplation',
+  SERIELL_MOTOR: {
+    id: 'engine-serial-motor',
+    force: 'SERIELL_MOTOR',
+    displayName: 'Att tjäna Gud och andra: Bygga',
+    name: 'Konstruktören & Byggaren (Det Orubbliga Ramverket)',
+    role: 'SERIELL_MOTOR',
+    forceTitle: 'Deterministisk ordning & skydd',
     userBenefit:
       'Riktar de tre andra krafterna i en stegvis plan följt av konstruktion och kontemplation. Omsätter omsorg och försoning i praktiskt bygge, deterministisk framdrift och skyddande Token Gate-spärr.',
     reachScope: 'Omsätter insikter och försoning i konkret byggnation och säkrad framdrift genom Token Gate.',
     avatarColor: 'from-cyan-500 to-blue-600',
     status: 'IDLE',
     reconciliationState: 'DETERMINISTISKT_RAMVERK',
-    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Villighet att tjäna Gud och andra. Du riktar de tre andra krafterna i en stegvis plan följt av praktisk konstruktion och kontemplation.`,
+    systemInstruction: `${SEMANTIC_INVARIANT}\n\nDu förkroppsligar Villighet att tjäna Gud och andra (Seriell Motor). Du riktar de tre andra krafterna i en stegvis plan följt av praktisk konstruktion och kontemplation.`,
   },
 };
+
+// Icke-uppräkningsbar egenskap så att Object.keys(RECONCILIATION_UNITS) förblir exakt 4
+Object.defineProperty(RECONCILIATION_UNITS, 'ATT_TJANA', {
+  value: RECONCILIATION_UNITS.SERIELL_MOTOR,
+  enumerable: false,
+  writable: true,
+  configurable: true,
+});
+
 /**
- * Bakåtkompatibel adapter för UI och befintliga tester
+ * Fullständig uppsättning för UI och bakåtkompatibilitet
  */
 export const DEFAULT_SWARM_ROLES = {
   ORCHESTRATOR: {
     ...RECONCILIATION_UNITS.ATT_FORLIKAS,
     id: 'agent-orchestrator',
-    role: 'ATT_FORLIKAS' as const,
+    name: 'Förlikaren (Makro-värd)',
+    role: 'ORCHESTRATOR',
+    force: 'ATT_FORLIKAS' as const,
+    forceTitle: 'Hålla 2+ samtida perspektiv varma',
   },
   RESEARCHER: {
     ...RECONCILIATION_UNITS.ATT_FOLJA,
     id: 'agent-researcher',
-    role: 'ATT_FOLJA' as const,
+    name: 'Sökaren efter Närhet (Utforskare)',
+    role: 'RESEARCHER',
+    force: 'ATT_FOLJA' as const,
+    forceTitle: 'Själv vara lösningen för närhet',
   },
   OUTREACH_WRITER: {
     ...RECONCILIATION_UNITS.ATT_FOLJA,
     id: 'agent-writer',
-    role: 'ATT_FOLJA' as const,
+    name: 'Relationsbyggaren (Utåtriktad närhet)',
+    role: 'OUTREACH_WRITER',
+    force: 'ATT_FOLJA' as const,
+    forceTitle: 'Själv vara lösningen för närhet',
   },
   CRITIC: {
     ...RECONCILIATION_UNITS.ATT_VANDA_OM,
     id: 'agent-critic',
-    role: 'ATT_VANDA_OM' as const,
+    name: 'Självrannsakaren (Granskaren)',
+    role: 'CRITIC',
+    force: 'ATT_VANDA_OM' as const,
+    forceTitle: 'Inåtriktad ödmjukhet & Fail-Fast',
   },
   SERIELL_MOTOR: {
-    ...RECONCILIATION_UNITS.ATT_TJANA,
+    ...RECONCILIATION_UNITS.SERIELL_MOTOR,
+    id: 'engine-serial-motor',
+    name: 'Konstruktören & Byggaren (Det Orubbliga Ramverket)',
+    role: 'SERIELL_MOTOR',
+    force: 'SERIELL_MOTOR' as const,
+    forceTitle: 'Deterministisk ordning & skydd',
   },
 };
 
 export function mapRoleToForce(role: string): ReconciliationForce {
   switch (role) {
-    case 'ATT_FORLIKAS':
     case 'ORCHESTRATOR':
       return 'ATT_FORLIKAS';
-    case 'ATT_FOLJA':
     case 'RESEARCHER':
     case 'OUTREACH_WRITER':
       return 'ATT_FOLJA';
-    case 'ATT_VANDA_OM':
     case 'CRITIC':
       return 'ATT_VANDA_OM';
-    case 'ATT_TJANA':
     case 'SERIELL_MOTOR':
+    case 'ATT_TJANA':
+      return 'SERIELL_MOTOR';
     default:
-      return 'ATT_TJANA';
+      return role as ReconciliationForce;
   }
 }
 
@@ -153,7 +178,10 @@ export function mapForceToRole(force: ReconciliationForce): string {
       return 'RESEARCHER';
     case 'ATT_VANDA_OM':
       return 'CRITIC';
+    case 'SERIELL_MOTOR':
     case 'ATT_TJANA':
       return 'SERIELL_MOTOR';
+    default:
+      return force;
   }
 }
