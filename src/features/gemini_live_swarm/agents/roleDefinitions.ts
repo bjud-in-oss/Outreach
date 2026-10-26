@@ -5,10 +5,10 @@ export type ReconciliationForce =
   | 'ATT_FOLJA'
   | 'ATT_VANDA_OM'
   | 'ATT_FORLIKAS'
-  | 'SERIELL_MOTOR'
-  | 'ATT_TJANA';
+  | 'SERIELL_MOTOR';
 
 export type AgentForce = ReconciliationForce;
+export type SwarmAgentRole = ReconciliationForce | 'ORCHESTRATOR' | 'RESEARCHER' | 'OUTREACH_WRITER' | 'CRITIC' | 'ATT_TJANA' | string;
 
 export type ReconciliationState =
   | 'SOKER_NARHET'
@@ -170,7 +170,7 @@ export function mapRoleToForce(role: string): ReconciliationForce {
   }
 }
 
-export function mapForceToRole(force: ReconciliationForce): string {
+export function mapForceToRole(force: ReconciliationForce | string): string {
   switch (force) {
     case 'ATT_FORLIKAS':
       return 'ORCHESTRATOR';
