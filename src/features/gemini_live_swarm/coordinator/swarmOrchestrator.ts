@@ -5,7 +5,7 @@ import {
 } from '../agents/roleDefinitions.ts';
 import { GeminiLiveSession } from '../session/geminiLiveSession.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
-import { McpSwarmBridge } from '../../mcp_bridge/orchestrator/mcpSwarmBridge.ts';
+import { IMcpSwarmBridge } from "../../../shared/contracts/mcpToolContracts.ts";
 import { getGlobalSwarmEventBus, SwarmEventBus } from '../bus/swarmEventBus.ts';
 import {
   ReflectionMode,
@@ -41,12 +41,12 @@ export interface CampaignPlan {
 export class SwarmOrchestrator {
   private units: Map<ReconciliationForce, ReconciliationUnitConfig>;
   private session: GeminiLiveSession;
-  private mcpBridge?: McpSwarmBridge;
+  private mcpBridge?: IMcpSwarmBridge;
   private eventBus: SwarmEventBus;
   private reflectionMode: ReflectionMode = 'normal';
   private tokenThroughputPerMinute = 0;
 
-  constructor(session?: GeminiLiveSession, mcpBridge?: McpSwarmBridge, eventBus?: SwarmEventBus) {
+  constructor(session?: GeminiLiveSession, mcpBridge?: IMcpSwarmBridge, eventBus?: SwarmEventBus) {
     this.session = session || new GeminiLiveSession();
     this.mcpBridge = mcpBridge;
     this.eventBus = eventBus || getGlobalSwarmEventBus();
@@ -61,8 +61,8 @@ export class SwarmOrchestrator {
     });
   }
 
-  public getMcpBridge(): McpSwarmBridge | undefined { return this.mcpBridge; }
-  public setMcpBridge(bridge: McpSwarmBridge): void { this.mcpBridge = bridge; }
+  public getMcpBridge(): IMcpSwarmBridge | undefined { return this.mcpBridge; }
+  public setMcpBridge(bridge: IMcpSwarmBridge): void { this.mcpBridge = bridge; }
   public getActiveAgents(): ReconciliationUnitConfig[] { return Array.from(this.units.values()).slice(0, MAX_CONCURRENT_AGENTS); }
   public getSerialEngine(): ReconciliationUnitConfig { return this.units.get('SERIELL_MOTOR') || { ...RECONCILIATION_UNITS.SERIELL_MOTOR }; }
   public getAllUnits(): ReconciliationUnitConfig[] { return Array.from(this.units.values()); }

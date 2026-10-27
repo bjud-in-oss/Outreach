@@ -19,3 +19,12 @@ export interface IMcpWalEngine {
 export interface IMcpDriveStore {
   applyPatch(filePath: string, searchBlock: string, replaceBlock: string): string;
 }
+
+export interface IMcpSwarmBridge {
+  executeTool(toolName: string, args: Record<string, any>, callId?: string): Promise<any>;
+}
+
+export interface ISwarmWalTelemetry {
+  dispose(): void;
+  [key: string]: any;
+}

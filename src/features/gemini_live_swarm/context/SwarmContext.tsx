@@ -2,9 +2,11 @@ import React, { createContext, useContext, useRef, useMemo, useEffect } from 're
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 import { GeminiLiveSession } from '../session/geminiLiveSession.ts';
 import { SwarmOrchestrator } from '../coordinator/swarmOrchestrator.ts';
-import { GoogleDriveClient } from '../../google_drive_sync/api/driveClient.ts';
 import { PendulumStore } from '../session/pendulumStore.ts';
-import { WalUiTelemetryListener } from '../../wal_logger/walUiTelemetry.ts';
+import {
+  IMcpDriveClient,
+  ISwarmWalTelemetry,
+} from '../../../shared/contracts/mcpToolContracts.ts';
 import {
   SwarmProviderProps,
   initSwarmCoreInstances,
@@ -15,10 +17,10 @@ export type { SwarmProviderProps };
 export interface SwarmCoreContextValue {
   eventBus: SwarmEventBus;
   orchestrator: SwarmOrchestrator;
-  driveClient: GoogleDriveClient;
+  driveClient: IMcpDriveClient;
   liveSession: GeminiLiveSession;
   pendulumStore: PendulumStore;
-  walTelemetry: WalUiTelemetryListener;
+  walTelemetry: ISwarmWalTelemetry;
 }
 
 const SwarmContext = createContext<SwarmCoreContextValue | null>(null);
