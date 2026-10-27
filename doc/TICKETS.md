@@ -3,6 +3,8 @@
 ## AKTIVA TICKETS
 - [IN PROGRESS] TCK-TEST-001: Verifiera v10.4 Livscykeln (src/features/telemetry/)
 
+- [ ] **TCK-025**: Flytta SwarmEventBus till Shared-lagret -> Se `doc/.TICKETS/TCK-025.md`
+
 ---
 
 - [VERIFIERAD] TCK-032 | Domän: src/features/gemini_live_swarm/ | Mål: Dubbelinmatningssanering, Live-Textlyssnare & Intent-Harmonisering | Token: TCK-032-VERIFIED-6ed5e47732a3c5ca | Kvitto: f4dbe9ad
