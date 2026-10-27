@@ -176,6 +176,7 @@ const fallbackWalEngine: IMcpWalEngine = {
   getWalHistory: () => [],
   appendWalEntry: async () => ({ sequenceNumber: 1 }),
   commitWalEntry: async () => {},
+  failWalEntry: async () => {},
 };
 
 const fallbackDriveStore: IMcpDriveStore = {

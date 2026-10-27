@@ -1,0 +1,54 @@
+name: OCE Architecture Verification Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checka ut kodbasen
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Nödvändigt för git-diff och commit-historik i arkitekturkontroller
+
+      - name: Konfigurera pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Konfigurera Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Hämta pnpm cache-katalog
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cachea pnpm-beroenden
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Installera beroenden
+        run: pnpm install --frozen-lockfile
+
+      - name: Statisk typkontroll (tsc --noEmit)
+        run: pnpm lint
+
+      - name: Kör arkitektur- och regressionsgrind (153+ tester & FSD)
+        run: pnpm verify
