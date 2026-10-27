@@ -18,6 +18,7 @@ import * as path from 'path';
 import { execSync, spawn } from 'child_process';
 import * as readline from 'readline';
 import { GoogleGenAI } from '@google/genai';
+import { BidiLiveSession } from './bidiLiveRunner.ts';
 
 // ============================================================================
 // KONFIGURATION & INITIERING
@@ -39,7 +40,7 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
 
 // Säkerställ katalogstruktur
 if (!fs.existsSync(CYCLE_LOG_DIR)) {
@@ -92,6 +93,7 @@ function executeTool(name: string, args: Record<string, any>): string {
 const TOOL_DECLARATIONS = [
   {
     name: 'read_file',
+    behavior: 'NON_BLOCKING',
     description: 'Läser innehållet i en specificerad fil ur repot.',
     parameters: {
       type: 'OBJECT',
@@ -103,6 +105,7 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: 'list_dir',
+    behavior: 'NON_BLOCKING',
     description: 'Listar filer i en specificerad katalog.',
     parameters: {
       type: 'OBJECT',
@@ -113,6 +116,7 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: 'search_code',
+    behavior: 'NON_BLOCKING',
     description: 'Söker efter en sträng i repots källkod och returnerar matchande rader med filnamn.',
     parameters: {
       type: 'OBJECT',
@@ -193,140 +197,55 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4, delayMs =
 }
 
 // ============================================================================
-// KANAL-ORKESTRERING (MIKRO & MAKRO)
+// BIDI LIVE WEBSOCKET ORKESTRERING (SI v10.4)
 // ============================================================================
 
-/**
- * Kör en oberoende, efemär mikrosession med strikt budget (max 2 turns).
- */
+let activeMacroSession: BidiLiveSession | null = null;
+
+async function runMacroTurn(
+  instruction: string,
+  systemInstruction: string,
+  _macroHistory?: any[]
+): Promise<string> {
+    activeMacroSession = new BidiLiveSession({
+      ai,
+      model: MODEL_NAME,
+      systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och bär sammanvägningen.`,
+      tools: TOOL_DECLARATIONS,
+      executeTool,
+    });
+    await activeMacroSession.connect();
+  }
+  return await activeMacroSession.send(instruction);
+}
+
+function closeMacroSession(): void {
+  if (activeMacroSession) {
+    activeMacroSession.close();
+    activeMacroSession = null;
+  }
+}
+
 async function runMicroChannel(
   kraft: 'Att följa' | 'Att vända om',
   instruction: string,
   contextAnchor: string,
   systemInstruction: string
 ): Promise<string> {
-  const maxTurns = 2;
-  let currentTurn = 0;
-
-  const messages: any[] = [
-    {
-      role: 'user',
-      parts: [
-        {
-          text: `[MIKROKANAL: ${kraft.toUpperCase()}]\n\nANKARE & KONTEXT:\n${contextAnchor}\n\nUPPDRAG:\n${instruction}`,
-        },
-      ],
-    },
-  ];
-
-  while (currentTurn < maxTurns) {
-    currentTurn++;
-    const response = await callWithRetry(() =>
-      ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: messages,
-        config: {
-          systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll.`,
-          thinkingConfig: { thinkingBudget: 1024 },
-          tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
-        },
-      })
-    );
-
-    const candidate = response.candidates?.[0];
-    if (!candidate?.content) break;
-
-    const functionCalls = candidate.content.parts.filter((p: any) => p.functionCall);
-    if (functionCalls.length > 0) {
-      // Hantera parallella verktygsanrop i samma turn
-      const toolResponses = functionCalls.map((fcPart: any) => {
-        const fc = fcPart.functionCall;
-        const result = executeTool(fc.name, fc.args);
-        return {
-          functionResponse: {
-            name: fc.name,
-            response: { result },
-          },
-        };
-      });
-
-      messages.push(candidate.content);
-      messages.push({ role: 'user', parts: toolResponses });
-    } else {
-      const text = candidate.content.parts.map((p: any) => p.text || '').join('');
-      return text;
-    }
-  }
-
-  // Sista turn om verktygsbudgeten tog slut
-  const finalResponse = await callWithRetry(() =>
-    ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: messages,
-      config: {
-        systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Summera omedelbart ditt bidrag baserat på insamlad data.`,
-      },
-    })
-  );
-
-  return finalResponse.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-}
-
-/**
- * Kör syntes och beslut via Makrokanalen (Att förlikas).
- */
-async function runMacroTurn(
-  instruction: string,
-  systemInstruction: string,
-  macroHistory: any[]
-): Promise<string> {
-  const maxTurns = 4;
-  let currentTurn = 0;
-
-  macroHistory.push({
-    role: 'user',
-    parts: [{ text: instruction }],
+  const session = new BidiLiveSession({
+    ai,
+    model: MODEL_NAME,
+    systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll.`,
+    tools: TOOL_DECLARATIONS,
+    executeTool,
   });
-
-  while (currentTurn < maxTurns) {
-    currentTurn++;
-    const response = await callWithRetry(() =>
-      ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: macroHistory,
-        config: {
-          systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och bär sammanvägningen.`,
-          thinkingConfig: { thinkingBudget: 1024 },
-          tools: [{ functionDeclarations: TOOL_DECLARATIONS as any }],
-        },
-      })
-    );
-
-    const candidate = response.candidates?.[0];
-    if (!candidate?.content) break;
-
-    const functionCalls = candidate.content.parts.filter((p: any) => p.functionCall);
-    if (functionCalls.length > 0) {
-      const toolResponses = functionCalls.map((fcPart: any) => {
-        const fc = fcPart.functionCall;
-        const result = executeTool(fc.name, fc.args);
-        return {
-          functionResponse: {
-            name: fc.name,
-            response: { result },
-          },
-        };
-      });
-
-      macroHistory.push(candidate.content);
-      macroHistory.push({ role: 'user', parts: toolResponses });
-    } else {
-      macroHistory.push(candidate.content);
-      return candidate.content.parts.map((p: any) => p.text || '').join('');
-    }
+  try {
+    await session.connect();
+    const prompt = `[MIKROKANAL: ${kraft.toUpperCase()}]\n\nANKARE & KONTEXT:\n${contextAnchor}\n\nUPPDRAG:\n${instruction}`;
+    return await session.send(prompt);
+  } finally {
+    session.close();
   }
-
-  return 'Syntes slutförd efter maximal budget.';
 }
 
 function applyGeneratedPatches(generatedCode: string, ticketId: string) {
@@ -542,6 +461,7 @@ async function main() {
   }
 
   // Rensa planeringshistorik inför källkodsfasen
+  closeMacroSession();
   macroHistory.length = 0;
   console.log('\n🧹 Planeringskontext stängd och renad. Kristalliserar i WAL. Öppnar Fas 2...');
 
@@ -585,20 +505,19 @@ async function main() {
     `Skriv ut fullständiga patchar för källkod och transient-test. Håll FSD-isoleringen intakt.`,
   ].join('\n\n');
 
-  const codeResponse = await callWithRetry(() =>
-    ai.models.generateContent({
-      model: MODEL_NAME,
-      contents: [{ role: 'user', parts: [{ text: implementationPrompt }] }],
-      config: {
-        systemInstruction: `${systemInstruction}\n\nDu är i Fas 2 (Källkodsexekvering). Generera ren TypeScript-kod. Inga tomma catch-block.`,
-      },
-    })
-  );
-
-  const generatedCode = codeResponse.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-  appendToCycleLog(`\n#### Genererad Källkod & Patchar\n${generatedCode}`);
-
-  applyGeneratedPatches(generatedCode, ticketId);
+  const codeSession = new BidiLiveSession({
+    ai,
+    model: MODEL_NAME,
+    systemInstruction: `${systemInstruction}\n\nDu är i Fas 2 (Källkodsexekvering). Generera ren TypeScript-kod. Inga tomma catch-block.`,
+  });
+  let generatedCode = '';
+  try {
+    await codeSession.connect();
+    generatedCode = await codeSession.send(implementationPrompt, 120000);
+  } finally {
+    codeSession.close();
+  }
+  appendToCycleLog(`\n#### Genererad Källkod & Patchar\n${generatedCode}`);\n\n  applyGeneratedPatches(generatedCode, ticketId);
 
   // Resiliens & AST-kontroll (Gate 2c)
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
@@ -681,67 +600,20 @@ async function main() {
     `Bjud in de andra krafterna vid behov via taggen: <TALA kraft="följa|vända-om">fråga</TALA>. ` +
     `Avsluta med en explicit sektion: 💡 Konstruktiv kritik av våra rutiner: [Observation & Förslag].`;
 
-  const streamResponse = await callWithRetry(() =>
-    ai.models.generateContentStream({
-      model: MODEL_NAME,
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${theaterContext}\n\n${theaterInstruction}` }],
-        },
-      ],
-      config: {
-        systemInstruction: `${systemInstruction}\n\nDu leder Fas 3 Teatern som Att förlikas.`,
-      },
-    })
-  );
-
+  const theaterSession = new BidiLiveSession({
+    ai,
+    model: MODEL_NAME,
+    systemInstruction: `${systemInstruction}\n\nDu leder Fas 3 Teatern som Att förlikas.`,
+  });
   let fullTheaterOutput = '';
-  for await (const chunk of streamResponse) {
-    if (bargeInTriggered) {
-      console.log('\n\n✋ [BARGE-IN DETEKTERAT: Användaren bröt in i reflektionen]');
-      if (process.stdin.isTTY) process.stdin.setRawMode(false);
-
-      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-      const userFeedback = await new Promise<string>((resolve) => {
-        rl.question('Din kommentar/instruktion till krafterna: ', (ans) => {
-          rl.close();
-          resolve(ans);
-        });
-      });
-
-      appendToCycleLog(`\n> 👤 ANVÄNDARINFLIKNING (Barge-In): ${userFeedback}\n`);
-
-      // Fortsätt reflektionen med användarens återkoppling
-      const followUp = await callWithRetry(() =>
-        ai.models.generateContent({
-          model: MODEL_NAME,
-          contents: [
-            { role: 'user', parts: [{ text: `${theaterContext}\n\n${fullTheaterOutput}` }] },
-            { role: 'user', parts: [{ text: `Användaren inflikade under mötet: "${userFeedback}". Förlikas och svara på detta.` }] },
-          ],
-          config: { systemInstruction },
-        })
-      );
-
-      const followUpText = followUp.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('') || '';
-      console.log(followUpText);
-      fullTheaterOutput += `\n` + followUpText;
-      break;
-    }
-
-    const delta = chunk.text || '';
-    process.stdout.write(delta);
-    fullTheaterOutput += delta;
+  try {
+    await theaterSession.connect();
+    fullTheaterOutput = await theaterSession.send(`${theaterContext}\n\n${theaterInstruction}`);
+    console.log(fullTheaterOutput);
+  } finally {
+    theaterSession.close();
   }
-
-  process.stdin.removeListener('data', onKeypress);
-  if (process.stdin.isTTY) process.stdin.setRawMode(false);
-  process.stdin.pause();
-
-  appendToCycleLog(`\n${fullTheaterOutput}`);
-
-  // Extrahera och spara processförbättringar
+  appendToCycleLog(`\n${fullTheaterOutput}`);\n\n  // Extrahera och spara processförbättringar
   if (fullTheaterOutput.includes('💡 Konstruktiv kritik av våra rutiner:')) {
     const critiquePart = fullTheaterOutput.split('💡 Konstruktiv kritik av våra rutiner:')[1]?.trim();
     if (critiquePart) {
