@@ -4,7 +4,7 @@ import {
   BidiGenerateContentToolResponseSchema,
   McpToolDefinition,
 } from '../contracts/mcpSchema.ts';
-import { SwarmEventBus, getGlobalSwarmEventBus } from '../../gemini_live_swarm/bus/swarmEventBus.ts';
+import { SwarmEventBus, getGlobalSwarmEventBus } from '../../../shared/bus/swarmEventBus.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 
 export interface ToolExecutionResult {

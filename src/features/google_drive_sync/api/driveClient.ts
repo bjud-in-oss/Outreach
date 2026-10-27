@@ -1,5 +1,5 @@
 import { DriveTokenManager, TokenRefresher } from './driveAuthLifeline.ts';
-import { SwarmEventBus } from '../../gemini_live_swarm/bus/swarmEventBus.ts';
+import { SwarmEventBus } from '../../../shared/bus/swarmEventBus.ts';
 
 export type { TokenRefresher };
 export { DriveTokenManager };

@@ -1,4 +1,4 @@
-import { SwarmEventBus } from '../gemini_live_swarm/bus/swarmEventBus.ts';
+import { SwarmEventBus } from '../../shared/bus/swarmEventBus.ts';
 import { TransientRingBuffer, TransientDiagnosticEntry } from './engine/transientRingBuffer.ts';
 
 export class WalUiTelemetryListener {

@@ -3,7 +3,7 @@
 ## AKTIVA TICKETS
 - [IN PROGRESS] TCK-TEST-001: Verifiera v10.4 Livscykeln (src/features/telemetry/)
 
-- [ ] **TCK-025**: Flytta SwarmEventBus till Shared-lagret -> Se `doc/.TICKETS/TCK-025.md`
+- [x] **TCK-025**: Flytta SwarmEventBus till Shared-lagret -> Se `doc/.TICKETS/TCK-025.md`
 
 ---
 
