@@ -207,6 +207,7 @@ async function runMacroTurn(
   systemInstruction: string,
   _macroHistory?: any[]
 ): Promise<string> {
+  if (!activeMacroSession) {
     activeMacroSession = new BidiLiveSession({
       ai,
       model: MODEL_NAME,
@@ -517,7 +518,9 @@ async function main() {
   } finally {
     codeSession.close();
   }
-  appendToCycleLog(`\n#### Genererad Källkod & Patchar\n${generatedCode}`);\n\n  applyGeneratedPatches(generatedCode, ticketId);
+  appendToCycleLog(`\n#### Genererad Källkod & Patchar\n${generatedCode}`);
+
+  applyGeneratedPatches(generatedCode, ticketId);
 
   // Resiliens & AST-kontroll (Gate 2c)
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
@@ -613,7 +616,9 @@ async function main() {
   } finally {
     theaterSession.close();
   }
-  appendToCycleLog(`\n${fullTheaterOutput}`);\n\n  // Extrahera och spara processförbättringar
+  appendToCycleLog(`\n${fullTheaterOutput}`);
+
+  // Extrahera och spara processförbättringar
   if (fullTheaterOutput.includes('💡 Konstruktiv kritik av våra rutiner:')) {
     const critiquePart = fullTheaterOutput.split('💡 Konstruktiv kritik av våra rutiner:')[1]?.trim();
     if (critiquePart) {
