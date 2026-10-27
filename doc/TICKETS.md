@@ -2,13 +2,10 @@
 
 ## AKTIVA TICKETS
 - [IN PROGRESS] TCK-TEST-001: Verifiera v10.4 Livscykeln (src/features/telemetry/)
-
 - [x] **TCK-025**: Flytta SwarmEventBus till Shared-lagret -> Se `doc/.TICKETS/TCK-025.md`
 - [x] **TCK-026**: Frikoppla McpServer och Verktyg via Delade Kontrakt -> Se `doc/.TICKETS/TCK-026.md`
 - [x] **TCK-027**: Slutgiltig FSD-sanering av gemini_live_swarm -> Se `doc/.TICKETS/TCK-027.md`
-
 ---
-
 - [VERIFIERAD] TCK-032 | Domän: src/features/gemini_live_swarm/ | Mål: Dubbelinmatningssanering, Live-Textlyssnare & Intent-Harmonisering | Token: TCK-032-VERIFIED-6ed5e47732a3c5ca | Kvitto: f4dbe9ad
 - [VERIFIERAD] TCK-031 | Domän: src/features/gemini_live_swarm/ | Mål: Tursfär & Negativ Telemetrifiltrering | Token: TCK-031-VERIFIED-0b6164623f49bbb7 | Kvitto: 2cd295a9
 - [VERIFIERAD] TCK-030b | Domän: src/features/gemini_live_swarm/ | Mål: Destruktiv UI-Sanering & Unified TurnContainer Sphere | Token: TCK-030b-VERIFIED-14cca6fde9d780b9
@@ -17,10 +14,7 @@
 - [VERIFIERAD] TCK-028 | Domän: src/features/gemini_live_swarm/ | Mål: Lyssna/Prata-pendeln & Semantisk Överlämning | Token: TCK-028-VERIFIED-0c4d1087da8a36ea
 - [VERIFIERAD] TCK-027 | Domän: src/features/gemini_live_swarm/ | Mål: Clean PromptBar, Audio Mutex & Sticky TurnContainer | Token: TCK-027-VERIFIED-d15f291e7314867b
 - [VERIFIERAD] TCK-026 | Domän: src/features/gemini_live_swarm/ | Mål: Passive Start BDD, Clean Splitter & Unified Input Bar | Token: TCK-026-VERIFIED-74c95d237f5e8f0b
-- [x] **TCK-027**: Slutgiltig FSD-sanering av gemini_live_swarm -> Se `doc/.TICKETS/TCK-027.md`
 - [VERIFIERAD] TCK-025 | Domän: src/features/gemini_live_swarm/ | Mål: BDD-First Voice Flow, Worker Threads & UI Start/Pause | Token: TCK-025-VERIFIED-ec5f6e6f29ceb27e
-- [x] **TCK-026**: Frikoppla McpServer och Verktyg via Delade Kontrakt -> Se `doc/.TICKETS/TCK-026.md`
-- [x] **TCK-027**: Slutgiltig FSD-sanering av gemini_live_swarm -> Se `doc/.TICKETS/TCK-027.md`
 - [VERIFIERAD] TCK-023b | Domän: src/features/gemini_live_swarm/coordinator/ | Mål: Single Live Agent & VAD Turn-Completion Fix (Orchestration) | Token: TCK-023b-VERIFIED-37c8be788f5d710b
 - [VERIFIERAD] TCK-023a | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI & Reflektions-Reglage (Harmonization) | Token: TCK-023a-VERIFIED-42fce33ce54d1da1
 - [VERIFIERAD] TCK-023 | Domän: src/features/gemini_live_swarm/ | Mål: Spatial UI Swarm Harmonization, Fluid Dock Gestures & Stream Concatenation | Token: TCK-023-SPATIAL-UI-HARMONIZATION-TOKEN

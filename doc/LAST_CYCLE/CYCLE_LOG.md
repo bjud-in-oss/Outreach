@@ -1,8 +1,7 @@
-# BYGGCYKEL WAL: TCK-TEST-001
-Datum: 2026-10-17T14:18:55.216Z
-Målbiljett: TCK-TEST-001
-------------------------------------------------------------------------
-## AKTIVT PROMPTKONTRAKT
+# WAL: TCK-TEST-001
+**Starttid:** 2026-10-25T22:19:58.497Z
+
+## Ursprunglig Prompt
 # TCK-TEST-001: Verifiera v10.4 Livscykeln
 
 ## 🎯 Intention & Nytta
@@ -20,6 +19,8 @@ Funktionen sänder en typad `PingEvent` via EventBus när den anropas och valide
 2. `transient_TCK-TEST-001.test.ts` MÅSTE falla med exit-kod 1 i Gate 3a innan källkod skrivs.
 3. Inga korsvisa FSD-importer får ske (strikt FSD-isolering).
 4. `pnpm bygg TCK-TEST-001` ska löpa hela vägen till Teatern (Fas 3) utan manuella inbrott.
-------------------------------------------------------------------------
+
+
+---
 
 ### FAS 0: PREMISSVALIDERING & DÖRRVAKT
