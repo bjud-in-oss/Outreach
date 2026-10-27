@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { McpToolDefinition } from '../contracts/mcpSchema.ts';
-import { WalEngine } from '../../wal_logger/engine/walEngine.ts';
-import { driveStore } from '../../google_drive_sync/model/driveStore.ts';
+import { IMcpWalEngine, IMcpDriveStore } from '../../../shared/contracts/mcpToolContracts.ts';
 import { EventEnvelope } from '../../../shared/contracts/envelope.ts';
 
 export const ApplyCodePatchSchema = z.object({
@@ -33,10 +32,21 @@ export const CodePatchToolsDefinitions: McpToolDefinition[] = [
   },
 ];
 
+const fallbackWalEngine: IMcpWalEngine = {
+  getWalHistory: () => [],
+  appendWalEntry: async () => ({ sequenceNumber: 1 }),
+  commitWalEntry: async () => {},
+  failWalEntry: async () => {},
+};
+
+const fallbackDriveStore: IMcpDriveStore = {
+  applyPatch: (_path, _search, replace) => replace,
+};
+
 async function executePatch(
   args: Record<string, any>,
-  wal: WalEngine,
-  ds: typeof driveStore
+  wal: IMcpWalEngine,
+  ds: IMcpDriveStore
 ) {
   let parsed;
   try {
@@ -83,11 +93,12 @@ async function executePatch(
 }
 
 export function createCodePatchToolHandlers(
-  walEngine?: WalEngine,
-  driveStoreInstance: typeof driveStore = driveStore
+  walEngine?: IMcpWalEngine,
+  driveStoreInstance?: IMcpDriveStore
 ) {
-  const wal = walEngine || new WalEngine();
+  const wal = walEngine || fallbackWalEngine;
+  const ds = driveStoreInstance || fallbackDriveStore;
   return {
-    apply_code_patch: (args: Record<string, any>) => executePatch(args, wal, driveStoreInstance),
+    apply_code_patch: (args: Record<string, any>) => executePatch(args, wal, ds),
   };
 }

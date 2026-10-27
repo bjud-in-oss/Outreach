@@ -1,5 +1,5 @@
 import { McpToolDefinition } from '../contracts/mcpSchema.ts';
-import { WalEngine } from '../../wal_logger/engine/walEngine.ts';
+import { IMcpWalEngine } from '../../../shared/contracts/mcpToolContracts.ts';
 
 export const WalToolsDefinitions: McpToolDefinition[] = [
   {
@@ -12,7 +12,7 @@ export const WalToolsDefinitions: McpToolDefinition[] = [
   },
 ];
 
-export function createWalToolHandlers(walEngine: WalEngine) {
+export function createWalToolHandlers(walEngine: IMcpWalEngine) {
   return {
     wal_get_stats: async () => {
       const history = walEngine.getWalHistory();

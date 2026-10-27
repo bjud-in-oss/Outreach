@@ -1,5 +1,5 @@
 import { McpToolDefinition } from '../contracts/mcpSchema.ts';
-import { GoogleDriveClient } from '../../google_drive_sync/api/driveClient.ts';
+import { IMcpDriveClient } from '../../../shared/contracts/mcpToolContracts.ts';
 
 export const DriveToolsDefinitions: McpToolDefinition[] = [
   {
@@ -24,7 +24,7 @@ export const DriveToolsDefinitions: McpToolDefinition[] = [
   },
 ];
 
-export function createDriveToolHandlers(driveClient: GoogleDriveClient) {
+export function createDriveToolHandlers(driveClient: IMcpDriveClient) {
   return {
     drive_save_draft: async (args: Record<string, any>) => {
       const fileName = `${args.title.replace(/\s+/g, '_')}.md`;
