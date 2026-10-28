@@ -1,21 +1,21 @@
 import { GoogleGenAI } from '@google/genai';
 
-const apiKey = process.env.GEMINI_API_KEY;
+let apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
-  console.error('❌ GEMINI_API_KEY saknas i miljön.');
+  console.error('❌ GEMINI_API_KEY saknas i miljön. Kör med --env-file=.env.');
   process.exit(1);
 }
 
 const ai = new GoogleGenAI({ apiKey });
 const MODEL = process.env.LIVE_MODEL || 'gemini-3.8-live-extended-thinking';
 
-console.log(`🔬 STARTAR OBEROENDE LIVE PROV`);
+console.log(`\n🔬 STARTAR OBEROENDE BIDI LIVE PROV`);
 console.log(`📌 Modell: ${MODEL}`);
 
 let receivedCode = '';
 let spokenResponse = '';
 
-// Strikt NON_BLOCKING enligt specifikationen för Extended Thinking
+// 1. Strikt NON_BLOCKING function declaration enligt specifikationen
 const saveCodeTool = {
   name: 'save_code',
   behavior: 'NON_BLOCKING',
@@ -24,24 +24,23 @@ const saveCodeTool = {
     type: 'OBJECT',
     properties: {
       filename: { type: 'STRING', description: 'Filnamn, t.ex. ping.ts' },
-      code: { type: 'STRING', description: 'Den fullständiga TypeScript-källkoden.' },
+      code: { type: 'STRING', description: 'Den fullständiga TypeScript-källkoden utan utelämnade delar.' },
     },
     required: ['filename', 'code'],
   },
 };
 
-async function runProbe() {
+(async function runProbe() {
   let session: any = null;
 
   await new Promise<void>(async (resolve, reject) => {
     const timeout = setTimeout(() => {
-      console.log('\n⏱️ Timeout nådd (45 sekunder).');
+      console.log('\n⏱️ Timeout nådd (45 sekunder). Stänger sessionen.');
       if (session) session.close();
       resolve();
     }, 45000);
 
     try {
-      // Exakt konfiguration enligt references/migration.md avsnitt 3
       const liveConfig: any = {
         responseModalities: ['audio'],
         outputAudioTranscription: {},
@@ -49,70 +48,63 @@ async function runProbe() {
         systemInstruction: {
           parts: [
             {
-              text: 'Du är en programmerare. När du får ett uppdrag: 1. Berätta kort i tal vad du gör. 2. Anropa verktyget save_code med TypeScript-koden.',
+              text: 'Du är en senior mjukvaruutvecklare. När du får ett programmeringsuppdrag: 1. Tala kort i röstkanalen om vad du gör. 2. Anropa ovillkorligen verktyget save_code med den fullständiga TypeScript-källkoden.',
             },
           ],
         },
       };
 
-      // thinkingConfig krävs för extended-thinking, men ska utelämnas för standard live
       if (MODEL.includes('extended-thinking')) {
         liveConfig.thinkingConfig = { thinkingLevel: 'low' };
       }
 
-      console.log('📡 Ansluter WebSocket mot Google...');
+      process.stdout.write('   📡 Ansluter WebSocket mot Google...');
       session = await (ai as any).live.connect({
         model: MODEL,
         config: liveConfig,
         callbacks: {
           onmessage: async (msg: any) => {
-            // Logga eventuella serverfel direkt från backend
             if (msg.error) {
-              console.error('\n❌ SERVERFEL FRÅN GOOGLE:', JSON.stringify(msg.error, null, 2));
+              console.error('\n❌ SERVERFEL (Google):', JSON.stringify(msg.error, null, 2));
             }
 
-            // Talad transkribering
             if (msg.serverContent?.outputTranscription?.text) {
-              const text = msg.serverContent.outputTranscription.text;
-              spokenResponse += text;
-              process.stdout.write(text);
+              const t = msg.serverContent.outputTranscription.text;
+              spokenResponse += t;
+              process.stdout.write(t);
             }
 
-            // Indikera inkommande rå PCM-ström
             if (msg.serverContent?.modelTurn?.parts?.some((p: any) => p.inlineData)) {
               process.stdout.write('~');
             }
 
-            // Asynkront verktygsanrop
             if (msg.toolCall?.functionCalls) {
               for (const call of msg.toolCall.functionCalls) {
-                console.log(`\n\n🛠️ [VERKTYG ANROPAT]: ${call.name}`);
+                console.log(`\n\n🛠️ [TOOL CALL]: ${call.name} (id: ${call.id})`);
                 if (call.name === 'save_code') {
                   receivedCode = call.args?.code || '';
-                  console.log(`📁 Målfil: ${call.args?.filename}`);
-                  console.log(`📝 Mottagen källkod:\n---\n${receivedCode}\n---`);
+                  console.log(`📁 FILNAMN: ${call.args?.filename}`);
+                  console.log(`\n📝 MOTTAGEN KÄLLKOD:\n---\n${receivedCode}\n---`);
                 }
 
-                // Bekräfta verktyget enligt specifikationen
                 session.sendToolResponse({
                   functionResponses: [
                     {
                       id: call.id,
                       name: call.name,
-                      response: { result: 'Filen sparades framgångsrikt.' },
+                      response: { result: 'Källkoden sparades framgångsrikt i VFS.' },
                     },
                   ],
                 });
               }
             }
 
-            // Hantera tillståndsmaskinen (IDLE)
             if (msg.interactionStatus) {
-              process.stdout.write(` [Status: ${msg.interactionStatus}] `);
+              process.stdout.write(`\n[STATUS: ${msg.interactionStatus}] `);
             }
 
-            if (msg.interactionStatus === 'IDLE' && (receivedCode || spokenResponse.length > 50)) {
-              console.log('\n\n🏁 Sessionen nådde IDLE och uppdraget är slutfört.');
+            if (msg.interactionStatus === 'IDLE') {
+              console.log('\n\n🏁 InteractionStatus: IDLE nådd — sessionen är klar.');
               clearTimeout(timeout);
               session.close();
               resolve();
@@ -129,7 +121,7 @@ async function runProbe() {
         },
       });
 
-      console.log('✅ Uppkopplad! Skickar uppdrag till modellen...');
+      console.log('  – Kopplad! Skickar uppdrag...');
 
       session.sendClientContent({
         turns: [
@@ -150,14 +142,15 @@ async function runProbe() {
     }
   });
 
-  console.log('\n================ UTFALL ================');
+  console.log('\n================ UTFALL PROV ================');
   console.log('Talad respons:', spokenResponse.trim() || '(Inget tal)');
-  if (receivedCode) {
-    console.log('✅ VERKLIG KÄLLKOD GENERERADES VIA TOOL-CALL!');
+  if (receivedCode.trim()) {
+    console.log('✅ VERKLIG KÄLLKOD GENERERADES VIA TOOL CALL!');
   } else {
     console.log('❌ INGEN KÄLLKOD GENERERADES.');
   }
-  console.log('========================================\n');
-}
-
-runProbe().catch(console.error);
+  console.log('============================================\n');
+})().catch(err => {
+  console.error('\n❌ Haveri i provet:', err);
+  process.exit(1);
+});

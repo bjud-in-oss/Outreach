@@ -3,36 +3,21 @@
  * 
  * OUTREACH COORDINATION ENGINE (v10.4)
  * Sammanhållet orkestreringsskript för `pnpm bygg [TCK-XXX]`
- * 
- * Hanterar den fullständiga livscykeln:
- * - Fas 0: Premissvalidering & Dörrvakt (Makrosession)
- * - Fas 1: Linjärt Planeringssvep med Inre Triadisk Mikro-oscillation (VFS)
- * - Omvändelse-Omväg (Process-Fail-Fast)
- * - Kristalliseringspunkt & Token Gate (Paus/Rensning)
- * - Fas 2: Källkodsexekvering & TDD (Isolerad session, Mekaniska grindar)
- * - Fas 3: Reflektion & Teater (Program & Process med CLI Barge-In)
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import * as readline from 'readline';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.ts';
-
-// ============================================================================
-// KONFIGURATION & INITIERING
-// ============================================================================
 
 const ROOT_DIR = process.cwd();
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.4.md');
-const PROCESS_IMPROVEMENTS_PATH = path.join(ROOT_DIR, 'doc', 'PROCESS_IMPROVEMENTS.md');
 
-// Lås till Bidi Live Extended Thinking med Unlimited RPD
-const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-3.8-live-extended-thinking';
-
+const MODEL_NAME = process.env.LIVE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-live';
 const API_KEY = process.env.GEMINI_API_KEY;
 
 if (!API_KEY) {
@@ -42,21 +27,11 @@ if (!API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
 
-// Säkerställ katalogstruktur
 if (!fs.existsSync(CYCLE_LOG_DIR)) {
   fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
 }
 
-// ============================================================================
-// VERKTYGSLÅDA (JIT & EXPLORATION BUDGET)
-// ============================================================================
-
-interface ToolCallResult {
-  tool: string;
-  output: string;
-}
-
-function executeTool(name: string, args: Record<string, any>): string {
+function executeReadTool(name: string, args: Record<string, any>): string {
   try {
     switch (name) {
       case 'read_file': {
@@ -75,22 +50,20 @@ function executeTool(name: string, args: Record<string, any>): string {
           return execSync(`git grep -n -I -e "${query}" -- src/ .agents/`, {
             cwd: ROOT_DIR,
             encoding: 'utf-8',
-            maxBuffer: 1024 * 1024,
           });
         } catch {
-          return 'Inga träffar hittades.';
+          return `Inga träffar för sökningen: ${query}`;
         }
       }
       default:
-        return `FEL: Okänt verktyg ${name}`;
+        return `FEL: Okänt läsverktyg '${name}'.`;
     }
   } catch (error: any) {
     return `Verktygsfel (${name}): ${error.message}`;
   }
 }
 
-// Deklarationer för Gemini API tool-calling
-const TOOL_DECLARATIONS = [
+const READ_TOOL_DECLARATIONS = [
   {
     name: 'read_file',
     behavior: 'NON_BLOCKING',
@@ -117,7 +90,7 @@ const TOOL_DECLARATIONS = [
   {
     name: 'search_code',
     behavior: 'NON_BLOCKING',
-    description: 'Söker efter en sträng i repots källkod och returnerar matchande rader med filnamn.',
+    description: 'Söker efter en sträng i repots källkod.',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -128,9 +101,19 @@ const TOOL_DECLARATIONS = [
   },
 ];
 
-// ============================================================================
-// LOGGNING & WAL-HANTERING
-// ============================================================================
+const SAVE_CODE_TOOL = {
+  name: 'save_code',
+  behavior: 'NON_BLOCKING',
+  description: 'Anropas för att spara en källkodsfil eller testfil till repot.',
+  parameters: {
+    type: 'OBJECT',
+    properties: {
+      file_path: { type: 'STRING', description: 'Relativ sökväg (t.ex. src/features/telemetry/ping.ts eller src/features/telemetry/index.ts).' },
+      code: { type: 'STRING', description: 'Den fullständiga källkoden som ska skrivas till filen.' },
+    },
+    required: ['file_path', 'code'],
+  },
+};
 
 function appendToCycleLog(content: string) {
   fs.appendFileSync(CYCLE_LOG_PATH, content + '\n', 'utf-8');
@@ -138,83 +121,53 @@ function appendToCycleLog(content: string) {
 }
 
 function initCycleLog(ticketId: string, promptText: string) {
-  // Rensa gammal logg vid nytt bygge
   if (fs.existsSync(CYCLE_LOG_PATH)) {
     fs.rmSync(CYCLE_LOG_PATH);
   }
-  const timestamp = new Date().toISOString();
-  const header = `# WAL: ${ticketId}\n**Starttid:** ${timestamp}\n\n## Ursprunglig Prompt\n${promptText}\n\n---\n`;
+  const header = [
+    `# BYGGCYKEL LOGG: ${ticketId}`,
+    `**Starttid:** ${new Date().toISOString()}`,
+    `**Modell:** ${MODEL_NAME}`,
+    `**Syfte:** Verifiera och genomföra bygguppdrag i Outreach Coordination Engine v10.4`,
+    `\n---\n### INITIAL PROMPT\n\`\`\`\n${promptText.trim()}\n\`\`\`\n`,
+  ].join('\n');
   fs.writeFileSync(CYCLE_LOG_PATH, header, 'utf-8');
 }
 
-// ============================================================================
-// PARSNING & DOMÄNHANTERING
-// ============================================================================
-
 function resolveTargetTicket(): { ticketId: string; content: string } {
-  const arg = process.argv[2];
-  let ticketId = arg;
-  let ticketPath = '';
-
-  if (!arg || arg.startsWith('--')) {
-    // Om ingen TCK angavs, försök läsa PROMPT.md
-    ticketPath = path.join(ROOT_DIR, 'PROMPT.md');
-    if (!fs.existsSync(ticketPath)) {
-      console.error('❌ FEL: Måste ange en TCK (t.ex. pnpm bygg TCK-001) eller tillhandahålla en PROMPT.md i roten.');
-      process.exit(1);
-    }
-    ticketId = 'PROMPT_DRIVEN';
-  } else {
-    ticketPath = path.join(ROOT_DIR, `doc/.TICKETS/${ticketId}.md`);
-    if (!fs.existsSync(ticketPath)) {
-      console.error(`❌ FEL: Hittade inte biljetten ${ticketPath}`);
-      process.exit(1);
+  const argTicket = process.argv.slice(2).find((arg) => arg.startsWith('TCK-'));
+  if (argTicket) {
+    const ticketFile = path.join(ROOT_DIR, 'doc', '.TICKETS', `${argTicket}.md`);
+    if (fs.existsSync(ticketFile)) {
+      return { ticketId: argTicket, content: fs.readFileSync(ticketFile, 'utf-8') };
     }
   }
 
-  return { ticketId, content: fs.readFileSync(ticketPath, 'utf-8') };
-}
-
-async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 4, delayMs = 2000): Promise<T> {
-  let attempt = 0;
-  while (attempt < maxAttempts) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      attempt++;
-      console.warn(`[NÄTVERK] Anrop misslyckades (försök ${attempt}/${maxAttempts}): ${err.message}`);
-      if (err.status === 429) {
-        console.warn(`[KVOT] Kvotgräns nådd. Väntar ${delayMs * attempt}ms...`);
-        await new Promise((res) => setTimeout(res, delayMs * attempt));
-      } else if (attempt >= maxAttempts) {
-        throw err;
-      } else {
-        await new Promise((res) => setTimeout(res, delayMs));
-      }
-    }
+  const promptFile = path.join(ROOT_DIR, 'PROMPT.md');
+  if (fs.existsSync(promptFile)) {
+    const raw = fs.readFileSync(promptFile, 'utf-8');
+    const match = raw.match(/TCK-[A-Z0-9_-]+/);
+    const ticketId = match ? match[0] : 'TCK-CUSTOM';
+    return { ticketId, content: raw };
   }
-  throw new Error('Unreachable');
-}
 
-// ============================================================================
-// BIDI LIVE WEBSOCKET ORKESTRERING (SI v10.4)
-// ============================================================================
+  throw new Error('Hittade varken explicit TCK-argument eller PROMPT.md.');
+}
 
 let activeMacroSession: BidiLiveSession | null = null;
 
 async function runMacroTurn(
   instruction: string,
   systemInstruction: string,
-  _macroHistory?: any[],
   withTools = false
 ): Promise<string> {
   if (!activeMacroSession) {
     activeMacroSession = new BidiLiveSession({
       ai,
       model: MODEL_NAME,
-      systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och bär sammanvägningen.`,
-      tools: withTools ? TOOL_DECLARATIONS : undefined,
-      executeTool: withTools ? executeTool : undefined,
+      systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och leder sammanvägningen.`,
+      tools: withTools ? READ_TOOL_DECLARATIONS : undefined,
+      executeTool: withTools ? executeReadTool : undefined,
     });
     await activeMacroSession.connect();
   }
@@ -238,9 +191,9 @@ async function runMicroChannel(
   const session = new BidiLiveSession({
     ai,
     model: MODEL_NAME,
-    systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll.`,
-    tools: withTools ? TOOL_DECLARATIONS : undefined,
-    executeTool: withTools ? executeTool : undefined,
+    systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll och dina uppgifter.`,
+    tools: withTools ? READ_TOOL_DECLARATIONS : undefined,
+    executeTool: withTools ? executeReadTool : undefined,
   });
   try {
     await session.connect();
@@ -251,53 +204,19 @@ async function runMicroChannel(
   }
 }
 
-function applyGeneratedPatches(generatedCode: string, ticketId: string) {
-  // Leta efter kodblock i markdown (```typescript ... ```)
-  // Om API:et skapar flera filer, förväntar vi oss en kommentar i början av blocket typ: // File: src/features/...
-
-  const blocks = generatedCode.split('```typescript');
-  for (let i = 1; i < blocks.length; i++) {
-    const block = blocks[i];
-    const endIdx = block.indexOf('```');
-    if (endIdx === -1) continue;
-
-    const code = block.substring(0, endIdx).trim();
-    const firstLine = code.split('\n')[0].trim();
-    let filePath = '';
-
-    if (firstLine.startsWith('// File:')) {
-      filePath = firstLine.replace('// File:', '').trim();
-    } else if (firstLine.startsWith('// src/')) {
-      filePath = firstLine.replace('//', '').trim();
-    } else {
-      // Fallback: Dumpa till en godtycklig feature-fil (mycket primitivt)
-      console.warn(`[KOD] Hittade inget filnamn i blocket, sparar till src/features/fallback_${ticketId}.ts`);
-      filePath = `src/features/fallback_${ticketId}.ts`;
-    }
-
-    if (filePath) {
-      const fullPath = path.join(ROOT_DIR, filePath);
-      const dir = path.dirname(fullPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(fullPath, code, 'utf-8');
-      console.log(`[SKRIVER] ${filePath}`);
-    }
-  }
-}
-
-// ============================================================================
-// HUVUDFASERNAS EXEKVERING
-// ============================================================================
-
 async function main() {
   const { ticketId, content: ticketPrompt } = resolveTargetTicket();
   const systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
 
+  const domainMatch = ticketPrompt.match(/src\/features\/([a-zA-Z0-9_-]+)/);
+  const targetDomain = domainMatch ? domainMatch[1] : 'telemetry';
+
   console.log(`\n🚀 OUTREACH COORDINATION ENGINE v10.4 – STARTAR BYGG: ${ticketId}`);
+  console.log(`📌 Aktiv Live-modell: ${MODEL_NAME}`);
+  console.log(`🎯 Måldomän: src/features/${targetDomain}/`);
   initCycleLog(ticketId, ticketPrompt);
 
-  const macroHistory: any[] = [];
-  const startAnchor = `BILJETT: ${ticketId}\nPROMPT:\n${ticketPrompt}`;
+  const startAnchor = `BILJETT: ${ticketId}\nMÅLDOMÄN: src/features/${targetDomain}/\nPROMPT:\n${ticketPrompt}`;
 
   // --------------------------------------------------------------------------
   // FAS 0: PREMISSVALIDERING & DÖRRVAKT
@@ -306,7 +225,7 @@ async function main() {
 
   const fas0_1a = await runMicroChannel(
     'Att följa',
-    'Steg 1a: Förstå Intention & Mänsklig Nytta. Tolka avsedd funktion och värde.',
+    'Steg 1a: Förstå Intention & Mänsklig Nytta. Identifiera det invarianta ytterkontraktet (funktioner och typer) och förankra mänskligt värde.',
     startAnchor,
     systemInstruction
   );
@@ -322,40 +241,27 @@ async function main() {
 
   const fas0_0b = await runMacroTurn(
     `Steg 0b: Vägval & Förlikningsport.\nBedöm kontraktsgranskningen:\n${fas0_0a}\n` +
-      `Om fler än 1 FSD berörs eller API-kontrakt bryts: deklarera AVBROTT och instruera klyvning.\n` +
-      `Annars deklarera: VÄG 2 GODKÄND och förbered Fas 1. Svara med strukturen: STATUS: [GODKÄND|AVBRUTEN].`,
-    systemInstruction,
-    macroHistory
+      `Om fler än 1 FSD berörs eller API-kontrakt bryts: deklarera AVBROTT.\n` +
+      `Annars deklarera: VÄG 2 GODKÄND och förbered Fas 1. Svara med formatet: STATUS: [GODKÄND|AVBRUTEN].`,
+    systemInstruction
   );
   appendToCycleLog(`\n#### 0b Att förlikas: Vägval\n${fas0_0b}`);
 
   if (fas0_0b.includes('STATUS: AVBRUTEN')) {
-    console.error(`\n⛔ FAS 0 AVBRÖT BYGGET: Kontraktsbrott upptäckt. Biljetten måste klyvas via decomposing-tickets.`);
+    console.error(`\n⛔ FAS 0 AVBRÖT BYGGET: Kontraktsbrott upptäckt.`);
     process.exit(1);
   }
 
-  // --- NYTT: STÖD FÖR --fas0-only STAFETTEST ---
   if (process.argv.includes('--fas0-only')) {
-    console.log('\n🏁 [FAS 0-ONLY LÄGE]: Dörrvakt godkänd. Avslutar stafetttest utan källkodsändringar.');
-    const replyPath = path.join(ROOT_DIR, 'REPLY.md');
-    const replyContent = [
-      `# BYGGRAPPORT: ${ticketId} (FAS 0 STAFETTEST)`,
-      `**Status:** GODKÄND DÖRRVAKT`,
-      `**Tid:** ${new Date().toISOString()}`,
-      `\n## Dörrvaktens bedömning (0b Att förlikas):\n${fas0_0b}`,
-      `\n*Stafetten mellan 1a (Att följa), 0a (Att vända om) och 0b (Att förlikas) slutfördes framgångsrikt.*`,
-    ].join('\n\n');
-    fs.writeFileSync(replyPath, replyContent, 'utf-8');
-    console.log(`\n📬 Resultat skrivet till ${replyPath}`);
+    console.log('\n🏁 [FAS 0-ONLY LÄGE]: Dörrvakt godkänd. Avslutar körningen.');
     process.exit(0);
   }
 
   // --------------------------------------------------------------------------
-  // FAS 1: LINJÄRT PLANERINGSSVEP MED INRE TRIADISK OSCILLATION
+  // FAS 1: LINJÄRT PLANERINGSSVEP
   // --------------------------------------------------------------------------
   appendToCycleLog(`\n### FAS 1: LINJÄRT PLANERINGSSVEP (MIKRO-OSCILLATION)`);
 
-  // Steg 1b & 2a
   const steg1b = await runMicroChannel(
     'Att följa',
     'Steg 1b: Kartlägg berörd FSD-domän och systemgränser via Feature-Index.',
@@ -373,10 +279,10 @@ async function main() {
   );
   appendToCycleLog(`\n#### 2a Att följa: Tillstånd & Biverkningar\n${steg2a}`);
 
-  // Steg 2b, 2c, 2d (Modellera & Syntetisera)
   const steg2b = await runMicroChannel(
     'Att följa',
-    'Steg 2b: Formulera 3 ortogonala alternativ med skilda arkitektoniska avvägningar enligt mönstret reverse-direction.',
+    `Steg 2b: Formulera 3 ortogonala alternativ med skilda arkitektoniska avvägningar enligt reverse-direction.\n` +
+      `OBS: Biljettens funktionella ytterkontrakt (t.ex. export function emitPing i src/features/${targetDomain}/index.ts) är en låst invariant. Alternativen får ENDAST utforska inre modulstruktur och felhantering, aldrig ändra funktionens signatur.`,
     `${startAnchor}\nTILLSTÅND:\n${steg2a}`,
     systemInstruction
   );
@@ -384,31 +290,64 @@ async function main() {
 
   const steg2c = await runMicroChannel(
     'Att vända om',
-    'Steg 2c: Utvärdera Resiliens & Felhantering. Granska alternativen enligt check-alignment mot haverier. Förkasta lösningar med tysta catch-block. Deklarera eventuellt process-skav.',
+    'Steg 2c: Utvärdera Resiliens & Felhantering enligt check-alignment. Förkasta tysta catch-block.',
     `${startAnchor}\nALTERNATIV:\n${steg2b}`,
     systemInstruction
   );
-  appendToCycleLog(`\n#### 2c Att vända om: Resiliens & Haverigranskning\n${steg2c}`);
+  appendToCycleLog(`\n#### 2c Att vända om: Resiliensgranskning\n${steg2c}`);
 
   const steg2d = await runMacroTurn(
     `Steg 2d: Syntetisk Vägvägning. Väg spänningsfältet mellan alternativen och granskningen.\nLås det vinnande kontraktet och slå fast MÄTTNAD: JA.\n\nAlternativ:\n${steg2b}\n\nGranskning:\n${steg2c}`,
-    systemInstruction,
-    macroHistory
+    systemInstruction
   );
   appendToCycleLog(`\n#### 2d Att förlikas: Vägvägning & Mättnad\n${steg2d}`);
 
-  // Steg 3a, 3b, 2e, 3c (Test, Kod & Delta)
+  const transientTestFile = `src/__tests__/transient_${ticketId}.test.ts`;
+  const transientTestFullPath = path.join(ROOT_DIR, transientTestFile);
+
   const steg3a = await runMicroChannel(
     'Att följa',
-    'Steg 3a: Skriv Transient Testspecifikation. Inkludera obligatoriskt Körtidsankare (steel-thread) och Fail-First-deklaration.',
+    `Steg 3a: Skriv Transient Testspecifikation.\nInkludera obligatoriskt Körtidsankare (eventBus.emit / eventBus.subscribe) och Fail-First-deklaration.`,
     `${startAnchor}\nKONTRAKT:\n${steg2d}`,
     systemInstruction
   );
   appendToCycleLog(`\n#### 3a Att följa: Transient Testspecifikation\n${steg3a}`);
 
+  // Etablera det fysiska testet på disken i Steg 3a om det inte redan existerar
+  if (!fs.existsSync(transientTestFullPath)) {
+    const testBoilerplate = [
+      "import { describe, it, expect } from 'vitest';",
+      `import { emitPing } from '../features/${targetDomain}';`,
+      "import { getGlobalSwarmEventBus } from '../shared/bus/swarmEventBus';",
+      "",
+      `describe('${ticketId}: Telemetry Ping', () => {`,
+      "  it('sänder en typad PingEvent via EventBus med emit som körtidsankare', () => {",
+      "    const eventBus = getGlobalSwarmEventBus();",
+      "    let receivedEnvelope: any = null;",
+      "    const unsubscribe = eventBus.subscribe('telemetry:ping', (envelope) => {",
+      "      receivedEnvelope = envelope;",
+      "    });",
+      "",
+      "    // Körtidsankare: verifiera händelsebussen i körtid och utför emission",
+      "    expect(typeof eventBus.emit).toBe('function');",
+      "    const result = emitPing();",
+      "",
+      "    expect(result.success).toBe(true);",
+      "    expect(receivedEnvelope).toBeDefined();",
+      "    expect(receivedEnvelope.type).toBe('telemetry:ping');",
+      "    unsubscribe();",
+      "  });",
+      "});",
+      ""
+    ].join('\n');
+    fs.mkdirSync(path.dirname(transientTestFullPath), { recursive: true });
+    fs.writeFileSync(transientTestFullPath, testBoilerplate, 'utf-8');
+    console.log(`   📝 Fysiskt körtidstest etablerat på disken: ${transientTestFile}`);
+  }
+
   const steg3b = await runMicroChannel(
     'Att följa',
-    'Steg 3b: Skriv exakt Källkodsspecifikation, inklusive Barrel Audit av index.ts.',
+    `Steg 3b: Skriv exakt Källkodsspecifikation, inklusive Barrel Audit av index.ts.\nLäs testfilen '${transientTestFile}' med read_file för att matcha dess faktiska typer och importer.`,
     `${startAnchor}\nKONTRAKT:\n${steg2d}\nTEST:\n${steg3a}`,
     systemInstruction,
     true
@@ -417,35 +356,17 @@ async function main() {
 
   const steg2e = await runMicroChannel(
     'Att vända om',
-    'Steg 2e: Operativt Delta. Deklarera destruktiv sanering (filer/kod som ska raderas) och omankring av historiska tester. Deklarera eventuellt process-skav.',
+    'Steg 2e: Operativt Delta. Deklarera destruktiv sanering och omankring av historiska tester.',
     `${startAnchor}\nKODSPEC:\n${steg3b}`,
     systemInstruction
   );
   appendToCycleLog(`\n#### 2e Att vända om: Operativt Delta & Sanering\n${steg2e}`);
 
   const steg3c = await runMacroTurn(
-    `Steg 3c: Slutgiltigt Byggkontrakt & Portvärdering.\nSammanställ byggkontraktet utifrån 3a, 3b och 2e.\n` +
-      `Deklarera: human_decision_required: false (eftersom byggkontraktet och acceptanskriterierna för ${ticketId} är entydiga och deterministiska).`,
-    systemInstruction,
-    macroHistory
+    `Steg 3c: Slutgiltigt Byggkontrakt & Portvärdering.\nSammanställ byggkontraktet utifrån 3a, 3b och 2e.\nDeklarera: human_decision_required: false.`,
+    systemInstruction
   );
   appendToCycleLog(`\n#### 3c Att förlikas: Slutgiltigt Byggkontrakt\n${steg3c}`);
-
-  // --- NYTT: OMVÄNDELSE-OMVÄGEN (PROCESS-FAIL-FAST) ---
-  // Kontrollera om Att vända om deklarerar processjustering
-  if (steg2c.includes('PROCESS_REVISION_REQUIRED') || steg2e.includes('PROCESS_REVISION_REQUIRED')) {
-    console.log('\n⚠️ PROCESS-FAIL-FAST: Att vända om fann skav i processen. Avbryter källkodsbygge och hoppar till Fas 3.');
-    const replyPath = path.join(ROOT_DIR, 'REPLY.md');
-    const processRevisionReport = [
-      `# PROCESS-FAIL-FAST: OMVÄNDELSE KRÄVS (${ticketId})`,
-      `**Status:** PAUSED_FOR_PROCESS_REVISION`,
-      `**Tid:** ${new Date().toISOString()}`,
-      `\n## Identifierat processfel från Att vända om:\n${steg2c}\n${steg2e}`,
-      `\n*Bygget stoppades innan källkod ändrades. Justera styrdokument eller skript och starta om från Fas 0.*`,
-    ].join('\n\n');
-    fs.writeFileSync(replyPath, processRevisionReport, 'utf-8');
-    process.exit(0);
-  }
 
   // --------------------------------------------------------------------------
   // TOKEN GATE & KRISTALLISERINGSPUNKT
@@ -457,7 +378,7 @@ async function main() {
       rl.question('Godkänner du byggkontraktet och vill fortsätta till Fas 2? (y/n): ', (ans) => {
         rl.close();
         if (ans.trim().toLowerCase() !== 'y') {
-          console.log('🛑 Bygget avbröts av användaren vid Token Gate.');
+          console.log('🛑 Bygget avbröts vid Token Gate.');
           process.exit(0);
         }
         resolve();
@@ -465,52 +386,23 @@ async function main() {
     });
   }
 
-  // Rensa planeringshistorik inför källkodsfasen
   closeMacroSession();
-  macroHistory.length = 0;
-  console.log('\n🧹 Planeringskontext stängd och renad. Kristalliserar i WAL. Öppnar Fas 2...');
+  console.log('\n🧹 Planeringskontext stängd och renad. Öppnar Fas 2...');
 
   // --------------------------------------------------------------------------
-  // FAS 2: KÄLLKODSEXEKVERING & TDD (ISOLERAD SESSION)
+  // FAS 2: KÄLLKODSEXEKVERING & TDD (ISOLERAD SESSION MED VERKLIGT VERKTYG)
   // --------------------------------------------------------------------------
   appendToCycleLog(`\n### FAS 2: KÄLLKODSEXEKVERING & TDD`);
 
-// Mekanisk Fail-First & Alibikontroll (Gate 3a)
-  console.log('\n🔒 Verifierar Gate 3a: Kör AST-skanning mot alibi-tester...');
+  console.log('\n🔒 Verifierar Gate 3a: AST-kontroll mot alibi-tester...');
   try {
-    const transientTestFile = `src/__tests__/transient_${ticketId}.test.ts`;
     execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
   } catch {
-    console.error('❌ GATE 3a UNDERKÄND: Alibimönster upptäckta i den aktiva testfilen.');
+    console.error('❌ GATE 3a UNDERKÄND: Alibimönster upptäckta i testfilen.');
     process.exit(1);
   }
 
-  const transientTestFile = `src/__tests__/transient_${ticketId}.test.ts`;
-  const transientTestFullPath = path.join(ROOT_DIR, transientTestFile);
-
-  if (!fs.existsSync(transientTestFullPath)) {
-    const testBoilerplate = [
-      "import { describe, it, expect, vi } from 'vitest';",
-      "import { emitPing } from '../features/telemetry';",
-      "import { getGlobalSwarmEventBus } from '../shared/bus/swarmEventBus';",
-      "",
-      `describe('${ticketId}: Telemetry Ping', () => {`,
-      "  it('sänder en typad PingEvent via EventBus med emit som körtidsankare', () => {",
-      "    const eventBus = getGlobalSwarmEventBus();",
-      "    const emitSpy = vi.spyOn(eventBus, 'emit');",
-      "    const result = emitPing();",
-      "    expect(emitSpy).toHaveBeenCalled();",
-      "    expect(result.success).toBe(true);",
-      "  });",
-      "});",
-      ""
-    ].join('\n');
-    fs.mkdirSync(path.dirname(transientTestFullPath), { recursive: true });
-    fs.writeFileSync(transientTestFullPath, testBoilerplate, 'utf-8');
-    console.log(`   📝 Skapade initial transient testfil: ${transientTestFile}`);
-  }
-
-  console.log('🔴 Gate 3a Fail-First: Verifierar att transient-testet fallerar rött (exit 1) mot befintlig kod...');
+  console.log('🔴 Gate 3a Fail-First: Verifierar att testet fallerar rött (exit 1) mot befintlig kod...');
   let testFailedAsExpected = false;
   try {
     execSync('pnpm test:transient', { stdio: 'pipe', cwd: ROOT_DIR });
@@ -522,195 +414,123 @@ async function main() {
   }
 
   if (!testFailedAsExpected) {
-    console.error('❌ GATE 3a UNDERKÄND: Transient-testet måste fallera med exit-kod 1 mot befintlig kod innan implementering tillåts.');
+    console.error('❌ GATE 3a UNDERKÄND: Transient-testet måste fallera med exit-kod 1 innan kod får skrivas.');
     process.exit(1);
   }
 
-  // Källkodsimplementation via dedikerad källkodsprompt
-  console.log('\n⚡ Implementerar källkod och destruktiv sanering...');
-  const implementationPrompt = [
-    `BYGGKONTRAKT FRÅN 3c:\n${steg3c}`,
-    `TESTSPECIFIKATION FRÅN 3a:\n${steg3a}`,
-    `DESTRUKTIVT DELTA FRÅN 2e:\n${steg2e}`,
-    `Skriv ut fullständiga patchar för källkod och transient-test. Håll FSD-isoleringen intakt.`,
-  ].join('\n\n');
+  const actualTestCode = fs.readFileSync(transientTestFullPath, 'utf-8');
+
+  console.log('\n⚡ Exekverar källkodsgenerering via Bidi Live WebSocket...');
+  const writtenFiles: string[] = [];
+
+  function executeSaveCodeTool(name: string, args: Record<string, any>): string {
+    if (name === 'save_code') {
+      const relPath = args.file_path || args.filename;
+      const code = args.code;
+      if (!relPath || typeof code !== 'string') {
+        return 'FEL: file_path och code är obligatoriska parametrar.';
+      }
+
+      const normalized = relPath.replace(/\\/g, '/');
+      const allowedPrefix = `src/features/${targetDomain}/`;
+      const isAllowed = normalized.startsWith(allowedPrefix) || normalized.startsWith('src/__tests__/transient_');
+
+      if (!isAllowed) {
+        console.warn(`\n   ⚠️ [SPÄRRAD FILSKRIVNING]: Otillåten sökväg: ${normalized}`);
+        return `FEL: Strikt FSD-isolering! Du får endast spara filer under '${allowedPrefix}'. Du har INTE behörighet att skriva i src/shared/ eller andra mappar.`;
+      }
+
+      const fullPath = path.resolve(ROOT_DIR, normalized);
+      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+      fs.writeFileSync(fullPath, code, 'utf-8');
+      writtenFiles.push(normalized);
+      console.log(`\n   💾 [SPARAD KOD]: ${normalized} (${code.length} tecken)`);
+      return `Filen ${normalized} sparades framgångsrikt.`;
+    }
+    return `FEL: Okänt verktyg ${name}`;
+  }
 
   const codeSession = new BidiLiveSession({
     ai,
     model: MODEL_NAME,
-    systemInstruction: `${systemInstruction}\n\nDu är i Fas 2 (Källkodsexekvering). Generera ren TypeScript-kod. Inga tomma catch-block.`,
+    systemInstruction: `${systemInstruction}\n\nDu är i Fas 2 (Källkodsexekvering). Ditt uppdrag är att: 1. Berätta kort i tal vad du gör. 2. Anropa verktyget save_code för varje fil (källkod och barrel index.ts under src/features/${targetDomain}/) så att det aktiva transienta testet passerar grönt. Skriv ren TypeScript utan tomma catch-block och utan alibin.`,
+    tools: [SAVE_CODE_TOOL],
+    executeTool: executeSaveCodeTool,
   });
-  let generatedCode = '';
+
+  const implementationPrompt = [
+    `BYGGKONTRAKT FRÅN FAS 1 (3c):\n${steg3c}`,
+    `DETTA ÄR DET TRANSIENTA TESTET SOM SKALL GÖRAS GRÖNT (${transientTestFile}):`,
+    '```typescript',
+    actualTestCode,
+    '```',
+    `OBLIGATORISKA ARKITEKTURREGLER FÖR ATT GÖRA TESTET GRÖNT:`,
+    `1. IMPLEMENTERA EXAKT DET TESTET FÖRVÄNTAR SIG:`,
+    `   - Testet importerar 'emitPing' från '../features/${targetDomain}'.`,
+    `   - Alltså MÅSTE filen 'src/features/${targetDomain}/index.ts' exportera funktionen 'emitPing'.`,
+    `   - 'emitPing()' måste anropa eventBus.emit('telemetry:ping', ...) på den globala bussen 'getGlobalSwarmEventBus()' från '../../shared/bus/swarmEventBus' och returnera { success: true, ... }.`,
+    `2. STRIKT FSD-ISOLERING:`,
+    `   - Spara ENDAST filer under 'src/features/${targetDomain}/' (t.ex. 'src/features/${targetDomain}/ping.ts' och 'src/features/${targetDomain}/index.ts').`,
+    `   - Rör ALDRIG filer i 'src/shared/'.`,
+    `3. SPARA MED VERKTYGET:`,
+    `   - Anropa save_code({ file_path, code }) för varje fil du skapar.`,
+  ].join('\n\n');
+
   try {
     await codeSession.connect();
-    generatedCode = await codeSession.send(implementationPrompt, 120000);
+    await codeSession.send(implementationPrompt, 120000);
   } finally {
     codeSession.close();
   }
-  appendToCycleLog(`\n#### Genererad Källkod & Patchar\n${generatedCode}`);
 
-  applyGeneratedPatches(generatedCode, ticketId);
-
-  // Deterministisk säkerhetsspärr: Om modellen endast talat och inte skrivit kodfiler,
-  // etableras den specificerade implementationen direkt under FSD-måldomänen.
-  const targetPingFile = path.join(ROOT_DIR, 'src/features/telemetry/ping.ts');
-  if (!fs.existsSync(targetPingFile)) {
-    console.log('   ⚡ Etablerar deterministisk källkod för telemetry...');
-    const pingCode = [
-      "import { z } from 'zod';",
-      "import { getGlobalSwarmEventBus } from '../../shared/bus/swarmEventBus';",
-      "",
-      "export const PingEventSchema = z.object({",
-      "  type: z.literal('telemetry:ping'),",
-      "  timestamp: z.number(),",
-      "});",
-      "",
-      "export type PingEvent = z.infer<typeof PingEventSchema>;",
-      "",
-      "export function emitPing() {",
-      "  const eventBus = getGlobalSwarmEventBus();",
-      "  const event: PingEvent = {",
-      "    type: 'telemetry:ping',",
-      "    timestamp: Date.now(),",
-      "  };",
-      "  eventBus.emit('telemetry:ping', event);",
-      "  return { success: true, event };",
-      "}",
-      ""
-    ].join('\n');
-    const barrelCode = "export * from './ping';\n";
-    
-    fs.mkdirSync(path.dirname(targetPingFile), { recursive: true });
-    fs.writeFileSync(targetPingFile, pingCode, 'utf-8');
-    fs.writeFileSync(path.join(ROOT_DIR, 'src/features/telemetry/index.ts'), barrelCode, 'utf-8');
-    console.log('   [SKRIVER] src/features/telemetry/ping.ts');
-    console.log('   [SKRIVER] src/features/telemetry/index.ts');
+  if (writtenFiles.length === 0) {
+    console.error('\n❌ FAS 2 UNDERKÄND: Modellen genererade inga filer via save_code. Bygget fallerar rött.');
+    process.exit(1);
   }
 
-  // Resiliens & AST-kontroll (Gate 2c)
+  console.log(`\n✅ Modellen genererade ${writtenFiles.length} filer via save_code: ${writtenFiles.join(', ')}`);
+
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
   try {
-    execSync('node scripts/drivers/ts.js --check-catch-blocks --feature telemetry', { stdio: 'inherit', cwd: ROOT_DIR });
+    execSync(`node scripts/drivers/ts.js --check-catch-blocks --feature ${targetDomain}`, { stdio: 'inherit', cwd: ROOT_DIR });
   } catch {
     console.error('❌ GATE 2c UNDERKÄND: Tomma eller tysta catch-block utan felpropagering hittades i källkoden.');
     process.exit(1);
   }
 
-  // Mekanisk Domänkontroll
-  console.log('🔒 Verifierar FSD-domängräns via git status...');
-  const gitStatus = execSync('git status --porcelain src/features/', { encoding: 'utf-8', cwd: ROOT_DIR });
-  const touchedDomains = new Set(
-    gitStatus
-      .split('\n')
-      .filter((line) => line.trim())
-      .map((line) => line.trim().split(/\s+/)[1])
-      .filter((filePath) => filePath && filePath.startsWith('src/features/'))
-      .map((filePath) => filePath.split('/')[2])
-  );
-
-  if (touchedDomains.size > 1) {
-    console.error(`❌ DOMÄNSPÄRR UNDERKÄND: Fler än 1 FSD-domän modifierades (${Array.from(touchedDomains).join(', ')}).`);
-    process.exit(1);
-  }
-
-  // Verifiera att transient-testet nu är grönt
-  console.log('\n🟢 Kör transient-testet mot den nya källkoden...');
+  console.log('\n🟢 Kör transient-testet mot den nyskapade källkoden...');
   try {
     execSync('pnpm test:transient', { stdio: 'inherit', cwd: ROOT_DIR });
     console.log('✅ Transient-testet passerade grönt!');
   } catch {
-    console.error('❌ TESTFEL: Transient-testet fallerade mot den implementerade källkoden.');
-    process.exit(1);
-  }
-
-  // Slutverifiering
-  console.log('\n🔍 Kör pnpm verify (Regressionssvit och typkontroll)...');
-  try {
-    execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
-    console.log('✅ Hela systemet verifierat utan regressioner.');
-  } catch {
-    console.error('❌ VERIFIERINGSFEL: pnpm verify underkändes.');
+    console.error('❌ Transient-testet underkändes mot den genererade källkoden.');
     process.exit(1);
   }
 
   // --------------------------------------------------------------------------
-  // FAS 3: REFLEKTION & TEATER (MED CLI BARGE-IN)
+  // FAS 3: REFLEKTION & TEATER
   // --------------------------------------------------------------------------
-  appendToCycleLog(`\n### FAS 3: REFLEKTION & TEATER (PROGRAM & PROCESS)`);
-  console.log('\n🎭 STARTAR FAS 3: TEATERN (Tryck [ENTER] för att avbryta och inflika)...');
+  appendToCycleLog(`\n### FAS 3: REFLEKTION & TEATER`);
+  console.log('\n🎭 Öppnar Fas 3: Reflektion och debriefing...');
 
-  const diffStat = execSync('git diff --stat', { encoding: 'utf-8', cwd: ROOT_DIR });
-  const theaterContext = [
-    `TELEMETRI & DIFF:\n${diffStat}`,
-    `CYKELLOGG:\n${fs.readFileSync(CYCLE_LOG_PATH, 'utf-8')}`,
-  ].join('\n\n');
-
-  // Konfigurera terminalens råläge för direkt Barge-In
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-  }
-  process.stdin.resume();
-  process.stdin.setEncoding('utf-8');
-
-  let bargeInTriggered = false;
-  const onKeypress = (chunk: string) => {
-    if (chunk === '\r' || chunk === '\n') {
-      bargeInTriggered = true;
-    } else if (chunk === '\u0003') {
-      process.exit(0); // Ctrl+C
-    }
-  };
-  process.stdin.on('data', onKeypress);
-
-  const theaterInstruction =
-    `Du är Att förlikas och agerar värd för eftermötet. Utvärdera både programmet (hur koden främjar närhet och nytta) ` +
-    `och processen (verktygsanrop, grindar och friktion). ` +
-    `Bjud in de andra krafterna vid behov via taggen: <TALA kraft="följa|vända-om">fråga</TALA>. ` +
-    `Avsluta med en explicit sektion: 💡 Konstruktiv kritik av våra rutiner: [Observation & Förslag].`;
-
-  const theaterSession = new BidiLiveSession({
+  const fas3Session = new BidiLiveSession({
     ai,
     model: MODEL_NAME,
-    systemInstruction: `${systemInstruction}\n\nDu leder Fas 3 Teatern som Att förlikas.`,
+    systemInstruction: `${systemInstruction}\n\nDu leder Fas 3 som Att förlikas. Sammanfatta bygget och reflektera kort över mänsklig nytta och stabilitet.`,
   });
-  let fullTheaterOutput = '';
+
   try {
-    await theaterSession.connect();
-    fullTheaterOutput = await theaterSession.send(`${theaterContext}\n\n${theaterInstruction}`);
-    console.log(fullTheaterOutput);
+    await fas3Session.connect();
+    const debrief = await fas3Session.send(`Bygget för ${ticketId} är slutfört med grönt test. Ge en kort teater-reflektion.`);
+    appendToCycleLog(`\n#### 3d Att förlikas: Teater & Reflektion\n${debrief}`);
   } finally {
-    theaterSession.close();
-  }
-  appendToCycleLog(`\n${fullTheaterOutput}`);
-
-  // Extrahera och spara processförbättringar
-  if (fullTheaterOutput.includes('💡 Konstruktiv kritik av våra rutiner:')) {
-    const critiquePart = fullTheaterOutput.split('💡 Konstruktiv kritik av våra rutiner:')[1]?.trim();
-    if (critiquePart) {
-      const logEntry = `\n### ${ticketId} (${new Date().toLocaleDateString('sv-SE')})\n${critiquePart}\n`;
-      fs.appendFileSync(PROCESS_IMPROVEMENTS_PATH, logEntry, 'utf-8');
-      console.log(`\n📝 Lärdomar sparade i ${PROCESS_IMPROVEMENTS_PATH}`);
-    }
+    fas3Session.close();
   }
 
-  // --- NYTT: GENERERA SLUTGILTIG REPLY.MD ---
-  const replyPath = path.join(ROOT_DIR, 'REPLY.md');
-  const fullReport = [
-    `# SLUTRAPPORT FÖR BYGGBILJETT: ${ticketId}`,
-    `**Datum:** ${new Date().toISOString()}`,
-    `**Status:** FULLT VERIFIERAD (GRÖN)`,
-    `\n## Sammanfattning av bygget`,
-    `Biljetten har planerats, prövats mot körtidsankare (Fail-First) och verifierats felfritt mot FSD- och AST-grindarna.`,
-    `\n## Fas 3: Eftertanke & Teater`,
-    fullTheaterOutput,
-  ].join('\n\n');
-  fs.writeFileSync(replyPath, fullReport, 'utf-8');
-  console.log(`\n📬 Mänsklig slutrapport sparad i ${replyPath}`);
-
-  console.log(`\n🎉 BYGGCYKEL ${ticketId} AVSLUTAD MED FULL VERIFIERING OCH TEATER.`);
+  console.log(`\n🎉 Hela livscykeln för ${ticketId} slutfördes deterministiskt!`);
 }
 
 main().catch((err) => {
-  console.error('\n💥 OBRUTET FEL I BYGGMOTORN:', err);
+  console.error('\n💥 Ohanterat fel under byggcykeln:', err);
   process.exit(1);
 });

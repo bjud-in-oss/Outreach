@@ -13,22 +13,28 @@ export class BidiLiveSession {
   private currentResolver: ((text: string) => void) | null = null;
   private currentRejecter: ((err: any) => void) | null = null;
   private accumulatedText = '';
-  private toolExecutionInProgress = false;
 
   constructor(private config: BidiRunnerConfig) {}
 
   async connect(): Promise<void> {
     if (this.session) return;
 
-    process.stdout.write('   📡 Ansluter Bidi Live WebSocket...');
+    const isExtendedThinking = this.config.model.includes('extended-thinking');
+
+    process.stdout.write(`   📡 Ansluter Bidi Live WebSocket (${this.config.model})...`);
+    
     const connectConfig: any = {
       responseModalities: ['audio'],
       outputAudioTranscription: {},
-      thinkingConfig: { thinkingLevel: 'low' },
       systemInstruction: {
         parts: [{ text: this.config.systemInstruction }],
       },
     };
+
+    if (isExtendedThinking) {
+      connectConfig.thinkingConfig = { thinkingLevel: 'low' };
+    }
+
     if (this.config.tools && this.config.tools.length > 0) {
       connectConfig.tools = [{ functionDeclarations: this.config.tools }];
     }
@@ -38,7 +44,6 @@ export class BidiLiveSession {
       config: connectConfig,
       callbacks: {
         onmessage: async (msg: any) => {
-          // 1. Fånga explicita backend-fel omedelbart
           if (msg.error) {
             console.error('\n   ❌ [SERVER-FEL FRÅN GOOGLE]:', JSON.stringify(msg.error, null, 2));
             if (this.currentRejecter) {
@@ -50,7 +55,6 @@ export class BidiLiveSession {
             return;
           }
 
-          // 2. Ackumulera transkriberad och strömmad text
           let delta = '';
           if (msg.serverContent?.outputTranscription?.text) {
             delta += msg.serverContent.outputTranscription.text;
@@ -68,35 +72,45 @@ export class BidiLiveSession {
             process.stdout.write('~');
           }
 
-          // 3. Hantera verktygsanrop
-          if (msg.toolCall?.functionCalls && this.config.executeTool) {
-            this.toolExecutionInProgress = true;
+          // Hantera verktygsanrop
+          if (msg.toolCall?.functionCalls && msg.toolCall.functionCalls.length > 0 && this.config.executeTool) {
             const functionResponses = msg.toolCall.functionCalls.map((call: any) => {
-              console.log('\n   🛠️ [VERKTYG] Exekverar: ' + call.name);
-              return {
-                id: call.id,
-                name: call.name,
-                response: { result: this.config.executeTool!(call.name, call.args) },
-              };
+              console.log(`\n   🛠️ [VERKTYG ANROPAT]: ${call.name} (id: ${call.id})`);
+              try {
+                const output = this.config.executeTool!(call.name, call.args);
+                return {
+                  id: call.id,
+                  name: call.name,
+                  response: { result: output },
+                };
+              } catch (err: any) {
+                return {
+                  id: call.id,
+                  name: call.name,
+                  response: { error: `Verktygsfel (${call.name}): ${err.message || String(err)}` },
+                };
+              }
             });
-            this.session.sendToolResponse({ functionResponses });
-            this.toolExecutionInProgress = false;
+
+            await this.session.sendToolResponse({ functionResponses });
+            // KRITISK PRINCIP: Denna frame är ett verktygsanrop. Vändan är INTE klar.
+            // Returnera här så att modellen hinner ta emot svaret och generera text.
+            return;
           }
 
-          // 4. Slutvillkor:
-          // För extended-thinking-modeller slutförs en vända när servern når IDLE.
-          // Om servern signalerar turnComplete och modellen har levererat substantiellt innehåll (>120 tecken),
-          // eller om interactionStatus är IDLE, är vändan klar.
-          const isIdle =
-            msg.interactionStatus === 'IDLE' ||
-            msg.serverContent?.interactionStatus === 'IDLE';
+          // Slutvillkor
+          let turnIsDone = false;
+          if (isExtendedThinking) {
+            if (msg.interactionStatus === 'IDLE' || msg.serverContent?.interactionStatus === 'IDLE') {
+              turnIsDone = true;
+            }
+          } else {
+            if (msg.serverContent?.turnComplete === true) {
+              turnIsDone = true;
+            }
+          }
 
-          const isSubstantialTurnComplete =
-            msg.serverContent?.turnComplete === true &&
-            !this.toolExecutionInProgress &&
-            (this.accumulatedText.includes('```') || this.accumulatedText.trim().length > 120);
-
-          if ((isIdle || isSubstantialTurnComplete) && this.currentResolver && this.accumulatedText.trim().length > 0) {
+          if (turnIsDone && this.currentResolver) {
             console.log('\n   🏁 [VÄNDA SLUTFÖRD]');
             const res = this.currentResolver;
             const text = this.accumulatedText.trim();
@@ -130,7 +144,7 @@ export class BidiLiveSession {
       const timer = setTimeout(() => {
         this.currentResolver = null;
         this.currentRejecter = null;
-        reject(new Error('Bidi Live timeout (' + timeoutMs + 'ms)'));
+        reject(new Error(`Bidi Live timeout efter ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.currentResolver = (val: string) => {
