@@ -10,3 +10,4 @@ coverage/
 # CI & GitHub Workflows
 !.github/
 !.github/**
+.env
