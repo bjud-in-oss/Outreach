@@ -205,15 +205,16 @@ let activeMacroSession: BidiLiveSession | null = null;
 async function runMacroTurn(
   instruction: string,
   systemInstruction: string,
-  _macroHistory?: any[]
+  _macroHistory?: any[],
+  withTools = false
 ): Promise<string> {
   if (!activeMacroSession) {
     activeMacroSession = new BidiLiveSession({
       ai,
       model: MODEL_NAME,
       systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: Att förlikas. Du är Makro-värd och bär sammanvägningen.`,
-      tools: TOOL_DECLARATIONS,
-      executeTool,
+      tools: withTools ? TOOL_DECLARATIONS : undefined,
+      executeTool: withTools ? executeTool : undefined,
     });
     await activeMacroSession.connect();
   }
@@ -231,14 +232,15 @@ async function runMicroChannel(
   kraft: 'Att följa' | 'Att vända om',
   instruction: string,
   contextAnchor: string,
-  systemInstruction: string
+  systemInstruction: string,
+  withTools = false
 ): Promise<string> {
   const session = new BidiLiveSession({
     ai,
     model: MODEL_NAME,
     systemInstruction: `${systemInstruction}\n\nDu agerar som kraften: ${kraft}. Håll dig strikt till din roll.`,
-    tools: TOOL_DECLARATIONS,
-    executeTool,
+    tools: withTools ? TOOL_DECLARATIONS : undefined,
+    executeTool: withTools ? executeTool : undefined,
   });
   try {
     await session.connect();
@@ -358,7 +360,8 @@ async function main() {
     'Att följa',
     'Steg 1b: Kartlägg berörd FSD-domän och systemgränser via Feature-Index.',
     startAnchor,
-    systemInstruction
+    systemInstruction,
+    true
   );
   appendToCycleLog(`\n#### 1b Att följa: Domängränser\n${steg1b}`);
 
@@ -407,7 +410,8 @@ async function main() {
     'Att följa',
     'Steg 3b: Skriv exakt Källkodsspecifikation, inklusive Barrel Audit av index.ts.',
     `${startAnchor}\nKONTRAKT:\n${steg2d}\nTEST:\n${steg3a}`,
-    systemInstruction
+    systemInstruction,
+    true
   );
   appendToCycleLog(`\n#### 3b Att följa: Källkodsspecifikation\n${steg3b}`);
 
@@ -525,7 +529,7 @@ async function main() {
   // Resiliens & AST-kontroll (Gate 2c)
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
   try {
-    execSync('node scripts/drivers/ts.js --check-catch-blocks', { stdio: 'inherit', cwd: ROOT_DIR });
+    execSync('node scripts/drivers/ts.js --check-catch-blocks --feature telemetry', { stdio: 'inherit', cwd: ROOT_DIR });
   } catch {
     console.error('❌ GATE 2c UNDERKÄND: Tomma eller tysta catch-block utan felpropagering hittades i källkoden.');
     process.exit(1);

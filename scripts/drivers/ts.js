@@ -213,7 +213,10 @@ function checkAlibiInTests(targetFile = null) {
 function checkCatchBlocks() {
   console.log('🔍 [Gate 2c] Skannar källkod efter tysta och tomma catch-block...');
 
-  let sourceFiles = getModifiedFiles('src/features/');
+  const featIdx = process.argv.indexOf('--feature');
+  const targetDomain = featIdx !== -1 ? process.argv[featIdx + 1] : '';
+  const searchRoot = targetDomain ? 'src/features/' + targetDomain + '/' : 'src/features/';
+  let sourceFiles = getModifiedFiles(searchRoot);
   if (sourceFiles.length === 0) {
     const findSources = (dir) => {
       if (!fs.existsSync(dir)) return [];
@@ -229,7 +232,7 @@ function checkCatchBlocks() {
       }
       return files;
     };
-    sourceFiles = findSources(path.join(ROOT_DIR, 'src', 'features'));
+    sourceFiles = findSources(path.join(ROOT_DIR, searchRoot));
   }
 
   let violations = [];

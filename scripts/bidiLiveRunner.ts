@@ -13,6 +13,7 @@ export class BidiLiveSession {
   private currentResolver: ((text: string) => void) | null = null;
   private currentRejecter: ((err: any) => void) | null = null;
   private accumulatedText = '';
+  private toolExecutionInProgress = false;
 
   constructor(private config: BidiRunnerConfig) {}
 
@@ -37,10 +38,24 @@ export class BidiLiveSession {
       config: connectConfig,
       callbacks: {
         onmessage: async (msg: any) => {
+          // 1. Fånga applikationsfel från Googles backend direkt
+          if (msg.error) {
+            console.error('\n   ❌ [SERVER-FEL FRÅN GOOGLE]:', JSON.stringify(msg.error, null, 2));
+            if (this.currentRejecter) {
+              const rej = this.currentRejecter;
+              this.currentResolver = null;
+              this.currentRejecter = null;
+              rej(new Error(`Google Live API fel (${msg.error.code || 'UNKNOWN'}): ${msg.error.message}`));
+            }
+            return;
+          }
+
+          // 2. Transkriberad text och text-parts
           let delta = '';
           if (msg.serverContent?.outputTranscription?.text) {
-            delta = msg.serverContent.outputTranscription.text;
-          } else if (msg.serverContent?.modelTurn?.parts) {
+            delta += msg.serverContent.outputTranscription.text;
+          }
+          if (msg.serverContent?.modelTurn?.parts) {
             for (const p of msg.serverContent.modelTurn.parts) {
               if (p.text) delta += p.text;
             }
@@ -49,9 +64,14 @@ export class BidiLiveSession {
           if (delta) {
             this.accumulatedText += delta;
             process.stdout.write(delta);
+          } else if (msg.serverContent?.modelTurn?.parts?.some((p: any) => p.inlineData)) {
+            // Indikera att ljud strömmar även innan transkriptet slutförts
+            process.stdout.write('~');
           }
 
+          // 3. Hantera asynkrona verktygsanrop
           if (msg.toolCall?.functionCalls && this.config.executeTool) {
+            this.toolExecutionInProgress = true;
             const functionResponses = msg.toolCall.functionCalls.map((call: any) => {
               console.log('\n   🛠️ [VERKTYG] Exekverar: ' + call.name);
               return {
@@ -61,15 +81,19 @@ export class BidiLiveSession {
               };
             });
             this.session.sendToolResponse({ functionResponses });
+            this.toolExecutionInProgress = false;
           }
 
-          const isComplete =
-            msg.serverContent?.turnComplete === true ||
+          // 4. Deterministiskt slutvillkor:
+          // Vändan är färdig när servern signalerar turnComplete (och inga verktyg körs)
+          // ELLER när interactionStatus når IDLE.
+          const isTurnComplete = msg.serverContent?.turnComplete === true && !this.toolExecutionInProgress;
+          const isIdle =
             msg.interactionStatus === 'IDLE' ||
             msg.serverContent?.interactionStatus === 'IDLE';
 
-          if (isComplete && this.currentResolver) {
-            console.log('\n   🏁 [VÄNDA KLAR]');
+          if ((isTurnComplete || isIdle) && this.currentResolver && this.accumulatedText.trim().length > 0) {
+            console.log('\n   🏁 [VÄNDA SLUTFÖRD]');
             const res = this.currentResolver;
             const text = this.accumulatedText.trim();
             this.currentResolver = null;
@@ -79,7 +103,7 @@ export class BidiLiveSession {
           }
         },
         onerror: (err: any) => {
-          console.error('\n   ❌ [WS-FEL]:', err.message || err);
+          console.error('\n   ❌ [WS-SOCKET-FEL]:', err.message || err);
           if (this.currentRejecter) {
             const rej = this.currentRejecter;
             this.currentResolver = null;
@@ -95,7 +119,7 @@ export class BidiLiveSession {
     console.log(' Uppkopplad!');
   }
 
-  async send(text: string, timeoutMs = 90000): Promise<string> {
+  async send(text: string, timeoutMs = 120000): Promise<string> {
     if (!this.session) await this.connect();
     this.accumulatedText = '';
     return new Promise((resolve, reject) => {
