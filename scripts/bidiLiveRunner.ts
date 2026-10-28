@@ -38,7 +38,7 @@ export class BidiLiveSession {
       config: connectConfig,
       callbacks: {
         onmessage: async (msg: any) => {
-          // 1. Fånga applikationsfel från Googles backend direkt
+          // 1. Fånga explicita backend-fel omedelbart
           if (msg.error) {
             console.error('\n   ❌ [SERVER-FEL FRÅN GOOGLE]:', JSON.stringify(msg.error, null, 2));
             if (this.currentRejecter) {
@@ -50,7 +50,7 @@ export class BidiLiveSession {
             return;
           }
 
-          // 2. Transkriberad text och text-parts
+          // 2. Ackumulera transkriberad och strömmad text
           let delta = '';
           if (msg.serverContent?.outputTranscription?.text) {
             delta += msg.serverContent.outputTranscription.text;
@@ -65,11 +65,10 @@ export class BidiLiveSession {
             this.accumulatedText += delta;
             process.stdout.write(delta);
           } else if (msg.serverContent?.modelTurn?.parts?.some((p: any) => p.inlineData)) {
-            // Indikera att ljud strömmar även innan transkriptet slutförts
             process.stdout.write('~');
           }
 
-          // 3. Hantera asynkrona verktygsanrop
+          // 3. Hantera verktygsanrop
           if (msg.toolCall?.functionCalls && this.config.executeTool) {
             this.toolExecutionInProgress = true;
             const functionResponses = msg.toolCall.functionCalls.map((call: any) => {
@@ -84,15 +83,20 @@ export class BidiLiveSession {
             this.toolExecutionInProgress = false;
           }
 
-          // 4. Deterministiskt slutvillkor:
-          // Vändan är färdig när servern signalerar turnComplete (och inga verktyg körs)
-          // ELLER när interactionStatus når IDLE.
-          const isTurnComplete = msg.serverContent?.turnComplete === true && !this.toolExecutionInProgress;
+          // 4. Slutvillkor:
+          // För extended-thinking-modeller slutförs en vända när servern når IDLE.
+          // Om servern signalerar turnComplete och modellen har levererat substantiellt innehåll (>120 tecken),
+          // eller om interactionStatus är IDLE, är vändan klar.
           const isIdle =
             msg.interactionStatus === 'IDLE' ||
             msg.serverContent?.interactionStatus === 'IDLE';
 
-          if ((isTurnComplete || isIdle) && this.currentResolver && this.accumulatedText.trim().length > 0) {
+          const isSubstantialTurnComplete =
+            msg.serverContent?.turnComplete === true &&
+            !this.toolExecutionInProgress &&
+            (this.accumulatedText.includes('```') || this.accumulatedText.trim().length > 120);
+
+          if ((isIdle || isSubstantialTurnComplete) && this.currentResolver && this.accumulatedText.trim().length > 0) {
             console.log('\n   🏁 [VÄNDA SLUTFÖRD]');
             const res = this.currentResolver;
             const text = this.accumulatedText.trim();
