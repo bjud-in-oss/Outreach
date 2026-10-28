@@ -1,22 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { emitPing } from '../features/telemetry';
+import { emitPing, PingEventSchema } from '../features/telemetry';
 import { getGlobalSwarmEventBus } from '../shared/bus/swarmEventBus';
 
-describe('TCK-TEST-001: Telemetry Ping', () => {
-  it('sänder en typad PingEvent via EventBus med emit som körtidsankare', () => {
+describe('transient_TCK-TEST-001', () => {
+  it('should emit telemetry:ping event and match schema', async () => {
     const eventBus = getGlobalSwarmEventBus();
-    let receivedEnvelope: any = null;
-    const unsubscribe = eventBus.subscribe('telemetry:ping', (envelope) => {
-      receivedEnvelope = envelope;
+
+    // Körtidsankare: Verifiera att eventBus.emit existerar och är en funktion
+    expect(typeof eventBus.emit).toBe('function');
+
+    const eventReceivedPromise = new Promise((resolve, reject) => {
+      const unsubscribe = eventBus.subscribe('telemetry:ping', (envelope: any) => {
+        try {
+          const payload = envelope.data || envelope;
+          const parsed = PingEventSchema.safeParse(payload);
+          expect(parsed.success).toBe(true);
+          if (parsed.success) {
+            expect(parsed.data.type).toBe('telemetry:ping');
+            expect(typeof parsed.data.timestamp).toBe('number');
+          }
+          unsubscribe();
+          resolve(true);
+        } catch (error) {
+          unsubscribe();
+          reject(error);
+        }
+      });
     });
 
-    // Körtidsankare: verifiera att händelsebussen exekveras i körtid
-    expect(typeof eventBus.emit).toBe('function');
     const result = emitPing();
 
     expect(result.success).toBe(true);
-    expect(receivedEnvelope).toBeDefined();
-    expect(receivedEnvelope.type).toBe('telemetry:ping');
-    unsubscribe();
+    expect(result.event.type).toBe('telemetry:ping');
+
+    await eventReceivedPromise;
   });
 });
