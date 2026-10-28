@@ -28,11 +28,12 @@
     },
     "telemetry": {
       "path": "src/features/telemetry",
-      "description": "Telemetri- och livscykelhändelser inklusive Ping/Pong via EventBus och Zod-validering",
+      "description": "Telemetri- och livscykelhändelser inklusive Ping/Pong och Heartbeat via SwarmEventBus",
       "status": "active"
     }
   },
   "shared": {
+    "bus": "src/shared/bus/swarmEventBus.ts",
     "contracts": {
       "envelope": "src/shared/contracts/envelope.ts"
     }

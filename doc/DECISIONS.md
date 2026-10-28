@@ -35,3 +35,25 @@
 - **Beslut**: Tillämpa en strikt tvåfasig process (Fas 1: Planering & Syntes till Steg 3c, Fas 2: Verkställande och TDD) med en kryptografisk Token Gate. Redigering under `src/` är spärrad tills `pnpm genomfor [REQUIRED_TOKEN]` körs och godkännande loggas i `doc/LAST_CYCLE/APPROVAL.md`.
 - **Konsekvens**: Förhindrar hallucinationer och oplanerade filändringar, säkerställer 100% spårbarhet och gör utvecklingscykeln deterministisk och säker.
 
+
+## ADR-006: Bidi Live WebSockets & Autonom Kodgenerering via save_code (TCK-TEST-001)
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Tidigare byggcykler förlitade sig delvis på REST-mönster eller dolda reservmallar (boilerplates) i skripten som maskerade modellhaverier. Samtidigt uppvisar gemini-3.8-live-extended-thinking ett intermittent systemfel (60–70 %) i Googles backend vid verktygsanrop.
+- **Beslut**: 
+  1. All kod- och testgenerering i Fas 1 och Fas 2 sker uteslutande över Gemini Live WebSockets via verktyget save_code med behavior: NON_BLOCKING.
+  2. gemini-3.8-live etableras som operativ standardmotor för deterministisk källkodsgenerering. extended-thinking hålls valbar via miljövariabel (LIVE_MODEL).
+  3. Totalförbud mot dolda boilerplates och fallbacks i byggmotorn. Om modellen inte genererar koden själv fallerar bygget rött omedelbart.
+- **Konsekvens**: Noll compliance theater, ärlig felrapportering och bevisad autonom källkodsgenerering i körtid.
+
+## ADR-007: Obruten TDD-livscykel med Mekaniska Grindar (Gherkin -> Ticket -> Autonomt Test i 3a)
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Planeringen i Fas 1 riskerade att glida iväg från testets krav när alternativa modulstrukturer formulerades fritt. Dessutom användes deklarativa spioner (vi.spyOn) som inte testade körtidseffekt på händelsebussen.
+- **Beslut**:
+  1. Mänsklig nytta förankras alltid i Gherkin-scenarier (doc/features/*.feature).
+  2. Biljetter (doc/.TICKETS/TCK-XXX.md) måste innehålla ett formellt typat kodblock med det invarianta ytterkontraktet. Dörrvakten i Fas 0 avvisar biljetter som saknar detta.
+  3. Steg 2b (reverse-direction) utforskar enbart inre resiliens och felhantering — funktionens externa signatur är tabu.
+  4. Steg 3a i Fas 1 måste fysiskt etablera testfilen på disken via autonomt save_code med ett erkänt körtidsankare (eventBus.subscribe och eventBus.emit).
+  5. Steg 3b läser in det nyskapade testet via read_file innan källkoden specificeras.
+- **Konsekvens**: Eliminerar semantiska glapp mellan planering och exekvering, garanterar äkta Fail-First i Gate 3a och säkrar obruten spårbarhet från mänsklig intention till grön kod.

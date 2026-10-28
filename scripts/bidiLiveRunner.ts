@@ -10,17 +10,33 @@ export interface BidiRunnerConfig {
 
 export class BidiLiveSession {
   private session: any = null;
+  private isClosed = false;
   private currentResolver: ((text: string) => void) | null = null;
   private currentRejecter: ((err: any) => void) | null = null;
   private accumulatedText = '';
 
   constructor(private config: BidiRunnerConfig) {}
 
+  private async waitForSession(maxWaitMs = 5000): Promise<any> {
+    if (this.session) return this.session;
+    const startTime = Date.now();
+    while (!this.session && !this.isClosed && Date.now() - startTime < maxWaitMs) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    if (this.isClosed) {
+      throw new Error('WebSocket-sessionen stängdes av servern innan verktygssvaret kunde levereras.');
+    }
+    if (!this.session) {
+      throw new Error(`Timeout: Bidi Live session blev inte tillgänglig inom ${maxWaitMs}ms.`);
+    }
+    return this.session;
+  }
+
   async connect(): Promise<void> {
-    if (this.session) return;
+    if (this.session && !this.isClosed) return;
+    this.isClosed = false;
 
     const isExtendedThinking = this.config.model.includes('extended-thinking');
-
     process.stdout.write(`   📡 Ansluter Bidi Live WebSocket (${this.config.model})...`);
     
     const connectConfig: any = {
@@ -39,7 +55,7 @@ export class BidiLiveSession {
       connectConfig.tools = [{ functionDeclarations: this.config.tools }];
     }
 
-    this.session = await (this.config.ai as any).live.connect({
+    const sessionPromise = (this.config.ai as any).live.connect({
       model: this.config.model,
       config: connectConfig,
       callbacks: {
@@ -74,16 +90,21 @@ export class BidiLiveSession {
 
           // Hantera verktygsanrop
           if (msg.toolCall?.functionCalls && msg.toolCall.functionCalls.length > 0 && this.config.executeTool) {
+            const activeSession = await this.waitForSession();
+
             const functionResponses = msg.toolCall.functionCalls.map((call: any) => {
               console.log(`\n   🛠️ [VERKTYG ANROPAT]: ${call.name} (id: ${call.id})`);
+              console.log(`   📦 [ARGUMENT]:`, JSON.stringify(call.args, null, 2));
               try {
                 const output = this.config.executeTool!(call.name, call.args);
+                console.log(`   📤 [VERKTYGSRETUR]:`, output.length > 300 ? `${output.slice(0, 300)}... (${output.length} tecken)` : output);
                 return {
                   id: call.id,
                   name: call.name,
                   response: { result: output },
                 };
               } catch (err: any) {
+                console.error(`   ❌ [VERKTYGSFEL]:`, err.message || err);
                 return {
                   id: call.id,
                   name: call.name,
@@ -92,13 +113,10 @@ export class BidiLiveSession {
               }
             });
 
-            await this.session.sendToolResponse({ functionResponses });
-            // KRITISK PRINCIP: Denna frame är ett verktygsanrop. Vändan är INTE klar.
-            // Returnera här så att modellen hinner ta emot svaret och generera text.
+            await activeSession.sendToolResponse({ functionResponses });
             return;
           }
 
-          // Slutvillkor
           let turnIsDone = false;
           if (isExtendedThinking) {
             if (msg.interactionStatus === 'IDLE' || msg.serverContent?.interactionStatus === 'IDLE') {
@@ -129,16 +147,29 @@ export class BidiLiveSession {
             rej(err);
           }
         },
-        onclose: () => {
+        onclose: (event: any) => {
+          const code = event?.code || 'NORMAL';
+          const reason = event?.reason || 'Ingen orsak';
           this.session = null;
+          this.isClosed = true;
+          if (this.currentRejecter) {
+            const rej = this.currentRejecter;
+            this.currentResolver = null;
+            this.currentRejecter = null;
+            rej(new Error(`WebSocket stängdes av servern (kod: ${code}, orsak: ${reason})`));
+          }
         },
       },
     });
+
+    this.session = await sessionPromise;
     console.log(' Uppkopplad!');
   }
 
   async send(text: string, timeoutMs = 120000): Promise<string> {
-    if (!this.session) await this.connect();
+    if (!this.session || this.isClosed) {
+      await this.connect();
+    }
     this.accumulatedText = '';
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -176,5 +207,6 @@ export class BidiLiveSession {
       } catch {}
     }
     this.session = null;
+    this.isClosed = true;
   }
 }

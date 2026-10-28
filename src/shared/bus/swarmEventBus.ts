@@ -40,8 +40,21 @@ export class SwarmEventBus {
       if (!this.matchesPattern(sub.pattern, validated.type)) continue;
       try {
         sub.handler(validated);
-      } catch (handlerErr) {
+      } catch (handlerErr: any) {
         console.error(`[SwarmEventBus] Fel i prenumerationshanterare ${sub.id}:`, handlerErr);
+        // Aktiv felpropagering enligt Gate 2c (förhindra tysta fel)
+        if (validated.type !== 'swarm.subscription.error') {
+          try {
+            this.publishLiveEvent('swarm.subscription.error', {
+              subscriptionId: sub.id,
+              pattern: sub.pattern,
+              error: handlerErr?.message || String(handlerErr),
+              failedEventType: validated.type,
+            }, 'outreach/bus/error');
+          } catch (publishErr) {
+            console.error('[SwarmEventBus] Kunde inte publicera prenumerationsfel:', publishErr);
+          }
+        }
       }
     }
   }
@@ -163,7 +176,6 @@ export class SwarmEventBus {
   }
 }
 
-// Global instans för applikationen
 let globalSwarmEventBus: SwarmEventBus | null = null;
 
 export function getGlobalSwarmEventBus(): SwarmEventBus {
