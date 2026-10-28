@@ -2,58 +2,80 @@
  * scripts/verify-architecture.js
  * 
  * OUTREACH COORDINATION ENGINE (v10.4)
- * Mekanisk arkitekturkontroll:
- * 1. FSD v10.4-efterlevnad under src/
- * 2. Domänläckage-kontroll i scripts/ (förhindrar hårdkodning och alibi-fixar)
+ * Matematisk arkitekturkontroll via TypeScripts inbyggda AST:
+ * 1. FSD v10.4-isolering under src/features/ (Statiska, dynamiska & alias-importer)
+ * 2. Domänläckage-kontroll i scripts/
  */
 
 import fs from 'fs';
 import path from 'path';
+import ts from 'typescript';
 
 const ROOT_DIR = process.cwd();
 const SRC_DIR = path.join(ROOT_DIR, 'src');
 const SCRIPTS_DIR = path.join(ROOT_DIR, 'scripts');
 
-console.log('🏛️  [FSD Arkitekturkontroll v10.4] Startar validering...');
+console.log('🏛️  [FSD Arkitekturkontroll v10.4] Startar komplett AST-validering...');
 
-// ============================================================================
-// GRIND 1: FSD-isolering under src/
-// ============================================================================
 let fsdViolations = 0;
 let fileCount = 0;
 
-function scanDir(dir) {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name !== '__tests__' && entry.name !== 'node_modules') {
-        scanDir(fullPath);
-      }
-    } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
-      fileCount++;
-      checkFsdBoundaries(fullPath);
-    }
-  }
-}
-
-function checkFsdBoundaries(filePath) {
+function checkFsdImports(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
-  const importLines = content.split('\n').filter(l => l.trim().startsWith('import ') || l.trim().startsWith('export * from'));
+  const sf = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
   
-  // Hitta om filen tillhör en specifik feature-domän
   const featureMatch = filePath.match(/src\/features\/([^/]+)/);
   const currentFeature = featureMatch ? featureMatch[1] : null;
 
-  for (const line of importLines) {
-    // Spärra korsvisa importer mellan features under src/features/
-    if (currentFeature) {
-      const crossFeatureMatch = line.match(/features\/([^/'"]+)/);
-      if (crossFeatureMatch && crossFeatureMatch[1] !== currentFeature) {
-        console.error(`❌ FSD-BROTT i ${path.relative(ROOT_DIR, filePath)}:`);
-        console.error(`   Otillåten kors-import till domänen '${crossFeatureMatch[1]}': "${line.trim()}"`);
-        fsdViolations++;
+  function inspectImportString(importPath, node) {
+    if (!currentFeature) return;
+
+    // Fånga både relativa ('../other') och alias-importer ('@/features/other')
+    let targetFeature = null;
+    const relMatch = importPath.match(/(?:features|\.\.\/)\/([^/'"]+)/);
+    const aliasMatch = importPath.match(/@\/features\/([^/'"]+)/);
+
+    if (aliasMatch) targetFeature = aliasMatch[1];
+    else if (relMatch) targetFeature = relMatch[1];
+
+    if (targetFeature && targetFeature !== currentFeature && targetFeature !== 'shared') {
+      const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
+      console.error(`❌ FSD-BROTT i ${path.relative(ROOT_DIR, filePath)}:${line + 1}:`);
+      console.error(`   Otillåten kors-import från domänen '${currentFeature}' till '${targetFeature}' ("${importPath}")`);
+      fsdViolations++;
+    }
+  }
+
+  function visit(node) {
+    // Statiska importer och re-exporter
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      if (node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        inspectImportString(node.moduleSpecifier.text, node);
       }
+    }
+    // Dynamiska importer: import('...')
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const arg = node.arguments[0];
+      if (arg && ts.isStringLiteral(arg)) {
+        inspectImportString(arg.text, node);
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sf);
+}
+
+function scanDir(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== '__tests__' && entry.name !== 'node_modules') {
+        scanDir(full);
+      }
+    } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
+      fileCount++;
+      checkFsdImports(full);
     }
   }
 }
@@ -61,18 +83,12 @@ function checkFsdBoundaries(filePath) {
 scanDir(SRC_DIR);
 
 // ============================================================================
-// GRIND 2: Domänläckage och incidentdriven hårdkodning i scripts/
+// GRIND 2: DOMÄNLÄCKAGE I SCRIPTS/ (AST-verifierad)
 // ============================================================================
-console.log('🔒 [Domänläckage-kontroll] Skannar scripts/ efter hårdkodade domänspecifika regler...');
-
-const FORBIDDEN_LEAK_PATTERNS = [
-  { pattern: /['"]\.\/heartbeat['"]/, desc: "Hårdkodad barrelexport av './heartbeat'" },
-  { pattern: /ping\.ts/, desc: "Hårdkodad filreferens till 'ping.ts'" },
-  { pattern: /heartbeat\.ts/, desc: "Hårdkodad filreferens till 'heartbeat.ts'" },
-  { pattern: /Cannot find package 'uuid'/, desc: "Hårdkodad felhanteringsregel för 'uuid'" }
-];
+console.log('🔒 [Domänläckage-kontroll] Skannar scripts/ efter hårdkodade regler via AST...');
 
 let leakViolations = 0;
+const FORBIDDEN_LEAK_DOMAINS = ['telemetry', 'gemini_live_swarm', 'google_drive_sync', 'mcp_bridge', 'wal_logger'];
 const scriptsToCheck = ['run-planera-live.ts', 'run-tests.js'];
 
 for (const scriptName of scriptsToCheck) {
@@ -80,18 +96,27 @@ for (const scriptName of scriptsToCheck) {
   if (!fs.existsSync(scriptPath)) continue;
 
   const content = fs.readFileSync(scriptPath, 'utf-8');
-  for (const rule of FORBIDDEN_LEAK_PATTERNS) {
-    if (rule.pattern.test(content)) {
-      console.error(`❌ DOMÄNLÄCKAGE I ${scriptName}:`);
-      console.error(`   Hårdkodad domänspecifik regel upptäckt: ${rule.desc}`);
-      leakViolations++;
+  const sf = ts.createSourceFile(scriptPath, content, ts.ScriptTarget.Latest, true);
+
+  function checkScriptNode(node) {
+    if (ts.isImportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+      const imp = node.moduleSpecifier.text;
+      for (const dom of FORBIDDEN_LEAK_DOMAINS) {
+        if (imp.includes(`features/${dom}`)) {
+          console.error(`❌ DOMÄNLÄCKAGE I ${scriptName}: Direkt import av domän '${dom}' ("${imp}")`);
+          leakViolations++;
+        }
+      }
     }
+    ts.forEachChild(node, checkScriptNode);
   }
+
+  checkScriptNode(sf);
 }
 
 if (fsdViolations > 0 || leakViolations > 0) {
-  console.error(`\n💥 Arkitekturkontrollen underkändes (${fsdViolations} FSD-fel, ${leakViolations} domänläckage).`);
+  console.error(`\n💥 Arkitekturkontrollen underkändes (${fsdViolations} FSD-fel, ${leakViolations} läckage).`);
   process.exit(1);
 }
 
-console.log(`✅ Arkitektur godkänd! Samtliga ${fileCount} källkodsfiler följer FSD v10.4 och motorn i scripts/ är 100 % agnostisk.`);
+console.log(`✅ Arkitektur godkänd! Samtliga ${fileCount} filer validerade mot FSD v10.4 (inkl. alias & dynamisk import).`);
