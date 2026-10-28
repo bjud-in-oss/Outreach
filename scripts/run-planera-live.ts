@@ -2,8 +2,8 @@
  * scripts/run-planera-live.ts
  * 
  * OUTREACH COORDINATION ENGINE (v10.4)
- * Generell, icke-överanpassad orkestreringsmotor med multi-turn Action Loop,
- * Git-baserad startsanering och objektiv självläkning.
+ * Helautonom, agnostisk orkestreringsmotor med Action Loop,
+ * automatisk testkonsolidering och mekanisk dokumentationssynkronisering.
  */
 
 import * as fs from 'fs';
@@ -17,6 +17,7 @@ const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.4.md');
 const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
+const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
 const PKG_PATH = path.join(ROOT_DIR, 'package.json');
 
 const MODEL_NAME = process.env.LIVE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-live';
@@ -86,9 +87,9 @@ async function runMicroChannel(
 
     while (options.requireMutation && options.onMutationCheck && !options.onMutationCheck() && turn < maxTurns) {
       turn++;
-      console.log(`\n   🔁 [ACTION LOOP]: Ingen mutation sparad ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
+      console.log(`\n   🔁 [ACTION LOOP]: Ingen fil sparad ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
       response = await runner.send(
-        `Du har genomfört inspektion. Slutför nu ditt uppdrag omedelbart genom att spara nödvändig källkod/test med verktyget save_code!`
+        `Du har genomfört inspektion. Slutför nu uppdraget omedelbart genom att spara den nödvändiga koden med verktyget save_code!`
       );
     }
 
@@ -134,7 +135,7 @@ async function main() {
   }
 
   try {
-    const gitStatus = execSync('git status --porcelain src/features/' + targetDomain, { encoding: 'utf-8', cwd: ROOT_DIR });
+    const gitStatus = execSync(`git status --porcelain src/features/${targetDomain}`, { encoding: 'utf-8', cwd: ROOT_DIR });
     const untracked = gitStatus.split('\n')
       .filter(l => l.startsWith('?? '))
       .map(l => l.substring(3).trim());
@@ -231,7 +232,7 @@ async function main() {
   const steg2d = await runMicroChannel('Att förlikas', 'Steg 2d: Syntetisk vägvägning. Slå fast vinnande alternativ och deklarera MÄTTNAD: JA.', steg2c, systemInstruction);
   appendCycleLog('2d Att förlikas: Vägvägning & Mättnad', steg2d);
 
-  // Steg 3a: Autonom testgenerering med Action Loop
+  // Steg 3a: Autonom testgenerering
   let testSaved = false;
   const testGenTools = [
     ...inspectionTools,
@@ -276,7 +277,7 @@ async function main() {
   appendCycleLog('3c Att förlikas: Slutgiltigt Byggkontrakt', steg3c);
 
   // ==========================================
-  // FAS 2: KÄLLKODSEXEKVERING & TDD MED FEEDBACK-LOOP
+  // FAS 2: KÄLLKODSEXEKVERING & TDD
   // ==========================================
   console.log('\n### FAS 2: KÄLLKODSEXEKVERING & TDD\n');
 
@@ -388,9 +389,7 @@ async function main() {
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
   execSync('node scripts/drivers/ts.js --check-catch-blocks', { stdio: 'inherit', cwd: ROOT_DIR });
 
-  // ==========================================
-  // AUTONOM OCH REN SJÄLVRÄTTNINGSLOOP
-  // ==========================================
+  // Autonom och objektiv självläkningsloop
   console.log('\n🟢 Kör transient-testet mot den nyskapade källkoden...');
   let testPassed = false;
   let attempts = 0;
@@ -431,8 +430,64 @@ async function main() {
   }
 
   // ==========================================
-  // FAS 3: SLUTVERIFIERING & GIT-PUSH
+  // FAS 3: SLUTKONSOLIDERING, SYNC & GIT-PUSH
   // ==========================================
+  console.log('\n📦 Fas 3: Konsoliderar godkänt test till domänens permanenta testsvit...');
+  const permanentTestDir = path.join(ROOT_DIR, 'src', 'features', targetDomain, '__tests__');
+  fs.mkdirSync(permanentTestDir, { recursive: true });
+
+  const primaryModule = createdModules[0] || ticketId.toLowerCase();
+  const permanentTestPath = path.join(permanentTestDir, `${primaryModule}.test.ts`);
+
+  let transientTestContent = fs.readFileSync(transientTestFullPath, 'utf-8');
+  // Justera relativa sökvägar från src/__tests__/ till src/features/[targetDomain]/__tests__/
+  transientTestContent = transientTestContent
+    .replace(new RegExp(`'\\.\\./features/${targetDomain}/`, 'g'), "'../")
+    .replace(new RegExp(`"\\.\\./features/${targetDomain}/`, 'g'), '"../')
+    .replace(/'\.\.\/shared\//g, "'../../../shared/")
+    .replace(/"\.\.\/shared\//g, '"../../../shared/');
+
+  fs.writeFileSync(permanentTestPath, transientTestContent, 'utf-8');
+  fs.unlinkSync(transientTestFullPath);
+  console.log(`✅ [KONSOLIDERING]: Testet flyttat till ${path.relative(ROOT_DIR, permanentTestPath)} och transient fil städad.`);
+
+  // Mekanisk uppdatering av FEATURE_INDEX.json
+  console.log('🗺️  Fas 3: Synkroniserar doc/FEATURE_INDEX.json...');
+  try {
+    let indexData: any = { features: {} };
+    if (fs.existsSync(FEATURE_INDEX_PATH)) {
+      indexData = JSON.parse(fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8'));
+    }
+    if (!indexData.features[targetDomain]) {
+      indexData.features[targetDomain] = { files: [], exports: [] };
+    }
+    for (const mod of createdModules) {
+      const fileName = `${mod}.ts`;
+      if (!indexData.features[targetDomain].files.includes(fileName)) {
+        indexData.features[targetDomain].files.push(fileName);
+      }
+    }
+    fs.writeFileSync(FEATURE_INDEX_PATH, JSON.stringify(indexData, null, 2), 'utf-8');
+  } catch (err: any) {
+    console.warn('⚠️ Kunde inte uppdatera FEATURE_INDEX.json:', err.message);
+  }
+
+  // Mekanisk uppdatering av doc/TICKETS.md
+  console.log('📋 Fas 3: Uppdaterar biljettstatus i doc/TICKETS.md...');
+  try {
+    if (fs.existsSync(TICKETS_PATH)) {
+      let ticketsContent = fs.readFileSync(TICKETS_PATH, 'utf-8');
+      const ticketPattern = new RegExp(`\\[ \\] \\*\\*${ticketId}\\*\\*`, 'g');
+      if (ticketPattern.test(ticketsContent)) {
+        ticketsContent = ticketsContent.replace(ticketPattern, `[x] **${ticketId}** (VERIFIED)`);
+        fs.writeFileSync(TICKETS_PATH, ticketsContent, 'utf-8');
+        console.log(`✅ [BOKFÖRING]: ${ticketId} markerad som [x] VERIFIED i TICKETS.md`);
+      }
+    }
+  } catch (err: any) {
+    console.warn('⚠️ Kunde inte uppdatera TICKETS.md:', err.message);
+  }
+
   console.log('\n🔍 Slutverifiering: Kör hela projektets arkitektur- och regressionskontroll...');
   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
 
@@ -441,7 +496,7 @@ async function main() {
   try {
     console.log('\n📦 Genomför automatisk Git Commit & Push till GitHub...');
     execSync('git add doc/ src/ scripts/ package.json', { cwd: ROOT_DIR });
-    execSync(`git commit -m "feat(${targetDomain}): ${ticketId} autonomt byggd, självläkt och verifierad"`, { cwd: ROOT_DIR });
+    execSync(`git commit -m "feat(${targetDomain}): ${ticketId} autonomt byggd, konsoliderad och verifierad"`, { cwd: ROOT_DIR });
     execSync('git push origin main', { stdio: 'inherit', cwd: ROOT_DIR });
     console.log('🚀 Kodbasen är synkad till GitHub!');
   } catch (gitErr: any) {
