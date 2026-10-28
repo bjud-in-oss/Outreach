@@ -57,3 +57,38 @@
   4. Steg 3a i Fas 1 måste fysiskt etablera testfilen på disken via autonomt save_code med ett erkänt körtidsankare (eventBus.subscribe och eventBus.emit).
   5. Steg 3b läser in det nyskapade testet via read_file innan källkoden specificeras.
 - **Konsekvens**: Eliminerar semantiska glapp mellan planering och exekvering, garanterar äkta Fail-First i Gate 3a och säkrar obruten spårbarhet från mänsklig intention till grön kod.
+
+## ADR-008: Isomorf intern AST-härdning över externa CLI-binärer
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Kvalitetsgrindarna för FSD-isolering, alibispioner, tysta catch-block och körtidsankare behövde skärpas. Externa CLI-verktyg (ast-grep, dependency-cruiser) övervägdes men binder byggmotorn till operativsystemets kärna och hindrar webbläsarnativ körning.
+- **Beslut**: Implementera kontroll 1–7 i kvalitetsmatrisen direkt via TypeScripts inbyggda Compiler API (ts.createSourceFile) i scripts/drivers/ts.js och scripts/verify-architecture.js utan externa paket.
+- **Konsekvens**: 0 nya beroenden i package.json, full isomorf portabilitet (Node.js och framtida webbläsar-VFS) och exekveringstid under 600 ms.
+
+## ADR-009: Interaktiv Trepunktsbesiktningsgrind för Systemunderhåll (TCK-MAINT)
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Autonoma källkodsändringar i motorns egna grindar eller skript riskerar att urholka kvalitetskraven genom självbekräftelsefällor eller dolda felaktigheter.
+- **Beslut**: Spärra automatisk push för alla TCK-MAINT-körningar. Etablera en interaktiv besiktningsgrind i Fas 3 med trepunktsrapport (Möjlighet, Faronivå, Ångerrätt), interaktiv Bidi Live-frågedialog i CLI och ett s-val (Spara specifikation till doc/.TICKETS/ och återställ källkod via git).
+- **Konsekvens**: Mänsklig suveränitet bevaras, tankearbete tillvaratas utan risk för förhastade kodmutationer, och systemets grindar förblir intakta.
+
+## ADR-010: Deklarativ Testsvit och Isolering av Proceduriella Legacy-tester
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: scripts/run-tests.js använde hårdkodade sökvägar (src/features/) och Vitest havererade när gamla procedurskript i src/__tests__/ tolkades som tomma testsviter.
+- **Beslut**: Konfigurera testreglerna deklarativt i vite.config.ts med explicit include (src/**/*.test.ts) och exclude (**/*.legacy.ts, **/transient_*). Döp om äldre procedurfiler till *.legacy.ts och rensa scripts/run-tests.js till ett agnostiskt vitest run-anrop.
+- **Konsekvens**: Sökvägsoberoende regressionssvit, eliminering av deprecation-varningar och fullständig stabilitet inför nya domänmoduler.
+
+## ADR-011: Autonom Git-synkronisering via .env Miljövariabler
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Automatiserade byggcykler avbröts av interaktiva autentiseringsprompter i terminalen vid anrop till git push origin main.
+- **Beslut**: Läsa in GITHUB_USER och GITHUB_TOKEN direkt ur .env i scripts/run-planera-live.ts och pusha mot en dynamiskt autentiserad HTTPS-fjärradress. Säkra .gitignore mot läckage.
+- **Konsekvens**: 100 % obrutna autonoma byggcykler i Crostini/Linux utan manuella lösenordsinmatningar.
+
+## ADR-012: AST-baserad Resurskarta och Topografi (doc/FEATURE_INDEX.json)
+- **Datum**: 2026-10-28
+- **Status**: Beslutat & Implementerat
+- **Kontext**: Kartläggningen av domänernas exportstrukturer via regex var känslig för radbrytningar, typ-definitioner och re-exporter.
+- **Beslut**: Skapa scripts/generate-feature-index.js baserat på TypeScripts AST-motor (ts.isExportDeclaration och modifier-flaggor) och integrera skriptet som ett obligatoriskt steg i pnpm verify.
+- **Konsekvens**: Deterministisk topografisk karta som möjliggör felfri JIT-orientering för agenter oavsett kodstil eller extern kodbasimport.
