@@ -2,8 +2,8 @@
  * scripts/compress-adrs.js
  * 
  * OUTREACH COORDINATION ENGINE (v10.4)
- * Intelligent semantisk komprimerare för ADR och Invarianter.
- * Fångar flerradiga listor, bevarar tekniska konstanter och förhindrar avhuggna ord.
+ * Intelligent semantisk komprimerare för ADR och Invarianter (v2.1).
+ * Korrekt JS-radslut, bevarar tekniska prefix (16kHz) och verkliga konsekvenser.
  */
 
 import fs from 'fs';
@@ -15,7 +15,7 @@ function cleanText(text) {
   return text
     .replace(/\r?\n/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/^[-*\s\d.]+/, '')
+    .replace(/^[-*]\s+/, '')
     .trim();
 }
 
@@ -44,27 +44,30 @@ function compressDecisionsFile(filePath) {
   console.log(`🗜️  Bearbetar ${path.relative(ROOT_DIR, filePath)} (${sections.length} beslut)...`);
 
   const compressedSections = sections.map(sec => {
-    const lines = sec.split('\n');
     const titleMatch = sec.match(/^##\s+([^\n]+)/);
     const title = titleMatch ? titleMatch[1].trim() : 'Okänd Invariant';
 
-    // Fånga blocket mellan **Beslut**: och nästa sektion (t.ex. **Konsekvens**:)
-    const beslutMatch = sec.match(/-\s+\*\*Beslut\*\*:\s*([\s\S]*?)(?=\n-\s+\*\*[A-ZÅÄÖa-zåäö]+|\Z)/);
+    // Fånga blocket mellan **Beslut**: och nästa rubrik/avgränsare
+    const beslutMatch = sec.match(/-\s+\*\*Beslut\*\*:\s*([\s\S]*?)(?=\n-\s+\*\*[A-Za-zåäöÅÄÖ]+|\n---|\n##|$)/);
     let ruleText = '';
     
     if (beslutMatch && beslutMatch[1].trim().length > 0) {
       const rawBlock = beslutMatch[1].trim();
-      // Om beslutet innehåller numrerade punkter, slå ihop de viktigaste
+      // Dela upp vid faktiska listpunkter: "1. ", "2. "
       const points = rawBlock.split(/\n\s*\d+\.\s+/).map(cleanText).filter(p => p.length > 0);
       if (points.length > 1) {
         ruleText = points.map(p => truncateSafely(p, 140)).join('; ');
       } else {
         ruleText = cleanText(rawBlock);
       }
+    } else {
+      // Om filen redan komprimerats tidigare och har "- **Regel:**"
+      const regelMatch = sec.match(/-\s+\*\*Regel\*\*:\s*([^\n]+)/);
+      if (regelMatch) ruleText = cleanText(regelMatch[1]);
     }
 
-    // Fånga blocket för **Konsekvens**:
-    const konsMatch = sec.match(/-\s+\*\*Konsekvens\*\*:\s*([\s\S]*?)(?=\n-\s+\*\*[A-ZÅÄÖa-zåäö]+|\Z)/);
+    // Fånga blocket för **Konsekvens**: (eller befintligt **Skäl**:)
+    const konsMatch = sec.match(/-\s+\*\*(?:Konsekvens|Skäl)\*\*:\s*([\s\S]*?)(?=\n-\s+\*\*[A-Za-zåäöÅÄÖ]+|\n---|\n##|$)/);
     let reasonText = '';
     if (konsMatch && konsMatch[1].trim().length > 0) {
       reasonText = cleanText(konsMatch[1]);
@@ -80,10 +83,10 @@ function compressDecisionsFile(filePath) {
 
   const finalContent = header + compressedSections.join('\n\n') + '\n';
   fs.writeFileSync(filePath, finalContent, 'utf-8');
-  console.log(`✅ ${path.relative(ROOT_DIR, filePath)} färdig (${finalContent.length} tecken, alla regler bevarade).`);
+  console.log(`✅ ${path.relative(ROOT_DIR, filePath)} färdig (${finalContent.length} tecken).`);
 }
 
-console.log('🏛️  [ADR-Komprimerare v2]: Startar semantisk komprimering...');
+console.log('🏛️  [ADR-Komprimerare v2.1]: Startar precisionskörning...');
 
 compressDecisionsFile(path.join(ROOT_DIR, 'doc', 'DECISIONS.md'));
 compressDecisionsFile(path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'doc', 'DECISIONS.md'));
