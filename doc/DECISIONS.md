@@ -27,3 +27,23 @@
 ## ADR-007: Obruten TDD-livscykel med Mekaniska Grindar (Gherkin -> Ticket -> Autonomt Test i 3a)
 - **Regel:** 1. Mänsklig nytta förankras alltid i Gherkin-scenarier (doc/features/*.feature).; Biljetter (doc/.TICKETS/TCK-XXX.md) måste innehålla ett formellt typat kodblock med det invarianta ytterkontraktet.;
 - **Skäl:** Eliminerar semantiska glapp mellan planering och exekvering, garanterar äkta Fail-First i Gate 3a och säkrar obruten spårbarhet från mänsklig intention till...
+
+## ADR-008: Isomorf intern AST-härdning över externa CLI-binärer
+- **Regel:** Implementera kontroll 1–7 i kvalitetsmatrisen direkt via TypeScripts inbyggda Compiler API (ts.createSourceFile) i scripts/drivers/ts.js och scripts/verify-architecture.js utan externa paket.
+- **Skäl:** Noll nya beroenden i package.json, full isomorf portabilitet (Node.js och framtida webbläsar-VFS) och exekveringstid under 600 ms.
+
+## ADR-009: Interaktiv Trepunktsbesiktningsgrind för Systemunderhåll (TCK-MAINT)
+- **Regel:** Spärra automatisk push för alla TCK-MAINT-körningar. Etablera en interaktiv besiktningsgrind i Fas 3 med trepunktsrapport (Möjlighet, Faronivå, Ångerrätt), interaktiv Bidi Live-frågedialog i CLI och ett s-val (Spara specifikation till doc/.TICKETS/ och återställ källkod via git).
+- **Skäl:** Mänsklig suveränitet bevaras, tankearbete tillvaratas utan risk för förhastade kodmutationer, och systemets grindar förblir intakta.
+
+## ADR-010: Deklarativ Testsvit och Isolering av Proceduriella Legacy-tester
+- **Regel:** Konfigurera testreglerna deklarativt i vite.config.ts med explicit include (src/**/*.test.ts) och exclude (**/*.legacy.ts, **/transient_*). Döp om äldre procedurfiler till *.legacy.ts och rensa scripts/run-tests.js till ett agnostiskt vitest run-anrop.
+- **Skäl:** Sökvägsoberoende regressionssvit, eliminering av deprecation-varningar och fullständig stabilitet inför nya domänmoduler.
+
+## ADR-011: Autonom Git-synkronisering via .env Miljövariabler
+- **Regel:** Läsa in GITHUB_USER och GITHUB_TOKEN direkt ur .env i scripts/run-planera-live.ts och pusha mot en dynamiskt autentiserad HTTPS-fjärradress. Säkra .gitignore mot läckage.
+- **Skäl:** 100 % obrutna autonoma byggcykler i Crostini/Linux utan manuella lösenordsinmatningar.
+
+## ADR-012: AST-baserad Resurskarta och Topografi (doc/FEATURE_INDEX.json)
+- **Regel:** Skapa scripts/generate-feature-index.js baserat på TypeScripts AST-motor (ts.isExportDeclaration och modifier-flaggor) och integrera skriptet som ett obligatoriskt steg i pnpm verify.
+- **Skäl:** Deterministisk topografisk karta som möjliggör felfri JIT-orientering för agenter oavsett kodstil eller extern kodbasimport.
