@@ -1,186 +1,77 @@
-import { EventEnvelope, EventEnvelopeSchema } from '../contracts/envelope.ts';
-import {
-  SerialExecutionMetric,
-  SerialExecutionMetricSchema,
-  AudioOutputState,
-  AudioOutputStateSchema,
-} from '../telemetry/telemetrySchema.ts';
+import { z } from 'zod';
 
-export type SwarmEventHandler = (envelope: EventEnvelope) => void;
+export type SwarmEventType = 'telemetry:ping' | 'telemetry:heartbeat' | 'ui:action' | '*' | string;
 
-export interface SwarmSubscription {
+export interface SwarmEvent<T = any> {
   id: string;
-  pattern: string;
-  handler: SwarmEventHandler;
+  source: string;
+  specversion: string;
+  type: SwarmEventType;
+  datacontenttype: string;
+  time: string;
+  data: T;
 }
+
+export type SwarmSubscription = (() => void) & { unsubscribe: () => void };
 
 export class SwarmEventBus {
-  private subscriptions = new Map<string, SwarmSubscription>();
-  private history: EventEnvelope[] = [];
-  private maxHistorySize: number;
+  private listeners: Map<SwarmEventType, Set<(event: any) => void>> = new Map();
 
-  constructor(maxHistorySize = 150) {
-    this.maxHistorySize = maxHistorySize;
-  }
-
-  /**
-   * Publicerar ett händelsekuvert till bussen med strikt Zod-validering (Fail Fast)
-   */
-  public publish(envelope: EventEnvelope): void {
-    const validated = EventEnvelopeSchema.parse(envelope) as EventEnvelope;
-
-    // Lägg till i ringbuffert (FIFO)
-    this.history.push(validated);
-    if (this.history.length > this.maxHistorySize) {
-      this.history.shift();
+  public subscribe(type: SwarmEventType, callback: (event: any) => void): SwarmSubscription {
+    if (!this.listeners.has(type)) {
+      this.listeners.set(type, new Set());
     }
+    this.listeners.get(type)!.add(callback);
 
-    // Distribuera till matchande prenumeranter
-    for (const sub of this.subscriptions.values()) {
-      if (!this.matchesPattern(sub.pattern, validated.type)) continue;
-      try {
-        sub.handler(validated);
-      } catch (handlerErr: any) {
-        console.error(`[SwarmEventBus] Fel i prenumerationshanterare ${sub.id}:`, handlerErr);
-        // Aktiv felpropagering enligt Gate 2c (förhindra tysta fel)
-        if (validated.type !== 'swarm.subscription.error') {
-          try {
-            this.publishLiveEvent('swarm.subscription.error', {
-              subscriptionId: sub.id,
-              pattern: sub.pattern,
-              error: handlerErr?.message || String(handlerErr),
-              failedEventType: validated.type,
-            }, 'outreach/bus/error');
-          } catch (publishErr) {
-            console.error('[SwarmEventBus] Kunde inte publicera prenumerationsfel:', publishErr);
-          }
-        }
+    let isSubscribed = true;
+    
+    const unbind = () => {
+      if (!isSubscribed) return;
+      isSubscribed = false;
+      const subs = this.listeners.get(type);
+      if (subs) {
+        subs.delete(callback);
+        if (subs.size === 0) this.listeners.delete(type);
       }
-    }
-  }
-
-  /**
-   * Publicerar seriell exekveringsmetrik (TCK-006) med strikt Zod-validering och CloudEvents-inkapsling.
-   */
-  public publishSerialMetric(metric: SerialExecutionMetric): EventEnvelope {
-    const validated = SerialExecutionMetricSchema.parse(metric);
-    const eventType = validated.isTokenGated
-      ? 'swarm.serial.gate.evaluated'
-      : validated.stageStatus === 'COMPLETED' && validated.currentStage === 'e2e_verify'
-      ? 'swarm.serial.pipeline.completed'
-      : 'swarm.serial.stage.transition';
-
-    const envelope: EventEnvelope = {
-      id: `evt-serial-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      source: 'outreach/swarm/serial_motor',
-      type: eventType,
-      specversion: '1.0',
-      datacontenttype: 'application/json',
-      time: validated.lastTransitionAt || new Date().toISOString(),
-      data: validated,
     };
-
-    this.publish(envelope);
-    return envelope;
+    
+    unbind.unsubscribe = unbind;
+    return unbind as SwarmSubscription;
   }
 
-  /**
-   * Publicerar en strömningshändelse för Gemini Live (TCK-010) som CloudEvents 1.0.
-   */
-  public publishLiveEvent(
-    type: string,
-    data: Record<string, unknown>,
-    source = 'outreach/gemini_live/stream'
-  ): EventEnvelope {
-    const envelope: EventEnvelope = {
-      id: `evt-live-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      source,
+  public emit(type: SwarmEventType, payload: any): void {
+    const cloudEvent: SwarmEvent = {
+      id: crypto.randomUUID(),
+      source: 'outreach/core',
+      specversion: '1.0',
       type,
-      specversion: '1.0',
       datacontenttype: 'application/json',
       time: new Date().toISOString(),
-      data,
+      data: payload,
     };
 
-    this.publish(envelope);
-    return envelope;
+    const handlers = new Set([
+      ...(this.listeners.get(type) || []),
+      ...(this.listeners.get('*') || [])
+    ]);
+
+    handlers.forEach(callback => {
+      try {
+        const dataToSend = (payload && typeof payload === 'object' && 'data' in payload) ? payload.data : payload;
+        callback(dataToSend);
+      } catch (err) {
+        console.error(`[SwarmEventBus] Callback error for ${type}:`, err);
+      }
+    });
   }
 
-  /**
-   * Publicerar uppdatering av röst-/ljudspärrstillstånd (TCK-011) som CloudEvents 1.0.
-   */
-  public publishAudioState(audioState: AudioOutputState): EventEnvelope {
-    AudioOutputStateSchema.parse(audioState);
-
-    const envelope: EventEnvelope = {
-      id: `evt-audio-${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      source: 'outreach/gemini_live/audio_gate',
-      type: 'swarm.audio.state.changed',
-      specversion: '1.0',
-      datacontenttype: 'application/json',
-      time: new Date().toISOString(),
-      data: audioState as unknown as Record<string, unknown>,
-    };
-
-    this.publish(envelope);
-    return envelope;
-  }
-
-  /**
-   * Registrerar en prenumeration med stöd för wildcard (*, swarm.*, osv.)
-   * Returnerar en cleanup-funktion för avregistrering.
-   */
-  public subscribe(pattern: string, handler: SwarmEventHandler): () => void {
-    const id = `sub-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    this.subscriptions.set(id, { id, pattern, handler });
-
-    return () => {
-      this.subscriptions.delete(id);
-    };
-  }
-
-  /**
-   * Returnerar buffrad händelsehistorik med valfri mönstermatchning
-   */
-  public getHistory(filterPattern?: string): EventEnvelope[] {
-    if (!filterPattern || filterPattern === '*') {
-      return [...this.history];
-    }
-    return this.history.filter((env) => this.matchesPattern(filterPattern, env.type));
-  }
-
-  /**
-   * Tömmer historik och aktiva prenumerationer
-   */
   public clear(): void {
-    this.history = [];
-    this.subscriptions.clear();
-  }
-
-  /**
-   * Enkel emit-metod för UI- och domänhändelser som paketeras som CloudEvents 1.0.
-   */
-  public emit(type: string, data: Record<string, unknown> = {}): EventEnvelope {
-    return this.publishLiveEvent(type, data, 'outreach/ui/event');
-  }
-
-  private matchesPattern(pattern: string, eventType: string): boolean {
-    if (pattern === '*' || pattern === eventType) {
-      return true;
-    }
-    if (pattern.endsWith('.*')) {
-      const prefix = pattern.slice(0, -2);
-      return eventType.startsWith(prefix);
-    }
-    return false;
+    this.listeners.clear();
   }
 }
 
-let globalSwarmEventBus: SwarmEventBus | null = null;
-
+let globalBus: SwarmEventBus | null = null;
 export function getGlobalSwarmEventBus(): SwarmEventBus {
-  if (!globalSwarmEventBus) {
-    globalSwarmEventBus = new SwarmEventBus(150);
-  }
-  return globalSwarmEventBus;
+  if (!globalBus) globalBus = new SwarmEventBus();
+  return globalBus;
 }
