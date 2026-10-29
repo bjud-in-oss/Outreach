@@ -101,9 +101,9 @@ async function main() {
   const args = process.argv.slice(2);
   const initialTopic = args.length > 0 ? args.join(' ') : 'Jag vill bygga en ny funktion.';
 
-  console.log(`\n🧭 OUTREACH COORDINATION ENGINE v10.4 – SAMRÅD`);
-  console.log(`📌 Aktiv Live-modell: ${MODEL_NAME}`);
-  console.log(`💡 Skriv som domänexpert på ren svenska. Modellen löser koden.\n`);
+  console.log(`\n🌉 Välkommen till Mötesbryggan (v10.4)`);
+  
+  console.log(`💡 Vägvisaren är redo. Vad vill du att vi ska göra idag?\n`);
 
   let featureIndexStr = '';
   try { featureIndexStr = fs.readFileSync(path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json'), 'utf-8'); } catch {}

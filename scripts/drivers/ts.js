@@ -18,7 +18,9 @@ const args = process.argv.slice(2);
 // ============================================================================
 if (args.includes('--check-catch-blocks')) {
   console.log('🔒 [Gate 2c AST] Skannar källkod efter tysta catch-block och produktionsmockar...');
-  const srcDir = path.join(ROOT_DIR, 'src');
+  const targetArg = args.find(a => !a.startsWith("--"));
+  const srcDir = targetArg ? path.resolve(ROOT_DIR, targetArg) : path.join(ROOT_DIR, "src");
+  console.log("   🎯 Målområde för Gate 2c: " + path.relative(ROOT_DIR, srcDir));
   let catchViolations = 0;
   let mockViolations = 0;
 

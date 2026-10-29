@@ -16,7 +16,7 @@ export default defineConfig({
   },
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
-    exclude: ['**/*.legacy.ts', '**/transient_*', '**/node_modules/**'],
+    exclude: ['**/*.legacy.ts', '**/node_modules/**'],
     globals: true,
   },
 });

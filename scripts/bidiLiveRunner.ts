@@ -40,7 +40,7 @@ export class BidiLiveSession {
     process.stdout.write(`   📡 Ansluter Bidi Live WebSocket (${this.config.model})...`);
     
     const connectConfig: any = {
-      responseModalities: ['audio'],
+      responseModalities: ["AUDIO"],
       outputAudioTranscription: {},
       systemInstruction: {
         parts: [{ text: this.config.systemInstruction }],

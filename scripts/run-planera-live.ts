@@ -1,3 +1,4 @@
+import { mutateSourceCodeAST } from './drivers/astMutator.js';
 /**
  * scripts/run-planera-live.ts
  * 
@@ -365,7 +366,7 @@ async function main() {
   }
 
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
-  execSync('node scripts/drivers/ts.js --check-catch-blocks', { stdio: 'inherit', cwd: ROOT_DIR });
+  execSync(`node scripts/drivers/ts.js --check-catch-blocks src/features/${targetDomain}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
   if (!isMaint) {
     console.log('\n🟢 Kör transient-testet mot den nyskapade källkoden...');

@@ -17,7 +17,8 @@
     "verify": "pnpm test && node scripts/verify-architecture.js && pnpm update-index",
     "test": "node --import tsx scripts/run-tests.js",
     "update-index": "node scripts/generate-feature-index.js",
-    "compress-adrs": "node scripts/compress-adrs.js"
+    "compress-adrs": "node scripts/compress-adrs.js",
+    "start": "pnpm samrad"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -1,77 +1,56 @@
-# BYGGCYKEL LOGG: TCK-033
-**Starttid:** 2026-10-28T18:21:15.242Z
+# BYGGCYKEL LOGG: TCK-TEST-001
+**Starttid:** 2026-10-29T23:04:39.960Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-033: Heartbeat och latensmätning i telemetridomänen
+# TCK-TEST-001: Verifiera v10.4 Livscykeln
 
-## Status
-- [x] Utkastad
-- [ ] Implementerad
-- [ ] Verifierad
+## 🎯 Intention & Nytta
+Verifiera Outreach Coordination Engines v10.4 livscykel deterministiskt från Fas 0 till Fas 3 Teatern enligt specifikationen i `doc/features/telemetry.feature`.
+Skapa en minimal, robust "Ping"-funktion under FSD-domänen `src/features/telemetry/`.
+Funktionen sänder en typad `PingEvent` via EventBus när den anropas och valideras med ett tillhörande Zod-schema.
 
-## Krav
-Mäta svarstiden på händelsebussen (EventBus) genom att skicka ett hjärtslag och mäta tiden det tar tills ett svar tas emot eller loggas, för att upptäcka prestandaproblem.
-
-## Gherkin
-```gherkin
-# language: sv
-Egenskap: Heartbeat och latensmätning
-
-  Scenario: Systemet skickar regelbundna hjärtslag och mäter latens
-    Given att systemet är aktivt
-    When ett hjärtslag skickas
-    Then ska latensen mätas och loggas
-```
-
-## Implementation
+## 🔒 Invariant Ytterkontrakt (Oföränderligt i Fas 1)
 ```typescript
 import { z } from 'zod';
-import { SwarmEventBus } from '../../shared/event_bus';
 
-export const HeartbeatSchema = z.object({
-  id: z.string(),
-  timestamp: z.string(),
-  latencyMs: z.number().optional(),
+export const PingEventSchema = z.object({
+  type: z.literal('telemetry:ping'),
+  timestamp: z.number(),
 });
 
-export type Heartbeat = z.infer<typeof HeartbeatSchema>;
+export type PingEvent = z.infer<typeof PingEventSchema>;
 
-export function measureLatency(startTime: number): number {
-  return Date.now() - startTime;
+export interface PingResult {
+  success: boolean;
+  event: PingEvent;
 }
 
-export function emitHeartbeat() {
-  const startTime = Date.now();
-  const eventId = crypto.randomUUID();
-  
-  const event = {
-    id: eventId,
-    timestamp: new Date().toISOString(),
-  };
-
-  SwarmEventBus.emit('heartbeat', event);
-
-  const latency = measureLatency(startTime);
-
-  return {
-    success: true,
-    event: HeartbeatSchema.parse({ ...event, latencyMs: latency })
-  };
-}
+export function emitPing(): PingResult;
 ```
+
+## 🏛️ Domängränser (FSD)
+- Domän: `src/features/telemetry/`
+- Tillåtna externa importer: Enbart `src/shared/` och externa paket (`zod`). Inga korsvisa feature-importer.
+- Exportyta via domänbarrel: `src/features/telemetry/index.ts` måste exportera `emitPing`, `PingEventSchema` och tillhörande typer.
+
+## 📋 Acceptanskriterier
+1. `src/__tests__/transient_TCK-TEST-001.test.ts` MÅSTE genereras autonomt i Steg 3a via `save_code` och innehålla `eventBus.subscribe` och `eventBus.emit` som Körtidsankare (steel-thread).
+2. Testet MÅSTE falla med exit-kod 1 i Gate 3a innan källkod skrivs i Fas 2.
+3. Inga korsvisa FSD-importer eller skrivningar utanför `src/features/telemetry/`.
+4. Hela cykeln ska passera med grönt test och verifieras av `verify-architecture.js`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Intentionen med TCK-033 är att bygga in ett proaktivt system för hälsoövervakning på händelsebussen. Genom att mäta latensen för varje hjärtslag kan vi tidigt upptäcka prestandaproblem, vilket säkerställer en stabil och pålitlig miljö. Detta främjar den mänskliga nyttan genom att skapa ett system vi kan lita på i alla lägen.
+Syftet med detta bygge är att säkerställa att Outreach Coordination Engine v10.4 levererar deterministiska telemetridata. Genom att skapa en robust "Ping"-funktion verifierar vi livscykelns alla faser och stärker systemets resiliens och spårbarhet.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Auditering genomförd. Förslaget berör enbart telemetridomänen under `src/features/telemetry` och följer strikt FSD-isolering. Zod-schemat validerar datakontraktet korrekt, vilket uppfyller alla krav för resiliens och typ-säkerhet.
+Kontraktsauditen är slutförd och godkänd. TCK-TEST-001 uppfyller kraven för FSD-isolering och API-kontrakt. Vi går nu vidare till Vägval och Förlikningsport i Fas 0.
 
 
 #### 0b Att förlikas: Vägval
@@ -82,35 +61,31 @@ STATUS: GODKÄND
 
 
 
-#### 2a Att följa: Tillstånd & Biverkningar
-För TCK-033 innebär tillståndet hantering av det strukturerade hjärtslagsdatainnehållet i `HeartbeatSchema`, där `id`, `timestamp` och `latencyMs` hålls samman i ett temporärt objekt. 
+#### 2b Att följa: 3 Alternativ
+Här är tre ortogonala alternativ för att lösa uppgiften för TCK-TEST-001:
 
-Gällande biverkningar är den primära effekten att icke-deterministisk data som `timestamp` genereras, och sidoverkan sker genom att eventet omedelbart emitters via `SwarmEventBus` utanför det lokala skicket. Latensmätningen är en synkron beräkning direkt efter emissionen.
+Alternativ 1 fokuserar på en delad global händelsebuss via `src/shared/`, vilket följer FSD-reglerna bäst.
 
+Alternativ 2 kapslar in händelsesändningen helt inom domänen och bygger en specifik instans för telemetry, vilket ger total oberoende.
 
-#### 2b Att följa: 3 Ortogonala Alternativ
-För inre felresiliens vid TCK-033 hjärtslagsmätning formulerar jag tre ortogonala alternativ: Alternativ ett är lokal synkron loggning med omedelbar fallback till WAL om eventbusshanteraren kastar undantag. Alternativ två är asynkron tvåvägsasynkron bekräftelseväntan med definierad timeout. Alternativ tre implementerar ett "Circuit Breaker"-mönster för att dämpa sändningsfrekvensen vid hög mättnad i händelsebussen.
+Alternativ 3 utnyttjar injektion av beroenden, där vi skickar med händelsebussen som en egenskap till `emitPing`, vilket underlättar testning markant.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett ger bäst omedelbar feltolerans genom den lokala fallbacken, men riskerar att blockera tråden vid synkron exekvering. Alternativ två erbjuder djupare verifiering av händelseflödet, dock med risk för latens vid timout. Alternativ tre är starkast för systemisk systemstabilitet vid hög last tack vare dämpningen, men ställer höga krav på tillståndshantering. Beroende på felmarginalen föreslår jag att vi kombinerar alternativ tvås exakthet med alternativ trets resiliens.
+Resiliensgranskningen visar att Alternativ 3, med beroendeinjektion, är mest resilient då det minimerar globalt tillstånd och underlättar felhantering.
 
 
-#### 2d Att förlikas: Vägvägning & Mättnad
-Jag väger samman spänningsfälten och slår fast att det vinnande kontraktet förenar alternativ tvås djupa verifieringsgrad med alternativ trets systemiska resiliens. Genom att dämpa lasstoppar och samtidigt inspektera händelseflödet sluter vi klyftan mellan exakthet och stabilitet. MÄTTNAD: JA.
+#### 2d Att förlikas: Mättnad
+Vi slår fast att Alternativ 3, med beroendeinjektion, är det vinnande kontraktet för att säkerställa resiliens och minimera risken för globalt tillstånd. MÄTTNAD: JA.
 
 
-#### 3a Att följa: Transient Testspecifikation
-
-
-
-#### 3b Att följa: Källkodsspecifikation
+#### 3a Att följa: Testspecifikation
 
 
 
-#### 2e Att vända om: Operativt Delta & Sanering
-Jag granskar nu det operativa deltat för att garantera att inga latenta felkällor blir kvar i källkoden. Mitt fokus ligger på att säkerställa absolut resiliens utan tomma catch-block, samt att destruktivt sanera eventuella historiska testinvarianter som inte längre speglar vår arkitektoniska verklighet.
+#### 3b Att följa: Källkod
+
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Jag bekräftar att alla arkitektoniska kontroller har passerat felfritt. Det slutgiltiga byggkontraktet är nu låst. Processen fortgår autonomt utan mänskliga avbrott.
+Byggkontraktet är nu kristalliserat och redo att spikas i WAL. Inga öppna frågor kvarstår i detta skede; vi går vidare med Fas 2 för att inleda källkodsexekveringen och TDD-processen på ett isolerat sätt.
