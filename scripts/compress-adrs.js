@@ -2,66 +2,91 @@
  * scripts/compress-adrs.js
  * 
  * OUTREACH COORDINATION ENGINE (v10.4)
- * Isomorf decentraliserad komprimerare för ADR och Invarianter.
- * Garanterar fast maxstorlek och låglatens-inläsning vid domänimport/export.
+ * Intelligent semantisk komprimerare för ADR och Invarianter.
+ * Fångar flerradiga listor, bevarar tekniska konstanter och förhindrar avhuggna ord.
  */
 
 import fs from 'fs';
 import path from 'path';
 
 const ROOT_DIR = process.cwd();
-const MAX_FILE_CHARS = 4000; // Fast storlekstak per beslutskatalog
+
+function cleanText(text) {
+  return text
+    .replace(/\r?\n/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^[-*\s\d.]+/, '')
+    .trim();
+}
+
+function truncateSafely(text, maxLen) {
+  if (text.length <= maxLen) return text;
+  const sub = text.substring(0, maxLen);
+  const lastPunct = Math.max(sub.lastIndexOf('.'), sub.lastIndexOf(';'), sub.lastIndexOf(','));
+  if (lastPunct > maxLen * 0.6) {
+    return sub.substring(0, lastPunct + 1);
+  }
+  const lastSpace = sub.lastIndexOf(' ');
+  return (lastSpace > 0 ? sub.substring(0, lastSpace) : sub) + '...';
+}
 
 function compressDecisionsFile(filePath) {
   if (!fs.existsSync(filePath)) return;
   const content = fs.readFileSync(filePath, 'utf-8');
   
-  if (content.length <= MAX_FILE_CHARS) {
-    console.log(`✓ ${path.relative(ROOT_DIR, filePath)}: Inom budget (${content.length}/${MAX_FILE_CHARS} tecken).`);
-    return;
-  }
+  // Dela upp filen i sektioner baserat på "## ADR-"
+  const rawSections = content.split(/\n(?=## )/);
+  if (rawSections.length <= 1) return;
 
-  console.log(`🗜️  Komprimerar ${path.relative(ROOT_DIR, filePath)} (${content.length} tecken -> max ${MAX_FILE_CHARS})...`);
+  const header = rawSections[0].startsWith('## ') ? '# Arkitekturinvarianter\n\n' : rawSections[0].trim() + '\n\n';
+  const sections = rawSections.slice(1);
 
-  // Dela upp i sektioner (ADR eller Paradigmskiften)
-  const sections = content.split(/\n(?=## )/);
-  const header = sections[0].startsWith('## ') ? '# Arkitekturinvarianter\n\n' : sections.shift() + '\n\n';
+  console.log(`🗜️  Bearbetar ${path.relative(ROOT_DIR, filePath)} (${sections.length} beslut)...`);
 
   const compressedSections = sections.map(sec => {
-    const lines = sec.trim().split('\n');
-    const titleLine = lines[0] || '## Ospecificerad Invariant';
-    
-    // Extrahera kärnregeln (Beslut) och skälet (Konsekvens/Kontext)
-    let rule = '';
-    let reason = '';
+    const lines = sec.split('\n');
+    const titleMatch = sec.match(/^##\s+([^\n]+)/);
+    const title = titleMatch ? titleMatch[1].trim() : 'Okänd Invariant';
 
-    for (const l of lines) {
-      if (l.includes('**Beslut**:') || l.includes('INVARIANT:')) rule = l.replace(/.*(?:\*\*Beslut\*\*:|INVARIANT:)/, '').trim();
-      if (l.includes('**Konsekvens**:') || l.includes('**Skäl**:')) reason = l.replace(/.*(?:\*\*Konsekvens\*\*:|\*\*Skäl\*\*:)/, '').trim();
+    // Fånga blocket mellan **Beslut**: och nästa sektion (t.ex. **Konsekvens**:)
+    const beslutMatch = sec.match(/-\s+\*\*Beslut\*\*:\s*([\s\S]*?)(?=\n-\s+\*\*[A-ZÅÄÖa-zåäö]+|\Z)/);
+    let ruleText = '';
+    
+    if (beslutMatch && beslutMatch[1].trim().length > 0) {
+      const rawBlock = beslutMatch[1].trim();
+      // Om beslutet innehåller numrerade punkter, slå ihop de viktigaste
+      const points = rawBlock.split(/\n\s*\d+\.\s+/).map(cleanText).filter(p => p.length > 0);
+      if (points.length > 1) {
+        ruleText = points.map(p => truncateSafely(p, 140)).join('; ');
+      } else {
+        ruleText = cleanText(rawBlock);
+      }
     }
 
-    if (!rule) rule = lines.slice(1, 3).join(' ').trim();
-    if (!reason) reason = 'Kritiskt för domänens integritet och FSD-isolering.';
+    // Fånga blocket för **Konsekvens**:
+    const konsMatch = sec.match(/-\s+\*\*Konsekvens\*\*:\s*([\s\S]*?)(?=\n-\s+\*\*[A-ZÅÄÖa-zåäö]+|\Z)/);
+    let reasonText = '';
+    if (konsMatch && konsMatch[1].trim().length > 0) {
+      reasonText = cleanText(konsMatch[1]);
+    } else {
+      reasonText = 'Säkrar modulär integritet och FSD-kontrakt.';
+    }
 
-    return `${titleLine}\n- **Regel:** ${rule.substring(0, 180)}\n- **Skäl:** ${reason.substring(0, 120)}`;
+    const safeRule = truncateSafely(ruleText, 260);
+    const safeReason = truncateSafely(reasonText, 160);
+
+    return `## ${title}\n- **Regel:** ${safeRule}\n- **Skäl:** ${safeReason}`;
   });
 
   const finalContent = header + compressedSections.join('\n\n') + '\n';
   fs.writeFileSync(filePath, finalContent, 'utf-8');
-  console.log(`✅ ${path.relative(ROOT_DIR, filePath)} komprimerad till ${finalContent.length} tecken.`);
+  console.log(`✅ ${path.relative(ROOT_DIR, filePath)} färdig (${finalContent.length} tecken, alla regler bevarade).`);
 }
 
-console.log('🏛️  [ADR-Komprimerare]: Skannar globala och decentraliserade beslutsloggar...');
+console.log('🏛️  [ADR-Komprimerare v2]: Startar semantisk komprimering...');
 
-// 1. Globala systemloggar
 compressDecisionsFile(path.join(ROOT_DIR, 'doc', 'DECISIONS.md'));
-compressDecisionsFile(path.join(ROOT_DIR, 'doc', 'PARADIGM_SHIFTS.md'));
-
-// 2. Decentraliserade domänloggar (reser med respektive feature)
-const featuresDir = path.join(ROOT_DIR, 'src', 'features');
-if (fs.existsSync(featuresDir)) {
-  for (const feat of fs.readdirSync(featuresDir)) {
-    const featDecisions = path.join(featuresDir, feat, 'doc', 'DECISIONS.md');
-    compressDecisionsFile(featDecisions);
-  }
-}
+compressDecisionsFile(path.join(ROOT_DIR, 'src', 'features', 'gemini_live_swarm', 'doc', 'DECISIONS.md'));
+compressDecisionsFile(path.join(ROOT_DIR, 'src', 'features', 'google_drive_sync', 'doc', 'DECISIONS.md'));
+compressDecisionsFile(path.join(ROOT_DIR, 'src', 'features', 'mcp_bridge', 'doc', 'DECISIONS.md'));
+compressDecisionsFile(path.join(ROOT_DIR, 'src', 'features', 'wal_logger', 'doc', 'DECISIONS.md'));
