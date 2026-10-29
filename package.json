@@ -14,8 +14,10 @@
     "genomfor": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm genomfor är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
     "bygg": "tsx --env-file=.env scripts/run-planera-live.ts",
     "test:transient": "vitest run src/__tests__/transient_TCK-TEST-001.test.ts",
-    "verify": "pnpm test && node scripts/verify-architecture.js",
-    "test": "node --import tsx scripts/run-tests.js"
+    "verify": "pnpm test && node scripts/verify-architecture.js && pnpm update-index",
+    "test": "node --import tsx scripts/run-tests.js",
+    "update-index": "node scripts/generate-feature-index.js",
+    "compress-adrs": "node scripts/compress-adrs.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
