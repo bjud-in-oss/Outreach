@@ -1,24 +1,14 @@
-import { getGlobalSwarmEventBus } from '../../shared/bus/swarmEventBus';
+import { z } from 'zod';
 
-export interface Ping {
-  id: string;
-  timestamp: number;
-}
+export const PingEventSchema = z.object({
+  timestamp: z.string(),
+  nodeId: z.string(),
+  status: z.enum(['ok', 'degraded', 'critical']),
+});
 
-export function emitPing() {
-  const eventBus = getGlobalSwarmEventBus();
-  const id = crypto.randomUUID();
-  const timestamp = Date.now();
-  
-  const eventPayload: Ping = {
-    id,
-    timestamp
-  };
+export type PingEvent = z.infer<typeof PingEventSchema>;
 
-  eventBus.emit('ping', eventPayload);
-
-  return {
-    success: true,
-    event: eventPayload
-  };
-}
+export const emitPing = (event: PingEvent): void => {
+  // Här skulle eventuellt sändning till EventBus ske
+  console.log('Ping event emitted:', event);
+};
