@@ -1,28 +1,34 @@
-import { describe, it, expect } from 'vitest';
-import { getGlobalSwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
-import { emitPing, PingEvent } from '..';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { emitPing } from '..';
+import { getGlobalSwarmEventBus, SwarmEventBus } from '../../../shared/bus/swarmEventBus';
 
 describe('TCK-TEST-001 - Telemetry Ping Flow', () => {
+  let eventBus: SwarmEventBus;
+
+  beforeEach(() => {
+    eventBus = getGlobalSwarmEventBus();
+    eventBus.clear();
+  });
+
+  afterEach(() => {
+    eventBus.clear();
+  });
+
   it('should emit a telemetry:ping event when emitPing is called', () => {
-    const eventBus = getGlobalSwarmEventBus();
-    let receivedEvent: PingEvent | null = null;
+    const receivedEvents: any[] = [];
     
-    // Körtidsankare: Använd eventBus.subscribe för att fånga upp händelsen
-    const subscription = eventBus.subscribe('telemetry:ping', (event: PingEvent) => {
-      receivedEvent = event;
+    eventBus.subscribe('telemetry:ping', (event) => {
+      receivedEvents.push(event);
     });
+
+    const result = emitPing();
+
+    expect(result.success).toBe(true);
+    expect(result.event.type).toBe('telemetry:ping');
+    expect(typeof result.event.timestamp).toBe('number');
+    expect(result.event.timestamp).toBeLessThanOrEqual(Date.now());
     
-    try {
-      // Anropa funktionen som ska testas
-      const result = emitPing();
-      
-      // Verifiera resultat
-      expect(result.success).toBe(true);
-      expect(receivedEvent).not.toBeNull();
-      expect(receivedEvent?.type).toBe('telemetry:ping');
-      expect(typeof receivedEvent?.timestamp).toBe('number');
-    } finally {
-      subscription.unsubscribe();
-    }
+    expect(receivedEvents).toHaveLength(1);
+    expect(receivedEvents[0]).toEqual(result.event);
   });
 });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getGlobalSwarmEventBus } from '../gemini_live_swarm/bus/swarmEventBus';
+import { getGlobalSwarmEventBus } from '../../shared/bus/swarmEventBus';
 
 export const PingEventSchema = z.object({
   type: z.literal('telemetry:ping'),
@@ -21,7 +21,6 @@ export function emitPing(): PingResult {
     timestamp: Date.now(),
   };
 
-  // Validera via Zod (även om vi skapar objektet direkt, säkerställer vi kontraktet)
   const validatedEvent = PingEventSchema.parse(event);
 
   eventBus.emit('telemetry:ping', validatedEvent);

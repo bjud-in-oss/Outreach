@@ -32,7 +32,7 @@ function checkFsdImports(filePath) {
 
     // Fånga både relativa ('../other') och alias-importer ('@/features/other')
     let targetFeature = null;
-    const relMatch = importPath.match(/(?:features|\.\.\/)\/([^/'"]+)/);
+    const relMatch = importPath.match(/(?:\.\.\/)+([^/'"]+)/);
     const aliasMatch = importPath.match(/@\/features\/([^/'"]+)/);
 
     if (aliasMatch) targetFeature = aliasMatch[1];

@@ -457,6 +457,8 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
       .replace(new RegExp(`"\\.\\./features/${targetDomain}"`, 'g'), '".."')
       .replace(new RegExp(`'\\.\\./features/${targetDomain}/`, 'g'), "'../")
       .replace(new RegExp(`"\\.\\./features/${targetDomain}/`, 'g'), '"../')
+      .replace(/'\.\.\/features\//g, "'../../")
+      .replace(/"\.\.\/features\//g, '"../../')
       .replace(/'\.\.\/shared\//g, "'../../../shared/")
       .replace(/"\.\.\/shared\//g, '"../../../shared/');
 
