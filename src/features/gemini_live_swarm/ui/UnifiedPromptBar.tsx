@@ -14,22 +14,29 @@ export const UnifiedPromptBar: React.FC<UnifiedPromptBarProps> = ({ onSendMessag
 
   return (
 <div data-testid="unified-prompt-bar" className={`flex flex-col gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg w-full max-w-4xl mx-auto ${className}`}>
-  <textarea
-    data-testid="prompt-textarea"
-    rows={2}
-    placeholder="Skriv meddelande eller tala med agenten..."
-    value={bar.inputText}
-    onChange={(e) => bar.setInputText(e.target.value)}
-    onFocus={bar.handleFocus}
-    onBlur={bar.handleBlur}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        bar.handleSend();
-      }
-    }}
-    className="w-full max-h-24 overflow-y-auto bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono resize-none leading-relaxed"
-  />
+  <div className="relative">
+    <textarea
+      data-testid="prompt-textarea"
+      rows={2}
+      placeholder="Skriv meddelande eller tala med agenten..."
+      value={bar.inputText}
+      onChange={(e) => bar.setInputText(e.target.value)}
+      onFocus={bar.handleFocus}
+      onBlur={bar.handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          bar.handleSend();
+        }
+      }}
+      className="w-full max-h-24 overflow-y-auto bg-slate-950 border border-slate-800 rounded pl-16 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono resize-none leading-relaxed"
+    />
+    <div className="absolute left-3 top-2 pointer-events-none">
+      <span className="font-mono text-[10px] text-sky-400 opacity-60">
+        {bar.memoryDisplay}
+      </span>
+    </div>
+  </div>
 
   <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
     <div className="flex items-center gap-1.5">
@@ -74,7 +81,7 @@ export const UnifiedPromptBar: React.FC<UnifiedPromptBarProps> = ({ onSendMessag
         onClick={bar.handleSend}
         className="p-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded text-xs transition-colors flex items-center justify-center"
       >
-        <Send size={14} />
+        Send size={14} />
       </button>
     </div>
   </div>

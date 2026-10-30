@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ReflectionMode, REFLECTION_MODES, parseReflectionMode, REFLECTION_MODE_EVENT } from './reflectionStateHelper.ts';
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
+import { useSwarmTelemetry } from '../telemetry/useSwarmTelemetry.ts';
 
 export { REFLECTION_MODES };
 export type { ReflectionMode };
@@ -69,6 +70,12 @@ export function initDictationRecognizer(
   }, onEnd || (() => {}));
 }
 
+export function formatMemoryIndicator(usageRatio?: number): string {
+  if (usageRatio === undefined) return '[Ledigt --%]';
+  const freePercentage = Math.round((1 - Math.min(Math.max(usageRatio, 0), 1)) * 100);
+  return `[Ledigt ${freePercentage}%]`;
+}
+
 export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) => void) {
   const [inputText, setInputText] = useState('');
   const [reflectionMode, setReflectionMode] = useState<ReflectionMode>('normal');
@@ -83,6 +90,8 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
   const sttRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const wasUnmutedRef = useRef(false);
   const isTogglingRef = useRef(false);
+
+  const { snapshot } = useSwarmTelemetry(swarmCtx?.eventBus);
 
   useEffect(() => {
     return swarmCtx?.eventBus.subscribe('*', (env: any) => {
@@ -202,6 +211,7 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
   };
 
   const micProps = getMicButtonProps(isLiveActive, isMuted, isSTTActive, isTogglingMutex);
+  const memoryDisplay = formatMemoryIndicator(snapshot.contextUsage?.usageRatio);
 
   return {
     inputText,
@@ -215,6 +225,7 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
     isTogglingMutex,
     isToolsExpanded,
     micProps,
+    memoryDisplay,
     handleFocus,
     handleBlur,
     handleMicToggle,
