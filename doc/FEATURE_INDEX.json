@@ -255,11 +255,9 @@
     "telemetry": {
       "files": [
         "heartbeat.ts",
-        "index.ts",
-        "ping.ts"
+        "index.ts"
       ],
       "exports": [
-        "PingEventSchema",
         "emitHeartbeat",
         "emitPing"
       ]

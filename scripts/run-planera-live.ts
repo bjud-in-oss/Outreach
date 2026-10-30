@@ -438,6 +438,8 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 
     let transientTestContent = fs.readFileSync(transientTestFullPath, 'utf-8');
     transientTestContent = transientTestContent
+      .replace(new RegExp(`'\\.\\./features/${targetDomain}'`, 'g'), "'..'")
+      .replace(new RegExp(`"\\.\\./features/${targetDomain}"`, 'g'), '".."')
       .replace(new RegExp(`'\\.\\./features/${targetDomain}/`, 'g'), "'../")
       .replace(new RegExp(`"\\.\\./features/${targetDomain}/`, 'g'), '"../')
       .replace(/'\.\.\/shared\//g, "'../../../shared/")
