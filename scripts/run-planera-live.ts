@@ -177,7 +177,12 @@ async function main() {
   // FAS 1: LINJÄRT PLANERINGSSVEP
   // ==========================================
   console.log('\n### FAS 1: LINJÄRT PLANERINGSSVEP (MIKRO-OSCILLATION)');
-  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}`;
+  let busContract = '';
+  const busPath = path.join(ROOT_DIR, 'src', 'shared', 'bus', 'swarmEventBus.ts');
+  if (fs.existsSync(busPath)) {
+    busContract = `\n\nDELAD INFRASTRUKTUR (SwarmEventBus API):\n${fs.readFileSync(busPath, 'utf-8')}`;
+  }
+  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}${busContract}`;
 
   const inspectionTools = [
     {
@@ -254,7 +259,12 @@ async function main() {
   if (!isMaint) {
     const steg3a = await runMicroChannel(
       'Att följa',
-      `Steg 3a: Generera transient testspecifikation och spara den till '${transientTestFile}' med save_code.\nKRAV:\n1. Använd ALDRIG syntetiska alibi-spioner.\n2. Testet MÅSTE fallera rött (Fail-First) mot befintlig kod!\n3. Anropa save_code innan du är klar.`,
+      `Steg 3a: Generera transient testspecifikation och spara den till '${transientTestFile}' med save_code.
+KRAV:
+1. Använd ALDRIG syntetiska alibi-spioner.
+2. Testet MÅSTE fallera rött (Fail-First) mot befintlig kod!
+3. Om testet använder delad infrastruktur (t.ex. SwarmEventBus), anropa FÖRST 'read_file' på 'src/shared/bus/swarmEventBus.ts' för att kontrollera exakta metodnamn. Gissa ALDRIG API-metoder!
+4. Anropa save_code innan du är klar.`,
       `${startAnchor}\nKONTRAKT:\n${steg2d}`,
       systemInstruction,
       testGenTools,
@@ -325,7 +335,7 @@ async function main() {
     if (name === 'read_file' || name === 'list_files') return executeInspection(name, args);
     if (name === 'save_code') {
       const rel = args.file_path;
-      if (!isMaint && !rel.startsWith(`src/features/${targetDomain}/`) && rel !== transientTestFile) {
+      if (!isMaint && !rel.startsWith(`src/features/${targetDomain}/`)) {
         throw new Error(`Otillåten skrivning till ${rel}. Endast src/features/${targetDomain}/ är tillåtet.`);
       }
       const full = path.resolve(ROOT_DIR, rel);
@@ -393,6 +403,8 @@ async function main() {
   // FAS 3: SLUTKONSOLIDERING, SYNC & GIT-PUSH
   // ==========================================
   if (!isMaint) {
+    console.log('🔒 Verifierar Gate 3a mot slutgiltig testfil inför konsolidering...');
+    execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
     console.log('\n📦 Fas 3: Konsoliderar godkänt test till domänens permanenta testsvit...');
     const permanentTestDir = path.join(ROOT_DIR, 'src', 'features', targetDomain, '__tests__');
     fs.mkdirSync(permanentTestDir, { recursive: true });

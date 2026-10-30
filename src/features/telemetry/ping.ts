@@ -14,11 +14,6 @@ export function emitPing() {
     type: 'telemetry:ping',
     timestamp: Date.now(),
   };
-  
-  eventBus.emit('telemetry:ping', event);
-  
-  return {
-    success: true,
-    event,
-  };
+  eventBus.publish('telemetry:ping', event);
+  return { success: true, event };
 }
