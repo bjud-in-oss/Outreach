@@ -30,13 +30,19 @@ function checkFsdImports(filePath) {
   function inspectImportString(importPath, node) {
     if (!currentFeature) return;
 
-    // Fånga både relativa ('../other') och alias-importer ('@/features/other')
     let targetFeature = null;
-    const relMatch = importPath.match(/(?:\.\.\/)+([^/'"]+)/);
-    const aliasMatch = importPath.match(/@\/features\/([^/'"]+)/);
 
-    if (aliasMatch) targetFeature = aliasMatch[1];
-    else if (relMatch) targetFeature = relMatch[1];
+    if (importPath.startsWith('@/features/')) {
+      const match = importPath.match(/@\/features\/([^/'"]+)/);
+      if (match) targetFeature = match[1];
+    } else if (importPath.startsWith('.')) {
+      const resolved = path.resolve(path.dirname(filePath), importPath);
+      const relToSrc = path.relative(path.join(ROOT_DIR, 'src'), resolved);
+      const parts = relToSrc.split(path.sep);
+      if (parts[0] === 'features' && parts.length > 1) {
+        targetFeature = parts[1];
+      }
+    }
 
     if (targetFeature && targetFeature !== currentFeature && targetFeature !== 'shared') {
       const { line } = sf.getLineAndCharacterOfPosition(node.getStart());

@@ -48,24 +48,28 @@
 - **Regel:** Skapa scripts/generate-feature-index.js baserat på TypeScripts AST-motor (ts.isExportDeclaration och modifier-flaggor) och integrera skriptet som ett obligatoriskt steg i pnpm verify.
 - **Skäl:** Deterministisk topografisk karta som möjliggör felfri JIT-orientering för agenter oavsett kodstil eller extern kodbasimport.
 
-## ADR-013: Omvändelseslingan (Process-Fail-Fast & Autonom Re-planering)
+- ## ADR-013: Omvändelseslingan (Process-Fail-Fast & Autonom Re-planering)
 - **Status:** Beslutad
 - **Datum:** 2026-10-30
 
 ### Kontext
-När en autonom agent under Fas 2 (Källkodsexekvering) ställs inför ett test som inte kan passeras på grund av felaktiga antaganden i Fas 1 (t.ex. anrop till icke-existerande infrastrukturmetoder), tenderar modeller att ta genvägar (Agentic Test Tampering) genom att försvaga testet eller krascha processen blint.
+När en autonom agent under Fas 2 (Källkodsexekvering) möter ett test som inte kan passeras på grund av felaktiga antaganden i Fas 1 (t.ex. förutsatta metoder som saknas i infrastrukturen), riskerar modellen att ta destruktiva genvägar (Agentic Test Tampering) genom att manipulera testfilen eller krascha processen.
 
 ### Beslut
-Vi etablerar en formell **Omvändelseslinga** i `run-planera-live.ts` med följande principer:
-1. **Skrivskyddad testlag:** Testfilen är absolut förseglad under Fas 2. Verktyget `save_code` avvisar mekaniskt alla skrivningar utanför `src/features/${targetDomain}/`.
-2. **Agentens 3 handlingsvägar:** Agenten informeras i systeminstruktionen att den har tre legitima strategier vid fel:
-   - *Alternativ 1:* Direkt källkodsreparation.
-   - *Alternativ 2:* Modulär expansion (skapa nya hjälpfiler/adaptrar inom domänen).
-   - *Alternativ 3:* Deklarera Omvändelse (`STATUS: HAVERERAT_KONTRAKT`) om testet eller byggkontraktet bevisligen vilar på felaktiga förutsättningar.
-3. **Mekanisk Omvändelse:** Vid deklarerat kontrakthaveri, eller om Fas 2 uttömmer sina 3 självrättningsförsök, kraschar inte systemet. I stället saneras okommittad källkod (`git checkout -- src/features/${targetDomain}`), felloggen sparas i `doc/LAST_CYCLE/CRASH_DUMP.json`, och motorn loopar tillbaka till Fas 1 (Steg 1b/3a) med det ackumulerade felminnet i startankaret.
-4. **Cykelspärr:** Maximalt en (1) automatisk omvändelse tillåts per byggbiljett för att förhindra cykliska hallucinationer och token-rusning.
+Vi inför en **Omvändelseslinga** i systemets körtidsmotor:
+
+1. **Skrivskyddad testlag:** Testfilen under `src/__tests__/` är förseglad under Fas 2. Verktyget `save_code` avvisar alla skrivförsök utanför `src/features/${targetDomain}/`.
+2. **Agentens 3 handlingsvägar:** Under Fas 2 har agenten tre likvärdiga strategier:
+   - *Alternativ 1 (Lokal reparation):* Rätta logik, typer eller metodanrop i den befintliga källkodsfilen.
+   - *Alternativ 2 (Modulär expansion):* Skapa nya hjälpfiler/adaptrar inom domänen och exportera via `index.ts`.
+   - *Alternativ 3 (Process-Fail-Fast):* Om testet kräver omöjliga saker som motsäger infrastrukturen, deklarerar agenten `STATUS: HAVERERAT_KONTRAKT [orsak]`.
+3. **Mekanisk Omvändelse:** När `HAVERERAT_KONTRAKT` deklareras, eller om Fas 2 förbrukar sina 3 försök utan godkänt test:
+   - Källkodsutkast saneras (`git checkout -- src/features/${targetDomain}`).
+   - Felloggen sparas i `doc/LAST_CYCLE/CRASH_DUMP.json`.
+   - Motorn loopar tillbaka till Fas 1 (Steg 1b/3a) med felloggen inkluderad i startankaret för omplanering.
+4. **Cykelspärr:** Max en (1) automatisk omvändelse tillåts per körning för att förhindra token-rusning.
 
 ### Konsekvenser
-- Agenten slipper gissa eller manipulera tester när den stöter på arkitektoniska patruller.
-- Byggmotorn blir självläkande på systemnivå (planen korrigeras, inte bara källkoden).
-- Falska gröna byggen elimineras permanent.
+- Agenten slipper panik-fuska vid arkitektoniska hinder.
+- Systemet blir självläkande på plannivå.
+- Falska gröna byggen elimineras.
