@@ -17,6 +17,7 @@
     "verify": "pnpm test && node scripts/verify-architecture.js && pnpm update-index",
     "test": "node --import tsx scripts/run-tests.js",
     "update-index": "node scripts/generate-feature-index.js",
+    "synka": "tsx --env-file=.env scripts/synka.ts",
     "compress-adrs": "node scripts/compress-adrs.js",
     "start": "pnpm samrad"
   },
