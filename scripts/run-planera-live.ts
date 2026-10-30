@@ -273,10 +273,12 @@ KRAV:
     );
     appendCycleLog('3a Att följa: Testspecifikation', steg3a);
 
-    const steg3b = await runMicroChannel('Att följa', 'Steg 3b: Källkodsspecifikation.', `${startAnchor}\nTEST:\n${steg3a}`, systemInstruction, inspectionTools, executeInspection);
+    const steg3b = await runMicroChannel('Att följa', 'Steg 3b: Källkodsspecifikation inklusive domänexport.', `${startAnchor}\nTEST:\n${steg3a}`, systemInstruction, inspectionTools, executeInspection);
     appendCycleLog('3b Att följa: Källkod', steg3b);
 
-    steg3c = await runMicroChannel('Att förlikas', 'Steg 3c: Slutgiltigt byggkontrakt.', steg3b, systemInstruction);
+    // Bär ALLTID med hela startankaret och biljetten så att förlikaren aldrig blir minneslös
+    const forlikasAnchor = `${startAnchor}\n\nGENERERAT TEST:\n${steg3a}\n\nKÄLLKODSSPECIFIKATION:\n${steg3b}`;
+    steg3c = await runMicroChannel('Att förlikas', 'Steg 3c: Slutgiltigt byggkontrakt. Fastställ filer att skapa och bevara i index.ts.', forlikasAnchor, systemInstruction);
     appendCycleLog('3c Att förlikas: Slutgiltigt Byggkontrakt', steg3c);
   }
 
@@ -355,10 +357,23 @@ KRAV:
 
   const fas2Prompt = isMaint 
     ? `Fas 2: Skriv och tillämpa underhållskoden för att lösa biljetten ${ticketId}. Spara filerna med save_code!`
-    : `Fas 2: Skriv källkoden under 'src/features/${targetDomain}/' med save_code för att uppfylla byggkontraktet.\nTESTKOD SOM MÅSTE BLI GRÖN:\n\`\`\`typescript\n${fs.existsSync(transientTestFile) ? fs.readFileSync(transientTestFile, 'utf-8') : ''}\n\`\`\`\nDu MÅSTE spara koden direkt med save_code! Utforskningsverktyg är inaktiverade.`;
-    
-  await runMicroChannel('Att följa', fas2Prompt, `BYGGKONTRAKT:\n${steg3c}`, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+    : `Fas 2: KÄLLKODSEXEKVERING FÖR ${targetDomain.toUpperCase()}
+UPPDRAG: Implementera källkoden under 'src/features/${targetDomain}/' för att uppfylla byggkontraktet och få testet grönt.
 
+REGLER OCH DINA 3 TILLÅTNA STRATEGIER:
+1. TESTFILEN ÄR FÖRBJUDEN ATT RÖRA: Alla anrop mot 'src/__tests__/' avvisas mekaniskt!
+2. MODULÄR DESIGN: Skapa specifika källkodsfiler (t.ex. ping.ts) och exportera dem via 'index.ts'. Du får ALDRIG radera befintliga re-exporter (t.ex. heartbeat) i index.ts!
+3. FULL KONTRAKTSEFTERLEVNAD: Källkoden MÅSTE använda Zod-scheman och returnera de typer som kontraktet föreskriver.
+
+TESTKOD SOM SKALL UPPFYLLAS:
+\`\`\`typescript
+${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}
+\`\`\`
+Anropa save_code för att spara dina källkodsfiler omedelbart!`;
+
+  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
+  await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+    
   if (!isMaint) {
     const barrelPath = path.join(ROOT_DIR, `src/features/${targetDomain}/index.ts`);
     if (fs.existsSync(barrelPath)) {
