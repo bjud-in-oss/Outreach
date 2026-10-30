@@ -1,12 +1,9 @@
-import { z } from 'zod';
-import { getGlobalSwarmEventBus } from '../gemini_live_swarm/bus/swarmEventBus';
+import { getGlobalSwarmEventBus } from '../../shared/bus/swarmEventBus';
 
-export const PingEventSchema = z.object({
-  type: z.literal('telemetry:ping'),
-  timestamp: z.number(),
-});
-
-export type PingEvent = z.infer<typeof PingEventSchema>;
+export interface PingEvent {
+  type: 'telemetry:ping';
+  timestamp: number;
+}
 
 export function emitPing() {
   const eventBus = getGlobalSwarmEventBus();
@@ -14,6 +11,11 @@ export function emitPing() {
     type: 'telemetry:ping',
     timestamp: Date.now(),
   };
+
   eventBus.publish('telemetry:ping', event);
-  return { success: true, event };
+
+  return {
+    success: true,
+    event,
+  };
 }
