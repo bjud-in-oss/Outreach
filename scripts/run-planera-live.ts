@@ -394,7 +394,31 @@ KRAV:
         }
         const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;
         let patchSaved = false;
-        await runMicroChannel('Att vända om', `Vitest underkände transient-testet!\nFELLOGG:\n${testLog}\nÅtgärda felet med save_code!`, `FELLOGG:\n${testLog}`, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => patchSaved });
+
+        // Samla ihop test och källkod så modellen slipper vara blind under självrättningen
+        const testContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';
+        const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
+        let currentSourceSummary = '';
+        if (fs.existsSync(domainDir)) {
+          const files = fs.readdirSync(domainDir).filter(f => f.endsWith('.ts'));
+          for (const f of files) {
+            currentSourceSummary += `\n--- src/features/${targetDomain}/${f} ---\n` + fs.readFileSync(path.join(domainDir, f), 'utf-8');
+          }
+        }
+
+        const retryPrompt = `FAS 2 SJÄLVRÄTTNING (Försök ${attempts}/3):
+Vitest underkände transient-testet!
+FELLOGG:
+${testLog}
+
+VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
+1. TESTFILEN ÄR STRIKT SKRIVSKYDDAD OCH FÅR INTE ÄNDRAS. Att försöka spara till '${transientTestFile}' avvisas mekaniskt!
+2. Du MÅSTE åtgärda felet genom att skriva och spara om källkoden under 'src/features/${targetDomain}/' via save_code!
+3. Analysera felet mot testet och din befintliga källkod nedan, korrigera källkoden och anropa save_code omedelbart.`;
+
+        const retryAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${currentSourceSummary}\n\nFELLOGG:\n${testLog}`;
+
+        await runMicroChannel('Att vända om', retryPrompt, retryAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => patchSaved });
       }
     }
   }

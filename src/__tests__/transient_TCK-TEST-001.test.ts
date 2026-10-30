@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { getGlobalSwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
+import { getGlobalSwarmEventBus, SwarmEventBus } from '../shared/bus/swarmEventBus';
 import { emitPing, PingEvent } from '../features/telemetry';
 
-describe('TCK-TEST-001 - emitPing and EventBus Integration', () => {
-  const eventBus = getGlobalSwarmEventBus();
+describe('transient_TCK-TEST-001: emitPing Resiliens', () => {
+  let eventBus: SwarmEventBus;
 
   beforeEach(() => {
+    eventBus = getGlobalSwarmEventBus();
     eventBus.clear();
   });
 
@@ -13,23 +14,19 @@ describe('TCK-TEST-001 - emitPing and EventBus Integration', () => {
     eventBus.clear();
   });
 
-  it('should emit a telemetry:ping event when emitPing is called', () => {
-    let receivedEvent: PingEvent | null = null;
-
-    const subscription = eventBus.subscribe('telemetry:ping', (event: PingEvent) => {
-      receivedEvent = event;
+  it('ska emittera en giltig telemetry:ping händelse via SwarmEventBus', () => {
+    const receivedEvents: PingEvent[] = [];
+    
+    eventBus.subscribe('telemetry:ping', (event: PingEvent) => {
+      receivedEvents.push(event);
     });
 
-    try {
-      const result = emitPing();
+    const result = emitPing();
 
-      expect(result.success).toBe(true);
-      expect(receivedEvent).not.toBeNull();
-      expect(receivedEvent?.type).toBe('telemetry:ping');
-      expect(typeof receivedEvent?.timestamp).toBe('number');
-      expect(result.event).toEqual(receivedEvent);
-    } finally {
-      subscription.unsubscribe();
-    }
+    expect(result.success).toBe(true);
+    expect(result.event).toBeDefined();
+    expect(result.event.type).toBe('telemetry:ping');
+    expect(receivedEvents).toHaveLength(1);
+    expect(receivedEvents[0]).toEqual(result.event);
   });
 });

@@ -67,6 +67,10 @@ export class SwarmEventBus {
     });
   }
 
+  public publish(type: SwarmEventType, payload: any): void {
+    this.emit(type, payload);
+  }
+
   public clear(): void {
     this.listeners.clear();
   }
