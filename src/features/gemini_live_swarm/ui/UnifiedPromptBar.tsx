@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Mic, Send } from 'lucide-react';
 import { useOptionalSwarmContext } from '../context/SwarmContext.tsx';
-import { REFLECTION_MODES, usePromptBarState } from './promptBarHelper.ts';
+import { REFLECTION_MODES, usePromptBarState, formatMemoryIndicator } from './promptBarHelper.ts';
 
 export interface UnifiedPromptBarProps {
   onSendMessage?: (text: string) => void;
@@ -13,7 +13,13 @@ export const UnifiedPromptBar: React.FC<UnifiedPromptBarProps> = ({ onSendMessag
   const bar = usePromptBarState(swarmCtx, onSendMessage);
 
   return (
-<div data-testid="unified-prompt-bar" className={`flex flex-col gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg w-full max-w-4xl mx-auto ${className}`}>
+<div data-testid="unified-prompt-bar" className={`flex flex-col gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg w-full max-w-4xl mx-auto relative ${className}`}>
+  
+  {/* Minnesindikator placerad absolut överst till vänster */}
+  <div data-testid="memory-display" className="absolute -top-3 left-4 bg-slate-800 px-2 py-0.5 rounded text-[10px] font-mono text-slate-400 border border-slate-700 shadow-sm z-10 select-none">
+    {formatMemoryIndicator(bar.usageRatio)}
+  </div>
+
   <textarea
     data-testid="prompt-textarea"
     rows={2}
@@ -28,7 +34,7 @@ export const UnifiedPromptBar: React.FC<UnifiedPromptBarProps> = ({ onSendMessag
         bar.handleSend();
       }
     }}
-    className="w-full max-h-24 overflow-y-auto bg-slate-950 border border-slate-800 rounded px-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono resize-none leading-relaxed"
+    className="w-full max-h-24 overflow-y-auto bg-slate-950 border border-slate-800 rounded px-3 py-1.5 pt-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500 font-mono resize-none leading-relaxed relative z-0"
   />
 
   <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60">

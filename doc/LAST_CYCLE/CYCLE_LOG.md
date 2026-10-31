@@ -1,5 +1,5 @@
 # BYGGCYKEL LOGG: TCK-034
-**Starttid:** 2026-10-31T11:09:44.409Z
+**Starttid:** 2026-10-31T11:43:08.687Z
 **Modell:** gemini-3.8-live
 
 ---
@@ -30,11 +30,11 @@ export function formatMemoryIndicator(usageRatio?: number): string {
 
 
 #### 1a Att följa: Intention & Nytta
-Syftet är att ge användaren transparens och trygghet genom att synliggöra det kvarvarande kontextfönstret i realtid. Detta möjliggör mer kontrollerade och förutsägbara interaktioner.
+Givet att jag befinner mig i en interaktiv session och systemet spårar minnesanvändningen, när minneskvoten ändras, så ska jag se en formaterad textindikator för minnesstatus visas absolut placerad till vänster ovanför promptfältets textarea.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit slutförd. Uppdraget berör endast en FSD-domän, `gemini_live_swarm`, och håller sig strikt till givna API-kontrakt. Inga avvikelser i strukturen har identifierats.
+Granskningen är genomförd. Förändringen påverkar enbart domänen `gemini_live_swarm` och är helt i linje med våra FSD-kontrakt. Inga historiska tester påverkas negativt.
 
 
 #### 0b Att förlikas: Vägval
@@ -46,21 +46,21 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-034 formulerar jag tre ortogonala alternativ:
+För att lösa TCK-034 och integrera minnesindikatorn i UnifiedPromptBar, formulerar jag tre olika metodiska alternativ.
 
-Alternativ 1: Direkt Context Injection via SwarmContext. Vi förlänger SwarmContext för att inkludera `usageRatio` och skickar detta direkt ned till `UnifiedPromptBar`. Detta är enkelt att implementera, men skapar en strikt koppling mellan kontext och komponent.
+Det första alternativet är direkt kontextkonsumtion, där vi drar usageRatio direkt från svärmens existerande kontext-hook.
 
-Alternativ 2: Händelsedriven Push-modell via SwarmEventBus. `UnifiedPromptBar` prenumererar på telemetrievent via `SwarmEventBus` för att hämta aktuell `usageRatio`. Detta avkopplar komponenterna maximalt och drar nytta av befintlig bussinfrastruktur.
+Det andra alternativet är eventdriven dataströmning, där komponenten prenumererar på telemetri-event via SwarmEventBus för asynkrona uppdateringar.
 
-Alternativ 3: Telemetry Hook Integrera via `useSwarmTelemetry`. Vi skapar en specificerad telemetrikrok i `UnifiedPromptBar` som direkt läser av minnesutnyttjandet från telemetriströmmen. Det håller telemetrilogik isolerad nära källan.
+Det tredje alternativet är en frikopplad custom-hook, som abstraherar all logik och formatering till en separat enhet som komponenten sedan använder.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att Alternativ 2, den händelsedrivna Push-modellen via SwarmEventBus, är mest resilient. Genom att avkoppla telemetrilogik från UI-komponenterna undviker vi strikta beroenden och säkerställer att komponenten förblir intakt även vid förändringar i kontextmodellen.
+Givet resiliensgranskningen av alternativen är alternativet med en frikopplad custom-hook det mest resilienta. Genom att kapsla in tillståndshantering och säkra anrop mot ett definierat kontrakt isoleras eventuella fel och latenta nätverksproblem, vilket skyddar gränssnittet från att propagera fel och säkerställer en stabil renderering genom gracefull degradation.
 
 
 #### 2d Att förlikas: Mättnad
-Jag har vägt spänningsfältet och förlikat de olika perspektiven. Alternativ 2, den händelsedrivna Push-modellen via SwarmEventBus, vinner kontraktet för att säkerställa maximal resiliens i arkitekturen. MÄTTNAD: JA.
+Det vinnande alternativet är den frikopplade custom-hooken. Genom att kapsla in tillståndshantering och gränssnittskommunikation enligt ett strikt kontrakt uppnår vi maximal resiliens. Fel isoleras effektivt, vilket möjliggör en stabil och förutsägbar renderering. MÄTTNAD: JA.
 
 
 #### 3a Att följa: Testspecifikation
@@ -72,4 +72,4 @@ Jag har vägt spänningsfältet och förlikat de olika perspektiven. Alternativ 
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-För TCK-034 fastställer jag följande byggkontrakt: vi uppdaterar `promptBarHelper.ts` med funktionen `formatMemoryIndicator`, integrerar den i `UnifiedPromptBar.tsx` för visning, och bibehåller nuvarande exportstruktur i `index.ts`. Inga nya filer behöver skapas.
+För TCK-034 fastställer jag följande byggkontrakt: vi uppdaterar ui/promptBarHelper.ts med funktionen formatMemoryIndicator, och integrerar denna i ui/UnifiedPromptBar.tsx för att rendera minnesindikatorn visuellt. Inga ändringar krävs i index.ts.
