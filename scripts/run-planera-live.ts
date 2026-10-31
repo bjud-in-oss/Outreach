@@ -23,6 +23,7 @@ const TICKETS_INDEX_PATH = path.join(ROOT_DIR, 'doc/TICKETS.md');
 const LAST_CYCLE_DIR = path.join(ROOT_DIR, 'doc/LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(LAST_CYCLE_DIR, 'CYCLE_LOG.md');
 const CRASH_DUMP_PATH = path.join(LAST_CYCLE_DIR, 'CRASH_DUMP.json');
+const PAYLOAD_PATH = path.join(LAST_CYCLE_DIR, 'bidi_payload.json');
 
 const BIDI_RUNNER = path.join(ROOT_DIR, 'scripts/bidiLiveRunner.ts');
 
@@ -89,15 +90,18 @@ const runMicroChannel = async (
 
   while (currentTurn <= maxTurns) {
     const tmpRespFile = path.join(LAST_CYCLE_DIR, `bidi_resp_${Date.now()}.txt`);
-    const runArgv = [
-      'npx', 'tsx', BIDI_RUNNER,
-      `"${agentRole}"`,
-      `"${promptInfo.replace(/"/g, '\\"')}"`,
-      `"${activeAnchor.replace(/"/g, '\\"')}"`,
-      `"${instruction.replace(/"/g, '\\"')}"`,
-      `"${tmpRespFile}"`,
-      `'${JSON.stringify(tools)}'`
-    ];
+    
+    // NY LÖSNING: Skriv payload till disk för att undvika Bash-escape-fel!
+    fs.writeFileSync(PAYLOAD_PATH, JSON.stringify({
+      agentRole,
+      promptInfo,
+      anchorData: activeAnchor,
+      instruction,
+      outFile: tmpRespFile,
+      tools
+    }, null, 2), 'utf-8');
+
+    const runArgv = ['npx', 'tsx', BIDI_RUNNER, PAYLOAD_PATH];
 
     try {
       execSync(runArgv.join(' '), { stdio: 'inherit', cwd: ROOT_DIR });
@@ -265,7 +269,7 @@ async function main() {
   console.log('\n--- ADR-023: Fraktal Omvändelse (Post-Planering) ---');
   const steg3d = await runMicroChannel(
     'Att vända om',
-    `Steg 3d: Epistemisk Omvändelse. Vi har precis låst byggkontraktet (se startankaret). Innan vi går till produktion (Fas 2), zooma ut! Missade vi något kritiskt? Bygger detta på en falsk premiss? Finns det enklare vägar vi blivit blinda för? Svara med din analys. Om du hittar ett katastrofalt fel som kräver omplanering, avsluta med: STATUS: OMSTART. Annars avsluta med STATUS: GODKÄND.`,
+    `Steg 3d: Epistemisk Omvändelse. Vi har precis låst byggkontraktet (se startankaret). Innan vi går till produktion (Fas 2), zooma ut!\nMissade vi något kritiskt? Bygger detta på en falsk premiss (som t.ex. ett tomt catch-block eller ogiltigt syntax)? Finns det enklare vägar vi blivit blinda för?\nSvara med din analys. Om du hittar ett katastrofalt fel som kräver omplanering, avsluta med: STATUS: OMSTART.\nAnnars avsluta med STATUS: GODKÄND.`,
     steg3c,
     systemInstruction
   );
@@ -274,7 +278,7 @@ async function main() {
   if (steg3d.includes('STATUS: OMSTART')) {
     const steg3e = await runMicroChannel(
       'Att förlikas',
-      `Steg 3e: Förlikning av Omvändelse. 'Att vända om' har upptäckt en kritisk brist i vårt kontrakt och ropat på OMSTART. Läs analysen i startankaret. Ska vi acceptera bristen för att nå syftet, eller måste vi verkligen planera om? Om vi måste planera om, svara ENBART: STATUS: OMSTART_FAS1. Om vi kan gå vidare (och ev. lösa det senare), svara: STATUS: GODKÄND_MED_SKULD.`,
+      `Steg 3e: Förlikning av Omvändelse. 'Att vända om' har upptäckt en kritisk brist i vårt kontrakt och ropat på OMSTART.\nLäs analysen i startankaret. Ska vi acceptera bristen för att nå syftet, eller måste vi verkligen planera om?\nOm vi måste planera om, svara ENBART: STATUS: OMSTART_FAS1.\nOm vi kan gå vidare (och ev. lösa det senare), svara: STATUS: GODKÄND_MED_SKULD.`,
       steg3d,
       systemInstruction
     );
