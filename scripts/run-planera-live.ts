@@ -19,6 +19,7 @@ import { applySourcePatch } from './drivers/patchMutator.js';
 const ROOT_DIR = process.cwd();
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
+const CRASH_DUMP_PATH = path.join(CYCLE_LOG_DIR, 'CRASH_DUMP.json');
 const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.4.md');
 const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
 const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
