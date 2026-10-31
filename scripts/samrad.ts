@@ -22,6 +22,7 @@ if (!API_KEY) {
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
+let sessionCreatedTicket: string | null = null;
 
 function executeSamradTool(name: string, args: Record<string, any>): string {
   try {

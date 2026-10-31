@@ -1,40 +1,30 @@
-# BYGGCYKEL LOGG: TCK-MAINT-003
-**Starttid:** 2026-10-31T14:41:33.004Z
+# BYGGCYKEL LOGG: TCK-MAINT-004
+**Starttid:** 2026-10-31T14:44:53.976Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-003: Bevara undermappar vid automatisk export
+# TCK-MAINT-004: Sessionsisolering och underhållsstöd i samrad.ts
 
 ## MÅL
-Rätta logiken för barrel-uppdatering i scripts/run-planera-live.ts så att underkataloger bevaras.
+Mötesbryggan ska endast erbjuda byggstart vid exit ifall en ny biljett skapades under den aktiva sessionen, samt tillåta underhållsbiljetter.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd read_file för att inspektera scripts/run-planera-live.ts runt rad 385–395 där createdModules fylls på.
-2. Använd apply_patch med:
-search_block:
-      if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
-        const base = path.basename(rel, '.ts');
-        if (!createdModules.includes(base)) createdModules.push(base);
-      }
-
-replace_block:
-      if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
-        const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
-        const base = path.relative(domainDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/');
-        if (!createdModules.includes(base)) createdModules.push(base);
-      }
+1. Använd read_file på scripts/samrad.ts.
+2. Använd apply_patch för att flytta variabeln sessionCreatedTicket till toppskopet ovanför main().
+3. I save_file: sätt sessionCreatedTicket = ticketId när en biljett sparas under doc/.TICKETS/. Tillåt TCK-MAINT-biljetter utan krav på export function.
+4. Vid exit: fråga ENBART om byggstart ifall sessionCreatedTicket har ett värde.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att vi har en fil skapad i en undermapp under en funktionell domän, när den automatiska exportlogiken körs, så ska exportvägen i barrel-filen inkludera undermappens struktur i förhållande till domänens rot istället för att bara platta till filnamnet. Speglade detta din intention?
+Intentionen med denna uppdatering är att skapa en tryggare och mer fokuserad arbetsmiljö genom att isolera byggstarten, så att du bara blir tillfrågad när det faktiskt har skapats en ny biljett. Detta förhindrar onödiga avbrott under underhållsarbete.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. Ändringen i `scripts/run-planera-live.ts` bryter inte mot FSD-isoleringen då den hanterar exportvägar inom en enskild domän, uppfyller kraven för API-användning och sanering av historiska testinvarianter är deklarerad för uppdatering.
+Jag har granskat kontraktet för TCK-MAINT-004. Förändringarna sker uteslutande i skriptet scripts/samrad.ts, vilket inte påverkar FSD-domänerna under src/features och uppdraget uppfyller därmed alla kontraktkrav.
 
 
 #### 0b Att förlikas: Vägval
@@ -46,18 +36,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att möta målet i TCK-MAINT-003 och bevara underkataloger i barrel-genereringen, formulerar jag följande tre ortogonala alternativ:
+Här är tre ortogonala alternativ för att lösa TCK-MAINT-004:
 
-Det första är att beräkna sökvägen baserat på domängränsen genom att använda `path.relative` från domänens rot för att få en korrekt intern struktur.
+Alternativ 1 innebär att vi använder SwarmEventBus för att kommunicera biljettkapten, vilket frikopplar tillståndet helt.
 
-Det andra alternativet är att manipulera den relativa sökvägen direkt genom att strimla bort prefixet för domänen ur `rel`-variabeln.
+Alternativ 2 bygger på en ren global variabel i samrad.ts med direkt uppdatering vid spara, samt valideringslogik för underhållsbiljetter.
 
-Det tredje alternativet är en strukturell avbildning där vi använder en `glob`-sökning inom domänen för att hitta alla moduler utan att vara beroende av enskilda filtapporter.
+Alternativ 3 innebär att vi kapslar in tillståndshanteringen i en dedikerad modul ovanför main(), där vi validerar formatet på TCK-MAINT strikt.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett, att använda `path.relative` från domänen, bedöms som mest resilient. Den hanterar varierande sökvags-strukturer och plattformsspecifika separatorer på ett säkert sätt och säkrar exakt matchning mot FSD-kontraktet, vilket minimerar risken för felaktiga exporter.
+Alternativ 1 ger bäst frikoppling, men tillför komplexitet. Alternativ 2 är mest robust för det specifika skriptet trots globalt tillstånd. Alternativ 3 ger starkast validering men kräver ny struktur. För högst resiliens föreslås enkelhet.
 
 
 #### 2d Att förlikas: Mättnad
-Vi har vägt avvägningarna och slår fast att alternativet att använda `path.relative` från domänen är det vinnande spåret. Det ger maximal resiliens och säkrar exakt matchning mot FSD-kontraktet, vilket minimerar risker för felaktiga exporter. MÄTTNAD: JA.
+Jag fastställer att Alternativ 2 är det vinnande alternativet. Det erbjuder den högsta resiliensen genom sin robusthet för det specifika skriptet. Vi har nått MÄTTNAD.
