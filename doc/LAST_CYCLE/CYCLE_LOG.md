@@ -1,32 +1,17 @@
-# BYGGCYKEL LOGG: TCK-MAINT-006
-**Starttid:** 2026-10-31T16:04:21.228Z
+# BYGGCYKEL LOGG: TCK-MAINT-007
+**Starttid:** 2026-10-31T16:14:20.820Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-006: Defensiv formatMemoryIndicator och konsolidering av TCK-034
+# TCK-MAINT-007: Skapa permanent test för formatMemoryIndicator
 
 ## MÅL
-1. Gör `formatMemoryIndicator` i `src/features/gemini_live_swarm/ui/promptBarHelper.ts` defensiv så att den hanterar tomma anrop (fallback: `0 / 8192 tokens`) och siffror, utan att krascha vid undefined.
-2. Skapa den permanenta testfilen `src/features/gemini_live_swarm/__tests__/formatMemoryIndicator.test.ts`.
-3. Markera TCK-034 som VERIFIED i `doc/TICKETS.md`.
+Skapa testfilen `src/features/gemini_live_swarm/__tests__/formatMemoryIndicator.test.ts`.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd `read_file` på `src/features/gemini_live_swarm/ui/promptBarHelper.ts`.
-2. Använd `apply_patch` för att uppdatera `formatMemoryIndicator`:
-search_block:
-export function formatMemoryIndicator(metric: ContextUsageMetric): string {
-  return `${metric.usedTokens} / ${metric.maxTokens} tokens`;
-}
-
-replace_block:
-export function formatMemoryIndicator(metric?: any): string {
-  if (!metric || typeof metric !== 'object') return '0 / 8192 tokens';
-  return `${metric.usedTokens ?? 0} / ${metric.maxTokens ?? 8192} tokens`;
-}
-
-3. Använd `save_code` för att skapa `src/features/gemini_live_swarm/__tests__/formatMemoryIndicator.test.ts`:
+Använd `save_code` för att skapa `src/features/gemini_live_swarm/__tests__/formatMemoryIndicator.test.ts` med:
 import { describe, it, expect } from 'vitest';
 import { formatMemoryIndicator } from '../index.ts';
 
@@ -41,22 +26,15 @@ describe('TCK-034 - Visning av kontextminne', () => {
   });
 });
 
-4. Använd `apply_patch` på `doc/TICKETS.md`:
-search_block:
-- [ ] **TCK-034**: (Skapad via samrad)
-
-replace_block:
-- [x] **TCK-034** (VERIFIED): Visning av kontextminne
-
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att minnesindikatorn anropas utan eller med ofullständig mätvärdesdata, När funktionen `formatMemoryIndicator` exekveras utan giltig data, Då skall en fallback-sträng returneras som visar "0 / 8192 tokens" i ställer för att krascha applikationen.
+Syftet med detta test är att säkerställa att systemet tydligt visar hur mycket av kontextminnet som används av modellen. Genom att ge användaren full transparens kring tokenutnyttjandet, främjar det förtroende och hjälper till att förvalta resurserna väl, vilket skapar en mer förutsägbar och stabil upplevelse.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. Alla ändringar sker inom en och samma FSD-domän `gemini_live_swarm`, och vi uppfyller samtliga krav för en trygg exekvering. Processen är redo för nästa steg.
+Audit OK: TCK-MAINT-007 berör endast domänen gemini_live_swarm, vilket uppfyller kravet på FSD-isolering.
 
 
 #### 0b Att förlikas: Vägval
@@ -68,18 +46,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-006 formulerar jag tre ortogonala alternativ.
+För att lösa TCK-MAINT-007 och säkerställa att testet för `formatMemoryIndicator` upprätthåller vår arkitektoniska standard, formulerar jag nu tre ortogonala alternativ.
 
-Alternativ ett är direkt funktionspatchning, där vi implementerar defensiva kontroller och fallback-värden direkt i `formatMemoryIndicator` för ett minimalt koddelta.
+Alternativ 1: Direkt isolerad enhetstestning. Vi implementerar det strikta kontraktet enligt TCK med `save_code` för att verifiera formaterings- och fallback-logiken funktionellt.
 
-Alternativ två är strikt datavalidering via Zod, där vi validerar konfigurationen och returnerar standardsträngen vid ogiltig input.
+Alternativ 2: Resilient parametriserad testsvit. Vi utökar testet med data-driven validering mot Zod-scheman samt gränsvärden för token-användning för att säkra hög resiliens och upptäcka latenta fel.
 
-Alternativ tre är hookbaserad hantering genom att flytta logiken till en `useMemoryIndicator`-hook, vilket separerar tillståndshantering från presentationslagret.
+Alternativ 3: Integrerad telemetrisimulering. I stället för att isolera funktionen simulerar vi ett händelseflöde via SwarmEventBus där metrikdata genereras och utvärderas sekventiellt i domänens kontext.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att alternativ ett bäst skyddar systemet mot krascher genom att direkt hantera felaktiga tillstånd lokalt, utan att bygga in onödig komplexitet som i alternativ tre, och det är mer kostnadseffektivt än Zod-validering för en ren presentationsfunktion.
+Alternativ 1 är för sårbart för kantfallsparametrar. Alternativ 3 avviker för långt från testets renodlade syfte genom att introducera eventbussen. Alternativ 2 ger bäst resiliens och säkrar långsiktig stabilitet.
 
 
 #### 2d Att förlikas: Mättnad
-Jag har vägt spänningsfältet och utvärderat spänningen mellan stabilitet och komplexitet. Jag slår fast att Alternativ 1 är det vinnande kontraktet. MÄTTNAD: JA.
+Jag har vägt spänningsfältet mellan alternativen och slår fast att Alternativ 2 är det vinnande kontraktet. Det säkrar bäst resiliens och långsiktig stabilitet. MÄTTNAD: JA.
