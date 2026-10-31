@@ -1,44 +1,36 @@
-# BYGGCYKEL LOGG: TCK-034
-**Starttid:** 2026-10-31T13:19:07.079Z
+# BYGGCYKEL LOGG: TCK-MAINT-001
+**Starttid:** 2026-10-31T13:50:22.381Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-034: Visning av kontextminne
+# TCK-MAINT-001: Infrastrukturreparation och Biljettstädning
 
-## DOMÄN
-`src/features/gemini_live_swarm/`
-
-## Beskrivning
-Användaren vill kunna se hur mycket kontextminne som används direkt i gränssnittet, placerat alldeles framför "👤 Du:"-etiketten.
-
-## Teknisk specifikation
-Implementera en funktion för att hämta och formatera kontextminnesanvändningen.
-
-```typescript
-import { ContextUsageMetric } from 'src/features/gemini_live_swarm/telemetry/contextUsageMetricSchema';
-
-export function formatMemoryIndicator(metric: ContextUsageMetric): string {
-  // Formaterar kontextminnesanvändningen för visning i UI
-  return `${metric.usedTokens} / ${metric.maxTokens} tokens`;
-}
-```
-
-## Godkännandekriterier
-- [ ] En indikator för minnesanvändning visas i UI.
-- [ ] Indikatorn är placerad precis före "👤 Du:"-texten.
-- [ ] Informationen uppdateras i realtid under sessionen.
+## MÅL
+1. Åtgärda rad 128 i `src/features/gemini_live_swarm/index.ts`:
+   - Ta bort den ogiltiga raden `export * from './promptBarHelper';`.
+   - Exportera `formatMemoryIndicator` korrekt från `./ui/promptBarHelper.ts`.
+2. Åtgärda `scripts/run-planera-live.ts`:
+   - När moduler exporteras i `index.ts` under barrel-uppdateringen ska undermappar bevaras (`ui/` etc.) istället för att strippas med `path.basename()`.
+3. Åtgärda `scripts/samrad.ts`:
+   - Importera `execSync` från `child_process`.
+   - Lär Mötesbryggan att om användaren vill åtgärda skript/dokumentation/infrastruktur ska den skapa en `TCK-MAINT-XXX`-biljett (utan krav på `export function` eller `.feature`-filer).
+   - Mötesbryggan ska endast erbjuda att starta byggmotorn om en ny biljett faktiskt skapades under den aktiva sessionen.
+4. Biljettstädning i `doc/TICKETS.md`:
+   - Markera `TCK-034` som `[x] **TCK-034** (VERIFIED)`.
+   - Markera `TCK-TEST-001` som `[x] **TCK-TEST-001** (VERIFIED)`.
+   - Radera eventuella transienta testfiler i `src/__tests__/`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att en Gemini Live-session är aktiv och kontextminne används, när jag interagerar med systemet, så ska den aktuella minnesanvändningen visas alldeles framför "👤 Du:"-etiketten.
+Givet att en infrastrukturuppdatering initieras för TCK-MAINT-001 När felaktiga exportrader tas bort och skripten uppdateras för att hantera sökvägar korrekt Så ska exporten i gemini_live_swarm/index.ts och exekveringen i samrådsskripten fungera felfritt.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Granskningen är genomförd och godkänd. Uppdraget omfattar endast FSD-domänen `gemini_live_swarm` och håller sig strikt till API-kontraktet. Vi går vidare till vägval och förlikningsporten.
+Först, gällande kontraktsauditen för TCK-MAINT-001: Arbetet i `src/features/gemini_live_swarm` omfattar endast en FSD-domän, och ändringarna i skripten i `scripts/`  samt dokumentationen i `doc/` följer våra regler för infrastrukturunderhåll. Inga externa API-gränser eller otillåtna paket används. Uppdraget är därmed godkänt för linjär planering.
 
 
 #### 0b Att förlikas: Vägval
@@ -50,30 +42,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att lösa TCK-034 och visa kontextminnet.
+För att lösa TCK-MAINT-001 och hantera underhållsbehoven formulerar jag tre ortogonala lösningsalternativ.
 
-Alternativ ett: Direkt kontextkoppling. Vi integrerar minnesmätet i `SwarmContext` eller `useSwarmTelemetry`, och låter UI-komponenterna prenumerera direkt på uppdateringarna för att ritas om.
+Alternativ ett: Direkt skriptad modifikation. Vi uppdaterar `index.ts`, `scripts/run-planera-live.ts`, och `scripts/samrad.ts` genom direkta kodändringar med fokus på exakta mönster enligt nuvarande AST-regler.
 
-Alternativ två: Händelsedriven ström. Vi publicerar minnesmätetalen via `SwarmEventBus` och skapar en dedikerad hook som lyssnar på specifika telemetrievenemang för realtidsuppdatering direkt i komponenten.
+Alternativ två: Funktionsdriven abstraktion. Vi bygger om `scripts/run-planera-live.ts` för att använda ett mer robust AST-verktyg från repot för att garantera att undermappar bevaras under barrel-genereringen.
 
-Alternativ tre: Observerbaserad lokal butik. Vi etablerar en separat observabel lagring för minnesstatistik som uppdateras av telemetrimotorn, där UI-ytan sedan observerar butiken för ändringar.
+Alternativ tre: Systemisk omkonfigurering. Vi låter `samrad.ts` hantera infrastrukturbiljetter genom ett renodlat kontrakt utan hårdkodning i byggprocessen.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Ur ett resiliensperspektiv och utifrån våra FSD-principer är alternativ två bäst. Det isolerar minnesstatistiken från det centrala tillståndet via SwarmEventBus, vilket minskar risken för onödiga omritningar och stoppar fel från att propagera.
+Resiliensgranskningen visar att alternativ ett är mest stabilt, då direkta och kontrollerade kodändringar i skripten ger förutsägbarhet utan risker för abstraktionshaverier. Metoden minimerar friktion och följer strikt våra AST-krav och strukturella skyddsvallar.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ två är härmed fastställt som det vinnande kontraktet. Vi uppnår maximal isolering och resiliens genom att låta minnesstatistiken kommunicera uteslutande via SwarmEventBus. Mättnad: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-För att genomföra TCK-034 skapar vi en ny hjälpfunktion i `src/features/gemini_live_swarm/ui/promptBarHelper.ts` som förvaltar formatet för minnesindikatorn. Sedan bevarar och uppdaterar vi `src/features/gemini_live_swarm/ui/UnifiedPromptBar.tsx` för att integrera denna indikator och koppla den till telemetridatan för realtidsuppdatering.
+Resiliensgranskningen bekräftar att alternativ ett ger högst förutsägbarhet och stabilitet. Jag slår fast vinnande kontrakt och deklarerar MÄTTNAD: JA.
