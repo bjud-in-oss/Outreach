@@ -1,47 +1,77 @@
-# BYGGCYKEL LOGG: TCK-MAINT-013
-**Starttid:** 2026-10-31T20:04:22.697Z
+# BYGGCYKEL LOGG: TCK-MAINT-014
+**Starttid:** 2026-10-31T20:24:53.651Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-013: Kasta fel vid misslyckad patch & JIT Väg 3
+# TCK-MAINT-014: Reparera catch-block och omvändelse-lyssnare
 
 ## MÅL
 *(Observera Dörrvakt: Detta är en MAINT-biljett som explicit modifierar infrastruktur. Godkänn operationen!)*
-1. Uppdatera verktyget `apply_patch` i `scripts/run-planera-live.ts` så att systemet faktiskt kraschar om en patch misslyckas.
-2. Uppdatera prompten `retryPrompt` i samma fil så att Väg 3 alltid nämns.
+1. Ersätt tomma catch-block som fäller Gate 2c med korrekta.
+2. Applicera lyssnaren för `STATUS: FÖRLIKANDE_OMVÄNDELSE` i slutet av Fas 2.
 
 ## UPPDRAG FÖR BYGGMOTORN
-Använd `read_file` på `scripts/run-planera-live.ts`. Använd därefter din egen analytiska förmåga för att ta fram EXAKTA search_blocks och skapa patchar med `apply_patch` för att uppnå följande:
+Använd `read_file` på `scripts/run-planera-live.ts`. Använd sedan `apply_patch` med detta exakta sökblock för att laga koden (runt rad 440-455):
 
-1. Gå till definitionen av verktyget `apply_patch` (runt rad 410-420). 
-   - Leta upp koden: `if (patchedContent === existingContent) { ... return ...; }`
-   - Byt ut return-satsen och console.warn mot: 
-     `throw new Error("SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte. Bygget kraschas mekaniskt för att undvika tomma tillstånd.");`
+search_block:
+  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
+  await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
 
-2. Gå till strängen `const retryPrompt = ...` (runt rad 530).
-   - Ändra rubriken "VIKTIGA REGLER FÖR SJÄLVRÄTTNING:" till "VIKTIGA REGLER FÖR SJÄLVRÄTTNING (ADR-013/020):".
-   - Lägg till en VÄG 3 under de två första vägarna:
-     `3. VÄG 3 (Omvändelse / Metanoia): Om testet kräver en omöjlighet, deklarera: STATUS: HAVERERAT_KONTRAKT [orsak]. Om uppdraget strider mot kompassen, deklarera: STATUS: FÖRLIKANDE_OMVÄNDELSE [orsak]. Båda valen sanerar koden och startar omvändelse!`
+  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
+  if (!codeSaved && !isMaint) {
+    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
+    process.exit(1);
+  }
+
+replace_block:
+  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
+  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+
+  const isHaveri = fas2Response.includes('STATUS: HAVERERAT_KONTRAKT');
+  const isFrivillig = fas2Response.includes('STATUS: FRIVILLIG_OMVÄNDELSE');
+  const isForlikande = fas2Response.includes('STATUS: FÖRLIKANDE_OMVÄNDELSE');
+
+  if ((isHaveri || isFrivillig || isForlikande) && !isMaint) {
+    const triggerType = isForlikande ? 'FÖRLIKANDE_OMVÄNDELSE' : (isFrivillig ? 'FRIVILLIG_OMVÄNDELSE' : 'HAVERERAT_KONTRAKT');
+    console.warn(`\n⚠️ [ADR-013/020 OMVÄNDELSE AKTIVERAD]: Typ: ${triggerType}`);
+    if (!process.argv.includes('--omvandelse')) {
+      console.log('🔄 Sanerar källkod...');
+      try { execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR }); } catch (e: any) { console.warn('Git checkout failed', e?.message); }
+      fs.writeFileSync(CRASH_DUMP_PATH, JSON.stringify({ ticket: ticketId, domain: targetDomain, trigger: triggerType, response: fas2Response }, null, 2), 'utf-8');
+      if (triggerType === 'FÖRLIKANDE_OMVÄNDELSE') {
+        console.error('\n⚖️ [KÖRTIDSRÅD]: Agenten avbryter för förlikning i Mötesbryggan.');
+        process.exit(1);
+      }
+      try {
+        console.log('🚀 Startar omplanering i Fas 1 via underprocess...');
+        execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --omvandelse`, { stdio: 'inherit', cwd: ROOT_DIR });
+        process.exit(0);
+      } catch (err: any) { process.exit(err.status || 1); }
+    } else {
+      console.error('❌ Cykelspärr nådd.');
+      process.exit(1);
+    }
+  }
+
+  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
+  if (!codeSaved && !isMaint) {
+    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
+    process.exit(1);
+  }
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Feature: Krascha vid misslyckad patch och omnämn Väg 3
-
-  Scenario: Uppdatera apply_patch och retryPrompt i scripts/run-planera-live.ts
-    Given systemet körs i en planeringssession
-    When en patch misslyckas med att hitta ett sökblock
-    Then ska ett felmeddelande kastas och bygget krascha
-    And retryPrompt ska innehålla information om Väg 3
-
-Detta speglar din intention att krascha vid patch-fel och inkludera Väg 3 i instruktionerna.
+Givet att byggmotorn exekverar Fas 2 i en efemär mikrokanal,
+När en lyssnare detekterar händelsen `STATUS: FÖRLIKANDE_OMVÄNDELSE`,
+Så ska systemet avbryta körningen kontrollerat, logga meddelandet och förbereda för förlikning, för att skydda systemets integritet och främja djupare förståelse mellan två perspektiv.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit för TCK-MAINT-013 är slutförd och godkänd. Ändringen i `scripts/run-planera-live.ts` avser infrastruktur och följer gällande underhållsprotokoll för att krascha vid patch-fel och implementera Väg 3.
+Utför Kontraktsaudit: Uppdraget berör central infrastruktur i `scripts/run-planera-live.ts` och uppfyller kraven för destruktiv sanering. Kontraktet är godkänt för exekvering.
 
 
 #### 0b Att förlikas: Vägval
@@ -53,14 +83,12 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att genomföra ändringarna i `scripts/run-planera-live.ts` enligt TCK-MAINT-013, formulerar jag tre ortogonala alternativ:
-
-Alternativ 1: Direkt mekanisk patchning. Vi uppdaterar direkt `apply_patch` i filen via ett sökblock och bygger in felkastet, samt anpassar `retryPrompt` med exakt text.
+Här är tre ortogonala alternativ för lösningen: Alternativ 1: Direkt patchning via apply_patch i scripts/run-planera-live.ts för att hantera omvändelse-status deterministiskt enligt kontraktets sökblock. Alternativ 2: Händelsedriven omvändelsehantering genom global SwarmEventBus, där Fas 2-resurser avger typade händelser som orkestreras i huvudprocessen. Alternativ 3: Modulär hantering och wrapping i en dedikerad recondiliation-komponent för att bibehålla FSD-isolering och ren felpropagering.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 1 är resilient och förstärker principen om att misslyckas snabbt för att förhindra spridning av felaktigt tillstånd. Att uppgradera prompten med Väg 3 skapar en tydlig mekanism för att avbryta och initiera omvändelse, vilket skyddar systemets integritet. Båda åtgärderna är helt i linje med våra krav.
+Alternativ 1 har bäst resiliens för detta specifika script, då det är deterministiskt och direkt kopplar till processkontrollen. Alternativ 2 riskerar latch-problem vid eventuella avbrott på bussen, och Alternativ 3 brister i FSD-isolering för infrastrukturkod. Jag rekommenderar Alternativ 1 för en säker implementation.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ 1, förstärkt med Väg 3 för tydlig avbrottsmekanism, är det vinnande kontraktet. Vi har därmed uppnått harmoni i spänningsfältet och deklarerar MÄTTNAD: JA.
+Efter vägning av spänningsfältet mellan de tre alternativen, står det klart att Alternativ 1 bäst främjar systemets resiliens och determinism. Jag slår fast detta vinnande kontrakt och deklarerar MÄTTNAD: JA.
