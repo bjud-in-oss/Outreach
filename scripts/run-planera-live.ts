@@ -13,6 +13,8 @@ import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.ts';
+import { mutateSourceCodeAST } from './drivers/astMutator.js';
+import { applySourcePatch } from './drivers/patchMutator.js';
 
 const ROOT_DIR = process.cwd();
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
@@ -323,27 +325,54 @@ KRAV:
   console.log('\n⚡ Exekverar kodändringar via Bidi Live WebSocket...');
   let codeSaved = false;
   const createdModules: string[] = [];
+  const modifiedFiles: string[] = [];
 
   const codegenTools = [
+    ...inspectionTools,
     {
       name: 'save_code',
       behavior: 'NON_BLOCKING',
-      description: 'Sparar kod till repot.',
+      description: 'Skapar en helt NY fil som inte existerar än. För befintliga filer, använd apply_patch för att inte radera historisk kod!',
       parameters: { type: 'OBJECT', properties: { file_path: { type: 'STRING' }, code: { type: 'STRING' } }, required: ['file_path', 'code'] },
+    },
+    {
+      name: 'apply_patch',
+      behavior: 'NON_BLOCKING',
+      description: 'Gör en kirurgisk ändring i en BEFINTLIG fil via search & replace. Kräver 1-2 omgivande rader i search_block för att garantera unikhet.',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          file_path: { type: 'STRING', description: 'Relativ sökväg till filen' },
+          search_block: { type: 'STRING', description: 'Exakt kodblock som ska bytas ut (inkludera 1-2 rader omgivande kontext)' },
+          replace_block: { type: 'STRING', description: 'Ny kod som ska ersätta search_block' },
+        },
+        required: ['file_path', 'search_block', 'replace_block'],
+      },
     }
   ];
 
   const executeFas2Tools = (name: string, args: any) => {
     if (name === 'read_file' || name === 'list_files') return executeInspection(name, args);
+
+    const rel = args.file_path;
+    if (!isMaint && !rel.startsWith(`src/features/${targetDomain}/`)) {
+      throw new Error(`Otillåten skrivning till ${rel}. Endast src/features/${targetDomain}/ är tillåtet.`);
+    }
+    const full = path.resolve(ROOT_DIR, rel);
+
     if (name === 'save_code') {
-      const rel = args.file_path;
-      if (!isMaint && !rel.startsWith(`src/features/${targetDomain}/`)) {
-        throw new Error(`Otillåten skrivning till ${rel}. Endast src/features/${targetDomain}/ är tillåtet.`);
+      // 🛑 SKYDD MOT KODAMPUTATION: Tillåt inte att en stor befintlig fil ersätts med en stubbe
+      if (fs.existsSync(full)) {
+        const existingContent = fs.readFileSync(full, 'utf-8');
+        if (existingContent.length > 500 && args.code.length < existingContent.length * 0.4) {
+          throw new Error(`AVVISAD TRUNKERING: '${rel}' har ${existingContent.length} tecken men din nya kod har bara ${args.code.length} tecken. Använd verktyget 'apply_patch' för att lägga till din funktion i filen utan att radera befintlig kod!`);
+        }
       }
-      const full = path.resolve(ROOT_DIR, rel);
+
       fs.mkdirSync(path.dirname(full), { recursive: true });
       fs.writeFileSync(full, args.code, 'utf-8');
       codeSaved = true;
+      if (!modifiedFiles.includes(rel)) modifiedFiles.push(rel);
 
       if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
         const base = path.basename(rel, '.ts');
@@ -352,6 +381,21 @@ KRAV:
       console.log(`\n   💾 [SPARAD FIL]: ${rel} (${args.code.length} tecken)`);
       return `Fil sparad till ${rel}`;
     }
+
+    if (name === 'apply_patch') {
+      if (!fs.existsSync(full)) {
+        throw new Error(`Filen '${rel}' finns inte. Använd save_code för att skapa nya filer.`);
+      }
+      const existingContent = fs.readFileSync(full, 'utf-8');
+      const patchedContent = applySourcePatch(existingContent, args.search_block, args.replace_block, rel);
+      fs.writeFileSync(full, patchedContent, 'utf-8');
+      codeSaved = true;
+      if (!modifiedFiles.includes(rel)) modifiedFiles.push(rel);
+
+      console.log(`\n   🩹 [PATCH APPLICERAD]: ${rel} (Ny storlek: ${patchedContent.length} tecken)`);
+      return `Patch applicerad framgångsrikt på ${rel}.`;
+    }
+
     return 'Okänt verktyg';
   };
 
@@ -391,11 +435,8 @@ Anropa save_code för att spara dina källkodsfiler omedelbart!`;
   }
 
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
-  const filesToScan = createdModules.length > 0 
-    ? createdModules.map(m => `src/features/${targetDomain}/${m}.ts`).filter(p => fs.existsSync(path.resolve(ROOT_DIR, p))).join(' ')
-    : `src/features/${targetDomain}`;
-
-  execSync(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan || `src/features/${targetDomain}`}`, { stdio: 'inherit', cwd: ROOT_DIR });
+  const filesToScan = modifiedFiles.length > 0 ? modifiedFiles.join(' ') : `src/features/${targetDomain}`;
+  execSync(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
   if (!isMaint) {
     console.log('\n🟢 Kör transient-testet mot den nyskapade källkoden...');

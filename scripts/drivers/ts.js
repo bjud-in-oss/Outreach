@@ -49,9 +49,19 @@ if (args.includes('--check-catch-blocks')) {
     ts.forEachChild(node, n => checkProdNode(n, filePath, sourceFile));
   }
 
-  function scan(dir) {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
+  function scan(targetPath) {
+    if (!fs.existsSync(targetPath)) return;
+    const stat = fs.statSync(targetPath);
+    if (!stat.isDirectory()) {
+      if (targetPath.endsWith('.ts') || targetPath.endsWith('.tsx')) {
+        const content = fs.readFileSync(targetPath, 'utf-8');
+        const sf = ts.createSourceFile(targetPath, content, ts.ScriptTarget.Latest, true);
+        checkProdNode(sf, targetPath, sf);
+      }
+      return;
+    }
+    for (const entry of fs.readdirSync(targetPath, { withFileTypes: true })) {
+      const full = path.join(targetPath, entry.name);
       if (entry.isDirectory()) {
         if (entry.name !== 'node_modules') scan(full);
       } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
@@ -62,7 +72,14 @@ if (args.includes('--check-catch-blocks')) {
     }
   }
 
-  scan(srcDir);
+  const targetArgs = args.filter(a => !a.startsWith("--"));
+  if (targetArgs.length === 0) {
+    scan(path.join(ROOT_DIR, "src"));
+  } else {
+    for (const t of targetArgs) {
+      scan(path.resolve(ROOT_DIR, t));
+    }
+  }
   if (catchViolations > 0 || mockViolations > 0) {
     console.error(`\n💥 Gate 2c underkändes: ${catchViolations} tysta catch, ${mockViolations} testmockar i prod.`);
     process.exit(1);
