@@ -54,8 +54,8 @@ export function createSTTRecognizer(
     rec.onend = onEnd;
     rec.onerror = onEnd;
     return {
-      start: () => { try { rec.start(); } catch {} },
-      stop: () => { try { rec.stop(); } catch {} },
+      start: () => { try { rec.start(); } catch (e) { void e; } },
+      stop: () => { try { rec.stop(); } catch (e) { void e; } },
     };
   } catch {
     return null;
@@ -85,26 +85,31 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
   const [wasLiveUnmutedBeforeFocus, setWasLiveUnmutedBeforeFocus] = useState(false);
   const [isTogglingMutex, setIsTogglingMutex] = useState(false);
   const [isToolsExpanded, setIsToolsExpanded] = useState(false);
+  const [usageRatio, setUsageRatio] = useState<number | undefined>(undefined);
 
   const sttRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const wasUnmutedRef = useRef(false);
   const isTogglingRef = useRef(false);
 
   useEffect(() => {
-    return swarmCtx?.eventBus.subscribe('*', (env: any) => {
-      if (env.type === 'swarm.live.session.connected') {
+    const subs = [
+      swarmCtx?.eventBus.subscribe('swarm.live.session.connected', () => {
         setIsLiveActive(true);
         setIsMuted(false);
-      }
-      if (env.type === 'swarm.live.session.disconnected') {
+      }),
+      swarmCtx?.eventBus.subscribe('swarm.live.session.disconnected', () => {
         setIsLiveActive(false);
         setIsMuted(false);
-      }
-      if (env.type === 'MUTEX_TOGGLED') {
-        if (env.data?.mode === 'MUTED') setIsMuted(true);
-        if (env.data?.mode === 'LIVE_ACTIVE') setIsMuted(false);
-      }
-    });
+      }),
+      swarmCtx?.eventBus.subscribe('MUTEX_TOGGLED', (data: any) => {
+        if (data?.mode === 'MUTED') setIsMuted(true);
+        if (data?.mode === 'LIVE_ACTIVE') setIsMuted(false);
+      }),
+      swarmCtx?.eventBus.subscribe('telemetry:usage', (data: any) => {
+        setUsageRatio(data?.usageRatio);
+      }),
+    ];
+    return () => subs.forEach((s) => s?.unsubscribe());
   }, [swarmCtx]);
 
   const handleFocus = () => {
@@ -220,6 +225,7 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
     wasLiveUnmutedBeforeFocus,
     isTogglingMutex,
     isToolsExpanded,
+    usageRatio,
     micProps,
     handleFocus,
     handleBlur,

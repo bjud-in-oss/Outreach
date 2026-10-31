@@ -56,39 +56,40 @@ async function generateCommitMessageLive(diffText: string): Promise<string> {
 
 async function main() {
   const customMessage = process.argv.slice(2).join(' ').trim();
-  console.log('📦 [SYNK]: Förbereder synkronisering till GitHub...');
+  console.log('📦 [SYNK]: Kontrollerar lokalt tillstånd mot GitHub...');
 
-  const diffText = getGitDiffSummary();
   const status = execSync('git status --porcelain', { encoding: 'utf-8', cwd: ROOT_DIR }).trim();
+  let unpushed = '';
+  try {
+    unpushed = execSync('git log @{u}..HEAD --oneline', { encoding: 'utf-8', cwd: ROOT_DIR }).trim();
+  } catch {}
 
-  if (!status) {
-    console.log('✅ Inga ändringar att synka. Arbetskatalogen är ren.');
+  if (!status && !unpushed) {
+    console.log('✅ Inga ändringar eller opushade commits att synka. Repot är helt i fas.');
     process.exit(0);
   }
 
-  let finalMessage = customMessage;
-  if (!finalMessage) {
-    console.log(`🤖 Genererar intelligent commit-meddelande via Bidi Live WebSocket (${MODEL_NAME})...`);
-    finalMessage = await generateCommitMessageLive(diffText);
+  if (status) {
+    const diffText = getGitDiffSummary();
+    let finalMessage = customMessage;
+    if (!finalMessage) {
+      console.log(`🤖 Genererar intelligent commit-meddelande via Bidi Live WebSocket (${MODEL_NAME})...`);
+      finalMessage = await generateCommitMessageLive(diffText);
+    }
+    finalMessage = finalMessage.replace(/^```[a-z]*\n/i, '').replace(/\n```$/, '').trim();
+
+    console.log(`\n📝 COMMIT-MEDDELANDE:\n${finalMessage}\n`);
+    execSync('git add -A', { cwd: ROOT_DIR });
+    execSync(`git commit -m "${finalMessage.replace(/"/g, '\\"')}"`, { stdio: 'inherit', cwd: ROOT_DIR });
   }
 
-  // Rensa eventuella markdown code fences
-  finalMessage = finalMessage.replace(/^```[a-z]*\n/i, '').replace(/\n```$/, '').trim();
+  const remoteUrl = GITHUB_TOKEN 
+    ? `https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/Outreach.git`
+    : 'origin';
 
-  console.log(`\n📝 COMMIT-MEDDELANDE:\n${finalMessage}\n`);
-
-  execSync('git add -A', { cwd: ROOT_DIR });
-  execSync(`git commit -m "${finalMessage.replace(/"/g, '\\"')}"`, { stdio: 'inherit', cwd: ROOT_DIR });
-
-  if (GITHUB_TOKEN) {
-    const remoteUrl = `https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_USER}/Outreach.git`;
-    console.log('🚀 Pushar till GitHub med sparad token...');
-    execSync(`git push ${remoteUrl} main`, { stdio: 'inherit', cwd: ROOT_DIR });
-    console.log('🎉 Synkningen slutfördes framgångsrikt!');
-  } else {
-    console.log('🚀 Pushar till origin main...');
-    execSync('git push origin main', { stdio: 'inherit', cwd: ROOT_DIR });
-  }
+  console.log('🚀 Pushar till GitHub...');
+  execSync(`git push ${remoteUrl} main`, { stdio: 'inherit', cwd: ROOT_DIR });
+  console.log('🎉 Synkningen slutfördes framgångsrikt!');
 }
 
 main().catch(err => {

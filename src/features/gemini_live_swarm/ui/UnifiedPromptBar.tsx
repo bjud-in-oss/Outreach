@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, Mic, Send } from 'lucide-react';
 import { useOptionalSwarmContext } from '../context/SwarmContext.tsx';
-import { REFLECTION_MODES, usePromptBarState } from './promptBarHelper.ts';
+import { REFLECTION_MODES, usePromptBarState, formatMemoryIndicator } from './promptBarHelper.ts';
 
 export interface UnifiedPromptBarProps {
   onSendMessage?: (text: string) => void;
@@ -14,6 +14,11 @@ export const UnifiedPromptBar: React.FC<UnifiedPromptBarProps> = ({ onSendMessag
 
   return (
 <div data-testid="unified-prompt-bar" className={`flex flex-col gap-2 p-2.5 bg-slate-900 border border-slate-800 rounded-xl shadow-lg w-full max-w-4xl mx-auto ${className}`}>
+  <div className="flex justify-start px-1">
+    <span className="text-xs text-slate-500 font-mono">
+      {formatMemoryIndicator(bar.usageRatio)}
+    </span>
+  </div>
   <textarea
     data-testid="prompt-textarea"
     rows={2}

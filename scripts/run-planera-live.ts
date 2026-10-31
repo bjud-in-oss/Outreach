@@ -458,7 +458,7 @@ Anropa save_code för att spara dina källkodsfiler omedelbart!`;
           process.exit(1);
         }
         const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;
-        let patchSaved = false;
+        codeSaved = false;
 
         // Samla ihop test och källkod så modellen slipper vara blind under självrättningen
         const testContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';
@@ -483,7 +483,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 
         const retryAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${currentSourceSummary}\n\nFELLOGG:\n${testLog}`;
 
-        await runMicroChannel('Att vända om', retryPrompt, retryAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => patchSaved });
+        await runMicroChannel('Att vända om', retryPrompt, retryAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
       }
     }
   }
