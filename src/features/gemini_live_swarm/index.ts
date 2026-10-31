@@ -124,5 +124,4 @@ export type { ReflectionMode, ReflectionModeEventPayload } from './ui/reflection
 // Enhetlig Prompt-Bar & STT/Live-Styrning (TCK-026)
 export { UnifiedPromptBar } from './ui/UnifiedPromptBar.tsx';
 export type { UnifiedPromptBarProps } from './ui/UnifiedPromptBar.tsx';
-export { usePromptBarState, getLiveButtonProps } from './ui/promptBarHelper.ts';
-export * from './promptBarHelper';
+export { usePromptBarState, getLiveButtonProps, formatMemoryIndicator } from './ui/promptBarHelper.ts';

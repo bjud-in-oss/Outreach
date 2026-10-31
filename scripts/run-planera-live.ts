@@ -385,7 +385,8 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
       if (!modifiedFiles.includes(rel)) modifiedFiles.push(rel);
 
       if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
-        const base = path.basename(rel, '.ts');
+        const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
+        const base = path.relative(domainDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/');
         if (!createdModules.includes(base)) createdModules.push(base);
       }
       console.log(`\n   💾 [SPARAD FIL]: ${rel} (${args.code.length} tecken)`);
