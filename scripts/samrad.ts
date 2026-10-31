@@ -164,6 +164,27 @@ async function main() {
       const trimmed = input.trim();
       if (trimmed.toLowerCase() === 'exit') {
         session.close();
+        
+        // Hitta om en biljett skapades under sessionen
+        const ticketsDir = path.join(ROOT_DIR, 'doc', '.TICKETS');
+        let latestTicket = '';
+        if (fs.existsSync(ticketsDir)) {
+          const files = fs.readdirSync(ticketsDir).filter(f => f.startsWith('TCK-') && f.endsWith('.md')).sort();
+          latestTicket = files[files.length - 1]?.replace(/\.md$/, '') || '';
+        }
+
+        if (latestTicket) {
+          rl.question(`\n🚀 Samråd avslutat. Vill du starta det autonoma bygget för ${latestTicket} nu? (j/n): `, (ans) => {
+            rl.close();
+            if (ans.trim().toLowerCase() === 'j' || ans.trim().toLowerCase() === 'y') {
+              console.log(`\n⚙️  Initierar maskinrummet för ${latestTicket}...\n`);
+              execSync(`./bygg.sh ${latestTicket}`, { stdio: 'inherit', cwd: ROOT_DIR });
+            }
+            process.exit(0);
+          });
+          return;
+        }
+
         rl.close();
         process.exit(0);
       }

@@ -360,10 +360,11 @@ KRAV:
     : `Fas 2: KÄLLKODSEXEKVERING FÖR ${targetDomain.toUpperCase()}
 UPPDRAG: Implementera källkoden under 'src/features/${targetDomain}/' för att uppfylla byggkontraktet och få testet grönt.
 
-REGLER OCH DINA 3 TILLÅTNA STRATEGIER:
+REGLER OCH DINA 4 TILLÅTNA STRATEGIER:
 1. TESTFILEN ÄR FÖRBJUDEN ATT RÖRA: Alla anrop mot 'src/__tests__/' avvisas mekaniskt!
 2. MODULÄR DESIGN: Skapa specifika källkodsfiler (t.ex. ping.ts) och exportera dem via 'index.ts'. Du får ALDRIG radera befintliga re-exporter (t.ex. heartbeat) i index.ts!
 3. FULL KONTRAKTSEFTERLEVNAD: Källkoden MÅSTE använda Zod-scheman och returnera de typer som kontraktet föreskriver.
+4. BEVARA BEFINTLIG KOD: Om du uppdaterar en befintlig källkodsfil (som promptBarHelper.ts) via save_code får du ALDRIG radera befintliga funktioner. Läs filen eller inkludera all befintlig kod tillsammans med ditt nya tillägg!
 
 TESTKOD SOM SKALL UPPFYLLAS:
 \`\`\`typescript
@@ -390,7 +391,11 @@ Anropa save_code för att spara dina källkodsfiler omedelbart!`;
   }
 
   console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
-  execSync(`node scripts/drivers/ts.js --check-catch-blocks src/features/${targetDomain}`, { stdio: 'inherit', cwd: ROOT_DIR });
+  const filesToScan = createdModules.length > 0 
+    ? createdModules.map(m => `src/features/${targetDomain}/${m}.ts`).filter(p => fs.existsSync(path.resolve(ROOT_DIR, p))).join(' ')
+    : `src/features/${targetDomain}`;
+
+  execSync(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan || `src/features/${targetDomain}`}`, { stdio: 'inherit', cwd: ROOT_DIR });
 
   if (!isMaint) {
     console.log('\n🟢 Kör transient-testet mot den nyskapade källkoden...');

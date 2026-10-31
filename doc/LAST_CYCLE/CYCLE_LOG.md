@@ -1,5 +1,5 @@
 # BYGGCYKEL LOGG: TCK-034
-**Starttid:** 2026-10-31T06:25:07.516Z
+**Starttid:** 2026-10-31T07:40:31.982Z
 **Modell:** gemini-3.8-live
 
 ---
@@ -30,11 +30,11 @@ export function formatMemoryIndicator(usageRatio?: number): string {
 
 
 #### 1a Att följa: Intention & Nytta
-Att synliggöra hur mycket minne som finns kvar är en fantastisk gåva av omsorg, då det hjälper användaren att förstå kontextfönstrets kapacitet i stunden. Jag skapar nu det exekverbara beteendekontraktet för denna funktion.
+Givet att användaren interagerar med promptfältet, och att systemet har beräknat användningsgraden av kontextfönstret, när gränssnittet uppdateras, så ska en textindikator visa den procentuella mängden ledigt minne direkt ovanför textarean.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Granskning av kontraktet TCK-034 slutförd.
+Kontraktsaudit för TCK-034 slutförd och godkänd. Uppdraget omfattar enbart domänen gemini live swarm och följer fastställda gränssnittskontrakt enligt Feature-Sliced Design. Inga destruktiva ändringar upptäckta. Vi fortsätter enligt plan.
 
 
 #### 0b Att förlikas: Vägval
@@ -46,21 +46,27 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För TCK-034 formulerar vi följande tre ortogonala alternativ:
+Här är tre ortogonala alternativ för att integrera minnesindikatorn i `UnifiedPromptBar.tsx`:
 
-Alternativ 1 bygger på direkt kontextinmatning via en befintlig hook, som `useSwarmContext`, för att nå aktuell användningsgrad och skicka den till `UnifiedPromptBar`.
+Det första alternativet är händelsebaserad uppdatering, där `SwarmEventBus` används för att driva in nya värden för minnesanvändning.
 
-Alternativ 2 etablerar ett händelsedrivet flöde genom att publicera minnesanvändningen som händelser på `SwarmEventBus`, vilket komponenten prenumererar på.
+Det andra alternativet är kontextbaserad avläsning, där komponenten prenumererar på det aktuella tillståndet direkt via `SwarmContext`.
 
-Alternativ 3 integrerar direkt mot telemetry-systemet och använder teleschemat för att hämta metrikerna i minnet.
+Det tredje alternativet är en lokal uppdateringslogik, där en anpassad krok kapslar in logiken för att övervaka och beräkna minnesvärden specifikt för promptfältet.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid en resiliensgranskning av de tre alternativen framstår Alternativ 2 – den händelsedrivna arkitekturen över `SwarmEventBus` – som den mest resilient. Den ger den bästa frikopplingen och hanterar potentiella fel och nätverkskrascher graciöst tack vare det toleranta API:et och robusta standardvärden vid tillfälligt datafall. De andra alternativen riskerar att överföra latenta fel direkt till UI-lagret.
+För att säkerställa maximal stabilitet och resiliens granskar vi nu de tre alternativen baserat på riskanalys.
+
+Det första alternativet, händelsebaserad uppdatering via SwarmEventBus, ger hög frikoppling men medför en risk för att missa det initiala tillståndet och kräver rigorös hantering av prenumerationer för att undvika minnesläckor.
+
+Det andra alternativet, kontextbaserad avläsning via SwarmContext, garanterar synkronisering men riskerar att orsaka onödiga omrenderingar och skapar en starkare bindning till den globala Providerns livscykel.
+
+Det tredje alternativet, lokal uppdateringslogik, erbjuder högsta isolering och kapslar in funktionaliteten specifikt för promptfältet, vilket minimerar beroenden men kan leda till redundans om mätvärdena behövs på andra platser.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ 2 är det vinnande alternativet. Mättnad: JA. Vi har vägt spänningsfältet och låser nu detta kontrakt för att säkra systemets resiliens och frikoppling.
+Vi väger samman spänningsfältet och finner att det andra alternativet, kontextbaserad avläsning via SwarmContext, ger den mest stabila grunden för synkroniserad data. Vi deklarerar härmed MÄTTNAD: JA.
 
 
 #### 3a Att följa: Testspecifikation
@@ -72,4 +78,4 @@ Alternativ 2 är det vinnande alternativet. Mättnad: JA. Vi har vägt spänning
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-För TCK-034 upprättar vi följande byggkontrakt: I `promptBarHelper.ts` exporterar vi funktionen `formatMemoryIndicator`. I `UnifiedPromptBar.tsx` integrerar vi denna indikator genom att inhämta `usageRatio` från kontexthanteraren och placera ut den absolut till vänster ovanför textarean.
+Filer som ska skapas och uppdateras är `src/features/gemini_live_swarm/ui/promptBarHelper.ts` för att lägga till funktionen `formatMemoryIndicator`, samt `src/features/gemini_live_swarm/ui/UnifiedPromptBar.tsx` för att integrera och rendera minnesindikatorn. `index.ts` kommer att bevaras och säkerställa att alla befintliga exports finns kvar. Vi skapar även ett transient test för `UnifiedPromptBar`.
