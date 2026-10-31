@@ -87,3 +87,15 @@ Vi inför en **Omvändelseslinga** i systemets körtidsmotor:
 ## ADR-016: Defensiv WebSocket-Livscykel i BidiLiveSession
 - **Regel:** Samtliga Bidi Live WebSocket-sessioner i `bidiLiveRunner.ts` ska omedelbart avbryta meddelandehanteringen om sessionen är stängd (`if (this.isClosed) return;`).
 - **Skäl:** Blockerar eftersläpande asynkrona serverpaket från Google Live API och förhindrar att stängda sockets kraschar efterföljande CLI-steg under fasövergångar.
+
+## ADR-017: Kirurgisk Källkodspatchning och Mekanisk Amputationsspärr
+- **Regel:** Vid ändring av befintliga filer är `apply_patch` det obligatoriska verktyget. `save_code` avvisas mekaniskt med felmeddelande om målfilen är >500 tecken och den nyskrivna koden utgör mindre än 40% av originalstorleken.
+- **Skäl:** Skyddar mot att LLM trunkerar eller amputerar befintliga komponenter, hooks och imports vid inkrementella ändringar.
+
+## ADR-018: AI-Tolerant EventBus Unwrapping (Symmetrisk I/O)
+- **Regel:** `SwarmEventBus.emit()` och prenumerationslyssnare packar automatiskt upp `payload.data` om ett CloudEvent-kuvert detekteras.
+- **Skäl:** Eliminerar "Context Gap". Autonom TDD kräver att det agenten skickar in är exakt vad testet observerar i minnet, utan dolda metamodeller.
+
+## ADR-019: Skrivskyddad Testlag och Tool Masking i Fas 2
+- **Regel:** Under Fas 2 (Källkodsexekvering) maskeras `src/__tests__/` från skrivbehörighet. Alla anrop mot testkatalogen avvisas mekaniskt.
+- **Skäl:** Säkerställer principen "Code is Law". Agenten måste anpassa källkoden efter testets villkor och förhindras från att förvanska testkraven (Agentic Test Tampering).
