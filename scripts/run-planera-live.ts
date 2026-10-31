@@ -91,12 +91,12 @@ const runMicroChannel = async (
     const tmpRespFile = path.join(LAST_CYCLE_DIR, `bidi_resp_${Date.now()}.txt`);
     const runArgv = [
       'npx', 'tsx', BIDI_RUNNER,
-      agentRole,
-      promptInfo,
-      activeAnchor,
-      instruction,
-      tmpRespFile,
-      JSON.stringify(tools)
+      `"${agentRole}"`,
+      `"${promptInfo.replace(/"/g, '\\"')}"`,
+      `"${activeAnchor.replace(/"/g, '\\"')}"`,
+      `"${instruction.replace(/"/g, '\\"')}"`,
+      `"${tmpRespFile}"`,
+      `'${JSON.stringify(tools)}'`
     ];
 
     try {
@@ -260,6 +260,40 @@ async function main() {
       console.log('✅ Gate 3a godkänd: Testet fallerade rött som förväntat.');
     }
   }
+
+  // --- ADR-023: Fraktal Omvändelse (Post-Planering) ---
+  console.log('\n--- ADR-023: Fraktal Omvändelse (Post-Planering) ---');
+  const steg3d = await runMicroChannel(
+    'Att vända om',
+    `Steg 3d: Epistemisk Omvändelse. Vi har precis låst byggkontraktet (se startankaret). Innan vi går till produktion (Fas 2), zooma ut! Missade vi något kritiskt? Bygger detta på en falsk premiss? Finns det enklare vägar vi blivit blinda för? Svara med din analys. Om du hittar ett katastrofalt fel som kräver omplanering, avsluta med: STATUS: OMSTART. Annars avsluta med STATUS: GODKÄND.`,
+    steg3c,
+    systemInstruction
+  );
+  appendCycleLog('3d Att vända om: Epistemisk Omvändelse', steg3d);
+
+  if (steg3d.includes('STATUS: OMSTART')) {
+    const steg3e = await runMicroChannel(
+      'Att förlikas',
+      `Steg 3e: Förlikning av Omvändelse. 'Att vända om' har upptäckt en kritisk brist i vårt kontrakt och ropat på OMSTART. Läs analysen i startankaret. Ska vi acceptera bristen för att nå syftet, eller måste vi verkligen planera om? Om vi måste planera om, svara ENBART: STATUS: OMSTART_FAS1. Om vi kan gå vidare (och ev. lösa det senare), svara: STATUS: GODKÄND_MED_SKULD.`,
+      steg3d,
+      systemInstruction
+    );
+    appendCycleLog('3e Att förlikas: Förlikning av Omvändelsen', steg3e);
+
+    if (steg3e.includes('STATUS: OMSTART_FAS1')) {
+      console.log('🔄 [ADR-023] Fraktal Omvändelse godkänd. Sanerar och startar om Fas 1...');
+      const isOmvandelse = process.argv.includes('--omvandelse');
+      if (!isOmvandelse) {
+        try { execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR }); } catch (e: any) { console.warn('Git checkout failed', e?.message); }
+        execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --omvandelse`, { stdio: 'inherit', cwd: ROOT_DIR });
+        process.exit(0);
+      } else {
+        console.error('❌ Cykelspärr nådd.');
+        process.exit(1);
+      }
+    }
+  }
+  // ----------------------------------------------------
 
   // ==========================================
   // FAS 2: KÄLLKODSEXEKVERING (TDD)
