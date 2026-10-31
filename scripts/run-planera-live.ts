@@ -93,7 +93,7 @@ async function runMicroChannel(
       turn++;
       console.log(`\n   🔁 [ACTION LOOP]: Ingen fil sparad ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
       response = await runner.send(
-        `Du har genomfört inspektion. Slutför nu uppdraget omedelbart genom att spara den nödvändiga koden med verktyget save_code!`
+        `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`
       );
     }
 
@@ -206,8 +206,6 @@ async function main() {
       const full = path.resolve(ROOT_DIR, args.file_path);
       if (!fs.existsSync(full)) return `Filen ${args.file_path} finns inte.`;
       const content = fs.readFileSync(full, 'utf-8');
-      const lines = content.split('\n');
-      if (lines.length > 200) return lines.slice(0, 200).join('\n') + `\n\n... [TRUNKERAD: Visar rad 1-200 av ${lines.length}]`;
       return content;
     }
     if (name === 'list_files') {
@@ -418,6 +416,12 @@ Anropa save_code för att spara dina källkodsfiler omedelbart!`;
 
   const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
   await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+
+  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
+  if (!codeSaved && !isMaint) {
+    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
+    process.exit(1);
+  }
     
   if (!isMaint) {
     const barrelPath = path.join(ROOT_DIR, `src/features/${targetDomain}/index.ts`);

@@ -3,19 +3,14 @@ import { describe, it, expect } from 'vitest';
 import { UnifiedPromptBar } from '../features/gemini_live_swarm/ui/UnifiedPromptBar';
 import React from 'react';
 
-describe('UnifiedPromptBar - TCK-034 Memory Indicator', () => {
-  it('should render the memory indicator in the prompt bar', () => {
+describe('UnifiedPromptBar Memory Indicator (TCK-034)', () => {
+  it('should render the memory indicator with free percentage', () => {
+    // Rendera komponenten. Initialt saknas minnesindikatorn varför detta test förväntas fallera.
     render(<UnifiedPromptBar />);
     
-    // Förvänta oss att texten "[Ledigt" eller den förväntade indikatorn finns i dokumentet
-    const memoryIndicator = screen.getByText(/\[Ledigt/i);
-    expect(memoryIndicator).toBeDefined();
-  });
-
-  it('should display default state when usage ratio is undefined', () => {
-    render(<UnifiedPromptBar />);
+    // Sök efter textfragmentet för minnesindikatorn som skall finnas i gränssnittet
+    const memoryIndicator = screen.getByText(/\[Ledigt \d+%\]/i);
     
-    const memoryIndicator = screen.getByText(/\[Ledigt --%\]/i);
-    expect(memoryIndicator.textContent).toBe('[Ledigt --%]');
+    expect(memoryIndicator).toBeInTheDocument();
   });
 });

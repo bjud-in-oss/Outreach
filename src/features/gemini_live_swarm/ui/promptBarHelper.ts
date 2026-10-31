@@ -19,6 +19,12 @@ export function getLiveButtonProps(isConnected: boolean, isPaused: boolean) {
   return { label: 'Aktiv/Paus', icon: '⏸️', bgClass: 'bg-amber-600 hover:bg-amber-500 text-white' };
 }
 
+export function formatMemoryIndicator(usageRatio?: number): string {
+  if (usageRatio === undefined) return '[Ledigt 100%]';
+  const freePercentage = Math.round((1 - Math.min(Math.max(usageRatio, 0), 1)) * 100);
+  return `[Ledigt ${freePercentage}%]`;
+}
+
 export function handleModeSelect(modeVal: string, bus?: SwarmEventBus | null, onModeChange?: (mode: ReflectionMode) => void): ReflectionMode {
   const mode = parseReflectionMode(modeVal);
   if (bus) {
