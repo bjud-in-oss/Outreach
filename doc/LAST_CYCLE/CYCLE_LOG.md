@@ -1,30 +1,62 @@
-# BYGGCYKEL LOGG: TCK-MAINT-005
-**Starttid:** 2026-10-31T15:54:59.283Z
+# BYGGCYKEL LOGG: TCK-MAINT-006
+**Starttid:** 2026-10-31T16:04:21.228Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-005: Visa kontextminnesindikator i Mötesbryggans CLI
+# TCK-MAINT-006: Defensiv formatMemoryIndicator och konsolidering av TCK-034
 
 ## MÅL
-Koppla samman `formatMemoryIndicator` från `gemini_live_swarm` med terminal-prompten i `scripts/samrad.ts` så att kontextminnet syns framför "👤 Du:".
+1. Gör `formatMemoryIndicator` i `src/features/gemini_live_swarm/ui/promptBarHelper.ts` defensiv så att den hanterar tomma anrop (fallback: `0 / 8192 tokens`) och siffror, utan att krascha vid undefined.
+2. Skapa den permanenta testfilen `src/features/gemini_live_swarm/__tests__/formatMemoryIndicator.test.ts`.
+3. Markera TCK-034 som VERIFIED i `doc/TICKETS.md`.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd `read_file` för att inspektera `scripts/samrad.ts` runt imports och `rl.question('👤 Du: ', ...)`.
-2. Använd `apply_patch` för att importera `formatMemoryIndicator` från `../src/features/gemini_live_swarm/index.ts`.
-3. Uppdatera frågeraden i `chatLoop()` så att den visar minnesindikatorn precis framför `👤 Du:`, t.ex:
-   `[Tokens: used / max] 👤 Du: `
+1. Använd `read_file` på `src/features/gemini_live_swarm/ui/promptBarHelper.ts`.
+2. Använd `apply_patch` för att uppdatera `formatMemoryIndicator`:
+search_block:
+export function formatMemoryIndicator(metric: ContextUsageMetric): string {
+  return `${metric.usedTokens} / ${metric.maxTokens} tokens`;
+}
+
+replace_block:
+export function formatMemoryIndicator(metric?: any): string {
+  if (!metric || typeof metric !== 'object') return '0 / 8192 tokens';
+  return `${metric.usedTokens ?? 0} / ${metric.maxTokens ?? 8192} tokens`;
+}
+
+3. Använd `save_code` för att skapa `src/features/gemini_live_swarm/__tests__/formatMemoryIndicator.test.ts`:
+import { describe, it, expect } from 'vitest';
+import { formatMemoryIndicator } from '../index.ts';
+
+describe('TCK-034 - Visning av kontextminne', () => {
+  it('should format memory usage correctly', () => {
+    const mockMetric = { usedTokens: 2500, maxTokens: 8192 };
+    expect(formatMemoryIndicator(mockMetric)).toBe('2500 / 8192 tokens');
+  });
+
+  it('should provide fallback when called empty', () => {
+    expect(formatMemoryIndicator()).toBe('0 / 8192 tokens');
+  });
+});
+
+4. Använd `apply_patch` på `doc/TICKETS.md`:
+search_block:
+- [ ] **TCK-034**: (Skapad via samrad)
+
+replace_block:
+- [x] **TCK-034** (VERIFIED): Visning av kontextminne
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att jag befinner mig i Mötesbryggans CLI, När jag fortsätter min konversation i chatten, Så ska jag se minnesindikatorn visas precis framför "👤 Du:"-prompten med aktuell tokenförbrukning. Speglade detta din intention? (y/n)
+Givet att minnesindikatorn anropas utan eller med ofullständig mätvärdesdata, När funktionen `formatMemoryIndicator` exekveras utan giltig data, Då skall en fallback-sträng returneras som visar "0 / 8192 tokens" i ställer för att krascha applikationen.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. Uppdraget berör endast ett körtidsskript och en befintlig funktion, vilket faller inom ramarna för FSD-isolering utan att kräva uppdelning.
+Kontraktsaudit genomförd. Alla ändringar sker inom en och samma FSD-domän `gemini_live_swarm`, och vi uppfyller samtliga krav för en trygg exekvering. Processen är redo för nästa steg.
 
 
 #### 0b Att förlikas: Vägval
@@ -36,18 +68,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att lösa TCK-MAINT-005 och visa kontextminnet i CLI:et:
+För att lösa TCK-MAINT-006 formulerar jag tre ortogonala alternativ.
 
-Alternativ 1 innebär direkt statisk koppling. Vi importerar `formatMemoryIndicator` och eventuellt sessionsdata rakt in i chat-loopen, vilket förutsätter att minnesdata är åtkomlig synkront vid varje prompt.
+Alternativ ett är direkt funktionspatchning, där vi implementerar defensiva kontroller och fallback-värden direkt i `formatMemoryIndicator` för ett minimalt koddelta.
 
-Alternativ 2 bygger på en asynkron händelsestyrd arkitektur. Vi prenumererar på minnesuppdateringar via `SwarmEventBus` och sparar senaste indikatorn i ett lokalt tillstånd i loopen.
+Alternativ två är strikt datavalidering via Zod, där vi validerar konfigurationen och returnerar standardsträngen vid ogiltig input.
 
-Alternativ 3 innebär att klienten aktivt frågar Swarm-orkestratorn eller storen efter aktuella mönster för varje turn-iteration.
+Alternativ tre är hookbaserad hantering genom att flytta logiken till en `useMemoryIndicator`-hook, vilket separerar tillståndshantering från presentationslagret.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid en resiliensgranskning framgår det att Alternativ 2 är det säkraste valet för systemets stabilitet och resiliens. Genom att använda händelsebussen frikopplas CLI-loopen från den interna tillståndshanteringen, vilket förhindrar latenta fel vid uppstart eller nätverkskrascher. Vi undviker synkrona beroenden och säkrar att källkodsdeltat förblir minimalt inom sin FSD-domän.
+Resiliensgranskningen visar att alternativ ett bäst skyddar systemet mot krascher genom att direkt hantera felaktiga tillstånd lokalt, utan att bygga in onödig komplexitet som i alternativ tre, och det är mer kostnadseffektivt än Zod-validering för en ren presentationsfunktion.
 
 
 #### 2d Att förlikas: Mättnad
-Efter avvägning av spänningsfältet mellan resiliens och enkelhet, slår jag fast att Alternativ 2 är det vinnande kontraktet. Genom att frikoppla via händelsebussen säkrar vi stabilitet och minimerar det operationella deltat. Mättnad: JA.
+Jag har vägt spänningsfältet och utvärderat spänningen mellan stabilitet och komplexitet. Jag slår fast att Alternativ 1 är det vinnande kontraktet. MÄTTNAD: JA.

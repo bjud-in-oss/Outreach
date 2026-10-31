@@ -6,8 +6,9 @@ import { ContextUsageMetric } from '../telemetry/telemetrySchema.ts';
 export { REFLECTION_MODES };
 export type { ReflectionMode };
 
-export function formatMemoryIndicator(metric: ContextUsageMetric): string {
-  return `${metric.usedTokens} / ${metric.maxTokens} tokens`;
+export function formatMemoryIndicator(metric?: any): string {
+  if (!metric || typeof metric !== 'object') return '0 / 8192 tokens';
+  return `${metric.usedTokens ?? 0} / ${metric.maxTokens ?? 8192} tokens`;
 }
 
 export function getMicButtonProps(isLiveActive: boolean, isMuted: boolean, isSTTActive: boolean, isDebounced: boolean) {
