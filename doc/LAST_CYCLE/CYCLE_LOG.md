@@ -1,43 +1,40 @@
-# BYGGCYKEL LOGG: TCK-MAINT-002
-**Starttid:** 2026-10-31T14:39:17.129Z
+# BYGGCYKEL LOGG: TCK-MAINT-003
+**Starttid:** 2026-10-31T14:41:33.004Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-002: Tillfredsställ Gate 2c i bidiLiveRunner.ts
+# TCK-MAINT-003: Bevara undermappar vid automatisk export
 
 ## MÅL
-Åtgärda det tomma catch-blocket på rad 208 i scripts/bidiLiveRunner.ts så att filen passerar Gate 2c.
+Rätta logiken för barrel-uppdatering i scripts/run-planera-live.ts så att underkataloger bevaras.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd read_file för att inspektera metoden close() längst ned i scripts/bidiLiveRunner.ts.
+1. Använd read_file för att inspektera scripts/run-planera-live.ts runt rad 385–395 där createdModules fylls på.
 2. Använd apply_patch med:
 search_block:
-    if (this.session?.close) {
-      try {
-        this.session.close();
-      } catch {}
-    }
+      if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
+        const base = path.basename(rel, '.ts');
+        if (!createdModules.includes(base)) createdModules.push(base);
+      }
 
 replace_block:
-    if (this.session?.close) {
-      try {
-        this.session.close();
-      } catch (err) {
-        void err;
+      if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
+        const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
+        const base = path.relative(domainDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/');
+        if (!createdModules.includes(base)) createdModules.push(base);
       }
-    }
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att LiveRunner-sessionen stängs och ett fel inträffar, så fångas felet upp och hanteras explicit utan tysta undantag.
+Givet att vi har en fil skapad i en undermapp under en funktionell domän, när den automatiska exportlogiken körs, så ska exportvägen i barrel-filen inkludera undermappens struktur i förhållande till domänens rot istället för att bara platta till filnamnet. Speglade detta din intention?
 
 
 #### 0a Att vända om: Kontraktsaudit
-
+Kontraktsaudit genomförd. Ändringen i `scripts/run-planera-live.ts` bryter inte mot FSD-isoleringen då den hanterar exportvägar inom en enskild domän, uppfyller kraven för API-användning och sanering av historiska testinvarianter är deklarerad för uppdatering.
 
 
 #### 0b Att förlikas: Vägval
@@ -49,18 +46,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att lösa TCK-MAINT-002 och tillfredsställa Gate 2c.
+För att möta målet i TCK-MAINT-003 och bevara underkataloger i barrel-genereringen, formulerar jag följande tre ortogonala alternativ:
 
-Alternativ 1 är att explicit tysta felet och tilldela det till void, vilket uppfyller AST-kravet mekaniskt utan förändrat beteende.
+Det första är att beräkna sökvägen baserat på domängränsen genom att använda `path.relative` från domänens rot för att få en korrekt intern struktur.
 
-Alternativ 2 är att propagera ett körtidsfel till händelsebussen för att säkerställa att felet vid sessionens stängning loggas centralt.
+Det andra alternativet är att manipulera den relativa sökvägen direkt genom att strimla bort prefixet för domänen ur `rel`-variabeln.
 
-Alternativ 3 är att implementera strukturerad felhantering via konsolen och validera tillståndet för att förhindra att motorn hamnar i ett oförutsett skräptillstånd.
+Det tredje alternativet är en strukturell avbildning där vi använder en `glob`-sökning inom domänen för att hitta alla moduler utan att vara beroende av enskilda filtapporter.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 1 uppfyller AST-kravet mekaniskt, men minskar spårbarheten. Alternativ 2 stärker systemresiliensen genom att propagera felet till SwarmEventBus, vilket möjliggör central felhantering. Jag förordar därför alternativ 2 för att förhindra dolda fel i sessionsavslutningen.
+Alternativ ett, att använda `path.relative` från domänen, bedöms som mest resilient. Den hanterar varierande sökvags-strukturer och plattformsspecifika separatorer på ett säkert sätt och säkrar exakt matchning mot FSD-kontraktet, vilket minimerar risken för felaktiga exporter.
 
 
 #### 2d Att förlikas: Mättnad
-Jag slår fast att Alternativ 2 är det vinnande alternativet då det stärker resiliensen och spårbarheten genom felpropagering. MÄTTNAD: JA.
+Vi har vägt avvägningarna och slår fast att alternativet att använda `path.relative` från domänen är det vinnande spåret. Det ger maximal resiliens och säkrar exakt matchning mot FSD-kontraktet, vilket minimerar risker för felaktiga exporter. MÄTTNAD: JA.
