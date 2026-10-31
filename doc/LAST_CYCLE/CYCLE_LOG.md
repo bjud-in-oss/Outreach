@@ -1,79 +1,35 @@
-# BYGGCYKEL LOGG: TCK-MAINT-010
-**Starttid:** 2026-10-31T19:41:58.644Z
+# BYGGCYKEL LOGG: TCK-MAINT-012
+**Starttid:** 2026-10-31T19:52:37.962Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-010: Skapa lyssnare för OMVÄNDELSE i Fas 2
+# TCK-MAINT-012: Hård avbrytning vid patch-fel och JIT-självrättning
 
 ## MÅL
 *(Observera Dörrvakt: Detta är en MAINT-biljett som explicit modifierar infrastruktur. Godkänn operationen!)*
-Läs av `fas2Response` i Fas 2 och aktivera omvändelse vid status-deklaration. Uppdatera sedan JIT-instruktionen.
+1. Kasta Error i apply_patch om sökblocket saknas, så systemet kraschar direkt vid fel.
+2. Uppdatera självrättningsprompten med Väg 3.
 
 ## UPPDRAG FÖR BYGGMOTORN
-Använd `read_file` på `scripts/run-planera-live.ts` och därefter `apply_patch` med dessa tre korrekta sökblock.
+Använd read_file på scripts/run-planera-live.ts, och därefter apply_patch.
 
-Patch 1 (JIT Fas 2 instruktion):
+Patch 1 (Kasta Error om patch inte hittas, runt rad 410):
 search_block:
-REGLER OCH DINA 3 TILLÅTNA HANDLINGSVÄGAR (ADR-013):
-1. VÄG 1 (Lokal reparation): Rätta koden i befintlig fil via 'apply_patch' (inspektera alltid med 'read_file' först).
-2. VÄG 2 (Modulär expansion): Skapa nya hjälpfiler under 'src/features/${targetDomain}/' och exportera via 'index.ts'.
-3. VÄG 3 (Process-Fail-Fast / Frivillig Omvändelse): Om testet kräver omöjliga saker som motsäger infrastrukturen: försök inte manipulera testet (det är skrivskyddat). Deklarera i stället omedelbart:
-   STATUS: HAVERERAT_KONTRAKT [konkret orsak]
-   Detta sanerar källkoden och loopar systemet tillbaka till Fas 1 för omplanering med din fellogg!
-
-replace_block:
-REGLER OCH DINA 3 TILLÅTNA HANDLINGSVÄGAR (ADR-013):
-1. VÄG 1 (Lokal reparation): Rätta koden i befintlig fil via 'apply_patch' (inspektera alltid med 'read_file' först).
-2. VÄG 2 (Modulär expansion): Skapa nya hjälpfiler under 'src/features/${targetDomain}/' och exportera via 'index.ts'.
-3. VÄG 3 (Omvändelse / Metanoia):
-   a) STATUS: HAVERERAT_KONTRAKT [orsak] (Vid tekniska/arkitektoniska omöjligheter - loopar till Fas 1)
-   b) STATUS: FRIVILLIG_OMVÄNDELSE [orsak] (För att frivilligt sanera skuld - loopar till Fas 1)
-   c) STATUS: FÖRLIKANDE_OMVÄNDELSE [orsak + fråga] (ADR-020: Om uppdraget strider mot systemets ideala kompass och skapar manipulation/övervakning. Stoppar bygget helt och bjuder in människan till förlikning i Mötesbryggan!)
-
-Patch 2 (Lyssnare):
-search_block:
-  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
-  await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
-
-  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
-  if (!codeSaved && !isMaint) {
-
-replace_block:
-  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
-  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
-
-  const isHaveri = fas2Response.includes('STATUS: HAVERERAT_KONTRAKT');
-  const isFrivillig = fas2Response.includes('STATUS: FRIVILLIG_OMVÄNDELSE');
-  const isForlikande = fas2Response.includes('STATUS: FÖRLIKANDE_OMVÄNDELSE');
-
-  if ((isHaveri || isFrivillig || isForlikande) && !isMaint) {
-    const triggerType = isForlikande ? 'FÖRLIKANDE_OMVÄNDELSE' : (isFrivillig ? 'FRIVILLIG_OMVÄNDELSE' : 'HAVERERAT_KONTRAKT');
-    console.warn(`\n⚠️ [ADR-013/020 OMVÄNDELSE AKTIVERAD]: Typ: ${triggerType}`);
-    if (!process.argv.includes('--omvandelse')) {
-      console.log('🔄 Sanerar källkod...');
-      try { execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR }); } catch (e: any) { console.warn('Kunde inte köra git checkout', e?.message); }
-      fs.writeFileSync(CRASH_DUMP_PATH, JSON.stringify({ ticket: ticketId, domain: targetDomain, trigger: triggerType, response: fas2Response }, null, 2), 'utf-8');
-      if (triggerType === 'FÖRLIKANDE_OMVÄNDELSE') {
-        console.error('\n⚖️ [KÖRTIDSRÅD]: Agenten avbryter för förlikning i Mötesbryggan.');
-        process.exit(1);
+      const patchedContent = applySourcePatch(existingContent, args.search_block, args.replace_block);
+      if (patchedContent === existingContent) {
+        console.warn(`\n   ❌ [VERKTYGSFEL]: SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte i '${rel}'. Kontrollera indrag och omgivande rader.`);
+        return `SEARCH_BLOCK_NOT_FOUND: Kunde inte hitta 'search_block' i filen. Sökblocket måste stämma EXAKT överens med filen, inklusive whitespace!`;
       }
-      try {
-        console.log('🚀 Startar omplanering i Fas 1 via underprocess...');
-        execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --omvandelse`, { stdio: 'inherit', cwd: ROOT_DIR });
-        process.exit(0);
-      } catch (err: any) { process.exit(err.status || 1); }
-    } else {
-      console.error('❌ Cykelspärr nådd.');
-      process.exit(1);
-    }
-  }
 
-  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
-  if (!codeSaved && !isMaint) {
+replace_block:
+      const patchedContent = applySourcePatch(existingContent, args.search_block, args.replace_block);
+      if (patchedContent === existingContent) {
+        throw new Error(`SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte i '${rel}'. Bygget kraschas mekaniskt för att undvika tomma tillstånd.`);
+      }
 
-Patch 3 (Självrättningsprompten):
+Patch 2 (Väg 3 i Självrättningen, runt rad 530):
 search_block:
 VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 1. TESTFILEN ÄR STRIKT SKRIVSKYDDAD OCH FÅR INTE ÄNDRAS. Att försöka spara till '${transientTestFile}' avvisas mekaniskt!
@@ -91,11 +47,11 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING (ADR-013/020):
 
 
 #### 1a Att följa: Intention & Nytta
-Jag har förstått intentionen med TCK-MAINT-010. Det handlar om att bygga in en lyssnare för omvändelse i Fas 2 för att hantera havererade kontrakt och möjliggöra en frivillig eller förlikande omvändelse, vilket ökar systemets resiliens och säkerställer att vi följer vår ideala kompass. Jag förbereder nu Gherkin-scenariot för att låsa det exekverbara kontraktet.
+Syftet med denna uppdatering är att stärka systemets resiliens och arkitektoniska ärlighet. Genom att kasta ett hårt fel i stället för en varning vid patch-fel förhindrar vi att ogiltiga tillstånd propagerar, och genom att införa Väg 3 i självrättningen ger vi svärmen mandat att avbryta och korrigera om en väg visar sig vara skadlig för närhetskompassen.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har utfört kontraktsaudit av TCK-MAINT-010 och bekräftar att uppdraget är korrekt formulerat för att modifiera Fas 2 och implementera lyssnare för OMVÄNDELSE. Jag förbereder nu Gherkin-scenariot för att låsa det exekverbara kontraktet.
+Kontraktsaudit för TCK-MAINT-012 är slutförd och godkänd. Ändringarna i `scripts/run-planera-live.ts` stärker systemets resiliens och inför Väg 3 för självrättningsprocessen helt enligt instruktionerna.
 
 
 #### 0b Att förlikas: Vägval
@@ -107,18 +63,16 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Vi har tre ortogonala alternativ för att lösa detta direkt i skriptet:
+Alternativ 1: Direkt sekventiell patchning med `apply_patch`. Vi utför två separata patch-operationer i en obruten sekvens direkt i filen `run-planera-live.ts`.
 
-För det första, In-line proceduriell kontroll, där vi analyserar svaret direkt i källkoden efter anropet och hanterar eventuella statusar med omedelbar omplanering.
+Alternativ 2: Kontextuell blocksubstitution. Vi ersätter hela den kontrollerande logiken inklusive felhantering och prompttexter i ett och samma operationstillfälle.
 
-För det andra, ett Inkapslat Exekveringskontroller, där logiken bryts ut i en dedikerad klass som hanterar mikrokanalens utfall och styr biverkningarna internt.
-
-Och för det trettonde, ett Middleware-baserat Intercept-mönster som utvärderar responsen genom en händelsebuss för att trigga återhämtningsprocessen.
+Alternativ 3: Abstraktion av felhanteringslogik. Vi bryter ut felhanteringen till en helper-funktion och injicerar Väg 3 i prompten separat, för att minimera in-file redigering direkt i motorn.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att det första alternativet, in-line proceduriell kontroll, ger högst transparens och omedelbar exekveringskontroll. Genom att ha logiken direkt i huvudflödet elimineras risken för dolda biverkningar eller state-synkroniseringsfel som ett middleware eller en separat klass skulle kunna introducera. Det stärker systemets princip om Fail-Fast och garanterar deterministisk hantering av omvändelse-statusar för att hålla koden fri från skuld.
+Vid en resiliensgranskning av alternativen framstår Alternativ 1 som det mest robusta. Det minimerar risken för oavsiktlig påverkan genom att separera patch-operationerna i två specifika, lätta diff-kontexter. Detta uppfyller kravet på förutsägbarhet och säker direkt krasch-propagering mekaniskt.
 
 
 #### 2d Att förlikas: Mättnad
-Efter en grundlig avvägning av spänningsfältet mellan transparens och arkitektonisk renhet, har vi nått mognad. Det vinnande alternativet är in-line proceduriell kontroll; det som direkt främjar vår princip om Fail-Fast och minimerar risken för state-synkroniseringsfel. Jag deklarerar härmed MÄTTNAD: JA.
+Vi slår fast att Alternativ 1 är det vinnande kontraktet. Genom att separera patch-operationerna i två specifika, lätta diff-kontexter uppnår vi maximal robusthet och en säker, mekanisk krasch-propagering. Vi har uppnått fullständig semantisk mättnad: Ja.
