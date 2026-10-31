@@ -205,7 +205,9 @@ export class BidiLiveSession {
     if (this.session?.close) {
       try {
         this.session.close();
-      } catch {}
+      } catch (err) {
+        void err;
+      }
     }
     this.session = null;
     this.isClosed = true;

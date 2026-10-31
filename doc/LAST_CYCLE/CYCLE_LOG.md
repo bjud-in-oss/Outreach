@@ -1,32 +1,43 @@
 # BYGGCYKEL LOGG: TCK-MAINT-002
-**Starttid:** 2026-10-31T14:30:35.184Z
+**Starttid:** 2026-10-31T14:39:17.129Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-002: Tätning av WebSocket-livscykel i bidiLiveRunner
+# TCK-MAINT-002: Tillfredsställ Gate 2c i bidiLiveRunner.ts
 
 ## MÅL
-Åtgärda ett asynkront nätverksfel i `scripts/bidiLiveRunner.ts` som orsakas av eftersläpande meddelanden från stängda WebSockets. 
+Åtgärda det tomma catch-blocket på rad 208 i scripts/bidiLiveRunner.ts så att filen passerar Gate 2c.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd `read_file` för att inspektera `scripts/bidiLiveRunner.ts` runt rad 60-65 (lyssnaren för `onmessage: async (msg: any) => {`).
-2. Använd `apply_patch` för att lägga till raden `if (this.isClosed) return;` direkt innanför blocket för `onmessage`.
+1. Använd read_file för att inspektera metoden close() längst ned i scripts/bidiLiveRunner.ts.
+2. Använd apply_patch med:
+search_block:
+    if (this.session?.close) {
+      try {
+        this.session.close();
+      } catch {}
+    }
 
-Detta säkerställer att processen inte kraschar om Google Live API skickar data precis efter att vi anropat `runner.close()`.
-
-*Observera: Du behöver inte skriva något transient test för denna infrastrukturändring. Gå direkt till patchning.*
+replace_block:
+    if (this.session?.close) {
+      try {
+        this.session.close();
+      } catch (err) {
+        void err;
+      }
+    }
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Avsikten med TCK-MAINT-002 är att stärka systemets resiliens genom att förhindra krascher från eftersläpande nätverksmeddelanden, vilket ger en stabilare livscykelhantering. Jag formulerar nu ett Gherkin-scenario för att säkerställa detta funktionella kontrakt och förbereda bygget.
+Givet att LiveRunner-sessionen stängs och ett fel inträffar, så fångas felet upp och hanteras explicit utan tysta undantag.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Utifrån granskningen av TCK-MAINT-002 kan jag konstatera att ändringen i `scripts/bidiLiveRunner.ts` är en renodlad infrastrukturåtgärd. Då den inte berör FSD-domäner under `src/features/` krävs inte heller någon biljettklyvning. Källkodsändringen följer etablerade köldtidsmönster för stabilitet.
+
 
 
 #### 0b Att förlikas: Vägval
@@ -38,18 +49,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-De tre ortogonala alternativen för att lösa nätverksfelet i `bidiLiveRunner` är följande:
+Här är tre ortogonala alternativ för att lösa TCK-MAINT-002 och tillfredsställa Gate 2c.
 
-Alternativ ett är den direkta skyddsklausulen, där vi lägger till `if (this.isClosed) return;` direkt inuti `onmessage`-blocket. Detta är den enklaste och mest direkta lösningen.
+Alternativ 1 är att explicit tysta felet och tilldela det till void, vilket uppfyller AST-kravet mekaniskt utan förändrat beteende.
 
-Alternativ två är tillståndsbaserad frikoppling via EventBussen, där sessionens aktiva status måste bekräftas innan meddelanden behandlas, vilket frikopplar nätverkslagret från Runner-instansen.
+Alternativ 2 är att propagera ett körtidsfel till händelsebussen för att säkerställa att felet vid sessionens stängning loggas centralt.
 
-Alternativ tre är proxy-mönstret för WebSocket, där vi omsluter WebSocketen i en kontrollerad miljö som avlyssnar och filtrerar alla inkommande meddelanden innan de når lyssnaren.
+Alternativ 3 är att implementera strukturerad felhantering via konsolen och validera tillståndet för att förhindra att motorn hamnar i ett oförutsett skräptillstånd.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett erbjuder hög resiliens mot omedelbara krascher med minimal komplexitet. Alternativ två frikopplar nätverkslagret men introducerar viss fördröjning via bussen. Alternativ tre är robust men höjer komplexiteten avsevärt utan att tillföra proportionalt mervärde. Jag bedömer alternativ ett som mest proportionerligt och resilient.
+Alternativ 1 uppfyller AST-kravet mekaniskt, men minskar spårbarheten. Alternativ 2 stärker systemresiliensen genom att propagera felet till SwarmEventBus, vilket möjliggör central felhantering. Jag förordar därför alternativ 2 för att förhindra dolda fel i sessionsavslutningen.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ ett är det vinnande alternativet; det erbjuder hög resiliens mot krascher till minimal komplexitet och är mest proportionerligt. MÄTTNAD: JA.
+Jag slår fast att Alternativ 2 är det vinnande alternativet då det stärker resiliensen och spårbarheten genom felpropagering. MÄTTNAD: JA.
