@@ -2,15 +2,24 @@
 
 ## MÅL
 *(Observera Dörrvakt: Detta är en MAINT-biljett som explicit modifierar infrastruktur. Godkänn operationen!)*
-Vi saknar lyssnaren för `FÖRLIKANDE_OMVÄNDELSE` etc. i botten av Fas 2 eftersom patcharna misslyckades. Leta upp koden och sätt in den mekaniskt.
+Vi saknar lyssnaren för FÖRLIKANDE_OMVÄNDELSE i botten av Fas 2. Lägg in den via apply_patch.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd `read_file` på `scripts/run-planera-live.ts`. Leta dig ner till raden där Fas 2 körs:
-   `const fas2Response = await runMicroChannel('Att följa', fas2Prompt...` (runt rad 445).
+Använd `apply_patch` på `scripts/run-planera-live.ts` för att leta upp de sista raderna i anropet till `runMicroChannel` och byta ut dem. 
+Använd FÖLJANDE sökblock och ersättningsblock BOKSTAVLIGEN:
 
-2. Direkt efter det anropet, se till att följande logik är implementerad (skapa dina ENA egna `search_block` och `replace_block` som exakt matchar filen så du inte får SEARCH_BLOCK_NOT_FOUND):
+search_block:
+  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
 
-```typescript
+  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
+  if (!codeSaved && !isMaint) {
+    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
+    process.exit(1);
+  }
+
+replace_block:
+  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+
   const isHaveri = fas2Response.includes('STATUS: HAVERERAT_KONTRAKT');
   const isFrivillig = fas2Response.includes('STATUS: FRIVILLIG_OMVÄNDELSE');
   const isForlikande = fas2Response.includes('STATUS: FÖRLIKANDE_OMVÄNDELSE');
@@ -18,6 +27,7 @@ Vi saknar lyssnaren för `FÖRLIKANDE_OMVÄNDELSE` etc. i botten av Fas 2 efters
   if ((isHaveri || isFrivillig || isForlikande) && !isMaint) {
     const triggerType = isForlikande ? 'FÖRLIKANDE_OMVÄNDELSE' : (isFrivillig ? 'FRIVILLIG_OMVÄNDELSE' : 'HAVERERAT_KONTRAKT');
     console.warn(`\n⚠️ [ADR-013/020 OMVÄNDELSE AKTIVERAD]: Typ: ${triggerType}`);
+    
     if (!process.argv.includes('--omvandelse')) {
       console.log('🔄 Sanerar källkod...');
       try { execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR }); } catch (e: any) { console.warn('Git checkout failed', e?.message); }
@@ -36,6 +46,9 @@ Vi saknar lyssnaren för `FÖRLIKANDE_OMVÄNDELSE` etc. i botten av Fas 2 efters
       process.exit(1);
     }
   }
-```
 
-3. Använd `apply_patch`! Om du upptäcker att koden redan finns, men `catch`-blocket vid `git checkout` är tomt (alltså `catch {}`), använd en mindre patch för att uppdatera det till `catch (e: any) { console.warn('Git checkout failed', e?.message); }`.
+  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
+  if (!codeSaved && !isMaint) {
+    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
+    process.exit(1);
+  }
