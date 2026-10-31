@@ -60,6 +60,7 @@ export class BidiLiveSession {
       config: connectConfig,
       callbacks: {
         onmessage: async (msg: any) => {
+          if (this.isClosed) return;
           if (msg.error) {
             console.error('\n   ❌ [SERVER-FEL FRÅN GOOGLE]:', JSON.stringify(msg.error, null, 2));
             if (this.currentRejecter) {

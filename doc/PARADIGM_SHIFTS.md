@@ -28,3 +28,11 @@ För detaljerade tekniska kontrakt, Zod-scheman och implementeringsdetaljer, se:
 5. **Mänsklig Suveränitet & Kognitiv Separering:**
    - Från binära token-spärrar till interaktiv beslutsgrind med frågeloop och spec-sparande (`s`).
    - *Resultat: Tankearbete bevaras utan att källkod muteras förhastat.*
+  
+6. **Självläkande Infrastruktur & Egenanvändning (Dogfooding):**
+   - Från manuella terminalingrepp (`node -e`, bash-fixar) till att Byggmotorn autonomt underhåller sina egna orkestreringsskript och konfigurationer via atomära `TCK-MAINT`-biljetter.
+   - *Se: ADR-009, ADR-013, ADR-015*
+
+7. **Tvådelad Intentionsbrygga (Funktion vs Systemvård):**
+   - Från enkelspåriga funktionsprompter till att Mötesbryggan (`samrad.ts`) skiljer på mänsklig nytta i appen (Gherkin/FSD) och mekanisk rannsakning av motorns verktyg.
+   - *Se: ADR-007, ADR-014*

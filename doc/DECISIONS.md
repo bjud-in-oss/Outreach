@@ -73,3 +73,17 @@ Vi inför en **Omvändelseslinga** i systemets körtidsmotor:
 - Agenten slipper panik-fuska vid arkitektoniska hinder.
 - Systemet blir självläkande på plannivå.
 - Falska gröna byggen elimineras.
+
+## ADR-014: Mötesbryggan och Tvådelad Avsiktsseparation (Funktion vs Underhåll)
+- **Regel:** Mötesbryggan (`scripts/samrad.ts`) separerar domänexpertens intention i två distinkta spår:
+  1. *Användarfunktion:* Skapar `TCK-XXX` med krav på svenskt Gherkin-scenario under `doc/features/` och `export function` under `src/features/`.
+  2. *Systemunderhåll:* Skapar `TCK-MAINT-XXX` under `doc/.TICKETS/` utan Gherkin- eller källkodskrav, med mandat att operera i `scripts/` och `doc/`.
+- **Skäl:** Skyddar domänexperten från tekniska detaljer samtidigt som systemet kan ta emot underhållsorder på ren svenska utan att blockeras av FSD-dörrvakten.
+
+## ADR-015: Atomära Underhållsbiljetter och Isolerad Utforskningsbudget
+- **Regel:** En underhållsbiljett (`TCK-MAINT`) måste begränsas till max en isolerad fil eller ett avgränsat delmoment per körning. Den sekventiella budgeten på 3 tool-turns dedikeras odelat till denna enda uppgift.
+- **Skäl:** Förhindrar att modellen förbrukar sin vändbudget på att inspektera perifera filer och eliminerar felande sökblock (`SEARCH_BLOCK_NOT_FOUND`) vid diff-patchning.
+
+## ADR-016: Defensiv WebSocket-Livscykel i BidiLiveSession
+- **Regel:** Samtliga Bidi Live WebSocket-sessioner i `bidiLiveRunner.ts` ska omedelbart avbryta meddelandehanteringen om sessionen är stängd (`if (this.isClosed) return;`).
+- **Skäl:** Blockerar eftersläpande asynkrona serverpaket från Google Live API och förhindrar att stängda sockets kraschar efterföljande CLI-steg under fasövergångar.

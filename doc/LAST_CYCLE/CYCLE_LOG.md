@@ -1,36 +1,32 @@
-# BYGGCYKEL LOGG: TCK-MAINT-001
-**Starttid:** 2026-10-31T13:50:22.381Z
+# BYGGCYKEL LOGG: TCK-MAINT-002
+**Starttid:** 2026-10-31T14:30:35.184Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-001: Infrastrukturreparation och Biljettstädning
+# TCK-MAINT-002: Tätning av WebSocket-livscykel i bidiLiveRunner
 
 ## MÅL
-1. Åtgärda rad 128 i `src/features/gemini_live_swarm/index.ts`:
-   - Ta bort den ogiltiga raden `export * from './promptBarHelper';`.
-   - Exportera `formatMemoryIndicator` korrekt från `./ui/promptBarHelper.ts`.
-2. Åtgärda `scripts/run-planera-live.ts`:
-   - När moduler exporteras i `index.ts` under barrel-uppdateringen ska undermappar bevaras (`ui/` etc.) istället för att strippas med `path.basename()`.
-3. Åtgärda `scripts/samrad.ts`:
-   - Importera `execSync` från `child_process`.
-   - Lär Mötesbryggan att om användaren vill åtgärda skript/dokumentation/infrastruktur ska den skapa en `TCK-MAINT-XXX`-biljett (utan krav på `export function` eller `.feature`-filer).
-   - Mötesbryggan ska endast erbjuda att starta byggmotorn om en ny biljett faktiskt skapades under den aktiva sessionen.
-4. Biljettstädning i `doc/TICKETS.md`:
-   - Markera `TCK-034` som `[x] **TCK-034** (VERIFIED)`.
-   - Markera `TCK-TEST-001` som `[x] **TCK-TEST-001** (VERIFIED)`.
-   - Radera eventuella transienta testfiler i `src/__tests__/`.
+Åtgärda ett asynkront nätverksfel i `scripts/bidiLiveRunner.ts` som orsakas av eftersläpande meddelanden från stängda WebSockets. 
+
+## UPPDRAG FÖR BYGGMOTORN
+1. Använd `read_file` för att inspektera `scripts/bidiLiveRunner.ts` runt rad 60-65 (lyssnaren för `onmessage: async (msg: any) => {`).
+2. Använd `apply_patch` för att lägga till raden `if (this.isClosed) return;` direkt innanför blocket för `onmessage`.
+
+Detta säkerställer att processen inte kraschar om Google Live API skickar data precis efter att vi anropat `runner.close()`.
+
+*Observera: Du behöver inte skriva något transient test för denna infrastrukturändring. Gå direkt till patchning.*
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att en infrastrukturuppdatering initieras för TCK-MAINT-001 När felaktiga exportrader tas bort och skripten uppdateras för att hantera sökvägar korrekt Så ska exporten i gemini_live_swarm/index.ts och exekveringen i samrådsskripten fungera felfritt.
+Avsikten med TCK-MAINT-002 är att stärka systemets resiliens genom att förhindra krascher från eftersläpande nätverksmeddelanden, vilket ger en stabilare livscykelhantering. Jag formulerar nu ett Gherkin-scenario för att säkerställa detta funktionella kontrakt och förbereda bygget.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Först, gällande kontraktsauditen för TCK-MAINT-001: Arbetet i `src/features/gemini_live_swarm` omfattar endast en FSD-domän, och ändringarna i skripten i `scripts/`  samt dokumentationen i `doc/` följer våra regler för infrastrukturunderhåll. Inga externa API-gränser eller otillåtna paket används. Uppdraget är därmed godkänt för linjär planering.
+Utifrån granskningen av TCK-MAINT-002 kan jag konstatera att ändringen i `scripts/bidiLiveRunner.ts` är en renodlad infrastrukturåtgärd. Då den inte berör FSD-domäner under `src/features/` krävs inte heller någon biljettklyvning. Källkodsändringen följer etablerade köldtidsmönster för stabilitet.
 
 
 #### 0b Att förlikas: Vägval
@@ -42,18 +38,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-001 och hantera underhållsbehoven formulerar jag tre ortogonala lösningsalternativ.
+De tre ortogonala alternativen för att lösa nätverksfelet i `bidiLiveRunner` är följande:
 
-Alternativ ett: Direkt skriptad modifikation. Vi uppdaterar `index.ts`, `scripts/run-planera-live.ts`, och `scripts/samrad.ts` genom direkta kodändringar med fokus på exakta mönster enligt nuvarande AST-regler.
+Alternativ ett är den direkta skyddsklausulen, där vi lägger till `if (this.isClosed) return;` direkt inuti `onmessage`-blocket. Detta är den enklaste och mest direkta lösningen.
 
-Alternativ två: Funktionsdriven abstraktion. Vi bygger om `scripts/run-planera-live.ts` för att använda ett mer robust AST-verktyg från repot för att garantera att undermappar bevaras under barrel-genereringen.
+Alternativ två är tillståndsbaserad frikoppling via EventBussen, där sessionens aktiva status måste bekräftas innan meddelanden behandlas, vilket frikopplar nätverkslagret från Runner-instansen.
 
-Alternativ tre: Systemisk omkonfigurering. Vi låter `samrad.ts` hantera infrastrukturbiljetter genom ett renodlat kontrakt utan hårdkodning i byggprocessen.
+Alternativ tre är proxy-mönstret för WebSocket, där vi omsluter WebSocketen i en kontrollerad miljö som avlyssnar och filtrerar alla inkommande meddelanden innan de når lyssnaren.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att alternativ ett är mest stabilt, då direkta och kontrollerade kodändringar i skripten ger förutsägbarhet utan risker för abstraktionshaverier. Metoden minimerar friktion och följer strikt våra AST-krav och strukturella skyddsvallar.
+Alternativ ett erbjuder hög resiliens mot omedelbara krascher med minimal komplexitet. Alternativ två frikopplar nätverkslagret men introducerar viss fördröjning via bussen. Alternativ tre är robust men höjer komplexiteten avsevärt utan att tillföra proportionalt mervärde. Jag bedömer alternativ ett som mest proportionerligt och resilient.
 
 
 #### 2d Att förlikas: Mättnad
-Resiliensgranskningen bekräftar att alternativ ett ger högst förutsägbarhet och stabilitet. Jag slår fast vinnande kontrakt och deklarerar MÄTTNAD: JA.
+Alternativ ett är det vinnande alternativet; det erbjuder hög resiliens mot krascher till minimal komplexitet och är mest proportionerligt. MÄTTNAD: JA.
