@@ -431,9 +431,10 @@ UPPDRAG: Implementera källkoden under 'src/features/${targetDomain}/' för att 
 REGLER OCH DINA 3 TILLÅTNA HANDLINGSVÄGAR (ADR-013):
 1. VÄG 1 (Lokal reparation): Rätta koden i befintlig fil via 'apply_patch' (inspektera alltid med 'read_file' först).
 2. VÄG 2 (Modulär expansion): Skapa nya hjälpfiler under 'src/features/${targetDomain}/' och exportera via 'index.ts'.
-3. VÄG 3 (Process-Fail-Fast / Frivillig Omvändelse): Om testet kräver omöjliga saker som motsäger infrastrukturen: försök inte manipulera testet (det är skrivskyddat). Deklarera i stället omedelbart:
-   STATUS: HAVERERAT_KONTRAKT [konkret orsak]
-   Detta sanerar källkoden och loopar systemet tillbaka till Fas 1 för omplanering med din fellogg!
+3. VÄG 3 (Omvändelse / Metanoia):
+   a) STATUS: HAVERERAT_KONTRAKT [orsak] (Vid tekniska/arkitektoniska omöjligheter - loopar till Fas 1)
+   b) STATUS: FRIVILLIG_OMVÄNDELSE [orsak] (För att frivilligt sanera skuld - loopar till Fas 1)
+   c) STATUS: FÖRLIKANDE_OMVÄNDELSE [orsak + fråga] (ADR-020: Om uppdraget strider mot systemets ideala kompass och skapar manipulation/övervakning. Stoppar bygget helt och bjuder in människan till förlikning i Mötesbryggan!)
 
 TESTKOD SOM SKALL UPPFYLLAS:
 \`\`\`typescript
