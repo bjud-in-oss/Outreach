@@ -54,8 +54,8 @@ export function createSTTRecognizer(
     rec.onend = onEnd;
     rec.onerror = onEnd;
     return {
-      start: () => { try { rec.start(); } catch {} },
-      stop: () => { try { rec.stop(); } catch {} },
+      start: () => { try { rec.start(); } catch (e) { void e; } },
+      stop: () => { try { rec.stop(); } catch (e) { void e; } },
     };
   } catch {
     return null;
