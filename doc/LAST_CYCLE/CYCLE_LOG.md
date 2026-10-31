@@ -1,56 +1,40 @@
-# BYGGCYKEL LOGG: TCK-TEST-001
-**Starttid:** 2026-10-30T13:43:28.768Z
+# BYGGCYKEL LOGG: TCK-034
+**Starttid:** 2026-10-31T06:25:07.516Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-TEST-001: Verifiera v10.4 Livscykeln
+# TCK-034: Minnesindikator i Promptfältet
 
-## 🎯 Intention & Nytta
-Verifiera Outreach Coordination Engines v10.4 livscykel deterministiskt från Fas 0 till Fas 3 Teatern enligt specifikationen i `doc/features/telemetry.feature`.
-Skapa en minimal, robust "Ping"-funktion under FSD-domänen `src/features/telemetry/`.
-Funktionen sänder en typad `PingEvent` via EventBus när den anropas och valideras med ett tillhörande Zod-schema.
+## MÅL
+Integrera och synliggöra hur mycket minne (kontextfönster) som finns kvar för användaren direkt i promptfältets gränssnitt genom en formaterad textindikator.
 
-## 🔒 Invariant Ytterkontrakt (Oföränderligt i Fas 1)
+## DOMÄN
+`src/features/gemini_live_swarm/`
+
+## IMPLEMENTATION
+- Nyttja funktionen `formatMemoryIndicator` i `promptBarHelper.ts` som beräknar ledig procent baserad på `usageRatio`.
+- Rendera `memoryDisplay` i `UnifiedPromptBar.tsx` placerat absolut till vänster ovanför textarean.
+
+## KODBLOCK
 ```typescript
-import { z } from 'zod';
-
-export const PingEventSchema = z.object({
-  type: z.literal('telemetry:ping'),
-  timestamp: z.number(),
-});
-
-export type PingEvent = z.infer<typeof PingEventSchema>;
-
-export interface PingResult {
-  success: boolean;
-  event: PingEvent;
+export function formatMemoryIndicator(usageRatio?: number): string {
+  if (usageRatio === undefined) return '[Ledigt --%]';
+  const freePercentage = Math.round((1 - Math.min(Math.max(usageRatio, 0), 1)) * 100);
+  return `[Ledigt ${freePercentage}%]`;
 }
-
-export function emitPing(): PingResult;
 ```
-
-## 🏛️ Domängränser (FSD)
-- Domän: `src/features/telemetry/`
-- Tillåtna externa importer: Enbart `src/shared/` och externa paket (`zod`). Inga korsvisa feature-importer.
-- Exportyta via domänbarrel: `src/features/telemetry/index.ts` måste exportera `emitPing`, `PingEventSchema` och tillhörande typer.
-
-## 📋 Acceptanskriterier
-1. `src/__tests__/transient_TCK-TEST-001.test.ts` MÅSTE genereras autonomt i Steg 3a via `save_code` och innehålla `eventBus.subscribe` och `eventBus.emit` som Körtidsankare (steel-thread).
-2. Testet MÅSTE falla med exit-kod 1 i Gate 3a innan källkod skrivs i Fas 2.
-3. Inga korsvisa FSD-importer eller skrivningar utanför `src/features/telemetry/`.
-4. Hela cykeln ska passera med grönt test och verifieras av `verify-architecture.js`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att Outreach Coordination Engine har initierats, När funktionen emitPing anropas, Så ska en typad PingEvent sändas via EventBus validerad av PingEventSchema. Speglade detta din intention?
+Att synliggöra hur mycket minne som finns kvar är en fantastisk gåva av omsorg, då det hjälper användaren att förstå kontextfönstrets kapacitet i stunden. Jag skapar nu det exekverbara beteendekontraktet för denna funktion.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. TCK-TEST-001 följer strikt FSD-isolering med fokus på domänen `src/features/telemetry/`, och uppfyller kraven för deterministisk validering via EventBus. Inga korsvisa importer detekterade.
+Granskning av kontraktet TCK-034 slutförd.
 
 
 #### 0b Att förlikas: Vägval
@@ -62,21 +46,21 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa kontraktet TCK-TEST-001 föreslår jag tre ortogonala alternativ.
+För TCK-034 formulerar vi följande tre ortogonala alternativ:
 
-Det första är direkt eventbuss-emission, där emitPing hämtar den globala eventbussen och skickar eventet direkt utan extra abstraktioner.
+Alternativ 1 bygger på direkt kontextinmatning via en befintlig hook, som `useSwarmContext`, för att nå aktuell användningsgrad och skicka den till `UnifiedPromptBar`.
 
-Det andra är tillstånds-synkroniserad emission, där lokalt tillstånd hålls i ett minneslager för pinghistorik, och emittingen uppdaterar detta state samtidigt som eventet skickas.
+Alternativ 2 etablerar ett händelsedrivet flöde genom att publicera minnesanvändningen som händelser på `SwarmEventBus`, vilket komponenten prenumererar på.
 
-Det tredje alternativet är en intern servicetjänst, där en TelemetyService-klass skapas internt för hantering av logik, och emitPing fungerar som en facade för att bättre isolera beroenden.
+Alternativ 3 integrerar direkt mot telemetry-systemet och använder teleschemat för att hämta metrikerna i minnet.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att Alternativ 3, med en intern servicetjänst, ger bäst resiliens och felhantering genom sin tydliga separation och möjlighet till kontroll, medan Alternativ 1 är mest minimal, och Alternativ 2 riskerar tillståndskorruption.
+Vid en resiliensgranskning av de tre alternativen framstår Alternativ 2 – den händelsedrivna arkitekturen över `SwarmEventBus` – som den mest resilient. Den ger den bästa frikopplingen och hanterar potentiella fel och nätverkskrascher graciöst tack vare det toleranta API:et och robusta standardvärden vid tillfälligt datafall. De andra alternativen riskerar att överföra latenta fel direkt till UI-lagret.
 
 
 #### 2d Att förlikas: Mättnad
-Efter en grundlig vägning av spänningsfältet mellan Alternativen står det klart att Alternativ 3, med en intern servicetjänst, är det vinnande kontraktet. Separation och kontroll ger den högre resiliens som krävs. Mättnad: JA.
+Alternativ 2 är det vinnande alternativet. Mättnad: JA. Vi har vägt spänningsfältet och låser nu detta kontrakt för att säkra systemets resiliens och frikoppling.
 
 
 #### 3a Att följa: Testspecifikation
@@ -84,8 +68,8 @@ Efter en grundlig vägning av spänningsfältet mellan Alternativen står det kl
 
 
 #### 3b Att följa: Källkod
-Du har lagt ett gediget fundament för telemetridomänen. Här är källkoden och domänbarrelen för Steg 3b i linje med det fastlagda kontraktet.
+
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Byggkontraktet för telemetridomänen är nu fastställt. Vi skapar `emitPing.ts` med tillhörande schema och logik, samt `index.ts` som barrel för kontrollerad export.
+För TCK-034 upprättar vi följande byggkontrakt: I `promptBarHelper.ts` exporterar vi funktionen `formatMemoryIndicator`. I `UnifiedPromptBar.tsx` integrerar vi denna indikator genom att inhämta `usageRatio` från kontexthanteraren och placera ut den absolut till vänster ovanför textarean.

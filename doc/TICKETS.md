@@ -48,3 +48,4 @@
 - [VERIFIERAD] TCK-002 | Domän: src/features/gemini_live_swarm/ | Mål: Swarm Telemetry & Reactive Status | Spec: doc/TICKETS/TCK-002.md
 - [VERIFIERAD] TCK-001 | Domän: Global | Mål: Initialisera Outreach Samordningsmotor | Spec: doc/TICKETS/TCK-001.md
 - [x] **TCK-033** (VERIFIED): (Skapad via samrad)
+- [ ] **TCK-034**: (Skapad via samrad)

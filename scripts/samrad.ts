@@ -41,8 +41,24 @@ function executeSamradTool(name: string, args: Record<string, any>): string {
         return 'FEL: file_path och content krävs.';
       }
 
-      // 🛑 MEKANISK SJÄLVKORRIGERING: Tvinga modellen att rätta sin egen kod
-      if (relPath.includes('doc/.TICKETS/')) {
+      // Normalisera sökvägen (ta bort inledande ./ och harmonisera snedstreck)
+      const normalizedRel = relPath.replace(/^\.\//, '').replace(/\\/g, '/');
+
+      // 🛑 MEKANISK SPÄRR 1: Mötesbryggan får ALDRIG ändra produktionskod under src/
+      if (!normalizedRel.startsWith('doc/')) {
+        console.warn(`\n   ⛔ [SAMRÅD AVVISAT]: Försök att skriva källkod utanför doc/ stoppat: ${normalizedRel}`);
+        return "AVVISAD AV WAYFINDER: I mötesbryggan får du ALDRIG skriva eller ändra källkod under 'src/'. Ditt uppdrag här är ENBART att formulera Gherkin-scenarier under 'doc/features/' och byggbiljetter under 'doc/.TICKETS/'. All källkod måste byggas autonomt via byggmotorn (pnpm bygg). Rätta ditt anrop till en fil under doc/.TICKETS/ eller doc/features/!";
+      }
+
+      // 🛑 MEKANISK SPÄRR 2: Förhindra att befintliga biljetter skrivs över
+      const targetFullPath = path.resolve(ROOT_DIR, normalizedRel);
+      if (normalizedRel.startsWith('doc/.TICKETS/') && fs.existsSync(targetFullPath)) {
+        console.warn(`\n   ⛔ [BILJETT-KOLLISION]: Biljetten ${normalizedRel} finns redan.`);
+        return `AVVISAD: Biljettfilen '${normalizedRel}' existerar redan! Du får inte skriva över befintliga biljetter. Kontrollera doc/TICKETS.md och använd nästa lediga biljettnummer (t.ex. TCK-034).`;
+      }
+
+      // 🛑 MEKANISK SJÄLVKORRIGERING: Tvinga modellen att rätta sin egen kod i biljetten
+      if (normalizedRel.startsWith('doc/.TICKETS/')) {
         const hasCodeBlock = content.includes('```typescript') || content.includes('```ts');
         const hasExportFunction = content.includes('export function');
         
@@ -52,20 +68,21 @@ function executeSamradTool(name: string, args: Record<string, any>): string {
         }
       }
 
-      if (relPath.endsWith('.feature')) {
+      // 🛑 MEKANISK SPÄRR 3: Kontrollera Gherkin-krav
+      if (normalizedRel.endsWith('.feature')) {
         if (!content.includes('# language: sv') || !content.includes('Scenario:')) {
           console.warn(`\n   ⛔ [VERKTYG AVVISADE GHERKIN]: Formateringsfel. Tvingar självrättning...`);
           return "AVVISAD: Gherkin-specifikationer MÅSTE skrivas på svenska med '# language: sv'. Om filen redan hade innehåll, måste du lägga till det nya scenariot utan att radera de gamla. Försök igen!";
         }
       }
 
-      const fullPath = path.resolve(ROOT_DIR, relPath);
-      fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-      fs.writeFileSync(fullPath, content, 'utf-8');
+      // Skriv filen till disk
+      fs.mkdirSync(path.dirname(targetFullPath), { recursive: true });
+      fs.writeFileSync(targetFullPath, content, 'utf-8');
 
-      // Logga biljetten i masterloggen
-      if (relPath.includes('doc/.TICKETS/')) {
-        const ticketId = path.basename(relPath).replace(/\.md$/, '');
+      // Logga biljetten i masterloggen om den är ny
+      if (normalizedRel.startsWith('doc/.TICKETS/')) {
+        const ticketId = path.basename(normalizedRel).replace(/\.md$/, '');
         const masterLog = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
         if (fs.existsSync(masterLog)) {
           const raw = fs.readFileSync(masterLog, 'utf-8');
@@ -75,7 +92,8 @@ function executeSamradTool(name: string, args: Record<string, any>): string {
         }
       }
 
-      console.log(`\n   💾 [SPARAD FIL]: ${relPath} (${content.length} tecken)`); return `Filen ${relPath} sparades framgångsrikt.`;
+      console.log(`\n   💾 [SPARAD FIL]: ${normalizedRel} (${content.length} tecken)`);
+      return `Filen ${normalizedRel} sparades framgångsrikt.`;
     }
 
     return `FEL: Okänt verktyg ${name}`; } catch (err: any) { return `Verktygsfel: ${err.message}`;
@@ -109,6 +127,7 @@ async function main() {
   try { featureIndexStr = fs.readFileSync(path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json'), 'utf-8'); } catch {}
 
   const fence = String.fromCharCode(96).repeat(3);
+
   const systemInstruction = [
     'Du är Wayfinder i Outreach Coordination Engine v10.4.',
     'Ditt uppdrag är att agera brygga mellan en icke-programmerande domänexpert (användaren) och systemets strikta kodarkitektur.',
@@ -117,14 +136,15 @@ async function main() {
     `Befintliga domäner: ${featureIndexStr}`,
     '',
     'ARKITEKTURANSVAR (DITT JOBB, INTE ANVÄNDARENS):',
-    '1. Du MÅSTE undersöka befintliga filer (read_file på doc/DECISIONS.md, doc/SI_v10.4.md och doc/features/[domän].feature) innan du föreslår lösningar.',
+    '1. Sökvägar i repot: All källkod ligger ALLTID under "src/features/[domän]/". Använd aldrig "features/..." utan "src/features/...".',
     '2. FSD-funktionalism: Du får ALDRIG skapa Service-klasser eller OOP-interfaces. All kod i detta repo bygger på fristående funktioner (export function) och Zod-scheman.',
-    '3. Körtidsankare: Funktioner som rör telemetri eller händelser MÅSTE emittera till SwarmEventBus och returnera { success: true, event: [ZodType] }.',
-    '4. Gherkin MÅSTE skrivas på svenska (# language: sv). Raderar du gamla scenarier i feature-filen gör du fel.',
-    `5. Spara biljetten till doc/.TICKETS/[TCK-XXX].md. Den MÅSTE innehålla ett ${fence}typescript-kodblock med export function.`,
+    '3. Biljettlogistik: Kontrollera alltid doc/TICKETS.md för nästa lediga biljettnummer (just nu TCK-034). Spara biljetten till doc/.TICKETS/TCK-034.md.',
+    '4. Gherkin MÅSTE skrivas på svenska (# language: sv) och sparas under doc/features/.',
+    `5. Biljetten MÅSTE innehålla ett ${fence}typescript-kodblock med export function.`,
+    '6. STRIKT ROLLGRÄNS: Du får ALDRIG skriva eller köra tester eller källkod inuti mötesbryggan! När biljetten och Gherkin-scenariot är sparade under doc/ är ditt uppdrag SLUTFÖRT. Be då användaren avsluta och köra ./bygg.sh TCK-034 i terminalen.',
     '',
     'PROCESS:',
-    'Fråga användaren enbart om beteende och nytta. När ni är överens, ta fullt ansvar för att anropa save_file med perfekt formaterad TypeScript och Gherkin.'
+    'Fråga användaren enbart om beteende och nytta. När ni är överens, anropa save_file för Gherkin och biljetten under doc/. Avsluta sedan turen.'
   ].join('\n');
 
   const session = new BidiLiveSession({

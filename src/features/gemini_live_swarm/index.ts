@@ -125,3 +125,4 @@ export type { ReflectionMode, ReflectionModeEventPayload } from './ui/reflection
 export { UnifiedPromptBar } from './ui/UnifiedPromptBar.tsx';
 export type { UnifiedPromptBarProps } from './ui/UnifiedPromptBar.tsx';
 export { usePromptBarState, getLiveButtonProps } from './ui/promptBarHelper.ts';
+export * from './promptBarHelper';
