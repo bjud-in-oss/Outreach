@@ -1,45 +1,18 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
-import React from 'react';
-import { UnifiedPromptBar } from '../features/gemini_live_swarm/ui/UnifiedPromptBar';
-import { SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
-import { SwarmProvider } from '../features/gemini_live_swarm/context/SwarmContext';
+import { describe, it, expect } from 'vitest';
+import { formatMemoryIndicator } from '../features/gemini_live_swarm/ui/promptBarHelper';
 
-describe('UnifiedPromptBar - Memory Indicator (TCK-034)', () => {
-  let eventBus: SwarmEventBus;
-
-  beforeEach(() => {
-    eventBus = new SwarmEventBus();
-    eventBus.clear();
+describe('TCK-034 - Memory Indicator Display', () => {
+  it('should format memory indicator correctly for various usage ratios', () => {
+    expect(formatMemoryIndicator(undefined)).toBe('[Ledigt --%]');
+    expect(formatMemoryIndicator(0)).toBe('[Ledigt 100%]');
+    expect(formatMemoryIndicator(0.25)).toBe('[Ledigt 75%]');
+    expect(formatMemoryIndicator(0.5)).toBe('[Ledigt 50%]');
+    expect(formatMemoryIndicator(0.75)).toBe('[Ledigt 25%]');
+    expect(formatMemoryIndicator(1)).toBe('[Ledigt 0%]');
   });
 
-  it('initially displays default memory indicator when no telemetry has been received', () => {
-    render(
-      <SwarmProvider>
-        <UnifiedPromptBar />
-      </SwarmProvider>
-    );
-
-    const indicator = screen.getByText(/\[Ledigt --%\]/i);
-    expect(indicator).toBeDefined();
-  });
-
-  it('updates memory indicator when telemetry updates context usage', () => {
-    render(
-      <SwarmProvider>
-        <UnifiedPromptBar />
-      </SwarmProvider>
-    );
-    
-    // Initial state
-    expect(screen.getByText(/\[Ledigt --%\]/i)).toBeDefined();
-
-    // Trigger telemetry event through the event bus
-    // Assuming the orchestrator or provider listens to telemetry updates
-    eventBus.emit('telemetry:usage', { usageRatio: 0.25 });
-
-    // After update, it should display 75% free
-    const updatedIndicator = screen.getByText(/\[Ledigt 75%\]/i);
-    expect(updatedIndicator).toBeDefined();
+  it('should clamp usage ratios outside the 0-1 range', () => {
+    expect(formatMemoryIndicator(-0.1)).toBe('[Ledigt 100%]');
+    expect(formatMemoryIndicator(1.1)).toBe('[Ledigt 0%]');
   });
 });

@@ -5,6 +5,12 @@ import { SwarmEventBus } from '../bus/swarmEventBus.ts';
 export { REFLECTION_MODES };
 export type { ReflectionMode };
 
+export function formatMemoryIndicator(usageRatio?: number): string {
+  if (usageRatio === undefined) return '[Ledigt --%]';
+  const freePercentage = Math.round((1 - Math.min(Math.max(usageRatio, 0), 1)) * 100);
+  return `[Ledigt ${freePercentage}%]`;
+}
+
 export function getMicButtonProps(isLiveActive: boolean, isMuted: boolean, isSTTActive: boolean, isDebounced: boolean) {
   if (isDebounced) return { title: 'Låst (debounce)', bgClass: 'bg-slate-700 text-slate-400 opacity-60 cursor-not-allowed' };
   if (isSTTActive) return { title: 'STT Aktiv', bgClass: 'bg-red-600 text-white animate-pulse' };
@@ -17,12 +23,6 @@ export function getLiveButtonProps(isConnected: boolean, isPaused: boolean) {
   if (!isConnected) return { label: 'Starta Live', icon: '🎙️', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
   if (isPaused) return { label: 'Start', icon: '▶️', bgClass: 'bg-emerald-600 hover:bg-emerald-500 text-white' };
   return { label: 'Aktiv/Paus', icon: '⏸️', bgClass: 'bg-amber-600 hover:bg-amber-500 text-white' };
-}
-
-export function formatMemoryIndicator(usageRatio?: number): string {
-  if (usageRatio === undefined) return '[Ledigt 100%]';
-  const freePercentage = Math.round((1 - Math.min(Math.max(usageRatio, 0), 1)) * 100);
-  return `[Ledigt ${freePercentage}%]`;
 }
 
 export function handleModeSelect(modeVal: string, bus?: SwarmEventBus | null, onModeChange?: (mode: ReflectionMode) => void): ReflectionMode {
@@ -54,8 +54,8 @@ export function createSTTRecognizer(
     rec.onend = onEnd;
     rec.onerror = onEnd;
     return {
-      start: () => { try { rec.start(); } catch (e) { void e; } },
-      stop: () => { try { rec.stop(); } catch (e) { void e; } },
+      start: () => { try { rec.start(); } catch {} },
+      stop: () => { try { rec.stop(); } catch {} },
     };
   } catch {
     return null;
@@ -85,31 +85,26 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
   const [wasLiveUnmutedBeforeFocus, setWasLiveUnmutedBeforeFocus] = useState(false);
   const [isTogglingMutex, setIsTogglingMutex] = useState(false);
   const [isToolsExpanded, setIsToolsExpanded] = useState(false);
-  const [usageRatio, setUsageRatio] = useState<number | undefined>(undefined);
 
   const sttRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const wasUnmutedRef = useRef(false);
   const isTogglingRef = useRef(false);
 
   useEffect(() => {
-    const subs = [
-      swarmCtx?.eventBus.subscribe('swarm.live.session.connected', () => {
+    return swarmCtx?.eventBus.subscribe('*', (env: any) => {
+      if (env.type === 'swarm.live.session.connected') {
         setIsLiveActive(true);
         setIsMuted(false);
-      }),
-      swarmCtx?.eventBus.subscribe('swarm.live.session.disconnected', () => {
+      }
+      if (env.type === 'swarm.live.session.disconnected') {
         setIsLiveActive(false);
         setIsMuted(false);
-      }),
-      swarmCtx?.eventBus.subscribe('MUTEX_TOGGLED', (data: any) => {
-        if (data?.mode === 'MUTED') setIsMuted(true);
-        if (data?.mode === 'LIVE_ACTIVE') setIsMuted(false);
-      }),
-      swarmCtx?.eventBus.subscribe('telemetry:usage', (data: any) => {
-        setUsageRatio(data?.usageRatio);
-      }),
-    ];
-    return () => subs.forEach((s) => s?.unsubscribe());
+      }
+      if (env.type === 'MUTEX_TOGGLED') {
+        if (env.data?.mode === 'MUTED') setIsMuted(true);
+        if (env.data?.mode === 'LIVE_ACTIVE') setIsMuted(false);
+      }
+    });
   }, [swarmCtx]);
 
   const handleFocus = () => {
@@ -225,7 +220,6 @@ export function usePromptBarState(swarmCtx: any, onSendMessage?: (text: string) 
     wasLiveUnmutedBeforeFocus,
     isTogglingMutex,
     isToolsExpanded,
-    usageRatio,
     micProps,
     handleFocus,
     handleBlur,

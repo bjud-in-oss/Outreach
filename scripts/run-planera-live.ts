@@ -261,10 +261,12 @@ async function main() {
       'Att följa',
       `Steg 3a: Generera transient testspecifikation och spara den till '${transientTestFile}' med save_code.
 KRAV:
-1. Använd ALDRIG syntetiska alibi-spioner.
-2. Testet MÅSTE fallera rött (Fail-First) mot befintlig kod!
-3. Om testet använder delad infrastruktur (t.ex. SwarmEventBus), anropa FÖRST 'read_file' på 'src/shared/bus/swarmEventBus.ts' för att kontrollera exakta metodnamn. Gissa ALDRIG API-metoder!
-4. Anropa save_code innan du är klar.`,
+1. LÄS FÖRST ETT EXISTERANDE TEST (t.ex. med read_file på 'src/features/telemetry/__tests__/emitPing.test.ts') så att du förstår projektets test-syntax (Node.js, Vitest, EventBus).
+2. Vi använder enbart ren TypeScript för tester (inga JSX-taggar eller @testing-library/react). Verifiera funktionernas returvärden eller händelser.
+3. Använd ALDRIG syntetiska alibi-spioner.
+4. Testet MÅSTE fallera rött (Fail-First) mot befintlig kod!
+5. Läs eventbussens API ('src/shared/bus/swarmEventBus.ts') innan du använder den, så anropen blir korrekta.
+6. Anropa save_code innan du är klar.`,
       `${startAnchor}\nKONTRAKT:\n${steg2d}`,
       systemInstruction,
       testGenTools,
@@ -273,7 +275,17 @@ KRAV:
     );
     appendCycleLog('3a Att följa: Testspecifikation', steg3a);
 
-    const steg3b = await runMicroChannel('Att följa', 'Steg 3b: Källkodsspecifikation inklusive domänexport.', `${startAnchor}\nTEST:\n${steg3a}`, systemInstruction, inspectionTools, executeInspection);
+    const steg3b = await runMicroChannel(
+      'Att följa',
+      `Steg 3b: Källkodsspecifikation inklusive domänexport.
+KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR): 
+1. Innan du specificerar koden, MÅSTE du anropa 'read_file' på den eller de filer du planerar att modifiera (t.ex. 'src/features/...').
+2. Utgå EXAKT från filens nuvarande källkod. Hitta de exakta sökblocken (search_block) där ny kod ska in. Gissa ALDRIG befintliga props, imports eller kodstruktur!`,
+      `${startAnchor}\nTEST:\n${steg3a}`,
+      systemInstruction,
+      inspectionTools,
+      executeInspection
+    );
     appendCycleLog('3b Att följa: Källkod', steg3b);
 
     // Bär ALLTID med hela startankaret och biljetten så att förlikaren aldrig blir minneslös
@@ -404,15 +416,15 @@ UPPDRAG: Implementera källkoden under 'src/features/${targetDomain}/' för att 
 
 REGLER OCH DINA 4 TILLÅTNA STRATEGIER:
 1. TESTFILEN ÄR FÖRBJUDEN ATT RÖRA: Alla anrop mot 'src/__tests__/' avvisas mekaniskt!
-2. MODULÄR DESIGN: Skapa specifika källkodsfiler (t.ex. ping.ts) och exportera dem via 'index.ts'. Du får ALDRIG radera befintliga re-exporter (t.ex. heartbeat) i index.ts!
-3. FULL KONTRAKTSEFTERLEVNAD: Källkoden MÅSTE använda Zod-scheman och returnera de typer som kontraktet föreskriver.
-4. BEVARA BEFINTLIG KOD: Om du uppdaterar en befintlig källkodsfil (som promptBarHelper.ts) via save_code får du ALDRIG radera befintliga funktioner. Läs filen eller inkludera all befintlig kod tillsammans med ditt nya tillägg!
+2. MODULÄR DESIGN: Skapa specifika källkodsfiler och exportera dem via 'index.ts'.
+3. FULL KONTRAKTSEFTERLEVNAD: Källkoden MÅSTE använda Zod-scheman och returnera korrekta typer.
+4. EPISTEMISK ÖDMJUKHET (INSPEKTERA ALLTID FÖRE PATCH): Om du ska ändra en befintlig fil med 'apply_patch', MÅSTE du FÖRST anropa 'read_file' på den filen. Kopiera sedan ut 1-2 rader EXAKT som de ser ut i filen till ditt 'search_block'. Gissa ALDRIG radbrytningar eller indentering!
 
 TESTKOD SOM SKALL UPPFYLLAS:
 \`\`\`typescript
 ${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}
 \`\`\`
-Anropa save_code för att spara dina källkodsfiler omedelbart!`;
+Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
 
   const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
   await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
