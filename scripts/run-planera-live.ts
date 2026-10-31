@@ -412,6 +412,9 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
       }
       const existingContent = fs.readFileSync(full, 'utf-8');
       const patchedContent = applySourcePatch(existingContent, args.search_block, args.replace_block, rel);
+      if (patchedContent === existingContent) {
+        throw new Error("SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte. Bygget kraschas mekaniskt för att undvika tomma tillstånd.");
+      }
       fs.writeFileSync(full, patchedContent, 'utf-8');
       codeSaved = true;
       if (!modifiedFiles.includes(rel)) modifiedFiles.push(rel);
