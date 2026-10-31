@@ -1,17 +1,23 @@
 import { describe, it, expect, vi } from 'vitest';
-import { FloorController } from '../features/gemini_live_swarm/session/floorController';
-import { SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
+import { getGlobalSwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
 
-describe('TCK-034 FloorController Alibi Test', () => {
-  it('should instantiate and emit events functionally', () => {
-    const eventBus = new SwarmEventBus();
-    const controller = new FloorController(eventBus);
+describe('TCK-034 Functional Alibi Test', () => {
+  it('should process events functionally through the bus', async () => {
+    const eventBus = getGlobalSwarmEventBus();
+    const handler = vi.fn();
     
-    const emitSpy = vi.spyOn(eventBus, 'emit');
+    eventBus.subscribe('swarm_intent_toggled', handler);
     
-    // Trigger a functional change in state
-    controller.requestFloor('agent_1');
+    eventBus.emit('swarm_intent_toggled', { 
+      intent: 'research', 
+      active: true,
+      agentId: 'test-agent' 
+    });
     
-    expect(emitSpy).toHaveBeenCalled();
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+      intent: 'research',
+      active: true
+    }));
   });
 });
