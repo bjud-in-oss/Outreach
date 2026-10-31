@@ -187,7 +187,17 @@ async function main() {
   if (fs.existsSync(busPath)) {
     busContract = `\n\nDELAD INFRASTRUKTUR (SwarmEventBus API):\n${fs.readFileSync(busPath, 'utf-8')}`;
   }
-  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}${busContract}`;
+  let crashDumpContext = '';
+  if (fs.existsSync(CRASH_DUMP_PATH)) {
+    try {
+      const dump = fs.readFileSync(CRASH_DUMP_PATH, 'utf-8');
+      crashDumpContext = `\n\n⚠️ TIDIGARE BYGGFÖRSÖK HAVERERADE I FAS 2 (OMVÄNDELSE AKTIVERAD):\n${dump}\nAnalysera felet ovan i Fas 1 och välj ett hållbart kontrakt som undviker detta haveri!`;
+      fs.unlinkSync(CRASH_DUMP_PATH);
+    } catch (err: any) {
+      console.warn(`⚠️ [OMVÄNDELSE]: Kunde inte läsa kraschdump: ${err?.message || err}`);
+    }
+  }
+  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}${busContract}${crashDumpContext}`;
 
   const inspectionTools = [
     {
@@ -418,11 +428,12 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
     : `Fas 2: KÄLLKODSEXEKVERING FÖR ${targetDomain.toUpperCase()}
 UPPDRAG: Implementera källkoden under 'src/features/${targetDomain}/' för att uppfylla byggkontraktet och få testet grönt.
 
-REGLER OCH DINA 4 TILLÅTNA STRATEGIER:
-1. TESTFILEN ÄR FÖRBJUDEN ATT RÖRA: Alla anrop mot 'src/__tests__/' avvisas mekaniskt!
-2. MODULÄR DESIGN: Skapa specifika källkodsfiler och exportera dem via 'index.ts'.
-3. FULL KONTRAKTSEFTERLEVNAD: Källkoden MÅSTE använda Zod-scheman och returnera korrekta typer.
-4. EPISTEMISK ÖDMJUKHET (INSPEKTERA ALLTID FÖRE PATCH): Om du ska ändra en befintlig fil med 'apply_patch', MÅSTE du FÖRST anropa 'read_file' på den filen. Kopiera sedan ut 1-2 rader EXAKT som de ser ut i filen till ditt 'search_block'. Gissa ALDRIG radbrytningar eller indentering!
+REGLER OCH DINA 3 TILLÅTNA HANDLINGSVÄGAR (ADR-013):
+1. VÄG 1 (Lokal reparation): Rätta koden i befintlig fil via 'apply_patch' (inspektera alltid med 'read_file' först).
+2. VÄG 2 (Modulär expansion): Skapa nya hjälpfiler under 'src/features/${targetDomain}/' och exportera via 'index.ts'.
+3. VÄG 3 (Process-Fail-Fast / Frivillig Omvändelse): Om testet kräver omöjliga saker som motsäger infrastrukturen: försök inte manipulera testet (det är skrivskyddat). Deklarera i stället omedelbart:
+   STATUS: HAVERERAT_KONTRAKT [konkret orsak]
+   Detta sanerar källkoden och loopar systemet tillbaka till Fas 1 för omplanering med din fellogg!
 
 TESTKOD SOM SKALL UPPFYLLAS:
 \`\`\`typescript
@@ -470,8 +481,32 @@ Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
       } catch (vitestErr: any) {
         console.warn(`\n⚠️ [FAS 2 SJÄLVRÄTTNING]: Försök ${attempts}/3 fallerade.`);
         if (attempts >= 3) {
-          console.error('❌ Maximalt antal självrättningsförsök uppnått.');
-          process.exit(1);
+          console.error('❌ Maximalt antal självrättningsförsök uppnått i Fas 2.');
+          const isOmvandelse = process.argv.includes('--omvandelse');
+          
+          if (!isOmvandelse && !isMaint) {
+            console.log('\n🔄 [ADR-013 OMVÄNDELSESLINGA]: Sanerar källkod och startar om via ren underprocess...');
+            try {
+              execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR });
+            } catch (err: any) {
+              console.warn(`⚠️ [OMVÄNDELSE]: Kunde inte köra git checkout: ${err?.message || err}`);
+            }
+            
+            const dumpData = { ticket: ticketId, domain: targetDomain, error: vitestErr?.message, log: testLog, time: new Date().toISOString() };
+            fs.writeFileSync(CRASH_DUMP_PATH, JSON.stringify(dumpData, null, 2), 'utf-8');
+            
+            console.log('🚀 Startar isolerad underprocess för Fas 1 omplanering...\n');
+            try {
+              execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --omvandelse`, { stdio: 'inherit', cwd: ROOT_DIR });
+              process.exit(0);
+            } catch (subErr: any) {
+              console.error('❌ Omvändelseslingan underkändes i andra försöket.');
+              process.exit(subErr.status || 1);
+            }
+          } else {
+            console.error('❌ Cykelspärr nådd: Max 1 omvändelse tillåten per körning.');
+            process.exit(1);
+          }
         }
         const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;
         codeSaved = false;
