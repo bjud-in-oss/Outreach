@@ -458,9 +458,7 @@ Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
     
     if (!process.argv.includes('--omvandelse')) {
       console.log('🔄 Sanerar källkod...');
-      try {
-        execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR });
-      } catch {}
+      try { execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR }); } catch (e: any) { console.warn('Git checkout failed', e?.message); }
       
       fs.writeFileSync(CRASH_DUMP_PATH, JSON.stringify({ ticket: ticketId, domain: targetDomain, trigger: triggerType, response: fas2Response }, null, 2), 'utf-8');
       

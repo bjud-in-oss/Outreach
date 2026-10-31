@@ -1,34 +1,23 @@
-# BYGGCYKEL LOGG: TCK-MAINT-014
-**Starttid:** 2026-10-31T20:24:53.651Z
+# BYGGCYKEL LOGG: TCK-MAINT-015
+**Starttid:** 2026-10-31T20:39:55.147Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-014: Reparera catch-block och omvändelse-lyssnare
+# TCK-MAINT-015: Reparera och installera lyssnaren för Fas 2
 
 ## MÅL
 *(Observera Dörrvakt: Detta är en MAINT-biljett som explicit modifierar infrastruktur. Godkänn operationen!)*
-1. Ersätt tomma catch-block som fäller Gate 2c med korrekta.
-2. Applicera lyssnaren för `STATUS: FÖRLIKANDE_OMVÄNDELSE` i slutet av Fas 2.
+Vi saknar lyssnaren för `FÖRLIKANDE_OMVÄNDELSE` etc. i botten av Fas 2 eftersom patcharna misslyckades. Leta upp koden och sätt in den mekaniskt.
 
 ## UPPDRAG FÖR BYGGMOTORN
-Använd `read_file` på `scripts/run-planera-live.ts`. Använd sedan `apply_patch` med detta exakta sökblock för att laga koden (runt rad 440-455):
+1. Använd `read_file` på `scripts/run-planera-live.ts`. Leta dig ner till raden där Fas 2 körs:
+   `const fas2Response = await runMicroChannel('Att följa', fas2Prompt...` (runt rad 445).
 
-search_block:
-  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
-  await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+2. Direkt efter det anropet, se till att följande logik är implementerad (skapa dina ENA egna `search_block` och `replace_block` som exakt matchar filen så du inte får SEARCH_BLOCK_NOT_FOUND):
 
-  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
-  if (!codeSaved && !isMaint) {
-    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
-    process.exit(1);
-  }
-
-replace_block:
-  const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
-  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
-
+```typescript
   const isHaveri = fas2Response.includes('STATUS: HAVERERAT_KONTRAKT');
   const isFrivillig = fas2Response.includes('STATUS: FRIVILLIG_OMVÄNDELSE');
   const isForlikande = fas2Response.includes('STATUS: FÖRLIKANDE_OMVÄNDELSE');
@@ -54,24 +43,19 @@ replace_block:
       process.exit(1);
     }
   }
+```
 
-  // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
-  if (!codeSaved && !isMaint) {
-    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
-    process.exit(1);
-  }
+3. Använd `apply_patch`! Om du upptäcker att koden redan finns, men `catch`-blocket vid `git checkout` är tomt (alltså `catch {}`), använd en mindre patch för att uppdatera det till `catch (e: any) { console.warn('Git checkout failed', e?.message); }`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att byggmotorn exekverar Fas 2 i en efemär mikrokanal,
-När en lyssnare detekterar händelsen `STATUS: FÖRLIKANDE_OMVÄNDELSE`,
-Så ska systemet avbryta körningen kontrollerat, logga meddelandet och förbereda för förlikning, för att skydda systemets integritet och främja djupare förståelse mellan två perspektiv.
+Givet att Fas 2 exekveras och svarar med en status för kontraktshaveri eller omvändelse, när lyssnaren detekterar detta och det inte är en maint-körning, så saneras källkoden, en crash dump skapas, och vi startar omplaneringen i Fas 1. Det här skyddar systemets integritet och främjar försoning genom strukturerad problemlösning.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Utför Kontraktsaudit: Uppdraget berör central infrastruktur i `scripts/run-planera-live.ts` och uppfyller kraven för destruktiv sanering. Kontraktet är godkänt för exekvering.
+
 
 
 #### 0b Att förlikas: Vägval
@@ -83,12 +67,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för lösningen: Alternativ 1: Direkt patchning via apply_patch i scripts/run-planera-live.ts för att hantera omvändelse-status deterministiskt enligt kontraktets sökblock. Alternativ 2: Händelsedriven omvändelsehantering genom global SwarmEventBus, där Fas 2-resurser avger typade händelser som orkestreras i huvudprocessen. Alternativ 3: Modulär hantering och wrapping i en dedikerad recondiliation-komponent för att bibehålla FSD-isolering och ren felpropagering.
+För att lösa kontraktets krav på Fas 2-lyssnaren formulerar jag tre ortogonala alternativ.
+
+Alternativ 1 innebär direkt injektion av den specifika logikblocket för statuskoll och omplanering direkt efter Fas 2-anropet i filen.
+
+Alternativ 2 innebär en händelsedriven refaktorering där Fas 2 istället emittrerar typade händelser via EventBus vid avslut, vilket avlägsnar stränganalys från huvudkontrollern.
+
+Alternativ 3 innebär att kapsla in Fas 2 i en högre orkestreringsfunktion som hanterar alla potentiella felvägar och statusövergångar centralt.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 1 har bäst resiliens för detta specifika script, då det är deterministiskt och direkt kopplar till processkontrollen. Alternativ 2 riskerar latch-problem vid eventuella avbrott på bussen, och Alternativ 3 brister i FSD-isolering för infrastrukturkod. Jag rekommenderar Alternativ 1 för en säker implementation.
+Granskning av alternativen visar att Alternativ 1 är mest resilient utifrån uppdragets krav. Det möjliggör omedelbar reparation utan att riskera sidoverkningar från en större arkitekturförändring i detta skede. Vi säkerställer att koden följer kontraktet och behåller en deterministisk felhantering.
 
 
 #### 2d Att förlikas: Mättnad
-Efter vägning av spänningsfältet mellan de tre alternativen, står det klart att Alternativ 1 bäst främjar systemets resiliens och determinism. Jag slår fast detta vinnande kontrakt och deklarerar MÄTTNAD: JA.
+Vi fastställer härmed att Alternativ 1 är det vinnande förslaget. Det möter alla krav på resiliens och determinism och håller oss strikt inom kontraktets gränser. MÄTTNAD: JA.
