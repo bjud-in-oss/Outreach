@@ -127,7 +127,14 @@ async function main() {
   console.log(`💡 Vägvisaren är redo. Vad vill du att vi ska göra idag?\n`);
 
   let featureIndexStr = '';
-  try { featureIndexStr = fs.readFileSync(path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json'), 'utf-8'); } catch {}
+  try {
+    const indexPath = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
+    if (fs.existsSync(indexPath)) {
+      featureIndexStr = fs.readFileSync(indexPath, 'utf-8');
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ [SAMRÅD]: Kunde inte ladda FEATURE_INDEX.json: ${err?.message || err}`);
+  }
 
   const fence = String.fromCharCode(96).repeat(3);
 
