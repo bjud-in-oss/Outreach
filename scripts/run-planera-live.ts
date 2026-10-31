@@ -314,7 +314,7 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
           process.exit(1);
         }
         testSaved = false;
-        await runMicroChannel('Att vända om', `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.`, `BEFINTLIGT TEST:\n${fs.readFileSync(transientTestFullPath, 'utf-8')}`, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 3, onMutationCheck: () => testSaved });
+        await runMicroChannel('Att vända om', `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.`, `BEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 3, onMutationCheck: () => testSaved });
       }
     }
 
@@ -422,7 +422,7 @@ REGLER OCH DINA 4 TILLÅTNA STRATEGIER:
 
 TESTKOD SOM SKALL UPPFYLLAS:
 \`\`\`typescript
-${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}
+${fs.existsSync(transientTestFullPath) ? fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '' : ''}
 \`\`\`
 Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
 
@@ -473,7 +473,7 @@ Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
         codeSaved = false;
 
         // Samla ihop test och källkod så modellen slipper vara blind under självrättningen
-        const testContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';
+        const testContent = fs.existsSync(transientTestFullPath) ? fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '' : '';
         const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
         let currentSourceSummary = '';
         if (fs.existsSync(domainDir)) {
@@ -513,7 +513,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     const primaryModule = createdModules[0] || ticketId.toLowerCase();
     const permanentTestPath = path.join(permanentTestDir, `${primaryModule}.test.ts`);
 
-    let transientTestContent = fs.readFileSync(transientTestFullPath, 'utf-8');
+    let transientTestContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';
     transientTestContent = transientTestContent
       .replace(new RegExp(`'\\.\\./features/${targetDomain}'`, 'g'), "'..'")
       .replace(new RegExp(`"\\.\\./features/${targetDomain}"`, 'g'), '".."')

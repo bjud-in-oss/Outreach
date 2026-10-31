@@ -140,6 +140,7 @@
         "detectUnitInvocation",
         "extractTurnEventData",
         "floatTo16BitPCM",
+        "formatMemoryIndicator",
         "freezeStateToWal",
         "getArrowDisplay",
         "getDetailDisplay",
