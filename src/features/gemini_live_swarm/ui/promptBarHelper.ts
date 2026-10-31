@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { ReflectionMode, REFLECTION_MODES, parseReflectionMode, REFLECTION_MODE_EVENT } from './reflectionStateHelper.ts';
 import { SwarmEventBus } from '../bus/swarmEventBus.ts';
+import { ContextUsageMetric } from '../telemetry/telemetrySchema.ts';
 
 export { REFLECTION_MODES };
 export type { ReflectionMode };
 
-export function formatMemoryIndicator(usageRatio?: number): string {
-  if (usageRatio === undefined) return '[Ledigt --%]';
-  const freePercentage = Math.round((1 - Math.min(Math.max(usageRatio, 0), 1)) * 100);
-  return `[Ledigt ${freePercentage}%]`;
+export function formatMemoryIndicator(metric: ContextUsageMetric): string {
+  return `${metric.usedTokens} / ${metric.maxTokens} tokens`;
 }
 
 export function getMicButtonProps(isLiveActive: boolean, isMuted: boolean, isSTTActive: boolean, isDebounced: boolean) {

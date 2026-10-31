@@ -8,6 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
+import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.ts';
 
@@ -83,6 +84,7 @@ function executeSamradTool(name: string, args: Record<string, any>): string {
       // Logga biljetten i masterloggen om den är ny
       if (normalizedRel.startsWith('doc/.TICKETS/')) {
         const ticketId = path.basename(normalizedRel).replace(/\.md$/, '');
+      currentSessionTicket = ticketId;
         const masterLog = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
         if (fs.existsSync(masterLog)) {
           const raw = fs.readFileSync(masterLog, 'utf-8');
@@ -168,11 +170,13 @@ async function main() {
         // Hitta om en biljett skapades under sessionen
         const ticketsDir = path.join(ROOT_DIR, 'doc', '.TICKETS');
         let latestTicket = '';
+        let currentSessionTicket = '';
         if (fs.existsSync(ticketsDir)) {
           const files = fs.readdirSync(ticketsDir).filter(f => f.startsWith('TCK-') && f.endsWith('.md')).sort();
           latestTicket = files[files.length - 1]?.replace(/\.md$/, '') || '';
         }
 
+        latestTicket = currentSessionTicket || latestTicket;
         if (latestTicket) {
           rl.question(`\n🚀 Samråd avslutat. Vill du starta det autonoma bygget för ${latestTicket} nu? (j/n): `, (ans) => {
             rl.close();

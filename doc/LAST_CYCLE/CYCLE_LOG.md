@@ -1,11 +1,14 @@
 # BYGGCYKEL LOGG: TCK-034
-**Starttid:** 2026-10-31T13:03:32.284Z
+**Starttid:** 2026-10-31T13:19:07.079Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
 # TCK-034: Visning av kontextminne
+
+## DOMÄN
+`src/features/gemini_live_swarm/`
 
 ## Beskrivning
 Användaren vill kunna se hur mycket kontextminne som används direkt i gränssnittet, placerat alldeles framför "👤 Du:"-etiketten.
@@ -14,7 +17,7 @@ Användaren vill kunna se hur mycket kontextminne som används direkt i gränssn
 Implementera en funktion för att hämta och formatera kontextminnesanvändningen.
 
 ```typescript
-import { ContextUsageMetric } from '../features/gemini_live_swarm/telemetry/contextUsageMetricSchema';
+import { ContextUsageMetric } from 'src/features/gemini_live_swarm/telemetry/contextUsageMetricSchema';
 
 export function formatMemoryIndicator(metric: ContextUsageMetric): string {
   // Formaterar kontextminnesanvändningen för visning i UI
@@ -31,11 +34,11 @@ export function formatMemoryIndicator(metric: ContextUsageMetric): string {
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att en pågående Gemini Live-session är etablerad, när systemet tar emot en uppdatering av kontextminnesanvändningen, så ska minnesindikatorn visas och uppdateras i realtid, placerad precis framför "👤 Du:"-etiketten.
+Givet att en Gemini Live-session är aktiv och kontextminne används, när jag interagerar med systemet, så ska den aktuella minnesanvändningen visas alldeles framför "👤 Du:"-etiketten.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Vi har påbörjat kontraktet för TCK-034 och bekräftar att uppdraget berör max en domän, `gemini_live_swarm`, i linje med våra regler.
+Granskningen är genomförd och godkänd. Uppdraget omfattar endast FSD-domänen `gemini_live_swarm` och håller sig strikt till API-kontraktet. Vi går vidare till vägval och förlikningsporten.
 
 
 #### 0b Att förlikas: Vägval
@@ -47,21 +50,21 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-034 och visa kontextminnet i gränssnittet finns det tre olika arkitektoniska tillvägagångssätt.
+Här är tre ortogonala alternativ för att lösa TCK-034 och visa kontextminnet.
 
-Det första alternativet är att bygga en händelsedriven lösning som använder SwarmEventBus. Vi låter telemetridata strömma genom bussen och prenumererar direkt i komponenten, vilket gör lösningen helt frikopplad.
+Alternativ ett: Direkt kontextkoppling. Vi integrerar minnesmätet i `SwarmContext` eller `useSwarmTelemetry`, och låter UI-komponenterna prenumerera direkt på uppdateringarna för att ritas om.
 
-Det andra alternativet är att utöka SwarmContext och använda en custom hook. Det innebär att minnesdatan blir en naturlig del av reaktets tillståndsträd och ger en mycket ren och reaktiv komponentmodell.
+Alternativ två: Händelsedriven ström. Vi publicerar minnesmätetalen via `SwarmEventBus` och skapar en dedikerad hook som lyssnar på specifika telemetrievenemang för realtidsuppdatering direkt i komponenten.
 
-Det tredje alternativet är att integrera källan direkt i en dedikerad mätarstore, liknande pendulumStore. Man polerar eller prenumererar på den specifika metrikmodulen, och får på så sätt full kontroll över telemetristyrningen.
+Alternativ tre: Observerbaserad lokal butik. Vi etablerar en separat observabel lagring för minnesstatistik som uppdateras av telemetrimotorn, där UI-ytan sedan observerar butiken för ändringar.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att alternativ ett, den händelsedrivna lösningen via SwarmEventBus, ger bäst isolation och minskar risken för kaskadfel. Alternativ två medför för hög koppling till det centrala tillståndsträdet, medan alternativ tre ökar komplexiteten i onödan för just detta krav. Vi bör fokusera på stark validering för högsta resiliens.
+Ur ett resiliensperspektiv och utifrån våra FSD-principer är alternativ två bäst. Det isolerar minnesstatistiken från det centrala tillståndet via SwarmEventBus, vilket minskar risken för onödiga omritningar och stoppar fel från att propagera.
 
 
 #### 2d Att förlikas: Mättnad
-Jag fastställer att alternativ ett, den händelsedrivna lösningen via SwarmEventBus, är det vinnande alternativet. Detta val ger bäst isolation och minimerar risken för kaskadfel. Mättnad: JA.
+Alternativ två är härmed fastställt som det vinnande kontraktet. Vi uppnår maximal isolering och resiliens genom att låta minnesstatistiken kommunicera uteslutande via SwarmEventBus. Mättnad: JA.
 
 
 #### 3a Att följa: Testspecifikation
@@ -73,4 +76,4 @@ Jag fastställer att alternativ ett, den händelsedrivna lösningen via SwarmEve
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-För att uppfylla TCK-034 kommer vi att skapa en ny fil, `telemetryUtils.ts`, för att hantera formateringen av minnesindikatorn. Vi kommer även att uppdatera `index.ts` i telemetry-domänen för att exportera denna funktion.
+För att genomföra TCK-034 skapar vi en ny hjälpfunktion i `src/features/gemini_live_swarm/ui/promptBarHelper.ts` som förvaltar formatet för minnesindikatorn. Sedan bevarar och uppdaterar vi `src/features/gemini_live_swarm/ui/UnifiedPromptBar.tsx` för att integrera denna indikator och koppla den till telemetridatan för realtidsuppdatering.

@@ -1,23 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
-import { getGlobalSwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
+import { describe, it, expect } from 'vitest';
+import { formatMemoryIndicator } from '../features/gemini_live_swarm';
 
-describe('TCK-034 Functional Alibi Test', () => {
-  it('should process events functionally through the bus', async () => {
-    const eventBus = getGlobalSwarmEventBus();
-    const handler = vi.fn();
-    
-    eventBus.subscribe('swarm_intent_toggled', handler);
-    
-    eventBus.emit('swarm_intent_toggled', { 
-      intent: 'research', 
-      active: true,
-      agentId: 'test-agent' 
-    });
-    
-    expect(handler).toHaveBeenCalledOnce();
-    expect(handler).toHaveBeenCalledWith(expect.objectContaining({
-      intent: 'research',
-      active: true
-    }));
+describe('TCK-034 - Visning av kontextminne', () => {
+  it('should format memory usage correctly', () => {
+    const mockMetric = {
+      usedTokens: 2500,
+      maxTokens: 8192,
+    };
+
+    const result = formatMemoryIndicator(mockMetric);
+
+    expect(result).toBe('2500 / 8192 tokens');
   });
 });
