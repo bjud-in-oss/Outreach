@@ -153,7 +153,9 @@ async function main() {
           fs.unlinkSync(full);
         }
       }
-    } catch {}
+    } catch (err: any) {
+      console.warn(`⚠️ [STARTSANERING]: Kunde inte rensa okommittat utkast: ${err?.message || err}`);
+    }
   }
 
   fs.writeFileSync(CYCLE_LOG_PATH, `# BYGGCYKEL LOGG: ${ticketId}\n**Starttid:** ${new Date().toISOString()}\n**Modell:** ${MODEL_NAME}\n\n---\n### INITIAL PROMPT\n\`\`\`\n${ticketPrompt}\n\`\`\`\n`, 'utf-8');
@@ -540,7 +542,9 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
         }
       }
       fs.writeFileSync(FEATURE_INDEX_PATH, JSON.stringify(indexData, null, 2), 'utf-8');
-    } catch {}
+    } catch (err: any) {
+      console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera FEATURE_INDEX.json: ${err?.message || err}`);
+    }
   }
 
   console.log('📋 Fas 3: Uppdaterar biljettstatus i doc/TICKETS.md...');
@@ -553,7 +557,9 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
         fs.writeFileSync(TICKETS_PATH, ticketsContent, 'utf-8');
       }
     }
-  } catch {}
+  } catch (err: any) {
+    console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera TICKETS.md: ${err?.message || err}`);
+  }
 
   console.log('\n🔍 Slutverifiering: Kör hela projektets arkitektur- och regressionskontroll...');
   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });

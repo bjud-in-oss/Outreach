@@ -1,13 +1,53 @@
-# TCK-MAINT-008: Implementera ADR-013 Omvändelseslingan i run-planera-live.ts
+# TCK-MAINT-008: Sanera tysta catch-block i run-planera-live.ts
 
 ## MÅL
-Bygg in ADR-013 i `scripts/run-planera-live.ts` så att motorn vid haveri i Fas 2 sanerar källkod, sparar kraschdump och loopar tillbaka till Fas 1 för omplanering (max 1 omvändelse).
+Ersätt de 3 tomma catch-blocken på rad 156, 543 och 556 i `scripts/run-planera-live.ts` med explicit felloggning så att filen uppfyller Gate 2c.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd `read_file` för att inspektera `scripts/run-planera-live.ts` runt Fas 1-starten (rad 180) och Fas 2-testloopen (rad 460–505).
-2. Använd `apply_patch` för att:
-   a) Definiera `CRASH_DUMP_PATH`, `omvandelseCount = 0` och omsluta Fas 1 och Fas 2 i en omvändelseslinga `while (omvandelseCount <= maxOmvandelse)`.
-   b) Om `attempts >= 3` i Fas 2:
-      - Om `omvandelseCount < maxOmvandelse`: öka räknaren, kör `git checkout -- src/features/${targetDomain}`, skriv kraschlogg till `doc/LAST_CYCLE/CRASH_DUMP.json`, och bryt Fas 2 för att starta om Fas 1 med kraschdumpen i startankaret.
-      - Om `omvandelseCount >= maxOmvandelse`: avbryt med `process.exit(1)`.
-   c) Vid godkänt test: bryt omvändelseslingan och fortsätt till Fas 3.
+1. Använd `read_file` för att inspektera `scripts/run-planera-live.ts`.
+2. Använd `apply_patch` för att ersätta de tre tomma catch-blocken:
+
+Patch 1 (Startsanering runt rad 150–157):
+search_block:
+        if (fs.existsSync(full)) {
+          console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
+          fs.unlinkSync(full);
+        }
+      }
+    } catch {}
+
+replace_block:
+        if (fs.existsSync(full)) {
+          console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
+          fs.unlinkSync(full);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ [STARTSANERING]: Kunde inte rensa okommittat utkast: ${err?.message || err}`);
+    }
+
+Patch 2 (Feature index runt rad 540–544):
+search_block:
+      fs.writeFileSync(FEATURE_INDEX_PATH, JSON.stringify(indexData, null, 2), 'utf-8');
+    } catch {}
+
+replace_block:
+      fs.writeFileSync(FEATURE_INDEX_PATH, JSON.stringify(indexData, null, 2), 'utf-8');
+    } catch (err: any) {
+      console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera FEATURE_INDEX.json: ${err?.message || err}`);
+    }
+
+Patch 3 (Biljettstatus runt rad 553–557):
+search_block:
+        fs.writeFileSync(TICKETS_PATH, ticketsContent, 'utf-8');
+      }
+    }
+  } catch {}
+
+replace_block:
+        fs.writeFileSync(TICKETS_PATH, ticketsContent, 'utf-8');
+      }
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera TICKETS.md: ${err?.message || err}`);
+  }

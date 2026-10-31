@@ -1,33 +1,78 @@
 # BYGGCYKEL LOGG: TCK-MAINT-008
-**Starttid:** 2026-10-31T16:25:48.877Z
+**Starttid:** 2026-10-31T16:47:59.224Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-008: Implementera ADR-013 Omvändelseslingan i run-planera-live.ts
+# TCK-MAINT-008: Sanera tysta catch-block i run-planera-live.ts
 
 ## MÅL
-Bygg in ADR-013 i `scripts/run-planera-live.ts` så att motorn vid haveri i Fas 2 sanerar källkod, sparar kraschdump och loopar tillbaka till Fas 1 för omplanering (max 1 omvändelse).
+Ersätt de 3 tomma catch-blocken på rad 156, 543 och 556 i `scripts/run-planera-live.ts` med explicit felloggning så att filen uppfyller Gate 2c.
 
 ## UPPDRAG FÖR BYGGMOTORN
-1. Använd `read_file` för att inspektera `scripts/run-planera-live.ts` runt Fas 1-starten (rad 180) och Fas 2-testloopen (rad 460–505).
-2. Använd `apply_patch` för att:
-   a) Definiera `CRASH_DUMP_PATH`, `omvandelseCount = 0` och omsluta Fas 1 och Fas 2 i en omvändelseslinga `while (omvandelseCount <= maxOmvandelse)`.
-   b) Om `attempts >= 3` i Fas 2:
-      - Om `omvandelseCount < maxOmvandelse`: öka räknaren, kör `git checkout -- src/features/${targetDomain}`, skriv kraschlogg till `doc/LAST_CYCLE/CRASH_DUMP.json`, och bryt Fas 2 för att starta om Fas 1 med kraschdumpen i startankaret.
-      - Om `omvandelseCount >= maxOmvandelse`: avbryt med `process.exit(1)`.
-   c) Vid godkänt test: bryt omvändelseslingan och fortsätt till Fas 3.
+1. Använd `read_file` för att inspektera `scripts/run-planera-live.ts`.
+2. Använd `apply_patch` för att ersätta de tre tomma catch-blocken:
+
+Patch 1 (Startsanering runt rad 150–157):
+search_block:
+        if (fs.existsSync(full)) {
+          console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
+          fs.unlinkSync(full);
+        }
+      }
+    } catch {}
+
+replace_block:
+        if (fs.existsSync(full)) {
+          console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
+          fs.unlinkSync(full);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ [STARTSANERING]: Kunde inte rensa okommittat utkast: ${err?.message || err}`);
+    }
+
+Patch 2 (Feature index runt rad 540–544):
+search_block:
+      fs.writeFileSync(FEATURE_INDEX_PATH, JSON.stringify(indexData, null, 2), 'utf-8');
+    } catch {}
+
+replace_block:
+      fs.writeFileSync(FEATURE_INDEX_PATH, JSON.stringify(indexData, null, 2), 'utf-8');
+    } catch (err: any) {
+      console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera FEATURE_INDEX.json: ${err?.message || err}`);
+    }
+
+Patch 3 (Biljettstatus runt rad 553–557):
+search_block:
+        fs.writeFileSync(TICKETS_PATH, ticketsContent, 'utf-8');
+      }
+    }
+  } catch {}
+
+replace_block:
+        fs.writeFileSync(TICKETS_PATH, ticketsContent, 'utf-8');
+      }
+    }
+  } catch (err: any) {
+    console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera TICKETS.md: ${err?.message || err}`);
+  }
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att exekveringsmotorn har påbörjat Fas 2, när tre försök har misslyckats utan godkänt resultat, och omvänjelsecounten är under max omvänjelse, så saneras källkoden, en kraschdump sparas i doc/LAST_CYCLE/CRASH_DUMP.json, och processen loopar tillbaka till Fas 1 för omplanering.
+Feature: Förbättrad felhantering i körskriptet för live-planering
+
+  Scenario: Explicita felloggningar vid filoperationer i planeringsskriptet
+    Givet att planeringsskriptet har tysta catch-block vid filoperationer
+    När ett fel uppstår vid rensning av utkast, uppdatering av feature-index eller biljettstatus
+    Så ska systemet logga en varning med felmeddelandet för full spårbarhet
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag bekräftar att kontraktet har auditerats. Uppgiften berör inte mer än en FSD-domän och inkluderar de destruktiva saneringsstegen enligt ADR-013. Vi kan gå vidare.
+Jag bekräftar att TCK-MAINT-008 uppfyller alla kontraktskrav för Steg 0a, då ändringarna begränsas till skriptet `run-planera-live.ts` utan att modifiera FSD-domäner under `src/features/`. Jag sparar nu beteendekontraktet i `doc/features/`.
 
 
 #### 0b Att förlikas: Vägval
@@ -39,18 +84,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att implementera ADR-013 Omvändelseslingan i `scripts/run-planera-live.ts` formulerar jag följande tre ortogonala alternativ:
+Här är tre ortogonala alternativ för att åtgärda de tysta catch-blocken i `scripts/run-planera-live.ts`:
 
-Alternativ 1 innebär en explicit proceduriell loop. Vi omsluter fas 1 och fas 2 i en `while`-loop i huvudskriptet, hanterar `omvandelseCount` internt och återställer tillståndet inför nästa körning.
+Alternativ 1 innebär att vi injicerar direkt felloggning med `console.warn` i varje catch-block via `apply_patch`, vilket är den enklaste och mest direkta lösningen enligt kontraktet.
 
-Alternativ 2 bygger på en händelsedriven tillståndsmaskin. Fasövergångar styrs via EventBus, där en kraschsignal utlöser en övergång tillbaka till planeringsläget med incrementerad räknare.
+Alternativ 2 är att införa en gemensam loggningsfunktion i ett separat skriptmodul och anropa denna. Detta skapar en mer enhetlig felhantering över tid.
 
-Alternativ 3 separerar körningen genom en underprocess. När fas 2 havererar, skrivs dumpen och processen avslutas, varpå en ny instans startas av en extern runner med det uppdaterade startankaret.
+Alternativ 3 bygger på att publicera felen som händelser via `SwarmEventBus`, vilket möjliggör osynlig spårning och integration med telemetrisystemet.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid granskning av resiliens och felhantering för de tre alternativen kan vi konstatera följande: Alternativ ett, den explicita loopen, är enkel att implementera och håller tillståndet samlat, men den är sårbar för odokumenterade läckage eller odödliga tillstånd som kan korrumpera nästa iteration. Alternativ två, den händelsedrivna tillståndsmaskinen, frikopplar logiken väl, men riskerar komplexitet och problem vid eventbussavbrott. Alternativ tre, med processseparation via underprocesser, erbjuder högst skydd mot krascher genom total sessionisolering och en ren omstart varje gång. Det skapar dock friktion i filhanteringen. För resiliens och robust felhantering tillgodoses bäst det tredje alternativet enligt principen om att krascha kontrollerat.
+Alternativ 1 ger direkt och tydlig felinformation lokalt, vilket uppfyller kontraktet utan att tillföra komplexa beroenden. Alternativ 2 ökar enhetligheten, men riskerar att sprida koden mer än vad biljetten kräver. Alternativ 3 med EventBus är mest robust för telemetri, men kräver att eventbussen är rätt initierad i skriptkontexten. Sammantaget är Alternativ 1 mest lämpat som avbrottsfritt körtidsankare för denna maintenance.
 
 
 #### 2d Att förlikas: Mättnad
-Som kraften *Att förlikas* slår jag fast att alternativ tre, med processseparation via underprocesser och total sessionisolering, är det vinnande alternativet för att uppnå maximal resiliens. Principen om att krascha kontrollerat säkrar systemets integritet över tid. MÄTTNAD: JA.
+Vi slår fast att Alternativ 1 är det vinnande alternativet för detta underhåll. Detta säkrar ett avbrottsfritt körtidsankare med direkt felinformation och minsta möjliga komplexitet i systemet. MÄTTNAD: JA.
