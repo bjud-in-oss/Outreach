@@ -1,9 +1,9 @@
 /**
  * scripts/verify-architecture.js
  * 
- * OUTREACH COORDINATION ENGINE (v10.4)
+ * OUTREACH COORDINATION ENGINE (v10.5)
  * Matematisk arkitekturkontroll via TypeScripts inbyggda AST:
- * 1. FSD v10.4-isolering under src/features/ (Statiska, dynamiska & alias-importer)
+ * 1. FSD v10.5-isolering under src/features/ (Statiska, dynamiska & alias-importer)
  * 2. Domänläckage-kontroll i scripts/
  */
 
@@ -15,7 +15,7 @@ const ROOT_DIR = process.cwd();
 const SRC_DIR = path.join(ROOT_DIR, 'src');
 const SCRIPTS_DIR = path.join(ROOT_DIR, 'scripts');
 
-console.log('🏛️  [FSD Arkitekturkontroll v10.4] Startar komplett AST-validering...');
+console.log('🏛️  [FSD Arkitekturkontroll v10.5] Startar komplett AST-validering...');
 
 let fsdViolations = 0;
 let fileCount = 0;
@@ -125,4 +125,4 @@ if (fsdViolations > 0 || leakViolations > 0) {
   process.exit(1);
 }
 
-console.log(`✅ Arkitektur godkänd! Samtliga ${fileCount} filer validerade mot FSD v10.4 (inkl. alias & dynamisk import).`);
+console.log(`✅ Arkitektur godkänd! Samtliga ${fileCount} filer validerade mot FSD v10.5 (inkl. alias & dynamisk import).`);

@@ -1,7 +1,7 @@
 /**
  * scripts/compress-adrs.js
  * 
- * OUTREACH COORDINATION ENGINE (v10.4)
+ * OUTREACH COORDINATION ENGINE (v10.5)
  * Intelligent semantisk komprimerare för ADR och Invarianter (v2.1).
  * Korrekt JS-radslut, bevarar tekniska prefix (16kHz) och verkliga konsekvenser.
  */

@@ -1,7 +1,7 @@
 /**
  * scripts/samrad.ts
  * 
- * OUTREACH COORDINATION ENGINE (v10.4)
+ * OUTREACH COORDINATION ENGINE (v10.5)
  * Självgående, arkitekturmedvetet samråd för icke-programmerande domänexperter.
  */
 
@@ -123,7 +123,7 @@ async function main() {
   const args = process.argv.slice(2);
   const initialTopic = args.length > 0 ? args.join(' ') : 'Jag vill bygga en ny funktion.';
 
-  console.log(`\n🌉 Välkommen till Mötesbryggan (v10.4)`);
+  console.log(`\n🌉 Välkommen till Mötesbryggan (v10.5)`);
   
   console.log(`💡 Vägvisaren är redo. Vad vill du att vi ska göra idag?\n`);
 
@@ -140,7 +140,7 @@ async function main() {
   const fence = String.fromCharCode(96).repeat(3);
 
   const systemInstruction = [
-    'Du är Wayfinder i Outreach Coordination Engine v10.4.',
+    'Du är Wayfinder i Outreach Coordination Engine v10.5.',
     'Ditt uppdrag är att agera brygga mellan en icke-programmerande domänexpert (användaren) och systemets strikta kodarkitektur.',
     'Användaren förklarar VAD systemet ska göra (mänsklig nytta). Du ansvarar HUNDRAPROCENTIGT för HUR det översätts till kod.',
     '',

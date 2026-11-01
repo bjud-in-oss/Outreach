@@ -1,7 +1,7 @@
 /**
  * scripts/run-tests.js
  * 
- * OUTREACH COORDINATION ENGINE (v10.4)
+ * OUTREACH COORDINATION ENGINE (v10.5)
  * Renodlad regressionsmotor: Delegerar helt till deklarativ vitest.config.ts.
  */
 

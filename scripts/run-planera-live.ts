@@ -2,7 +2,7 @@ import { mutateSourceCodeAST } from './drivers/astMutator.js';
 /**
  * scripts/run-planera-live.ts
  * 
- * OUTREACH COORDINATION ENGINE (v10.4)
+ * OUTREACH COORDINATION ENGINE (v10.5)
  * Helautonom orkestreringsmotor med Action Loop, testkonsolidering,
  * dokumentationssynk, och en interaktiv mänsklig beslutsgrind för systemunderhåll.
  */
@@ -20,7 +20,7 @@ const ROOT_DIR = process.cwd();
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const CRASH_DUMP_PATH = path.join(CYCLE_LOG_DIR, 'CRASH_DUMP.json');
-const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.4.md');
+const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
 const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
 const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
 const PKG_PATH = path.join(ROOT_DIR, 'package.json');
@@ -37,7 +37,7 @@ const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
 
 if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
 
-let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.4.';
+let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
 if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
 
 function getFeatureIndexText(): string {
@@ -113,7 +113,7 @@ async function main() {
 
   const isMaint = ticketId.startsWith('TCK-MAINT');
 
-  console.log(`\n🚀 OUTREACH COORDINATION ENGINE v10.4 – STARTAR BYGG: ${ticketId}`);
+  console.log(`\n🚀 OUTREACH COORDINATION ENGINE v10.5 – STARTAR BYGG: ${ticketId}`);
   console.log(`📌 Aktiv Live-modell: ${MODEL_NAME}`);
 
   let ticketPath = path.join(ROOT_DIR, 'PROMPT.md');

@@ -29,7 +29,7 @@ async function generateCommitMessageLive(diffText: string): Promise<string> {
     ai,
     model: MODEL_NAME,
     systemInstruction: [
-      'Du är en teknisk miljömekaniker i Outreach Coordination Engine v10.4.',
+      'Du är en teknisk miljömekaniker i Outreach Coordination Engine v10.5.',
       'Ditt uppdrag är att analysera git-diffar och formulera ett kort, konventionellt commit-meddelande på svenska.',
       'Formatet MÅSTE vara:',
       '<typ>(<område>): <Kort rubrik på max 60 tecken>',

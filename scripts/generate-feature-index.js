@@ -1,7 +1,7 @@
 /**
  * scripts/generate-feature-index.js
  * 
- * OUTREACH COORDINATION ENGINE (v10.4)
+ * OUTREACH COORDINATION ENGINE (v10.5)
  * Genererar doc/FEATURE_INDEX.json genom att parsa TypeScripts syntaxträd (AST).
  * Noll regex, 100 % deterministisk.
  */
