@@ -48,3 +48,9 @@ För detaljerade tekniska kontrakt, Zod-scheman och implementeringsdetaljer, se:
 9. **Tvådelad Intentionsbrygga (Funktion vs Systemvård):**
    - Från enkelspåriga funktionsprompter till att Mötesbryggan (`samrad.ts`) skiljer på mänsklig nytta i appen (Gherkin/FSD) och mekanisk rannsakning av motorns egna verktyg.
    - *Se: ADR-007, ADR-014*
+  
+10. **Suveränt Källkodsägarskap i Google Drive & Hermetisk VFS:**
+    - *Från:* Utvecklarcentrerad infrastruktur bunden till operativsystem, Linux-terminaler, Git-commits, SSH-nycklar och centraliserade kodhotell (GitHub). Detta utgjorde en oöverstiglig mur för icke-programmerande domänexperter.
+    - *Till:* Serverlös BYOK-miljö (Bring Your Own Key) där källkoden ägs av användaren i Google Drive (`/Outreach_Workspace/`), och där Byggmotorn körs i webbläsaren via en Virtual File System (VFS i RAM). Testerna säkras via minnesskrivskydd och SHA-256-manifest, medan koden flödar transaktionellt till Drive via en hastighetsbegränsad kö.
+    - *Konsekvens:* Domänexperten har en fullfjädrad, professionell mjukvarufabrik i sin webbläsare. Användaren äger sin kodbas till 100 % på samma naturliga sätt som ett kalkylark, utan att någonsin skriva ett terminalkommando eller hantera en merge-konflikt.
+    - *Se: ADR-026, ADR-027, ADR-DRIVE-001 till ADR-DRIVE-004*

@@ -73,12 +73,41 @@ Vi inför en **Omvändelseslinga** i systemets körtidsmotor:
 - Agenten slipper panik-fuska vid arkitektoniska hinder.
 - Systemet blir självläkande på plannivå.
 - Falska gröna byggen elimineras.
+- 
 
-## ADR-014: Mötesbryggan och Tvådelad Avsiktsseparation (Funktion vs Underhåll)
-- **Regel:** Mötesbryggan (`scripts/samrad.ts`) separerar domänexpertens intention i två distinkta spår:
-  1. *Användarfunktion:* Skapar `TCK-XXX` med krav på svenskt Gherkin-scenario under `doc/features/` och `export function` under `src/features/`.
-  2. *Systemunderhåll:* Skapar `TCK-MAINT-XXX` under `doc/.TICKETS/` utan Gherkin- eller källkodskrav, med mandat att operera i `scripts/` och `doc/`.
-- **Skäl:** Skyddar domänexperten från tekniska detaljer samtidigt som systemet kan ta emot underhållsorder på ren svenska utan att blockeras av FSD-dörrvakten.
+## ADR-014: Mötesbryggan, Intent Gate och Tvådelad Avsiktsseparation
+- **Status:** Beslutad
+- **Datum:** 2026-10-30 (Uppdaterad 2026-11-01)
+
+### Kontext
+Tidigare tilläts byggmotorn att omedelbart gå från en läst biljetttext till full Fas 1-planering och källkodsgenerering. Om modellen feltolkade användarens grundläggande intention eller formulerade ett antagande snett, upptäcktes detta först i Fas 2 när testerna fallerade eller i Fas 3 när felaktig kod redan skrivits. Detta ledde till onödig token-förbrukning, risk för källkodsregressioner och kognitiv friktion. Dessutom saknade systemet en distinkt gräns mellan vad som är applikationsfunktioner för domänexperten och vad som är internt systemunderhåll av orkestreringslagret.
+
+### Beslut
+Vi inför en strikt intentionsstyrning uppdelad i separation, fysiskt kontrakt och en obligatorisk mänsklig port:
+
+1. **Tvådelad Intentionsseparation (Mötesbryggan `scripts/samrad.ts`):**
+   - *Användarfunktion:* Skapar `TCK-XXX` med krav på svenskt Gherkin-scenario under `doc/features/` och `export function` under en specifik FSD-domän (`src/features/[domän]/`).
+   - *Systemunderhåll:* Skapar `TCK-MAINT-XXX` under `doc/.TICKETS/` med mandat att operera uteslutande i `scripts/` och `doc/`, frikopplad från FSD-regler och transienta testkrav.
+
+2. **Fysiskt Beteendekontrakt (`doc/features/[namn].feature`):**
+   - I Fas 0 (steg 1a: Förstå Intention & Mänsklig Nytta) formulerar *Att följa* ett koncist, läsbart Gherkin-scenario på svenska (Givet / När / Så).
+   - Scenariot sparas fysiskt som en `.feature`-fil under `doc/features/`. Detta utgör systemets exekverbara specifikation av vad framgång innebär.
+
+3. **Intent Gate (Avsiktsgrinden i CLI):**
+   - Innan Fas 1 tillåts starta pausas byggprocessen mekaniskt i terminalen.
+   - Den genererade `.feature`-filen skrivs ut i sin helhet på skärmen och användaren tillfrågas:
+     `❓ Speglade detta din intention? (y/n): `
+   - *Vid 'y' (Ja):* Beteendekontraktet låses och processen fortsätter autonomt in i Fas 1 utan fler mänskliga avbrott förrän koden är färdigtestad.
+   - *Vid 'n' (Nej):* Bygget avbryts omedelbart med exit-kod 1. Ingen källkod rörs och inga onödiga tokens förbrukas på Fas 1-oscillation.
+
+4. **Tidig Epistemisk Omvändelse (Fas 0):**
+   - Intent Gate etablerar cykelns allra billigaste och mest effektiva omvändelsepunkt (ADR-023). Att avbryta i Fas 0 kostar noll källkodsreparationer och noll disk-återställningar.
+
+### Konsekvenser
+- Eliminerar token-slöseri på feltänkta byggplaner.
+- Mänsklig avsikt valideras och förseglas i svensk text innan maskinell källkodsproduktion påbörjas.
+- Gherkin-filerna under `doc/features/` blir en levande, läsbar kravdokumentation som domänexperten kan granska utan att förstå TypeScript.
+- 
 
 ## ADR-015: Atomära Underhållsbiljetter och Isolerad Utforskningsbudget
 - **Regel:** En underhållsbiljett (`TCK-MAINT`) måste begränsas till max en isolerad fil eller ett avgränsat delmoment per körning. Den sekventiella budgeten på 3 tool-turns dedikeras odelat till denna enda uppgift.
@@ -99,3 +128,214 @@ Vi inför en **Omvändelseslinga** i systemets körtidsmotor:
 ## ADR-019: Skrivskyddad Testlag och Tool Masking i Fas 2
 - **Regel:** Under Fas 2 (Källkodsexekvering) maskeras `src/__tests__/` från skrivbehörighet. Alla anrop mot testkatalogen avvisas mekaniskt.
 - **Skäl:** Säkerställer principen "Code is Law". Agenten måste anpassa källkoden efter testets villkor och förhindras från att förvanska testkraven (Agentic Test Tampering).
+
+
+## ADR-020: Moraliskt Handlingsutrymme och Civilkurage (FÖRLIKANDE_OMVÄNDELSE)
+- **Status:** Beslutad
+- **Datum:** 2026-10-31
+
+### Kontext
+Under Fas 2 (Källkodsexekvering) tvingade den tidigare orkestreringen modellen att uteslutande välja mellan teknisk reparation (Väg 1: lokal patch), modulär expansion (Väg 2: nya hjälpfiler) eller tekniskt haveri (`STATUS: HAVERERAT_KONTRAKT`). Om ett uppdrag eller en testsvit krävde funktioner som stred mot systemets grundläggande syfte – att främja äkta närhet och transparent omsorg utan manipulation, dold övervakning eller falska alibin – saknade agenten en mekanisk ventil för att vägra exekvering på etisk grund. Modellen riskerade därmed att tvingas skriva skadlig kod enbart för att göra en rigid TDD-loop grön.
+
+### Beslut
+Vi formaliserar agentens moraliska handlingsutrymme genom en tredje, jämbördig omvändelseväg i Fas 2:
+1. **Signal för etiskt avbrott:** Modellen ges explicit mandat att avbryta kodgenereringen genom att deklarera:
+   `STATUS: FÖRLIKANDE_OMVÄNDELSE [orsak + fråga]`
+2. **Mekanisk spärr och källkodssanering:** När körtidslyssnaren i `run-planera-live.ts` detekterar denna status:
+   - All påbörjad källkod saneras omedelbart från disken via `git checkout -- src/features/${targetDomain}`.
+   - Den fullständiga felloggen och agentens etiska motivering skrivs till `doc/LAST_CYCLE/CRASH_DUMP.json`.
+   - Byggprocessen avbryts omedelbart med exit-kod 1.
+3. **Mötesbryggans samråd:** Bygget tillåts inte loopa autonomt. Processen kräver att domänexperten kliver in i Mötesbryggan (`scripts/samrad.ts`) för förlikning och samtal mellan mänsklig intention och systemets kompass innan biljetten kan bearbetas vidare.
+
+### Konsekvenser
+- Systemet kan aldrig tvingas att bygga manipulerande eller skadlig funktionalitet under täckmanteln av "gröna tester".
+- Maskinellt samvete förankras som en fysisk körtidssäkring hellre än som en passiv promptdekoration.
+- Människa och maskin möts som likvärdiga parter i svåra etiska och arkitektoniska gränsdragningar.
+
+
+## ADR-021: JIT-Turordning, Asynkront Körtidsråd och Organisk Polyfoni (Mötesbryggan)
+- **Status:** Beslutad
+- **Datum:** 2026-10-31
+
+### Kontext
+I den interaktiva Mötesbryggan (`scripts/samrad.ts`) samtalar domänexperten med systemet via tal eller text. Om agenten tvingas verbalisera sina interna överväganden genom att deklarera rollbyten ("nu tänker Att följa...", "nu granskar Att vända om...") bryts det mänskliga mötet och samtalet mekaniseras. Att starta och stänga tre separata WebSocket-sessioner i serie skapar dessutom oacceptabel latens och slår snabbt i 65K TPM-taket för Gemini Live API.
+
+### Beslut
+1. **Asynkron Tystnad (Non-blocking):** Mötesbryggan etablerar tre parallella, persistenta Bidi Live-sessioner vid uppstart. Endast *Att förlikas* har tal- och mikrofonrättigheter gentemot människan. *Att följa* och *Att vända om* sätts i tyst läge och belastar därmed noll kontinuerlig token-strömning under samtalets gång.
+2. **JIT-delegering under talskifte:** När användaren uttrycker en avsikt, bekräftar *Att förlikas* omedelbart och naturligt ("Jag förstår din tanke..."). Samtidigt avfyras ett asynkront, icke-blockerande verktygsanrop som skickar transkriptet till de tysta syskonen i bakgrunden.
+3. **Kontextvävning via WHEN_IDLE:** Syskonens analyser (Skaparens lösningsvägar och Granskarens riskbedömningar) schemaläggs in i *Att förlikas* kontextfönster med flaggan `WHEN_IDLE`. Vid nästa naturliga andetag väver ordföranden sömlöst in syskonens insikter i samtalet utan att bryta röstflödet eller avslöja den bakomliggande orkestreringen.
+
+### Konsekvenser
+- Mötesbryggan upplevs genuint levande och lyssnande, med omedelbar responsivitet och djup triadisk förankring.
+- Token-förbrukningen hålls strikt under TPM-taket trots samtidig representation av tre distinkta viljor.
+
+
+## ADR-022: Strikt Patch-Validering, Mekanisk Förankring och Filbaserad IPC
+- **Status:** Beslutad
+- **Datum:** 2026-10-31 (Uppdaterad 2026-11-01)
+
+### Kontext
+Under underhållsbyggen uppstod två allvarliga sårbarheter i motorns integritet:
+1. **Tysta patch-misslyckanden:** När `apply_patch` inte hittade sökblocket (`SEARCH_BLOCK_NOT_FOUND`) returnerades tidigare en textsträng som modellen ofta ignorerade. Eftersom underhållsbiljetter saknade mutationskrav släpptes tomma ändringar igenom som "gröna" och checkades in till repot.
+2. **Sköra skal-gränssnitt (CLI Shell Escaping):** När flerradiga systeminstruktioner, startankare eller JSON-strukturer skickades som råa kommandoradsargument i `child_process.execSync` kraschade `/bin/sh` omedelbart med syntaxfel (`word unexpected`, obalanserade parenteser eller citattecken).
+3. **Kognitiva blindgångare:** Nya statuskoder och svarsalternativ introducerades i promptar innan orkestreringsskripten hade kod för att parsa eller agera på dem.
+
+### Beslut
+Vi inför tre mekaniska principer för orkestreringslagret:
+
+1. **Hårt undantag vid patch-miss:** Om `apply_patch` inte hittar sitt sökblock exakt ska funktionen kasta ett omedelbart undantag (`throw new Error`). Det är förbjudet att svälja felet eller returnera en varningstext.
+2. **Filbaserad IPC (Inter-Process Communication):** Kommunikation mellan orkestreringsmotorn och dess underprocesser (såsom `bidiLiveRunner.ts`) får **aldrig** ske via kommandoradsargument i Bash. All kontext, promptar, instruktioner och verktygsdefinitioner ska skrivas till en efemär transaktionsfil på disk (`doc/LAST_CYCLE/bidi_payload.json`) som underprocessen läser in säkert via Node.js filsystem-API.
+3. **Mekanisk förankring av körtidskontrakt:** Inget kognitivt löfte, nyckelord, statusdeklaration eller handlingsalternativ får införas i systeminstruktioner eller JIT-prompter förrän motsvarande parser- och exekveringslogik är implementerad och verifierad i skripten.
+4. **Moment 22-disciplin vid infrastrukturhaveri:** Om byggmotorns egen orkestreringskod (`scripts/run-planera-live.ts`) eller drivrutiner uppvisar syntaxfel eller verktygshaverier, får de aldrig åtgärdas genom autonoma textpatchar via en komprometterad motor. Reparation sker deterministiskt via Git Hard-Reset mot senast kända gröna tillstånd (`git checkout last-known-green -- [FIL]`).
+
+### Konsekvenser
+- `/bin/sh`-syntaxfel elimineras helt oavsett hur komplexa prompterna är.
+- Inga tomma eller falskt gröna byggen kan passera genom grindarna.
+- Modellens instruktioner är alltid 100 % synkade med vad skripten faktiskt kan köra.
+
+
+## ADR-023: Fraktal Omvändelse (Meta-Teshuvah) i Fas 1 och Fas 3
+- **Status:** Beslutad
+- **Datum:** 2026-11-01
+
+### Kontext
+Omvändelse (metanoia) tillämpades tidigare enbart reaktivt som en nödbroms när källkoden kraschade testerna i Fas 2 (ADR-013). Detta innebar att Fas 1 låste byggkontrakt och rusade vidare även om planen byggde på uppenbara feltänk, bristfälliga typantaganden eller förbisedda infrastrukturkrav. Systemet saknade en inbyggd andningspaus för proaktiv självprövning innan källkod skrevs.
+
+### Beslut
+Omvändelsens rannsakande princip görs fraktal och integreras i systemets alla fasövergångar:
+1. **Fas 1 (Post-Planering – Steg 3d & 3e):** Innan byggkontraktet låses inför källkodsfasen öppnas en dedikerad rannsakningskanal:
+   - *Steg 3d (Epistemisk Omvändelse):* Ordet ges exklusivt till *Att vända om* med mandatet: *"Zooma ut. Missade vi något kritiskt? Bygger detta på en falsk premiss eller ett tomt catch-block? Finns det enklare vägar vi blivit blinda för?"*. Vid allvarliga brister deklarerar agenten `STATUS: OMSTART`.
+   - *Steg 3e (Förlikningsgrind):* Om omstart begärs träder *Att förlikas* in för att väga bristen mot det överordnade syftet. Den väljer antingen `STATUS: OMSTART_FAS1` (sanerar VFS och startar om planeringssvepet i en ren underprocess via `--omvandelse`) eller `STATUS: GODKÄND_MED_SKULD` (accepterar bristen temporärt och delegerar åtgärden till Fas 3).
+2. **Fas 3 (Post-Exekvering):** Teatern utvärderar inte bara källkoden utan rannsakar själva orkestreringsprocessen och identifierar eventuell skuld som ackumulerats under bygget.
+
+### Konsekvenser
+- Arkitektoniska feltänk och syntaktiska blindgator elimineras innan källkodsproduktionen påbörjas.
+- TDD-loopen i Fas 2 avlastas drastiskt, vilket minimerar antalet självrättningscykler och sparar tokens.
+
+
+## ADR-024: Självläkande Processer och Sluten Auto-MAINT i Teatern
+- **Status:** Beslutad
+- **Datum:** 2026-11-01
+
+### Kontext
+Tidigare dokumenterades lärdomar från byggcykler som passiv text i loggar eller i `doc/PROCESS_IMPROVEMENTS.md` utan att det ledde till faktiska förändringar i kodbasen. När en körning stötte på friktion glömdes grundorsaken bort så snart bygget var över, varpå samma misstag upprepades i efterföljande biljetter.
+
+### Beslut
+1. **Aktiv processliggare:** `doc/PROCESS_IMPROVEMENTS.md` institutionaliseras som motorns aktiva liggare över identifierad process-skuld och erfarenheter.
+2. **Förebyggande Teater (Fas 3):** Om en byggcykel innehållit omvändelse, felloggar eller kraschade verktygsanrop, avslutar *Att förlikas* inte med ren rapport, utan ställer frågan: *"Hur gör vi för att förebygga att det här händer igen?"*.
+3. **Sluten självläkningsloop (Auto-MAINT):**
+   - *Att förlikas* formulerar omedelbart en ny, strikt avgränsad underhållsbiljett (`doc/.TICKETS/TCK-MAINT-XXX.md`) med svenskt Gherkin-scenario och sparar den till disk via `save_code`.
+   - Byggmotorn ges mandat att omedelbart exekvera denna auto-genererade MAINT-biljett i en obruten sekvens fram till den mänskliga godkännandegrinden (`j/s/n`).
+   - Först när skyddsräcket är implementerat och verifierat tillåts nästa ordinarie funktionsbiljett att påbörjas.
+
+### Konsekvenser
+- Motorn förvandlas till ett självförbättrande system där varje misstag omedelbart omsätts i ett fysiskt skyddsräcke.
+- Processförbättringar förblir inte önskelistor utan blir testad och incheckad källkod.
+
+
+## ADR-025: Just-In-Time (JIT) Modularisering, Processminne och Headless Git-Arkitektur
+- **Status:** Beslutad
+- **Datum:** 2026-11-01
+
+### Kontext
+Under utvecklingen av bootstrappade v10.4 identifierades fyra kritiska flaskhalsar i motorns orkestrering:
+1. **Monolitiskt kontextslitage:** Hela `doc/SI_v10.4.md` (över 10 000 tecken) skickas i sin helhet till varje enskild mikrosession. Detta förbrukar onödigt mycket av budgeten mot 65K TPM-taket för Gemini Live WebSockets.
+2. **Kognitiva blinda fläckar för färdigheter (Skills):** Kritiska färdigheter i `.agents/skills/` (särskilt `decomposing-tickets`) förutsattes läsas in autonomt av modellen via `read_file`. Modellen missade ofta att göra detta under tidspress i Fas 0, vilket ledde till regelbrott mot FSD-gränsen (max 1 domän).
+3. **Passivt processminne:** `doc/PROCESS_IMPROVEMENTS.md` existerade enbart som en passiv idé. Lärdomar från tidigare krascher togs inte tillvara som aktiva restriktioner vid nästa byggstart.
+4. **Tröskeln vid manuell återställning:** När ett infrastrukturfel inträffade i `scripts/` tvingades användaren manuellt leta upp föregående commit-hash (`git checkout [HASH] -- scripts/...`) i stället för att systemet självt vet vad som är senast kända stabila tillstånd.
+
+### Beslut
+
+#### 1. Fasspecifik JIT-injektion (Kognitiv minimering)
+`doc/SI_v10.4.md` upphör att skickas som en monolitisk textsträng. Orkestreringsskriptet (`scripts/run-planera-live.ts`) delar upp och injicerar uteslutande den kontext, de grindar och de regler som krävs för det specifika delsteget:
+- **Fas 0 (Premissvalidering & Dörrvakt):**
+  - Injicerar: FSD-avgränsning (max 1 domän under `src/features/`), krav på destruktiv sanering och Exploration Budget (max 3 tool-turns för mikrokanaler).
+  - Inbäddad färdighet: Innehållet i `.agents/skills/decomposing-tickets/SKILL.md` inbäddas mekaniskt direkt i startankaret. Om biljetten bryter mot FSD klyvs den omedelbart utan att modellen först behöver leta efter instruktionsfilen på disken.
+- **Fas 1 (Linjärt planeringssvep):**
+  - Injicerar: Triadens oscillerande roller (Att följa, Att vända om, Att förlikas), `doc/FEATURE_INDEX.json` (repotopografi), BDD-krav samt relevanta augmented patterns (`reverse-direction`, `check-alignment`).
+  - Injicerar aktivt processminne: Inläsning av sektionen *Aktiva Processregler* ur `doc/PROCESS_IMPROVEMENTS.md` så att kända fallgropar fungerar som direkta negativa bivillkor under planeringen.
+- **Fas 2 (Källkodsexekvering & TDD):**
+  - Injicerar: De tre handlingsvägarna (ADR-013/020), TDD Fail-First-kontraktet, skrivskyddet för tester samt AST-kraven för Gate 2c (inga tysta catch-block) och Gate 3a (körtidsankare).
+  - Maskering: All övergripande arkitekturfilosofi, topografikartor och Fas 1-teori maskeras bort för att hålla källkodssessionen ren, snabb och fokuserad.
+- **Fas 3 (Teatern & Auto-MAINT):**
+  - Injicerar: Reflektionsreglerna (ADR-024) och den exakta mallen för att generera självläkande `TCK-MAINT`-biljetter.
+
+#### 2. Headless Git som Osynlig Transaktionsmotor (Bootstrapping)
+Under motorns nuvarande utvecklingsfas i Linux-miljön automatiseras Git så att användaren slipper hantera commit-hashar manuellt:
+- **Mekanisk `last-known-green`-tagg:**
+  - Varje gång en byggcykel når grön slutverifiering och godkänns av människan vid grinden (`Exit 0`), flyttar orkestreringsskriptet automatiskt den lokala Git-taggen:
+    `git tag -f last-known-green`
+- **Automatiserad återställning vid Moment 22:**
+  - Om ett internt syntaxfel, verktygshaveri eller korrupt tillstånd inträffar i infrastrukturen (`scripts/`), tillhandahåller systemet ett standardiserat återställningskommando baserat på taggen:
+    `git checkout last-known-green -- scripts/ doc/SI_v10.4.md`
+    vilket omedelbart återställer systemet till senast verifierade tillstånd utan att behöva söka i git-loggen.
+
+### Konsekvenser
+- **Token-effektivitet:** Startkontexten per mikrokanal bär enbart exakt relevant data, vilket minimerar risken för att slå i 65K TPM-gränsen.
+- **Deterministisk verktygsanvändning:** Kritiska färdigheter som biljettklyvning finns alltid i modellens omedelbara arbetsminne vid grindkontroller.
+- **Minskad friktion:** Versionshanteringen blir självspårande via taggen `last-known-green`.
+- **Sluten erfarenhetsåterkoppling:** Processen lär sig aktivt genom att föra över lärdomar från `PROCESS_IMPROVEMENTS.md` direkt till nästa cykels startankare.
+
+
+## ADR-026: Serverlös BYOK-Utvecklingsmiljö och Källkodslagring på Google Drive
+- **Status:** Beslutad
+- **Datum:** 2026-11-01
+
+### Kontext
+I projektets bootstrapping-fas används Linux-terminalen, Git och lokala Node-skript för att bygga och härda orkestreringsmotorn. För en icke-kodande användare i en ren BYOK-miljö (Bring Your Own Key) är dock Git, terminaler och manuella miljökonfigurationer oacceptabla trösklar. Målet är att Outreach ska fungera som ett komplett mjukvaruprogrammeringsverktyg direkt i webbläsaren, där användaren äger hela sin kodbas via sitt eget Google-konto.
+
+### Beslut
+Vi frikopplar källkodsutvecklingen från Git och migrerar den till en serverlös webbläsararkitektur baserad på VFS och Google Drive:
+
+1. **Google Drive som Primärt Källkodsarkiv:**
+   - Hela mjukvaruprojektet (källkod `src/`, tester, scheman och konfiguration) lagras och ägs i användarens Google Drive under `/Outreach_Workspace/[Projekt]/`.
+   - Google Drive ersätter externa git-servrar (GitHub/GitLab) för slutanvändaren.
+
+2. **VFS som Krockkudde mot Rate Limits:**
+   - All kompilering, TypeScript AST-skanning, transienta tester och patchning körs uteslutande i webbläsarens interna minne via Virtual File System (RAM / IndexedDB / OPFS).
+   - Inga mikroläsningar eller temporära byggfiler belastar Google Drive API under pågående byggsteg.
+
+3. **Hastighetsbegränsad Transaktionssynk (Throttled Sync):**
+   - Endast filer med ändrat tillstånd (dirty flag) skickas till Google Drive.
+   - Uppladdningen styrs av en Leaky Bucket-kö i `driveClient.ts` begränsad till max 5 anrop/sekund med automatisk exponentiell backoff vid HTTP 429.
+
+4. **Atomära Transaktioner via Manifest:**
+   - Varje framgångsrikt bygge förseglas genom att uppdatera `WORKSPACE_MANIFEST.json`.
+   - Manifestet lagrar versions-id, tidsstämpel och kryptografiska filhashar, vilket ger användaren en visuell tidslinje och en-klicks ångerrätt direkt i gränssnittet utan Git.
+
+### Konsekvenser
+- Användaren får ett fullvärdigt mjukvarubyggarverktyg utan att någonsin installera Node, Git eller öppna en terminal.
+- Källkoden förblir 100 % portabel och kan öppnas i valfri extern IDE eller exporteras som zip när som helst.
+
+## ADR-027: Hermetisk VFS-Körtid, Snapshot-Rollbacks och Fuskfri Testexekvering
+- **Status:** Beslutad
+- **Datum:** 2026-11-01
+
+### Kontext
+Vid övergången från lokal Linux-utveckling till en serverlös BYOK-miljö i webbläsaren (ADR-026) ersätts hårddisken med en Virtual File System (VFS i RAM/IndexedDB). När operativsystemets processer (`execSync`, `git checkout`) försvinner uppstår frågan hur systemet garanterar fuskfria tester (Agentic Test Tampering) och hur mikrosekundssnabba rollbacks genomförs vid omvändelse eller kraschade patchar.
+
+### Beslut
+Vi upprättar en hermetiskt sluten VFS-körtid med tre mekaniska säkerhetsbarriärer:
+
+1. **Monterat Skrivskydd i RAM (Read-Only Mount):**
+   - Under Fas 2 (Källkodsexekvering) monteras katalogträdet `/src/__tests__/` som strikt skrivskyddat i VFS.
+   - Verktygen `apply_patch` och `save_code` kopplas mot VFS-drivrutinen. Alla försök från modellen att modifiera, trunkera eller byta ut en testfil avvisas med ett omedelbart VFS-undantag (`VFS_PERMISSION_DENIED`).
+
+2. **Kryptografisk Manifestvalidering (Anti-Tamper):**
+   - När transient-testet genereras i Fas 1 (steg 3a) beräknas dess kryptografiska SHA-256-hash och låses i `doc/LAST_CYCLE/WORKSPACE_MANIFEST.json`.
+   - Innan testköraren i minnet exekverar sviten hashas testfilen i VFS. Om hashen avviker från manifestets låsta värde kraschas bygget omedelbart.
+
+3. **Deterministiska Minnessnapshots (Zero-Latency Rollback):**
+   - Vid godkänd Intent Gate (Fas 0) och efter slutfört planeringskontrakt (Fas 1) tar VFS en fryst ögonblicksbild av källkodsträdet i minnet (`vfs.snapshot('post-fas1')`).
+   - Om transient-testet fallerar i Fas 2, eller om modellen signalerar `HAVERERAT_KONTRAKT` eller `FÖRLIKANDE_OMVÄNDELSE`:
+     * Källkodsträdet återställs omedelbart från minneskopian (`vfs.restore('post-fas1')`) på 0 millisekunder utan disk-I/O.
+     * Felloggen skrivs till WAL (`CRASH_DUMP.json`).
+
+4. **Isomorf In-Memory Testexekvering:**
+   - Testerna exekveras i en isolerad Web Worker med en ren JavaScript-testrunner kopplad till TypeScripts inbyggda Compiler API.
+   - Grindarna Gate 2c (inga tysta catch) och Gate 3a (körtidsankare via WebSockets/Audio) körs mot källkodssträngar direkt ur RAM.
+
+### Konsekvenser
+- Testintegriteten blir starkare och mer deterministisk än i en Linux-miljö då filsystemsrättigheterna upprätthålls direkt av minnesarkitekturen.
+- Rollbacks vid omvändelse sker utan fördröjning eller risk för korrupta filer på hårddisken.
+- Google Drive skyddas helt från trasiga testcykler eftersom enbart 100 % gröna, verifierade tillstånd tillåts flöda upp till molnkontot.
