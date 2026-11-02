@@ -339,3 +339,60 @@ Vi upprättar en hermetiskt sluten VFS-körtid med tre mekaniska säkerhetsbarri
 - Testintegriteten blir starkare och mer deterministisk än i en Linux-miljö då filsystemsrättigheterna upprätthålls direkt av minnesarkitekturen.
 - Rollbacks vid omvändelse sker utan fördröjning eller risk för korrupta filer på hårddisken.
 - Google Drive skyddas helt från trasiga testcykler eftersom enbart 100 % gröna, verifierade tillstånd tillåts flöda upp till molnkontot.
+
+
+## ADR-028: Den Teologiska Ordboken och Vägens Terminologi
+- **Status:** Beslutad
+- **Datum:** 2026-11-02
+
+### Kontext
+I takt med att orkestreringsmotorn mognar från ett proceduriellt Node-skript till ett typat TypeScript-program, har en diskrepans uppstått mellan systemets högre syfte och dess terminologi. Ord som "pipeline", "grindar" och "dörrvakter" bär med sig en industriell, teknokratisk association. Eftersom systemets hjärta handlar om försoning och att leda människan på rätt väg, måste arkitekturens grundläggande ordval spegla denna vördnad.
+
+### Beslut
+Vi upprättar en formell övergång till en teologiskt förankrad begreppsapparat. Denna ordbok ska vägleda all framtida namngivning av FSD-domäner, klasser, gränssnitt och instruktioner.
+
+#### Den Officiella Namnlistan (Översättningsnyckel)
+| Gammal industriell term | Ny skriftlig & arkitektonisk term | Teknisk betydelse i koden |
+| :--- | :--- | :--- |
+| **Pipeline / Process** | **Väg (`Path`)** | Det sammanhållna flödet från Fas 0 till Fas 3. Modelleras under `src/features/path/`. |
+| **Dörrvakt (Fas 0)** | **Portväktare** | Den inledande revisionen som vaktar systemets yttre gränser. Avvisar försök att korsa >1 FSD-domän. |
+| **Intent Gate** | **Avsiktsport** | Det interaktiva gränssnittet (Fas 0) där agenten knackar, och människan bedömer intentionen. Öppnas via medgivande. |
+| **Kvalitetsgrind (Gate 2c/3a)** | **Prövningsport** | Mekanisk tröskel där koden prövas mot sanningen (exekvering i minnet mot ett körtidsankare; inga tysta catch-block). |
+| **Transition / Körning** | **Knackning** | Handling för att övergå mellan faser. Systemet stormar inte in, det knackar på porten och inväntar utslag. |
+| **Rollback / Abort** | **Omvändelse** | Rätten att backa bandet vid `OMSTART_FAS1`, sanera oren källkod och återvända på rätt väg utan systemkrasch. |
+
+### Konsekvenser
+- **Mekanisk bakåtkompatibilitet:** Dagens skript (`run-planera-live.ts`) fortsätter att använda de gamla termerna ("Gate 3a", "Intent Gate") internt som en byggnadsställning tills nästa generation av motorn är färdig.
+- **Riktlinje för Nyskrivning:** När domänen `src/features/path/` (ADR-029) byggs upp, ska all källkod, typer (t.ex. `interface Port`, `class Vaktaren`) och alla Gherkin-scenarier uteslutande använda de nya termerna.
+- Terminologin eliminerar industriell jargong och förenar systemarkitekturen med försoningstanken.
+
+
+## ADR-029: Det Deklarativa Processprogrammet (Vägen) och Strangler Fig-Arkitekturen
+- **Status:** Beslutad
+- **Datum:** 2026-11-02
+
+### Kontext
+Det befintliga orkestreringsskriptet (`scripts/run-planera-live.ts`) är ett imperativt skript på över 35 KB som hanterar hela livscykeln. Skriptet är fyllt av råa strängjämförelser, vilket gör det omöjligt att utöka säkert. En omskrivning på plats skulle riskera ett Moment 22 (att motorn kraschar när vi försöker bygga om motorn).
+
+### Beslut
+Vi ersätter det imperativa skriptet med en ren, typad tillståndsmaskin enligt ordboken i ADR-028. För att göra detta utan driftstopp tillämpar vi **Strangler Fig-mönstret**.
+
+1. **Parallell uppbyggnad:**
+   - Det nuvarande skriptet i `scripts/` lämnas orört och fortsätter agera aktiv byggnadsställning för dagens biljetter.
+   - Det nya processprogrammet byggs under den nya domänen `src/features/path/`.
+
+2. **Vägen (`Path`) som FSD-domän:**
+   - Modelleras som en starkt typad tillståndsmaskin i TypeScript.
+   - Består av **Steg**, som exekverar isolerad verktygslogik, och **Portar**, som övervakar gränserna.
+   - Väktaren vid porten, Avsiktsporten och Prövningsporten implementeras som asynkrona nodobjekt med stöd för både CLI och reaktiva webb-gränssnitt.
+
+3. **Inbyggd JIT-Kompilator:**
+   - En dedikerad modul (`promptCompiler.ts`) i den nya domänen ansvarar för att bygga magra startankare (< 2000 tokens) baserat på det aktuella steget. Inga fler monolitiska textmassor skickas i bygget.
+
+4. **Sömlös Övergång:**
+   - Först när `Path` är 100 % grön i Vitest (hermetisk prövning i minnet) och bevisat kan styra en cykel, pekas anropet `pnpm bygg` om från legacy-skriptet till den nya domänen.
+
+### Konsekvenser
+- Total testbarhet: Byggprocessen kan verifieras ner på nod-nivå i minnet på millisekunder.
+- Noll stillestånd: Systemet kan fortsätta laga sig självt (Auto-MAINT) under hela ombyggnadsperioden.
+- Processen blir ett verkligt "program", konfigurerbart och begripligt som kod, istället för ett hårdkodat bash-flöde.

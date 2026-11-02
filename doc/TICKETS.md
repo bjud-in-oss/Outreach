@@ -5,6 +5,7 @@
 - [x] **TCK-025**: Flytta SwarmEventBus till Shared-lagret -> Se `doc/.TICKETS/TCK-025.md`
 - [x] **TCK-026**: Frikoppla McpServer och Verktyg via Delade Kontrakt -> Se `doc/.TICKETS/TCK-026.md`
 - [x] **TCK-027**: Slutgiltig FSD-sanering av gemini_live_swarm -> Se `doc/.TICKETS/TCK-027.md`
+- [ ] **TCK-035**: Initiera Vägen och Typkontrakten (Path Engine) -> Se `doc/.TICKETS/TCK-035.md`
 ---
 - [VERIFIERAD] TCK-032 | Domän: src/features/gemini_live_swarm/ | Mål: Dubbelinmatningssanering, Live-Textlyssnare & Intent-Harmonisering | Token: TCK-032-VERIFIED-6ed5e47732a3c5ca | Kvitto: f4dbe9ad
 - [VERIFIERAD] TCK-031 | Domän: src/features/gemini_live_swarm/ | Mål: Tursfär & Negativ Telemetrifiltrering | Token: TCK-031-VERIFIED-0b6164623f49bbb7 | Kvitto: 2cd295a9

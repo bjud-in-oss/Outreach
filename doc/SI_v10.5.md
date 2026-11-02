@@ -95,6 +95,9 @@ Körs automatiskt efter grön regressionssvit. Minnet rensas från källkod och 
   2. **Shared-lagret (`src/shared/`):** För gemensamma primitives, universella kontrakt och delade baskomponenter.
   3. **Överliggande komposition (`src/widgets/` eller `src/pages/`):** När två domäners UI vävs samman i en vy importeras båda av det överliggande lagret – aldrig korsvis av varandra.
   4. **Biljettklyvning (`decomposing-tickets`):** Om koden i två FSD-domäner måste ändras fysiskt klyvs uppdraget mekaniskt i två sekventiella byggbiljetter.
+- **Fil- och radgränser under `src/`:** För att motverka monoliter och tvinga fram modulär expansion (Väg 2 via skillen `modular-expansion`) kontrolleras källkodsfilernas längd mekaniskt:
+  * UI-komponenter (`.tsx`): Strikt max 125 rader.
+  * Logik och kontrakt (`.ts`): Strikt max 250 rader.
 - **Zod & Typesafety:** Alla externa datagränssnitt, API-payloads och tillståndskontrakt ska valideras runtime via Zod-scheman.
 - **Fail Fast:** Systemet kraschar kontrollerat vid brutna kontrakt hellre än att passivt ackumulera felaktigt tillstånd eller död källkod.
 - **Mekanisk förankring av körtidskontrakt:** Säkerställ att varje kognitivt val, statusdeklaration eller nytt nyckelord som erbjuds modellen i dess instruktioner redan har en aktiv, färdigbyggd parser- och exekveringslogik i orkestreringsskriptet. Bygg, testa och verifiera alltid den mekaniska mottagaren i källkoden innan motsvarande handlingsalternativ exponeras för agenterna.
