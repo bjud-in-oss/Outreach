@@ -272,14 +272,12 @@ async function main() {
   if (!isMaint) {
     const steg3a = await runMicroChannel(
       'Att följa',
-      `Steg 3a: Generera transient testspecifikation och spara den till '${transientTestFile}' med save_code.
-KRAV:
-1. LÄS FÖRST ETT EXISTERANDE TEST (t.ex. med read_file på 'src/features/telemetry/__tests__/emitPing.test.ts') så att du förstår projektets test-syntax (Node.js, Vitest, EventBus).
-2. Vi använder enbart ren TypeScript för tester (inga JSX-taggar eller @testing-library/react). Verifiera funktionernas returvärden eller händelser.
-3. Använd ALDRIG syntetiska alibi-spioner.
-4. Testet MÅSTE fallera rött (Fail-First) mot befintlig kod!
-5. Läs eventbussens API ('src/shared/bus/swarmEventBus.ts') innan du använder den, så anropen blir korrekta.
-6. Anropa save_code innan du är klar.`,
+      `Steg 3a: Generera transient testspecifikation och spara till '${transientTestFile}' med save_code.
+KRAV FÖR TDD OCH FAIL-FIRST:
+1. IMPORTERA FRÅN DOMÄNEN: Testet MÅSTE importera funktioner och typer från '../features/${targetDomain}/...' (t.ex. import { knackaPaPorten } from '../features/${targetDomain}/engine/pathRunner').
+2. INGEN PRODUKTIONSKOD I TESTET: Implementera ALDRIG funktionerna eller klasserna inuti testfilen.
+3. Testet MÅSTE fallera rött (exit 1) eftersom produktionskoden inte existerar än.
+4. Anropa save_code i vända 1.`,
       `${startAnchor}\nKONTRAKT:\n${steg2d}`,
       systemInstruction,
       testGenTools,
@@ -397,7 +395,7 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
       codeSaved = true;
       if (!modifiedFiles.includes(rel)) modifiedFiles.push(rel);
 
-      if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts')) {
+      if (!isMaint && rel.startsWith(`src/features/${targetDomain}/`) && !rel.endsWith('index.ts') && !rel.includes('__tests__')) {
         const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
         const base = path.relative(domainDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/');
         if (!createdModules.includes(base)) createdModules.push(base);
@@ -586,7 +584,8 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     fs.mkdirSync(permanentTestDir, { recursive: true });
 
     const primaryModule = createdModules[0] || ticketId.toLowerCase();
-    const permanentTestPath = path.join(permanentTestDir, `${primaryModule}.test.ts`);
+    const permanentTestPath = path.join(permanentTestDir, `${path.basename(primaryModule)}.test.ts`);
+    fs.mkdirSync(path.dirname(permanentTestPath), { recursive: true });
 
     let transientTestContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';
     transientTestContent = transientTestContent

@@ -253,6 +253,20 @@
         "getGlobalMcpSwarmBridge"
       ]
     },
+    "path": {
+      "files": [
+        "contracts/pathSchema.ts",
+        "engine/pathRunner.ts",
+        "index.ts",
+        "model/types.ts"
+      ],
+      "exports": [
+        "PathContextSchema",
+        "PortNekadError",
+        "PortResultSchema",
+        "knackaPaPorten"
+      ]
+    },
     "telemetry": {
       "files": [
         "emitPing.ts",
