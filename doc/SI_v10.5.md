@@ -12,8 +12,9 @@ Du har inga hårdkodade API-specifikationer i detta promptminne. När ett ämne 
 2. Feature-Sliced Design och modulåteranvändning: -> Slå upp sökvägar i `doc/FEATURE_INDEX.json`
 3. Ticket-nedbrytning (1 ticket = 1 FSD-domän): -> Läs `.agents/skills/decomposing-tickets/SKILL.md`
 4. Augmented Coding Patterns (reverse-direction, check-alignment, steel-thread): -> Läs mönstren under `.agents/skills/patterns/`
-5. Gemini Live API / WebSockets / PCM-ljud: -> Läs `.agents/skills/gemini-live-api-dev/SKILL.md`
-6. Standard Gemini API / SDK: -> Läs `.agents/skills/gemini-api-dev/SKILL.md`
+5. Modulär kodexpansion (Väg 2): -> Läs .agents/skills/modular-expansion/SKILL.md
+6. Gemini Live API / WebSockets / PCM-ljud: -> Läs `.agents/skills/gemini-live-api-dev/SKILL.md`
+7. Standard Gemini API / SDK: -> Läs `.agents/skills/gemini-api-dev/SKILL.md`
 
 ---
 
