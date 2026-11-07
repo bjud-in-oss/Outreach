@@ -396,3 +396,36 @@ Vi ersätter det imperativa skriptet med en ren, typad tillståndsmaskin enligt 
 - Total testbarhet: Byggprocessen kan verifieras ner på nod-nivå i minnet på millisekunder.
 - Noll stillestånd: Systemet kan fortsätta laga sig självt (Auto-MAINT) under hela ombyggnadsperioden.
 - Processen blir ett verkligt "program", konfigurerbart och begripligt som kod, istället för ett hårdkodat bash-flöde.
+
+
+## ADR-030: Den Receptbaserade Vägmotorn, Integritetssanering (Append-Only WAL) och Exempelskördning
+- **Status:** Beslutad
+- **Datum:** 2026-11-02
+
+### Kontext
+Orkestreringen av källkodsgenereringen migrerar från ett proceduriellt Node-skript (`scripts/run-planera-live.ts`) till en typad domän under `src/features/path/` (ADR-028/029). För att skydda systemet mot regressionshaverier och samtidigt möjliggöra empirisk utveckling av en enklare process krävs en arkitektur som tillåter parallella körspår. Samtidigt behöver motorn befrias från klientside-kryptografi (CYCLE_SALT/HMAC) som saknar skyddsvärde i en serverlös webbläsarmiljö (ADR-026), samt etablera en säker strategi för historiska testsviter (*.legacy.ts).
+
+### Beslut
+Vi fattar tre sammanhängande arkitekturbeslut:
+
+1. **Den Receptbaserade Vägmotorn (`PathRecipe`):**
+   - Motorn (`src/features/path/engine/pathRunner.ts`) görs sekvens-agnostisk. Den exekverar uteslutande två typer av noder: `StepNode` (handling) och `PortNode` (prövande tröskel).
+   - Två recept etableras sida vid sida under `src/features/path/recipes/`:
+     * `path-classic` (Referensspår / Livlina): Vår beprövade 12-stegsmaskin från Fas 0–3 förblir intakt och orörd.
+     * `path-lean` (Empiriskt forskningsspår): En 4-portsmodell bestående av Avsiktsporten (mänsklig avsikt via klarspråk), Prövningsporten (rannsakan, omvändelse och prediktiv fail-first), Konstruktionsporten (isolerat grönt bygge) och Harmoniseringsporten (källkodsrefaktorisering och WAL-append).
+
+2. **Integritetssanering: Från Klientside-HMAC till Append-Only WAL:**
+   - Kravet på symmetrisk `CYCLE_SALT` och hashkedjevalidering i `STATE.json` och `CYCLE_LOG.md` avvecklas.
+   - Systemets integritet baseras uteslutande på tre reella garantier:
+     1. En strikt Append-Only WAL för all telemetri och tillståndsändring.
+     2. Starkt typade Zod-scheman vid alla systemsnitt och I/O-operationer.
+     3. Mekaniska körtidsbevis i Vitest (Fail-First) och transaktionsintegritet i Git/VFS.
+
+3. **Principen om Exempelskördning av `*.legacy.ts`:**
+   - Historiska testfiler under `src/__tests__/*.legacy.ts` raderas inte. De betraktas som en passiv kunskapsbank över verifierade integrationsmönster och felhanteringsflöden.
+   - När moduler i `src/features/` vidareutvecklas skördas relevanta scenarier ur legacy-filerna och återetableras som aktiva, hermetiska enhetstester under respektive domäns `__tests__/`-katalog. Först när de nya testerna är gröna saneras motsvarande del ur legacy-filen.
+
+### Konsekvenser
+- Noll risk: Vi kan utforska och mäta 4-portsmodellen (`path-lean`) utan att förlora tryggheten i vår beprövade 12-stegsmodell (`path-classic`).
+- Källkoden förbereds helt för serverlös körning i webbläsaren enligt ADR-026 utan artificiella HMAC-krascher.
+- Hårdvunnen testkunskap bevaras och återinförs kontrollerat i testsviten domän för domän.
