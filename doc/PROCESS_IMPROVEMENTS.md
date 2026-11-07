@@ -18,3 +18,11 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 ## 2. Historik & Lärdomar från Omvändelseslingan (Meta-Teshuvah)
 *Dokumenteras automatiskt av Att förlikas under Fas 3.*
 - **[2026-11-02] Hermetiska minnestester utan I/O:** När en funktionell callback, prompter eller beräkning testas i minnet under Fas 1/2, använd rena TypeScript-funktioner (`async () => '...'`) i stället för `vi.fn()`. Det förhindrar falska Gate 3a-larm och eliminerar risken för panikartade kors-importer av händelsebussar från andra domäner.
+
+- **[2026-11-08] Erfarenheter från TCK-035 till TCK-038 (Vägens fundament):**
+  * TDZ i felhanterare: Variabler som fångar felloggar (testLog) måste initieras överst i catch-blocket.
+  * Kontinuerlig barrel-synk: index.ts i aktiva FSD-domäner uppdateras deterministiskt inför varje testkörning.
+  * Mekanisk flerfilskontroll i Fas 2: Byggmotorn kräver att samtliga specificerade källkodsfiler existerar på disk innan testerna startas.
+  * Typamputationsskydd: save_code förbjuds att skriva över model/types.ts och index.ts om deklarerade exporter saknas.
+  * Git-omvändelse framför MAINT-ackumulering: Trasig eller skuldsatt kod backas med git reset till senast kända rena tillstånd hellre än att plåstras över.
+  * Filbaserad IPC: Komplexa ändringar överförs via efemära filer på disk för att eliminera klippta terminalbuffertar.

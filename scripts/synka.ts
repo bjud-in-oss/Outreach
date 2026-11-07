@@ -62,7 +62,9 @@ async function main() {
   let unpushed = '';
   try {
     unpushed = execSync('git log @{u}..HEAD --oneline', { encoding: 'utf-8', cwd: ROOT_DIR }).trim();
-  } catch {}
+  } catch (err: any) {
+    // Ingen uppströmsgren konfigurerad ännu
+  }
 
   if (!status && !unpushed) {
     console.log('✅ Inga ändringar eller opushade commits att synka. Repot är helt i fas.');
@@ -80,6 +82,15 @@ async function main() {
 
     console.log(`\n📝 COMMIT-MEDDELANDE:\n${finalMessage}\n`);
     execSync('git add -A', { cwd: ROOT_DIR });
+    
+    console.log('🔍 Kör pnpm verify före synkronisering...');
+    try {
+      execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
+    } catch (err: any) {
+      console.error('\n❌ [SYNK AVBRUTEN]: pnpm verify underkändes. Rätta koden innan du synkar.');
+      process.exit(1);
+    }
+
     execSync(`git commit -m "${finalMessage.replace(/"/g, '\\"')}"`, { stdio: 'inherit', cwd: ROOT_DIR });
   }
 

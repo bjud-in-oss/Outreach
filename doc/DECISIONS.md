@@ -429,3 +429,7 @@ Vi fattar tre sammanhängande arkitekturbeslut:
 - Noll risk: Vi kan utforska och mäta 4-portsmodellen (`path-lean`) utan att förlora tryggheten i vår beprövade 12-stegsmodell (`path-classic`).
 - Källkoden förbereds helt för serverlös körning i webbläsaren enligt ADR-026 utan artificiella HMAC-krascher.
 - Hårdvunnen testkunskap bevaras och återinförs kontrollerat i testsviten domän för domän.
+
+## ADR-031: Källkodsmatriser, Mekanisk Konstruktionsintegritet och Typamputationsskydd
+- **Status:** Beslutad (2026-11-08)
+- **Beslut:** Konstruktionsporten validerar FilKrav[] mekaniskt; save_code skyddar mot typamputation; scripts/synka.ts kräver grön pnpm verify före push.

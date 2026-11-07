@@ -1,67 +1,69 @@
-# BYGGCYKEL LOGG: TCK-038
-**Starttid:** 2026-11-07T22:53:33.531Z
+# BYGGCYKEL LOGG: TCK-MAINT-017
+**Starttid:** 2026-11-07T23:06:23.570Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-038: Konstruktionsporten och Källkodsmatrisen (Construction Port)
+# TCK-MAINT-017: Infrastrukturhärdning, pnpm verify-spärr och Processminne
 
 ## 1. MÅL
-Implementera Konstruktionsporten (src/features/path/engine/konstruktionsport.ts) som förkroppsligar rollen Att följa enligt ADR-028, ADR-029 och ADR-030. Konstruktionsporten ansvarar för att mekaniskt validera att källkodsgenereringen är fullständig innan processen tillåts passera till testning och besiktning. Den kontrollerar att alla specificerade filer existerar fysiskt, att de exporteras korrekt via domänens index.ts, och att radgränserna (max 125 rader för UI, max 250 rader för logik) inte överskrids.
+Härda Outreach-motorns orkestreringsinfrastruktur och processminne efter erfarenheterna från TCK-035 till TCK-038:
+1. Installera en obligatorisk verifieringsspärr i scripts/synka.ts som kör pnpm verify före git commit och push.
+2. Automatisera synkronisering av doc/TICKETS.md i Fas 0 av scripts/run-planera-live.ts.
+3. Begränsa kognitiv drift i Fas 1 Steg 2b av scripts/run-planera-live.ts genom att förbjuda externa grannberoenden (som SwarmEventBus) vid isolerade domänuppdrag.
+4. Uppdatera doc/PROCESS_IMPROVEMENTS.md med lärdomarna från TCK-035–038.
+5. Formalisera ADR-031 (Källkodsmatriser, Konstruktionsintegritet och Typamputationsskydd) i doc/DECISIONS.md.
 
 ## 2. DESTRUKTIVA HANDLINGSSTEG
-Inga filer raderas. Befintlig kod i src/features/path/ kompletteras enligt Väg 2 (Modulär expansion). Gamla orkestreringsskript i scripts/ förblir orörda.
-VIKTIGT: Befintliga typer i model/types.ts bevaras intakta (använd apply_patch). PortNekadError och knackaPaPorten är redan deklarerade och återanvänds, de får inte omdeklareras.
+Inga produktionsfiler under src/ modifieras. Ändringarna sker uteslutande i scripts/ och doc/.
 
 ## 3. IMPLEMENTERINGSSPECIFIKATION FÖR BYGGMOTORN
 
-### A. Typ- och Kontraktsutökning (src/features/path/model/types.ts)
-Komplettera types.ts via apply_patch med:
-- FilKrav: { filVag: string; maxRader?: number; kravsExport?: boolean }
-- FilInspektion: { existerar: boolean; antalRader: number; exporteradIIndex?: boolean }
-- FilInspekterare: (krav: FilKrav, barrelVag?: string) => Promise<FilInspektion>
-- KonstruktionsportOptions: { matris: FilKrav[]; inspekterare: FilInspekterare; barrelVag?: string }
+### A. Säkerhet i synkningen (scripts/synka.ts)
+I scripts/synka.ts, lägg till obligatorisk kontroll av arbetskopian innan commit tillåts:
+- När status detekteras, kör execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR }).
+- Vid fel i pnpm verify, avbryt processen med exitkod 1 och felmeddelandet:
+  "❌ [SYNK AVBRUTEN]: pnpm verify underkändes. Rätta koden innan du synkar."
 
-### B. Konstruktionsporten (src/features/path/engine/konstruktionsport.ts)
-Skapa fabriksfunktionen skapaKonstruktionsport(options: KonstruktionsportOptions): Port:
-- Returnerar en asynkron funktion: async (kontext: PathContext): Promise<PortResult> => { ... }.
-- När porten anropas inspekteras samtliga poster i options.matris sekventiellt via options.inspekterare(krav, options.barrelVag).
-- Bedömning:
-  1. Om en fil saknas (existerar === false):
-     Returnera { oppnad: false, orsak: `Källkodsfil saknas: "${krav.filVag}"`, omvandelseKrav: 'SKAPA_FILER' }.
-  2. Om en fil överskrider radgräns (krav.maxRader && antalRader > krav.maxRader):
-     Returnera { oppnad: false, orsak: `Fil "${krav.filVag}" överskrider radgräns (${antalRader} > ${krav.maxRader})`, omvandelseKrav: 'MODULÄR_EXPANSION' }.
-  3. Om export krävs men saknas i index.ts (krav.kravsExport && exporteradIIndex === false):
-     Returnera { oppnad: false, orsak: `Modul "${krav.filVag}" saknar exportdeklaration i barrel-filen`, omvandelseKrav: 'UPPDATERA_INDEX' }.
-  4. Om samtliga filer uppfyller kraven:
-     Returnera { oppnad: true }.
+### B. Fas 0 och Fas 1 i orkestreringsmotorn (scripts/run-planera-live.ts)
+1. Vid start i main(), direkt efter att targetDomain fastställts, anropa:
+   try { execSync('node scripts/update-tickets.js', { cwd: ROOT_DIR }); } catch {}
+   så att doc/TICKETS.md alltid är synkroniserad från starten av bygget.
+2. I anropet för Fas 1 Steg 2b, utöka instruktionen till:
+   "Steg 2b: Formulera 3 ortogonala alternativ för lösning. REGLER: Introducera ALDRIG externa beroenden eller granndomäner (som SwarmEventBus) om inte biljetten uttryckligen efterfrågar distribuerad telemetri."
 
-### C. Zod-Validering (src/features/path/contracts/pathSchema.ts)
-Komplettera schemat med KonstruktionsportOptionsSchema via apply_patch.
+### C. Processminne (doc/PROCESS_IMPROVEMENTS.md)
+Lägg till ett nytt avsnitt under Processförbättringar:
+- [2026-11-08] Erfarenheter från TCK-035 till TCK-038 (Vägens fundament):
+  * TDZ i felhanterare: Variabler som fångar felloggar (testLog) måste initieras överst i catch-blocket.
+  * Kontinuerlig barrel-synk: index.ts i aktiva FSD-domäner uppdateras deterministiskt inför varje testkörning.
+  * Mekanisk flerfilskontroll i Fas 2: Byggmotorn kräver att samtliga specificerade källkodsfiler existerar på disk innan testerna startas.
+  * Typamputationsskydd: save_code förbjuds att skriva över model/types.ts och index.ts om deklarerade exporter saknas.
+  * Git-omvändelse framför MAINT-ackumulering: Trasig eller skuldsatt kod backas med git reset till senast kända rena tillstånd hellre än att plåstras över.
+  * Filbaserad IPC: Komplexa ändringar överförs via efemära filer på disk för att eliminera klippta terminalbuffertar.
 
-### D. Domänexport (src/features/path/index.ts)
-Exportera skapaKonstruktionsport och de nya typerna från index.ts.
+### D. Konstitutionellt Beslut (doc/DECISIONS.md)
+Dokumentera ADR-031:
+- Rubrik: ADR-031: Källkodsmatriser, Mekanisk Konstruktionsintegritet och Typamputationsskydd
+- Status: Beslutad (2026-11-08)
+- Beslut: Konstruktionsporten validerar FilKrav[] mekaniskt; save_code skyddar mot typamputation; scripts/synka.ts kräver grön pnpm verify före push.
 
-## 4. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
-1. Skapa src/features/path/__tests__/konstruktionsport.test.ts (Rör inte types.test.ts eller andra tester!).
-2. Importera skapaKonstruktionsport, knackaPaPorten och PortNekadError från domänen ('../features/path').
-3. Verifiera:
-   - Testfall 1: Öppnar porten vid godkänd matris.
-   - Testfall 2: Källkodsfil saknas -> kastar PortNekadError med SKAPA_FILER.
-   - Testfall 3: Radgräns överskrids -> kastar PortNekadError med MODULÄR_EXPANSION.
-   - Testfall 4: Export saknas -> kastar PortNekadError med UPPDATERA_INDEX.
-4. pnpm test och node scripts/verify-architecture.js ska vara 100 % gröna.
+## 4. ACCEPTANSKRITERIER
+1. scripts/synka.ts exekverar pnpm verify innan git commit tillåts.
+2. scripts/run-planera-live.ts synkroniserar biljetter i Fas 0 och begränsar Steg 2b-prompten.
+3. doc/PROCESS_IMPROVEMENTS.md och doc/DECISIONS.md innehåller de nya posterna.
+4. pnpm verify är 100 % grön (alla 18 tester och 62 arkitekturregler passerar).
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att källkodskraven är definierade i en matris, När Konstruktionsporten inspekterar filerna utan avvikelser, Så öppnas porten för fortsatt besiktning. Detta främjar närhet till den ideala mjukvaran genom deterministisk kvalitetssäkring.
+Jag bekräftar min förståelse av intentionen. Syftet med TCK-MAINT-017 är att härda Outreach-motorns orkestreringsinfrastruktur och processminne genom att installera en obligatorisk verifieringsspärr, automatisera synkronisering, begränsa kognitiv drift samt formalisera lärdomar och ADR-031.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit slutförd. Uppdraget berör strikt en FSD-domän (`src/features/path/`), inga filer raderas, och alla utökningar följer modulkontraktet. Status: GODKÄND.
+Kontraktsaudit godkänd. Inga FSD-domäner under src påverkas och inga externa API-kontrakt bryts. Vi rör oss strikt inom infrastruktur och dokumentation i scripts/ och doc/.
 
 
 #### 0b Att förlikas: Vägval
@@ -73,30 +75,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att uppfylla TCK-038 formulerar jag följande tre ortogonala alternativ för konstruktionen av Konstruktionsporten:
+För att härda orkestreringsinfrastrukturen och möta kraven i TCK-MAINT-017, formulerar jag följande tre ortogonala alternativ för lösning:
 
-Alternativ 1: Den disk-direkta strategin. Här utför `FilInspekterare` direkta `fs.promises`-anrop för att kontrollera filers existens och räkna radbrytningar, samt kontrollerar exporter genom textanalys och regex.
+Alternativ 1: Direkt procedurell integrering. Vi implementerar kontrollen i `scripts/synka.ts` genom att använda `execSync` för att köra `pnpm verify` direkt före `git commit`. I `scripts/run-planera-live.ts` lägger vi till synkronisering av biljetter i Fas 0 via ett `execSync`-anrop och uppdaterar prompten i Fas 1 Steg 2b för att blockera externa beroenden.
 
-Alternativ 2: Den AST-baserade strategin. Här används AST-skanning för att verifiera exportdeklarationer och mäta faktiska källkodssträngar, vilket ger högre precision och resiliens mot varierande kodformatteringar.
+Alternativ 2: Modulär drivrutin för validering och orkestrering. Vi skapar separata drivrutiner i `scripts/drivers/` för att hantera tillståndskontroller och kontraktsverifiering. Detta separerar logiken för `pnpm verify` och biljetternas status från synk- och planeringsskripten, vilket ger en mer modulär struktur.
 
-Alternativ 3: Den kontrakt-defensiva strategin. Här valideras alla inspektionssteg mot strikta Zod-kontrakt för att garantera total dataintegritet och möjliggöra en funktionell, renodlad pipeline.
+Alternativ 3: VCS-integrering och pre-commit-krok. I stället för att ändra `scripts/synka.ts` förlitar vi oss på mekaniska Git-krokar eller strikt CI-pipeline-verifiering utanför applikationens körtid. Processminnet uppdateras genom separata körningar.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid en resiliensgranskning av de tre alternativen kan vi konstatera att Alternativ 1, med direkt textanalys och regex, är alltför bristfällig och riskerar att feltolka modern kodformatering. Alternativ 2, som förlitar sig på AST-skanning, är robust och väl anpassat till våra kvalitetsgrindar och arkitektoniska krav. För högsta möjliga resiliens bör vi kombinera precisionen i AST-analysen med den stringenta valideringen från Alternativ 3. Detta ger oss en helhetlig ochfelsäker arkitektur för Konstruktionsporten.
+Granskning av alternativen ur ett resiliensperspektiv visar att Alternativ 1 är mest robust. Genom att integrera verifieringen direkt i `scripts/synka.ts` minskar vi komplexiteten och risken för latenta fel, vilket stärker konstruktionsintegriteten. Alternativ 2 och 3 introducerar fler rörliga delar som kräver mer underhåll i vår hårdkodade miljö.
 
 
 #### 2d Att förlikas: Mättnad
-Det vinnande kontraktet är fastställt: en arkitektur som förenar precisionen i AST-analysen med den stringenta valideringen. Med detta förhållningssätt minimerar vi felmarginaler och uppnår maximal resiliens för Konstruktionsporten. MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Jag bekräftar det slutgiltiga byggkontraktet för TCK-038. Vi kommer att skapa `src/features/path/engine/konstruktionsport.ts` samt uppdatera modell- och kontraktfilerna via apply_patch. I `index.ts` bevaras exporten av befintliga typer och logik, och vi lägger till `skapaKonstruktionsport` och de nya kontrakten.
+Vi väger spänningsfältet mellan komplexitet och resiliens och fastställer härmed att Alternativ 1 vinner. Vi låser detta kontrakt för att säkra konstruktionsintegriteten. MÄTTNAD: JA.

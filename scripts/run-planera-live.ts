@@ -132,6 +132,12 @@ async function main() {
   
   console.log(`🎯 Måldomän: ${isMaint ? 'scripts/ & doc/ (Underhåll)' : `src/features/${targetDomain}/`}\n`);
 
+  try {
+    execSync('node scripts/update-tickets.js', { cwd: ROOT_DIR });
+  } catch (err) {
+    console.warn('⚠️ Kunde inte köra scripts/update-tickets.js:', err);
+  }
+
   const syncDomainBarrel = () => {
     if (isMaint) return;
     const barrelPath = path.join(ROOT_DIR, `src/features/${targetDomain}/index.ts`);
@@ -275,7 +281,7 @@ async function main() {
   const steg1b = await runMicroChannel('Att följa', 'Steg 1b: Kartlägg domängränser via read_file och list_files.', startAnchor, systemInstruction, inspectionTools, executeInspection);
   appendCycleLog('1b Att följa: Domängränser', steg1b);
 
-  const steg2b = await runMicroChannel('Att följa', 'Steg 2b: Formulera 3 ortogonala alternativ för lösning.', `${startAnchor}\n${steg1b}`, systemInstruction);
+  const steg2b = await runMicroChannel('Att följa', 'Steg 2b: Formulera 3 ortogonala alternativ för lösning. REGLER: Introducera ALDRIG externa beroenden eller granndomäner (som SwarmEventBus) om inte biljetten uttryckligen efterfrågar distribuerad telemetri.', `${startAnchor}\n${steg1b}`, systemInstruction);
   appendCycleLog('2b Att följa: 3 Alternativ', steg2b);
 
   const steg2c = await runMicroChannel('Att vända om', 'Steg 2c: Resiliensgranskning av alternativen.', `${startAnchor}\n${steg2b}`, systemInstruction);
