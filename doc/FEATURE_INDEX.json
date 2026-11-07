@@ -258,6 +258,7 @@
         "contracts/pathSchema.ts",
         "engine/avsiktsport.ts",
         "engine/pathRunner.ts",
+        "engine/provningsport.ts",
         "index.ts",
         "model/types.ts"
       ],
@@ -269,7 +270,8 @@
         "PortResultSchema",
         "exekveraRecept",
         "knackaPaPorten",
-        "skapaAvsiktsport"
+        "skapaAvsiktsport",
+        "skapaProvningsport"
       ]
     },
     "telemetry": {

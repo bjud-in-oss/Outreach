@@ -19,6 +19,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Bevara undermappar vid automatisk export -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-037** (VERIFIED): Prövningsporten och Prediktiv TDD (Testing Port) -> Se `doc/.TICKETS/TCK-037.md`
 - [x] **TCK-036** (VERIFIED): Receptkontraktet och Avsiktsporten med Dialogstöd -> Se `doc/.TICKETS/TCK-036.md`
 - [x] **TCK-035** (VERIFIED): Initiera Vägen och Typkontrakten (Path Engine) -> Se `doc/.TICKETS/TCK-035.md`
 - [x] **TCK-034** (VERIFIED): Visning av kontextminne -> Se `doc/.TICKETS/TCK-034.md`

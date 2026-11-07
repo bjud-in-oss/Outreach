@@ -51,3 +51,17 @@ export interface AvsiktsportOptions {
   beskrivning: string;
   exempel?: string;
 }
+
+export interface TestKorselResultat {
+  passerade: boolean;
+  exitKod: number;
+  felmeddelande?: string;
+}
+
+export type TestExekverare = (testFilVag: string) => Promise<TestKorselResultat>;
+
+export interface ProvningsportOptions {
+  testFilVag: string;
+  forvantatFel: string;
+  testExekverare: TestExekverare;
+}

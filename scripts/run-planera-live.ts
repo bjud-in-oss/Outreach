@@ -65,6 +65,7 @@ interface ChannelOptions {
   requireMutation?: boolean;
   maxTurns?: number;
   onMutationCheck?: () => boolean;
+  getFollowupPrompt?: () => string;
 }
 
 async function runMicroChannel(
@@ -92,10 +93,9 @@ async function runMicroChannel(
 
     while (options.requireMutation && options.onMutationCheck && !options.onMutationCheck() && turn < maxTurns) {
       turn++;
-      console.log(`\n   🔁 [ACTION LOOP]: Ingen fil sparad ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
-      response = await runner.send(
-        `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`
-      );
+      const followUp = options.getFollowupPrompt ? options.getFollowupPrompt() : `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`;
+      console.log(`\n   🔁 [ACTION LOOP]: Krav ej uppfyllt ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
+      response = await runner.send(followUp);
     }
 
     runner.close();
@@ -131,6 +131,37 @@ async function main() {
   if (domainMatch && !isMaint) targetDomain = domainMatch[1];
   
   console.log(`🎯 Måldomän: ${isMaint ? 'scripts/ & doc/ (Underhåll)' : `src/features/${targetDomain}/`}\n`);
+
+  const syncDomainBarrel = () => {
+    if (isMaint) return;
+    const barrelPath = path.join(ROOT_DIR, `src/features/${targetDomain}/index.ts`);
+    if (!fs.existsSync(barrelPath)) return;
+    const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
+    const getAllMods = (dir, baseDir) => {
+      let results = [];
+      for (const item of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, item.name);
+        if (item.isDirectory()) {
+          if (item.name !== '__tests__') results = results.concat(getAllMods(full, baseDir));
+        } else if ((item.name.endsWith('.ts') || item.name.endsWith('.tsx')) && item.name !== 'index.ts') {
+          results.push(path.relative(baseDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/'));
+        }
+      }
+      return results;
+    };
+    const allMods = getAllMods(domainDir, domainDir);
+    let barrelContent = fs.readFileSync(barrelPath, 'utf-8');
+    let changed = false;
+    for (const mod of allMods) {
+      const exp = `export * from './${mod}';`;
+      if (!barrelContent.includes(`./${mod}`)) {
+        barrelContent = barrelContent.trim() + `\n${exp}\n`;
+        console.log(`   🔗 [BARREL-UPDATE]: Exporterar ./${mod} i index.ts`);
+        changed = true;
+      }
+    }
+    if (changed) fs.writeFileSync(barrelPath, barrelContent, 'utf-8');
+  };
 
   // ==========================================
   // GENERISK GIT-BASERAD STARTSANERING
@@ -332,7 +363,8 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
     console.log('\n🔴 Gate 3a Fail-First: Verifierar att testet fallerar rött (exit 1)...');
     let testFailedAsExpected = false;
     try {
-      execSync(`npx vitest run ${transientTestFile}`, { stdio: 'pipe', cwd: ROOT_DIR });
+      syncDomainBarrel();
+        execSync(`npx vitest run ${transientTestFile}`, { stdio: 'pipe', cwd: ROOT_DIR });
     } catch (err: any) {
       testFailedAsExpected = true;
     }
@@ -441,10 +473,39 @@ TESTKOD SOM SKALL UPPFYLLAS:
 \`\`\`typescript
 ${fs.existsSync(transientTestFullPath) ? fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '' : ''}
 \`\`\`
-Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
+Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive engine, types och export i index.ts) innan du avslutar!`;
+
+  const getRequiredFiles = (): string[] => {
+    if (isMaint) return [];
+    const promptFiles = ticketPrompt.match(new RegExp(`src/features/${targetDomain}/[a-zA-Z0-9_/\\-]+\\.(ts|tsx)`, 'g')) || [];
+    return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
+  };
+
+  const getMissingFiles = (): string[] => {
+    return getRequiredFiles().filter(f => !fs.existsSync(path.join(ROOT_DIR, f)));
+  };
+
+  const isFas2Complete = (): boolean => {
+    if (!codeSaved) return false;
+    const missing = getMissingFiles();
+    return missing.length === 0;
+  };
+
+  const getFas2FollowupPrompt = (): string => {
+    const missing = getMissingFiles();
+    if (missing.length > 0) {
+      return `⚠️ Följande källkodsfiler från kontraktet saknas fortfarande på disk:\n${missing.map(f => `- ${f}`).join('\n')}\nDu MÅSTE använda 'save_code' för att skapa och spara dessa filer innan bygget kan gå vidare!`;
+    }
+    return `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`;
+  };
 
   const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
-  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+  const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
+    requireMutation: true,
+    maxTurns: 5,
+    onMutationCheck: isFas2Complete,
+    getFollowupPrompt: getFas2FollowupPrompt
+  });
 
   const isHaveri = fas2Response.includes('STATUS: HAVERERAT_KONTRAKT');
   const isFrivillig = fas2Response.includes('STATUS: FRIVILLIG_OMVÄNDELSE');
@@ -509,10 +570,12 @@ Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
     let attempts = 0;
     while (!testPassed && attempts < 3) {
       attempts++;
+      syncDomainBarrel();
       try {
         execSync(`npx vitest run ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
         testPassed = true;
       } catch (vitestErr: any) {
+        const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;
         console.warn(`\n⚠️ [FAS 2 SJÄLVRÄTTNING]: Försök ${attempts}/3 fallerade.`);
         if (attempts >= 3) {
           console.error('❌ Maximalt antal självrättningsförsök uppnått i Fas 2.');
@@ -542,7 +605,6 @@ Anropa save_code eller apply_patch för att spara källkoden omedelbart!`;
             process.exit(1);
           }
         }
-        const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;
         codeSaved = false;
 
         // Samla ihop test och källkod så modellen slipper vara blind under självrättningen
@@ -568,7 +630,12 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 
         const retryAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${currentSourceSummary}\n\nFELLOGG:\n${testLog}`;
 
-        await runMicroChannel('Att vända om', retryPrompt, retryAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 3, onMutationCheck: () => codeSaved });
+        await runMicroChannel('Att vända om', retryPrompt, retryAnchor, systemInstruction, codegenTools, executeFas2Tools, {
+          requireMutation: true,
+          maxTurns: 5,
+          onMutationCheck: isFas2Complete,
+          getFollowupPrompt: getFas2FollowupPrompt
+        });
       }
     }
   }
