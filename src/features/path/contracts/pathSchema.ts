@@ -1,26 +1,21 @@
 import { z } from 'zod';
 
-export const PathContextSchema = z.object({
-  biljettDatum: z.string().datetime().optional(),
-  aktuellFas: z.string().optional(),
-  minne: z.record(z.unknown()).optional(),
+export const FilKravSchema = z.object({
+  filVag: z.string().min(1),
+  maxRader: z.number().positive().optional(),
+  kravsExport: z.boolean().optional(),
 });
+
+export const KonstruktionsportOptionsSchema = z.object({
+  matris: z.array(FilKravSchema),
+  inspekterare: z.custom<Function>(),
+  barrelVag: z.string().optional(),
+});
+
+export const PathContextSchema = z.record(z.any());
 
 export const PortResultSchema = z.object({
   oppnad: z.boolean(),
   orsak: z.string().optional(),
   omvandelseKrav: z.string().optional(),
-});
-
-export const AvsiktsportOptionsSchema = z.object({
-  prompter: z.custom<Function>(),
-  beskrivning: z.string(),
-  exempel: z.string().optional(),
-});
-
-export const PathRecipeSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  nodes: z.array(z.custom<any>()),
 });

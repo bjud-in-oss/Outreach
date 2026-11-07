@@ -56,6 +56,14 @@ async function generateCommitMessageLive(diffText: string): Promise<string> {
 
 async function main() {
   const customMessage = process.argv.slice(2).join(' ').trim();
+  console.log('🔍 [SYNK]: Kör automatisk arkitektur- och regressionskontroll...');
+  try {
+    execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
+  } catch (err) {
+    console.error('\n❌ [SYNK AVBRUTEN]: pnpm verify underkändes. Rätta koden innan du synkar.');
+    process.exit(1);
+  }
+
   console.log('📦 [SYNK]: Kontrollerar lokalt tillstånd mot GitHub...');
 
   const status = execSync('git status --porcelain', { encoding: 'utf-8', cwd: ROOT_DIR }).trim();

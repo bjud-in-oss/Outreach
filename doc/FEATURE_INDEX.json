@@ -257,20 +257,22 @@
       "files": [
         "contracts/pathSchema.ts",
         "engine/avsiktsport.ts",
+        "engine/konstruktionsport.ts",
         "engine/pathRunner.ts",
         "engine/provningsport.ts",
         "index.ts",
         "model/types.ts"
       ],
       "exports": [
-        "AvsiktsportOptionsSchema",
+        "FilKravSchema",
+        "KonstruktionsportOptionsSchema",
         "PathContextSchema",
-        "PathRecipeSchema",
         "PortNekadError",
         "PortResultSchema",
         "exekveraRecept",
         "knackaPaPorten",
         "skapaAvsiktsport",
+        "skapaKonstruktionsport",
         "skapaProvningsport"
       ]
     },

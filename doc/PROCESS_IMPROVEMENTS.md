@@ -18,3 +18,10 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 ## 2. Historik & Lärdomar från Omvändelseslingan (Meta-Teshuvah)
 *Dokumenteras automatiskt av Att förlikas under Fas 3.*
 - **[2026-11-02] Hermetiska minnestester utan I/O:** När en funktionell callback, prompter eller beräkning testas i minnet under Fas 1/2, använd rena TypeScript-funktioner (`async () => '...'`) i stället för `vi.fn()`. Det förhindrar falska Gate 3a-larm och eliminerar risken för panikartade kors-importer av händelsebussar från andra domäner.
+
+### Erfarenheter från TCK-035 till TCK-037 (Vägens grundbultar)
+- **TDZ i felhanterare:** Variabler som loggar testfel (`testLog`) måste alltid initieras omedelbart vid `catch (err)`-blockets start för att undvika ReferenceError vid omvändelsekrascher.
+- **Kontinuerlig barrel-synkronisering:** `index.ts` i FSD-domäner måste uppdateras deterministiskt inför varje testkörning så att nya moduler i underkataloger exponeras direkt.
+- **Flerfilskontroll i Fas 2:** Byggmotorn får inte avsluta källkodsgenerering enbart för att en fil sparats (`codeSaved === true`). Alla filer som deklarerats i byggkontraktet måste fysiskt existera på disk innan testningen tillåts starta.
+- **Hermetisk TDD utan alibin:** Rena asynkrona mock-funktioner (`async () => ...`) ska användas vid funktionella enhetstester i minnet i stället för `vi.fn()` för att förhindra falska Gate 3a-larm.
+- **Platta biljettmallar:** Undvik `---` inuti biljettfiler under `doc/.TICKETS/` för att förhindra att terminalbuffertar klipper heredocs vid inklistring.
