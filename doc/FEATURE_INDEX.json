@@ -257,6 +257,7 @@
       "files": [
         "contracts/pathSchema.ts",
         "engine/avsiktsport.ts",
+        "engine/konstruktionsport.ts",
         "engine/pathRunner.ts",
         "engine/provningsport.ts",
         "index.ts",
@@ -271,6 +272,7 @@
         "exekveraRecept",
         "knackaPaPorten",
         "skapaAvsiktsport",
+        "skapaKonstruktionsport",
         "skapaProvningsport"
       ]
     },

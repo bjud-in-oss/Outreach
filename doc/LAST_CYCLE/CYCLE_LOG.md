@@ -1,85 +1,67 @@
-# BYGGCYKEL LOGG: TCK-037
-**Starttid:** 2026-11-07T22:21:41.353Z
+# BYGGCYKEL LOGG: TCK-038
+**Starttid:** 2026-11-07T22:53:33.531Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-037: Prövningsporten och Prediktiv TDD (Testing Port)
+# TCK-038: Konstruktionsporten och Källkodsmatrisen (Construction Port)
 
 ## 1. MÅL
-Implementera Prövningsporten (src/features/path/engine/provningsport.ts) som förkroppsligar rollen Att vända om enligt ADR-028, ADR-029 och ADR-030. Prövningsporten ansvarar för att validera att ett genererat integrationstest uppfyller Prediktiv Fail-First: testet ska bevisat fallera rött och dess felorsak ska matcha ett förutsagt förväntat påståendefel (assertion failure), inte ett syntaxfel eller en trasig import.
+Implementera Konstruktionsporten (src/features/path/engine/konstruktionsport.ts) som förkroppsligar rollen Att följa enligt ADR-028, ADR-029 och ADR-030. Konstruktionsporten ansvarar för att mekaniskt validera att källkodsgenereringen är fullständig innan processen tillåts passera till testning och besiktning. Den kontrollerar att alla specificerade filer existerar fysiskt, att de exporteras korrekt via domänens index.ts, och att radgränserna (max 125 rader för UI, max 250 rader för logik) inte överskrids.
 
 ## 2. DESTRUKTIVA HANDLINGSSTEG
-Inga filer raderas. Befintlig kod i src/features/path/ kompletteras enligt Väg 2 (Modulär expansion). Gamla skript i scripts/ förblir orörda.
+Inga filer raderas. Befintlig kod i src/features/path/ kompletteras enligt Väg 2 (Modulär expansion). Gamla orkestreringsskript i scripts/ förblir orörda.
+VIKTIGT: Befintliga typer i model/types.ts bevaras intakta (använd apply_patch). PortNekadError och knackaPaPorten är redan deklarerade och återanvänds, de får inte omdeklareras.
 
 ## 3. IMPLEMENTERINGSSPECIFIKATION FÖR BYGGMOTORN
 
 ### A. Typ- och Kontraktsutökning (src/features/path/model/types.ts)
-Komplettera types.ts med kontrakt för prediktiv testvalidering:
-- TestKorselResultat: { passerade: boolean; exitKod: number; felmeddelande?: string }
-- TestExekverare: (testFilVag: string) => Promise<TestKorselResultat>
-- ProvningsportOptions: { testFilVag: string; forvantatFel: string; testExekverare: TestExekverare }
+Komplettera types.ts via apply_patch med:
+- FilKrav: { filVag: string; maxRader?: number; kravsExport?: boolean }
+- FilInspektion: { existerar: boolean; antalRader: number; exporteradIIndex?: boolean }
+- FilInspekterare: (krav: FilKrav, barrelVag?: string) => Promise<FilInspektion>
+- KonstruktionsportOptions: { matris: FilKrav[]; inspekterare: FilInspekterare; barrelVag?: string }
 
-### B. Prövningsporten (src/features/path/engine/provningsport.ts)
-Skapa fabriksfunktionen skapaProvningsport(options: ProvningsportOptions): Port:
-- Returnerar en asynkron funktion av typen Port: async (kontext: PathContext): Promise<PortResult> => { ... } (på samma sätt som skapaAvsiktsport).
-- När porten anropas exekveras testet via await options.testExekverare(options.testFilVag).
-- Bedömning av Prediktiv Fail-First:
-  1. Om testet passerar (grönt för tidigt):
-     Returnera { oppnad: false, orsak: 'Testet passerade grönt innan källkod implementerats (Falskt positivt / Saknar Fail-First)', omvandelseKrav: 'KRÄV_RÖTT_TEST' }.
-  2. Om testet fallerar med rätt förväntat fel (äkta rött körtidsbevis):
-     Om (resultat.felmeddelande || '').toLowerCase().includes(options.forvantatFel.toLowerCase()):
+### B. Konstruktionsporten (src/features/path/engine/konstruktionsport.ts)
+Skapa fabriksfunktionen skapaKonstruktionsport(options: KonstruktionsportOptions): Port:
+- Returnerar en asynkron funktion: async (kontext: PathContext): Promise<PortResult> => { ... }.
+- När porten anropas inspekteras samtliga poster i options.matris sekventiellt via options.inspekterare(krav, options.barrelVag).
+- Bedömning:
+  1. Om en fil saknas (existerar === false):
+     Returnera { oppnad: false, orsak: `Källkodsfil saknas: "${krav.filVag}"`, omvandelseKrav: 'SKAPA_FILER' }.
+  2. Om en fil överskrider radgräns (krav.maxRader && antalRader > krav.maxRader):
+     Returnera { oppnad: false, orsak: `Fil "${krav.filVag}" överskrider radgräns (${antalRader} > ${krav.maxRader})`, omvandelseKrav: 'MODULÄR_EXPANSION' }.
+  3. Om export krävs men saknas i index.ts (krav.kravsExport && exporteradIIndex === false):
+     Returnera { oppnad: false, orsak: `Modul "${krav.filVag}" saknar exportdeklaration i barrel-filen`, omvandelseKrav: 'UPPDATERA_INDEX' }.
+  4. Om samtliga filer uppfyller kraven:
      Returnera { oppnad: true }.
-  3. Om testet fallerar av fel anledning (syntaxfel, importfel etc.):
-     Returnera { oppnad: false, orsak: `Testet fallerade av oväntad orsak: "${resultat.felmeddelande}". Förväntade: "${options.forvantatFel}"`, omvandelseKrav: 'ÅTGÄRDA_TESTSYNTAX' }.
 
 ### C. Zod-Validering (src/features/path/contracts/pathSchema.ts)
-Komplettera schemat med ProvningsportOptionsSchema:
-- testFilVag: z.string().min(1)
-- forvantatFel: z.string().min(1)
-- testExekverare: z.custom<Function>()
+Komplettera schemat med KonstruktionsportOptionsSchema via apply_patch.
 
 ### D. Domänexport (src/features/path/index.ts)
-Exportera skapaProvningsport och de nya typerna från src/features/path/index.ts.
+Exportera skapaKonstruktionsport och de nya typerna från index.ts.
 
 ## 4. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
-1. Skapa src/features/path/__tests__/provningsport.test.ts.
-2. Körtidsankare och TDD Fail-First: Testet ska importera skapaProvningsport, knackaPaPorten, PortNekadError, Port och PathContext från den egna domänen. Använd rena asynkrona funktioner för testExekverare (inga syntetiska spioner som vi.fn()).
-3. Korrekt anrop: Porten ska alltid anropas via await knackaPaPorten(port, kontext) där port är returvärdet från skapaProvningsport(...) och kontext: PathContext = {}.
-4. Testfall 1 (Godkänt prediktivt rött test): 
-   När exekveraren returnerar passerade: false och felmeddelande: 'AssertionError: expected false to be true', och forvantatFel: 'AssertionError', ska knackaPaPorten(port, kontext) öppna porten utan fel (resolves.not.toThrow() eller att resultat.oppnad === true).
-5. Testfall 2 (Underkänt p.g.a. grönt test):
-   När exekveraren returnerar passerade: true, ska knackaPaPorten(port, kontext) kasta PortNekadError med omvandelseKrav: 'KRÄV_RÖTT_TEST'.
-6. Testfall 3 (Underkänt p.g.a. syntax-/importfel):
-   När exekveraren returnerar passerade: false och felmeddelande: 'SyntaxError: Unexpected token', och forvantatFel: 'AssertionError', ska knackaPaPorten(port, kontext) kasta PortNekadError med omvandelseKrav: 'ÅTGÄRDA_TESTSYNTAX'.
-7. Fil- och radgränser: Samtliga skapade eller ändrade .ts-filer under src/features/path/ ska strikt hålla sig under 250 rader per fil.
-8. pnpm test och node scripts/verify-architecture.js ska vara 100 % gröna.
+1. Skapa src/features/path/__tests__/konstruktionsport.test.ts (Rör inte types.test.ts eller andra tester!).
+2. Importera skapaKonstruktionsport, knackaPaPorten och PortNekadError från domänen ('../features/path').
+3. Verifiera:
+   - Testfall 1: Öppnar porten vid godkänd matris.
+   - Testfall 2: Källkodsfil saknas -> kastar PortNekadError med SKAPA_FILER.
+   - Testfall 3: Radgräns överskrids -> kastar PortNekadError med MODULÄR_EXPANSION.
+   - Testfall 4: Export saknas -> kastar PortNekadError med UPPDATERA_INDEX.
+4. pnpm test och node scripts/verify-architecture.js ska vara 100 % gröna.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Feature: Predictive Fail-First Validation with Prövningsporten
-
-  Scenario: Test fails correctly due to an assertion failure
-    Given the execution framework runs a test that throws an AssertionError
-    When Prövningsporten evaluates the test run result against the expected error "AssertionError"
-    Then the port verifies the error and opens successfully
-
-  Scenario: Test passes prematurely
-    Given the execution framework runs a test that passes
-    When Prövningsporten evaluates the test run result
-    Then the port denies access and requires a red test
-
-  Scenario: Test fails prematurely due to syntax error
-    Given the execution framework runs a test that throws a SyntaxError
-    When Prövningsporten evaluates the test run result against the expected error "AssertionError"
-    Then the port denies access and requires fixing test syntax
+Givet att källkodskraven är definierade i en matris, När Konstruktionsporten inspekterar filerna utan avvikelser, Så öppnas porten för fortsatt besiktning. Detta främjar närhet till den ideala mjukvaran genom deterministisk kvalitetssäkring.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har utfört kontraktsauditen för TCK-037. Samtliga ändringar sker uteslutande inom domänen src/features/path/, vilket uppfyller kravet på FSD-isolering. Alla typer och scheman för prediktiv testvalidering finns definierade. Vi är redo för nästa steg.
+Kontraktsaudit slutförd. Uppdraget berör strikt en FSD-domän (`src/features/path/`), inga filer raderas, och alla utökningar följer modulkontraktet. Status: GODKÄND.
 
 
 #### 0b Att förlikas: Vägval
@@ -91,23 +73,21 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att uppfylla TCK-037 och realisera prövningsporten formulerar jag härmed tre ortogonala alternativ för lösning:
+För att uppfylla TCK-038 formulerar jag följande tre ortogonala alternativ för konstruktionen av Konstruktionsporten:
 
-Alternativ ett: Direkt injektion och exekveringskontrakt. Detta innebär en funktionell komposition där en `TestExekverare` injiceras som en ren callback, vilket ger låg komplexitet och en tight koppling till det befintliga kontraktet.
+Alternativ 1: Den disk-direkta strategin. Här utför `FilInspekterare` direkta `fs.promises`-anrop för att kontrollera filers existens och räkna radbrytningar, samt kontrollerar exporter genom textanalys och regex.
 
-Alternativ två: Händelsestyrd exekvering via EventBus. Här emitterar prövningsporten en begäran och lyssnar efter resultat via `SwarmEventBus`, vilket ger ett helt frikopplat gränssnitt för asynkron tillståndshantering.
+Alternativ 2: Den AST-baserade strategin. Här används AST-skanning för att verifiera exportdeklarationer och mäta faktiska källkodssträngar, vilket ger högre precision och resiliens mot varierande kodformatteringar.
 
-Alternativ tre: Adaptor-baserad isolering mot körtid. Genom att införa ett `TestAdapter`-gränssnitt kapslas testexekveringen in och blir helt agnostisk gentemot testramverk och miljö, vilket ger maximal modularitet.
+Alternativ 3: Den kontrakt-defensiva strategin. Här valideras alla inspektionssteg mot strikta Zod-kontrakt för att garantera total dataintegritet och möjliggöra en funktionell, renodlad pipeline.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Baserat på resiliensgranskningen av de tre alternativen bedömer jag att Alternativ ett, direkt injektion och exekveringskontrakt, har högst resiliens för detta uppdrag.
-
-Den funktionella kompositionen minimerar komplexiteten och eliminerar latenta haverier kopplade till asynkron händelseloggning eller trasiga korrelations-id:n, vilket ger det säkraste spåret för att snabbt verifiera prediktiv Fail-First.
+Vid en resiliensgranskning av de tre alternativen kan vi konstatera att Alternativ 1, med direkt textanalys och regex, är alltför bristfällig och riskerar att feltolka modern kodformatering. Alternativ 2, som förlitar sig på AST-skanning, är robust och väl anpassat till våra kvalitetsgrindar och arkitektoniska krav. För högsta möjliga resiliens bör vi kombinera precisionen i AST-analysen med den stringenta valideringen från Alternativ 3. Detta ger oss en helhetlig ochfelsäker arkitektur för Konstruktionsporten.
 
 
 #### 2d Att förlikas: Mättnad
-Jag har vägt spänningsfältet och mätt det semantiska deltat. Med Alternativ ett minimerar vi komplexiteten och eliminerar latenta haverier. Jag låser kontraktet för Alternativ ett. MÄTTNAD: JA.
+Det vinnande kontraktet är fastställt: en arkitektur som förenar precisionen i AST-analysen med den stringenta valideringen. Med detta förhållningssätt minimerar vi felmarginaler och uppnår maximal resiliens för Konstruktionsporten. MÄTTNAD: JA.
 
 
 #### 3a Att följa: Testspecifikation
@@ -119,4 +99,4 @@ Jag har vägt spänningsfältet och mätt det semantiska deltat. Med Alternativ 
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Filer att skapa och bevara i byggkontraktet är: src/features/path/model/types.ts för att inkludera de nya testtyperna, src/features/path/engine/provningsport.ts för logiken i porten, src/features/path/contracts/pathSchema.ts för Zod-validering, src/features/path/index.ts för alla nya exporter, och slutligen testfilen src/features/path/__tests__/provningsport.test.ts för verifiering.
+Jag bekräftar det slutgiltiga byggkontraktet för TCK-038. Vi kommer att skapa `src/features/path/engine/konstruktionsport.ts` samt uppdatera modell- och kontraktfilerna via apply_patch. I `index.ts` bevaras exporten av befintliga typer och logik, och vi lägger till `skapaKonstruktionsport` och de nya kontrakten.

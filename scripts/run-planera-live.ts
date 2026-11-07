@@ -180,6 +180,16 @@ async function main() {
       for (const f of untracked) {
         const full = path.resolve(ROOT_DIR, f);
         if (fs.existsSync(full)) {
+        if (rel.endsWith("model/types.ts") || rel.endsWith("index.ts")) {
+          const existingContent = fs.readFileSync(full, "utf-8");
+          const existingExports = (existingContent.match(/export (?:interface|type|class|const|function) ([a-zA-Z0-9_]+)/g) || []);
+          for (const exp of existingExports) {
+            const id = exp.split(" ").pop();
+            if (!args.code.includes(id)) {
+              throw new Error(`AVVISAD TYPAMPUTATION: Din nya kod saknar tidigare deklarerad export "${id}". Använd apply_patch för att lägga till nya typer utan att radera historiska kontrakt!`);
+            }
+          }
+        }
           console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
           fs.unlinkSync(full);
         }
