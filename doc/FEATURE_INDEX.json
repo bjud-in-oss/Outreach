@@ -256,15 +256,20 @@
     "path": {
       "files": [
         "contracts/pathSchema.ts",
+        "engine/avsiktsport.ts",
         "engine/pathRunner.ts",
         "index.ts",
         "model/types.ts"
       ],
       "exports": [
+        "AvsiktsportOptionsSchema",
         "PathContextSchema",
+        "PathRecipeSchema",
         "PortNekadError",
         "PortResultSchema",
-        "knackaPaPorten"
+        "exekveraRecept",
+        "knackaPaPorten",
+        "skapaAvsiktsport"
       ]
     },
     "telemetry": {
