@@ -166,7 +166,7 @@ if (args.includes('--check-alibi')) {
 
   if (hasSpies && !hasRuntimeAnchor) {
     console.error(`❌ GATE 3a BROTT i ${targetFile}:`);
-    console.error(`   Testet använder syntetiska spioner (vi.fn/vi.spyOn) utan fysiskt körtidsankare!`);
+    console.error(`   Testet använder syntetiska spioner (vi.fn/vi.spyOn) utan fysiskt körtidsankare! Tips: För funktionell minnestestning, använd en ren funktion (t.ex. async () => 'ja') i stället för vi.fn().`);
     process.exit(1);
   }
 

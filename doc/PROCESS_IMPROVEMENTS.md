@@ -17,3 +17,4 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 
 ## 2. Historik & Lärdomar från Omvändelseslingan (Meta-Teshuvah)
 *Dokumenteras automatiskt av Att förlikas under Fas 3.*
+- **[2026-11-02] Hermetiska minnestester utan I/O:** När en funktionell callback, prompter eller beräkning testas i minnet under Fas 1/2, använd rena TypeScript-funktioner (`async () => '...'`) i stället för `vi.fn()`. Det förhindrar falska Gate 3a-larm och eliminerar risken för panikartade kors-importer av händelsebussar från andra domäner.
