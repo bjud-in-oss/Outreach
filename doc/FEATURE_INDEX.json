@@ -257,11 +257,13 @@
       "files": [
         "contracts/pathSchema.ts",
         "engine/avsiktsport.ts",
+        "engine/besiktningsport.ts",
         "engine/konstruktionsport.ts",
         "engine/pathRunner.ts",
         "engine/provningsport.ts",
         "index.ts",
-        "model/types.ts"
+        "model/types.ts",
+        "recipes/leanRecipe.ts"
       ],
       "exports": [
         "AvsiktsportOptionsSchema",
@@ -272,7 +274,9 @@
         "exekveraRecept",
         "knackaPaPorten",
         "skapaAvsiktsport",
+        "skapaBesiktningsport",
         "skapaKonstruktionsport",
+        "skapaLeanRecept",
         "skapaProvningsport"
       ]
     },

@@ -1,0 +1,140 @@
+diff --git a/src/features/path/__tests__/besiktningsport.test.ts b/src/features/path/__tests__/besiktningsport.test.ts
+new file mode 100644
+index 0000000..47fb135
+--- /dev/null
++++ b/src/features/path/__tests__/besiktningsport.test.ts
+@@ -0,0 +1,50 @@
++import { describe, it, expect } from 'vitest';
++import { knackaPaPorten, exekveraRecept, PortNekadError } from '..';
++import { skapaBesiktningsport } from '../engine/besiktningsport';
++import { skapaLeanRecept } from '../recipes/leanRecipe';
++import { PathContext, Port } from '../model/types';
++
++describe('TCK-039 Besiktningsporten och Recept-harmonisering', () => {
++  it('skall öppna porten vid godkänd besiktning', async () => {
++    const mockKontext: PathContext = {};
++    const besiktningsport = skapaBesiktningsport({
++      inspekterare: async (kontext: PathContext) => {
++        return { godkand: true };
++      }
++    });
++
++    const resultat = await knackaPaPorten(besiktningsport, mockKontext);
++    expect(resultat.oppnad).toBe(true);
++  });
++
++  it('skall kasta PortNekadError vid underkänd besiktning', async () => {
++    const mockKontext: PathContext = {};
++    const besiktningsport = skapaBesiktningsport({
++      inspekterare: async (kontext: PathContext) => {
++        return { godkand: false, felmeddelande: 'Bristande insikt' };
++      }
++    });
++
++    await expect(knackaPaPorten(besiktningsport, mockKontext)).rejects.toThrow(PortNekadError);
++  });
++
++  it('skall exekvera Lean Recept med 4 portar', async () => {
++    const mockKontext: PathContext = {};
++    
++    // Skapa enkla mock-portar för de tre första stegen
++    const mockPort: Port = async (kontext: PathContext) => ({ oppnad: true });
++    
++    const avsikt = mockPort;
++    const provning = mockPort;
++    const konstruktion = mockPort;
++    
++    const besiktning = skapaBesiktningsport({
++      inspekterare: async (kontext: PathContext) => ({ godkand: true })
++    });
++
++    const recept = skapaLeanRecept({ avsikt, provning, konstruktion, besiktning });
++    const resultat = await exekveraRecept(recept, mockKontext);
++
++    expect(resultat.sucess).toBe(true);
++  });
++});
+diff --git a/src/features/path/engine/besiktningsport.ts b/src/features/path/engine/besiktningsport.ts
+new file mode 100644
+index 0000000..84b909b
+--- /dev/null
++++ b/src/features/path/engine/besiktningsport.ts
+@@ -0,0 +1,21 @@
++import { PathContext, Port, PortResult } from '../model/types';
++
++export interface BesiktningsportOptions {
++  inspekterare: (kontext: PathContext) => Promise<{ godkand: boolean; felmeddelande?: string }>;
++}
++
++export function skapaBesiktningsport(options: BesiktningsportOptions): Port {
++  return async (kontext: PathContext): Promise<PortResult> => {
++    const resultat = await options.inspekterare(kontext);
++    
++    if (resultat.godkand) {
++      return { oppnad: true };
++    }
++    
++    return { 
++      oppnad: false, 
++      orsak: "Besiktning underkänd: " + (resultat.felmeddelande || "Okänt fel"), 
++      omvandelseKrav: "ÅTGÄRDA_BESIKTNING" 
++    };
++  };
++}
+diff --git a/src/features/path/engine/pathRunner.ts b/src/features/path/engine/pathRunner.ts
+index e387d91..5ce0c86 100644
+--- a/src/features/path/engine/pathRunner.ts
++++ b/src/features/path/engine/pathRunner.ts
+@@ -15,7 +15,7 @@ export async function knackaPaPorten(port: Port, kontext: PathContext): Promise<
+   return resultat;
+ }
+ 
+-export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<void> {
++export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ sucess: boolean }> {
+   for (const node of recipe.nodes) {
+     if (node.type === 'STEP') {
+       const result = await node.execute(kontext);
+@@ -26,4 +26,5 @@ export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext):
+       await knackaPaPorten(node.port, kontext);
+     }
+   }
++  return { sucess: true };
+ }
+diff --git a/src/features/path/index.ts b/src/features/path/index.ts
+index 8e161b4..8ff526c 100644
+--- a/src/features/path/index.ts
++++ b/src/features/path/index.ts
+@@ -4,3 +4,5 @@ export * from './engine/pathRunner';
+ export * from './engine/avsiktsport';
+ export * from './engine/provningsport';
+ export * from './engine/konstruktionsport';
++export * from './engine/besiktningsport';
++export * from './recipes/leanRecipe';
+diff --git a/src/features/path/recipes/leanRecipe.ts b/src/features/path/recipes/leanRecipe.ts
+new file mode 100644
+index 0000000..fbf84de
+--- /dev/null
++++ b/src/features/path/recipes/leanRecipe.ts
+@@ -0,0 +1,22 @@
++import { Port, PathRecipe } from '../model/types';
++
++export interface LeanReceptOptions {
++  avsikt: Port;
++  provning: Port;
++  konstruktion: Port;
++  besiktning: Port;
++}
++
++export function skapaLeanRecept(options: LeanReceptOptions): PathRecipe {
++  return {
++    id: "path-lean",
++    name: "Vägen Lean 4-Portar",
++    description: "Deklarativ 4-ports tillståndsmaskin",
++    nodes: [
++      { id: "p1", name: "Avsikt", type: "PORT", port: options.avsikt },
++      { id: "p2", name: "Provning", type: "PORT", port: options.provning },
++      { id: "p3", name: "Konstruktion", type: "PORT", port: options.konstruktion },
++      { id: "p4", name: "Besiktning", type: "PORT", port: options.besiktning }
++    ]
++  };
++}

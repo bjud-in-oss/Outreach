@@ -15,7 +15,7 @@ export async function knackaPaPorten(port: Port, kontext: PathContext): Promise<
   return resultat;
 }
 
-export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<void> {
+export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ sucess: boolean }> {
   for (const node of recipe.nodes) {
     if (node.type === 'STEP') {
       const result = await node.execute(kontext);
@@ -26,4 +26,5 @@ export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): 
       await knackaPaPorten(node.port, kontext);
     }
   }
+  return { sucess: true };
 }

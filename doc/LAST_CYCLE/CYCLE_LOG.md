@@ -1,69 +1,44 @@
-# BYGGCYKEL LOGG: TCK-MAINT-017
-**Starttid:** 2026-11-07T23:06:23.570Z
+# BYGGCYKEL LOGG: TCK-039
+**Starttid:** 2026-11-08T09:24:56.710Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-017: Infrastrukturhärdning, pnpm verify-spärr och Processminne
+# TCK-039: Besiktningsporten och Recept-harmonisering
 
 ## 1. MÅL
-Härda Outreach-motorns orkestreringsinfrastruktur och processminne efter erfarenheterna från TCK-035 till TCK-038:
-1. Installera en obligatorisk verifieringsspärr i scripts/synka.ts som kör pnpm verify före git commit och push.
-2. Automatisera synkronisering av doc/TICKETS.md i Fas 0 av scripts/run-planera-live.ts.
-3. Begränsa kognitiv drift i Fas 1 Steg 2b av scripts/run-planera-live.ts genom att förbjuda externa grannberoenden (som SwarmEventBus) vid isolerade domänuppdrag.
-4. Uppdatera doc/PROCESS_IMPROVEMENTS.md med lärdomarna från TCK-035–038.
-5. Formalisera ADR-031 (Källkodsmatriser, Konstruktionsintegritet och Typamputationsskydd) i doc/DECISIONS.md.
+Implementera Besiktningsporten (src/features/path/engine/besiktningsport.ts) och skapaLeanRecept (src/features/path/recipes/leanRecipe.ts) enligt ADR-028, ADR-029 och ADR-030. Besiktningsporten förkroppsligar rollen Att förlikas och validerar slutresultatet.
 
-## 2. DESTRUKTIVA HANDLINGSSTEG
-Inga produktionsfiler under src/ modifieras. Ändringarna sker uteslutande i scripts/ och doc/.
+## 2. KÄLLKODSSPECIFIKATION FÖR DOMÄNEN
+1. src/features/path/engine/besiktningsport.ts:
+   - Exportera skapaBesiktningsport(options: { inspekterare: (kontext: PathContext) => Promise<{ godkand: boolean; felmeddelande?: string }> }): Port.
+   - Returnera en asynkron funktion: async (kontext: PathContext): Promise<PortResult> => { ... }.
+   - Vid godkand: true -> returnera { oppnad: true }.
+   - Vid godkand: false -> returnera { oppnad: false, orsak: "Besiktning underkänd: " + (resultat.felmeddelande || "Okänt fel"), omvandelseKrav: "ÅTGÄRDA_BESIKTNING" }.
+2. src/features/path/recipes/leanRecipe.ts:
+   - Exportera skapaLeanRecept(options: { avsikt: Port; provning: Port; konstruktion: Port; besiktning: Port }): PathRecipe.
+   - Returnera ett PathRecipe med noder för de 4 portarna: { id: "path-lean", name: "Vägen Lean 4-Portar", description: "Deklarativ 4-ports tillståndsmaskin", nodes: [ { id: "p1", name: "Avsikt", type: "PORT", port: options.avsikt }, { id: "p2", name: "Provning", type: "PORT", port: options.provning }, { id: "p3", name: "Konstruktion", type: "PORT", port: options.konstruktion }, { id: "p4", name: "Besiktning", type: "PORT", port: options.besiktning } ] }.
+3. src/features/path/index.ts:
+   - Exportera skapaBesiktningsport och skapaLeanRecept.
 
-## 3. IMPLEMENTERINGSSPECIFIKATION FÖR BYGGMOTORN
-
-### A. Säkerhet i synkningen (scripts/synka.ts)
-I scripts/synka.ts, lägg till obligatorisk kontroll av arbetskopian innan commit tillåts:
-- När status detekteras, kör execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR }).
-- Vid fel i pnpm verify, avbryt processen med exitkod 1 och felmeddelandet:
-  "❌ [SYNK AVBRUTEN]: pnpm verify underkändes. Rätta koden innan du synkar."
-
-### B. Fas 0 och Fas 1 i orkestreringsmotorn (scripts/run-planera-live.ts)
-1. Vid start i main(), direkt efter att targetDomain fastställts, anropa:
-   try { execSync('node scripts/update-tickets.js', { cwd: ROOT_DIR }); } catch {}
-   så att doc/TICKETS.md alltid är synkroniserad från starten av bygget.
-2. I anropet för Fas 1 Steg 2b, utöka instruktionen till:
-   "Steg 2b: Formulera 3 ortogonala alternativ för lösning. REGLER: Introducera ALDRIG externa beroenden eller granndomäner (som SwarmEventBus) om inte biljetten uttryckligen efterfrågar distribuerad telemetri."
-
-### C. Processminne (doc/PROCESS_IMPROVEMENTS.md)
-Lägg till ett nytt avsnitt under Processförbättringar:
-- [2026-11-08] Erfarenheter från TCK-035 till TCK-038 (Vägens fundament):
-  * TDZ i felhanterare: Variabler som fångar felloggar (testLog) måste initieras överst i catch-blocket.
-  * Kontinuerlig barrel-synk: index.ts i aktiva FSD-domäner uppdateras deterministiskt inför varje testkörning.
-  * Mekanisk flerfilskontroll i Fas 2: Byggmotorn kräver att samtliga specificerade källkodsfiler existerar på disk innan testerna startas.
-  * Typamputationsskydd: save_code förbjuds att skriva över model/types.ts och index.ts om deklarerade exporter saknas.
-  * Git-omvändelse framför MAINT-ackumulering: Trasig eller skuldsatt kod backas med git reset till senast kända rena tillstånd hellre än att plåstras över.
-  * Filbaserad IPC: Komplexa ändringar överförs via efemära filer på disk för att eliminera klippta terminalbuffertar.
-
-### D. Konstitutionellt Beslut (doc/DECISIONS.md)
-Dokumentera ADR-031:
-- Rubrik: ADR-031: Källkodsmatriser, Mekanisk Konstruktionsintegritet och Typamputationsskydd
-- Status: Beslutad (2026-11-08)
-- Beslut: Konstruktionsporten validerar FilKrav[] mekaniskt; save_code skyddar mot typamputation; scripts/synka.ts kräver grön pnpm verify före push.
-
-## 4. ACCEPTANSKRITERIER
-1. scripts/synka.ts exekverar pnpm verify innan git commit tillåts.
-2. scripts/run-planera-live.ts synkroniserar biljetter i Fas 0 och begränsar Steg 2b-prompten.
-3. doc/PROCESS_IMPROVEMENTS.md och doc/DECISIONS.md innehåller de nya posterna.
-4. pnpm verify är 100 % grön (alla 18 tester och 62 arkitekturregler passerar).
+## 3. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
+1. Skapa src/features/path/__tests__/besiktningsport.test.ts:
+   - Inga vi.fn()-spioner. Använd rena async-funktioner som mocks: async () => ({ godkand: true }) eller async () => ({ oppnad: true }).
+   - Testfall 1: Godkänd besiktning öppnar porten via knackaPaPorten(port, kontext).
+   - Testfall 2: Underkänd besiktning kastar PortNekadError med ÅTGÄRDA_BESIKTNING via knackaPaPorten(port, kontext).
+   - Testfall 3: Recept med 4 godkända mock-portar fullföljs av exekveraRecept(recept, kontext).
+2. pnpm verify ska vara 100 % grön.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag bekräftar min förståelse av intentionen. Syftet med TCK-MAINT-017 är att härda Outreach-motorns orkestreringsinfrastruktur och processminne genom att installera en obligatorisk verifieringsspärr, automatisera synkronisering, begränsa kognitiv drift samt formalisera lärdomar och ADR-031.
+Givet att en exekveringsprocess når besiktningsstadiet, när besiktningsporten inspekterar och godkänner kontexten, så öppnas porten och processen fortsätter till nästa steg. Speglade detta din intention?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit godkänd. Inga FSD-domäner under src påverkas och inga externa API-kontrakt bryts. Vi rör oss strikt inom infrastruktur och dokumentation i scripts/ och doc/.
+Jag har granskat TCK-039 och kan bekräfta att uppdraget uppfyller kraven för kontraktet enligt vår arkitekturmanual. Vi fokuserar på domänen path, vilket respekterar gränsen för en enhetlig FSD-modul och använder rena asynkrona funktioner i testerna. All förberedelse är därmed låst.
 
 
 #### 0b Att förlikas: Vägval
@@ -75,18 +50,30 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att härda orkestreringsinfrastrukturen och möta kraven i TCK-MAINT-017, formulerar jag följande tre ortogonala alternativ för lösning:
+Som kraften Att följa formulerar jag härmed tre ortogonala alternativ för lösningen av TCK-039.
 
-Alternativ 1: Direkt procedurell integrering. Vi implementerar kontrollen i `scripts/synka.ts` genom att använda `execSync` för att köra `pnpm verify` direkt före `git commit`. I `scripts/run-planera-live.ts` lägger vi till synkronisering av biljetter i Fas 0 via ett `execSync`-anrop och uppdaterar prompten i Fas 1 Steg 2b för att blockera externa beroenden.
+Alternativ 1 innebär en direkt implementering av Besiktningsporten och Lean-receptet med strikt fokus på kontraktets funktioner och enkel felhantering.
 
-Alternativ 2: Modulär drivrutin för validering och orkestrering. Vi skapar separata drivrutiner i `scripts/drivers/` för att hantera tillståndskontroller och kontraktsverifiering. Detta separerar logiken för `pnpm verify` och biljetternas status från synk- och planeringsskripten, vilket ger en mer modulär struktur.
+Alternativ 2 fokuserar på robusthet genom att inkludera Zod-validering för alla konfigurationsobjekt, vilket förhindrar körtidsfel vid felaktig kontext.
 
-Alternativ 3: VCS-integrering och pre-commit-krok. I stället för att ändra `scripts/synka.ts` förlitar vi oss på mekaniska Git-krokar eller strikt CI-pipeline-verifiering utanför applikationens körtid. Processminnet uppdateras genom separata körningar.
+Alternativ 3 separerar inspekterarens logik i en egen modul för att förbättra läsbarhet och göra enhetstester enklare att strukturera och underhålla.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Granskning av alternativen ur ett resiliensperspektiv visar att Alternativ 1 är mest robust. Genom att integrera verifieringen direkt i `scripts/synka.ts` minskar vi komplexiteten och risken för latenta fel, vilket stärker konstruktionsintegriteten. Alternativ 2 och 3 introducerar fler rörliga delar som kräver mer underhåll i vår hårdkodade miljö.
+Alternativ 2 är vinnaren. Zod-valideringen bygger in den nödvändiga spärrarna som krävs för full resiliens och förhindrar korrupt tillståndshantering vid felaktiga indata i `PathContext`. Detta eliminerar latenta haverier helt och säkerställer att körtidskontraktet skyddar processen mekaniskt.
 
 
 #### 2d Att förlikas: Mättnad
-Vi väger spänningsfältet mellan komplexitet och resiliens och fastställer härmed att Alternativ 1 vinner. Vi låser detta kontrakt för att säkra konstruktionsintegriteten. MÄTTNAD: JA.
+Baserat på vår avvägning slår jag fast att Alternativ 2 är det vinnande kontraktet. Zod-valideringen bygger in nödvändiga spärrar för full resiliens och skyddar processen mekaniskt mot korrupt tillståndshantering. MÄTTNAD: JA.
+
+
+#### 3a Att följa: Testspecifikation
+
+
+
+#### 3b Att följa: Källkod
+
+
+
+#### 3c Att förlikas: Slutgiltigt Byggkontrakt
+Det slutgiltiga byggkontraktet för TCK-039 fastställer att vi skapar filerna `besiktningsport.ts` och `leanRecipe.ts` i domänen. Vi kommer även uppdatera `index.ts` för exporten och bevara testet i testsökvägen för att garantera en grön verifiering.

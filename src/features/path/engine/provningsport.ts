@@ -1,5 +1,5 @@
 import { ProvningsportOptions, Port, PortResult } from '../model/types';
-import { PortNekadError } from './avsiktsport';
+import { PortNekadError } from './pathRunner';
 
 export function skapaProvningsport(options: ProvningsportOptions): Port {
   return async (kontext): Promise<PortResult> => {

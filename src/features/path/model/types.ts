@@ -65,3 +65,28 @@ export interface ProvningsportOptions {
   forvantatFel: string;
   testExekverare: TestExekverare;
 }
+
+export interface FilKrav {
+  filVag: string;
+  maxRader?: number;
+  kravsExport?: boolean;
+}
+export interface FilInspektion {
+  existerar: boolean;
+  antalRader: number;
+  exporteradIIndex?: boolean;
+}
+export type FilInspekterare = (krav: FilKrav, barrelVag?: string) => Promise<FilInspektion>;
+export interface KonstruktionsportOptions {
+  matris: FilKrav[];
+  inspekterare: FilInspekterare;
+  barrelVag?: string;
+}
+export interface BesiktningResultat {
+  godkand: boolean;
+  felmeddelande?: string;
+}
+export type BesiktningsInspekterare = (kontext: PathContext) => Promise<BesiktningResultat>;
+export interface BesiktningsportOptions {
+  inspekterare: BesiktningsInspekterare;
+}

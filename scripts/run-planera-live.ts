@@ -37,6 +37,26 @@ const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
 
 if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
 
+
+function dumpCrashDiff() {
+  try {
+    execSync("git add -N src/ 2>/dev/null || true", { cwd: ROOT_DIR });
+    const diff = execSync("git diff src/", { encoding: "utf-8", cwd: ROOT_DIR });
+    if (diff && diff.trim()) {
+      fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
+      fs.writeFileSync(path.join(CYCLE_LOG_DIR, "CRASH_DIFF.patch"), diff, "utf-8");
+      console.log("\n📄 [KRASCH-DIFF SPARAD]: doc/LAST_CYCLE/CRASH_DIFF.patch");
+      console.log("────────────────── FYSISK KÄLLKODSDIFF (src/) ──────────────────");
+      console.log(diff.slice(0, 2500) + (diff.length > 2500 ? "\n... (trunkerad vid 2500 tecken)" : ""));
+      console.log("────────────────────────────────────────────────────────────────\n");
+    }
+  } catch {}
+}
+
+process.on("exit", (code) => {
+  if (code !== 0) dumpCrashDiff();
+});
+
 let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
 if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
 
@@ -186,16 +206,6 @@ async function main() {
       for (const f of untracked) {
         const full = path.resolve(ROOT_DIR, f);
         if (fs.existsSync(full)) {
-        if (rel.endsWith("model/types.ts") || rel.endsWith("index.ts")) {
-          const existingContent = fs.readFileSync(full, "utf-8");
-          const existingExports = (existingContent.match(/export (?:interface|type|class|const|function) ([a-zA-Z0-9_]+)/g) || []);
-          for (const exp of existingExports) {
-            const id = exp.split(" ").pop();
-            if (!args.code.includes(id)) {
-              throw new Error(`AVVISAD TYPAMPUTATION: Din nya kod saknar tidigare deklarerad export "${id}". Använd apply_patch för att lägga till nya typer utan att radera historiska kontrakt!`);
-            }
-          }
-        }
           console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
           fs.unlinkSync(full);
         }
@@ -430,6 +440,16 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
     const full = path.resolve(ROOT_DIR, rel);
 
     if (name === 'save_code') {
+      if (fs.existsSync(full) && (rel.endsWith("model/types.ts") || rel.endsWith("index.ts"))) {
+        const existingContent = fs.readFileSync(full, "utf-8");
+        const existingExports = (existingContent.match(/export (?:interface|type|class|const|function) ([a-zA-Z0-9_]+)/g) || []);
+        for (const exp of existingExports) {
+          const id = exp.split(" ").pop();
+          if (!args.code.includes(id)) {
+            throw new Error(`AVVISAD TYPAMPUTATION: Din nya kod saknar tidigare deklarerad export "${id}". Använd apply_patch för att lägga till nya typer utan att radera historiska kontrakt!`);
+          }
+        }
+      }
       // 🛑 SKYDD MOT KODAMPUTATION: Tillåt inte att en stor befintlig fil ersätts med en stubbe
       if (fs.existsSync(full)) {
         const existingContent = fs.readFileSync(full, 'utf-8');
@@ -802,6 +822,13 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 }
 
 main().catch(err => {
-  console.error('\n💥 Byggfel:', err);
+  try {
+    execSync("git add -N src/", { cwd: ROOT_DIR });
+    const diff = execSync("git diff src/", { encoding: "utf-8", cwd: ROOT_DIR });
+    fs.mkdirSync(path.join(ROOT_DIR, "doc", "LAST_CYCLE"), { recursive: true });
+    fs.writeFileSync(path.join(ROOT_DIR, "doc", "LAST_CYCLE", "CRASH_DIFF.patch"), diff, "utf-8");
+    console.log("\n📄 [KRASCH-DIFF SPARAD]: doc/LAST_CYCLE/CRASH_DIFF.patch");
+  } catch {}
+  console.error("\n💥 Byggfel:", err);
   process.exit(1);
 });
