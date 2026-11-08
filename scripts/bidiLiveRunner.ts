@@ -92,6 +92,9 @@ export class BidiLiveSession {
             process.stdout.write('~');
           }
 
+          // Återställ reconnect-försök vid framgångsrikt meddelande
+          this.reconnectAttempts = 0;
+
           // Hantera verktygsanrop
           if (msg.toolCall?.functionCalls && msg.toolCall.functionCalls.length > 0 && this.config.executeTool) {
             const activeSession = await this.waitForSession();
@@ -205,6 +208,7 @@ export class BidiLiveSession {
       };
 
       console.log('   📤 Skickar uppdrag till modellen...');
+      this.reconnectAttempts = 0;
       this.session.sendClientContent({
         turns: [
           {

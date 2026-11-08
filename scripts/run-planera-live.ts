@@ -38,25 +38,43 @@ const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
 if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
 
 
+
 function dumpCrashDiff() {
   try {
-    execSync("git add -N src/ 2>/dev/null || true", { cwd: ROOT_DIR });
-    const diff = execSync("git diff src/", { encoding: "utf-8", cwd: ROOT_DIR });
+    execSync("git add -N src/ scripts/ 2>/dev/null || true", { cwd: ROOT_DIR });
+    const diff = execSync("git diff src/ scripts/", { encoding: "utf-8", cwd: ROOT_DIR });
     if (diff && diff.trim()) {
       fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
       fs.writeFileSync(path.join(CYCLE_LOG_DIR, "CRASH_DIFF.patch"), diff, "utf-8");
       console.log("\n📄 [KRASCH-DIFF SPARAD]: doc/LAST_CYCLE/CRASH_DIFF.patch");
-      console.log("────────────────── FYSISK KÄLLKODSDIFF (src/) ──────────────────");
+      console.log("────────────────── FYSISK KÄLLKODSDIFF (src/ & scripts/) ──────────────────");
       console.log(diff.slice(0, 2500) + (diff.length > 2500 ? "\n... (trunkerad vid 2500 tecken)" : ""));
-      console.log("────────────────────────────────────────────────────────────────\n");
+      console.log("───────────────────────────────────────────────────────────────────────────\n");
     }
   } catch {}
 }
 
-process.on("exit", (code) => {
-  if (code !== 0) dumpCrashDiff();
-});
+function restoreScriptsBackup() {
+  const isMaintRun = process.argv.some(a => a.includes("TCK-MAINT"));
+  if (isMaintRun) {
+    const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
+    if (fs.existsSync(backupDir)) {
+      try {
+        fs.cpSync(backupDir, path.join(ROOT_DIR, "scripts"), { recursive: true });
+        console.log("🛡️ [MAINT-ÅTERSTÄLLNING]: scripts/ har automatiskt återställts från säkerhetskopian.");
+      } catch (err: any) {
+        console.warn("⚠️ [MAINT-ÅTERSTÄLLNING]: Kunde inte återställa scripts/:", err?.message || err);
+      }
+    }
+  }
+}
 
+process.on("exit", (code) => {
+  if (code !== 0) {
+    dumpCrashDiff();
+    restoreScriptsBackup();
+  }
+});
 let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
 if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
 
@@ -127,6 +145,18 @@ async function runMicroChannel(
 }
 
 async function main() {
+  const isMaintRun = process.argv.some(a => a.includes("MAINT") || a.includes("maint"));
+  if (isMaintRun) {
+    const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
+    try {
+      fs.rmSync(backupDir, { recursive: true, force: true });
+      fs.mkdirSync(backupDir, { recursive: true });
+      fs.cpSync(path.join(ROOT_DIR, "scripts"), backupDir, { recursive: true });
+      console.log("🛡️ [MAINT-SÄKERHETSNÄT]: Säkerhetskopia av scripts/ skapad i doc/LAST_CYCLE/scripts_backup/\n");
+    } catch (e: any) {
+      console.warn("⚠️ [MAINT-SÄKERHETSNÄT]: Kunde inte skapa säkerhetskopia av scripts/:", e.message);
+    }
+  }
   const ticketArg = process.argv[2];
   let ticketId = ticketArg ? ticketArg.toUpperCase() : 'PROMPT';
   if (ticketId.endsWith('.MD')) ticketId = ticketId.replace('.MD', '');

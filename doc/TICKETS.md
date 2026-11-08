@@ -16,7 +16,7 @@
 - [x] **TCK-MAINT-006** (VERIFIED): Defensiv formatMemoryIndicator och konsolidering av TCK-034 -> Se `doc/.TICKETS/TCK-MAINT-006.md`
 - [x] **TCK-MAINT-005** (VERIFIED): Visa kontextminnesindikator i Mötesbryggans CLI -> Se `doc/.TICKETS/TCK-MAINT-005.md`
 - [x] **TCK-MAINT-004** (VERIFIED): Explicit felhantering och resiliens i scripts/samrad.ts -> Se `doc/.TICKETS/TCK-MAINT-004.md`
-- [x] **TCK-MAINT-003** (VERIFIED): Bevara undermappar vid automatisk export -> Se `doc/.TICKETS/TCK-MAINT-003.md`
+- [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
 - [x] **TCK-039** (VERIFIED): Besiktningsporten och Recept-harmonisering -> Se `doc/.TICKETS/TCK-039.md`

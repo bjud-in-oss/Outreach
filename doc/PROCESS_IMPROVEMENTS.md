@@ -26,3 +26,13 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
   * Typamputationsskydd: save_code förbjuds att skriva över model/types.ts och index.ts om deklarerade exporter saknas.
   * Git-omvändelse framför MAINT-ackumulering: Trasig eller skuldsatt kod backas med git reset till senast kända rena tillstånd hellre än att plåstras över.
   * Filbaserad IPC: Komplexa ändringar överförs via efemära filer på disk för att eliminera klippta terminalbuffertar.
+
+## [2026-11-08] Erfarenheter från TCK-039 (Besiktningsporten & Lean Recipe)
+- **Observation 1 (Parameterinversion i test):** Modeller inverterar ibland funktionsargument i transienta tester och försöker därefter skriva om produktionskoden i Fas 2 för att klara testet, vilket slår sönder regressionssviten.
+  *Åtgärd:* Inför Kontraktsspeglare (`--check-contract-mirror`) som avvisar felaktiga testanrop i Fas 1 innan källkod får röras.
+- **Observation 2 (Strangler Fig vs Global Typkontroll):** Global `tsc --noEmit` i `pnpm verify` kolliderar med Strangler Fig-arkitekturen (ADR-029/030) eftersom vilande domäner kan innehålla historiska typfel.
+  *Åtgärd:* Begränsa statisk typkontroll programmatiskt via TypeScripts Compiler API till den aktiva domänen och `shared`.
+- **Observation 3 (Telemetribrus och terminalbuffert):** Stora mängder rå WebSocket-telemetri sliter på terminalbufferten i ChromeOS/Penguin och skapar kognitiv dimma.
+  *Åtgärd:* Inför standardläget `CLI_VERBOSITY=terse` och bygg in automatisk generering av `CRASH_DIFF.patch` vid avbrott.
+- **Observation 4 (Nätverkstolerans vid Bidi Live):** WebSockets kan drabbas av transienta serveravbrott (kod 1011/1006).
+  *Åtgärd:* ADR-032 implementerar exponentiell backoff och återanslutning, med automatisk nollställning av felräknaren vid lyckat svar.
