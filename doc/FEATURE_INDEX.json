@@ -263,6 +263,7 @@
         "engine/provningsport.ts",
         "index.ts",
         "model/types.ts",
+        "recipes/classicRecipe.ts",
         "recipes/leanRecipe.ts"
       ],
       "exports": [
@@ -275,6 +276,7 @@
         "knackaPaPorten",
         "skapaAvsiktsport",
         "skapaBesiktningsport",
+        "skapaClassicRecept",
         "skapaKonstruktionsport",
         "skapaLeanRecept",
         "skapaProvningsport"

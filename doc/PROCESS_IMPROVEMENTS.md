@@ -36,3 +36,7 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
   *Åtgärd:* Inför standardläget `CLI_VERBOSITY=terse` och bygg in automatisk generering av `CRASH_DIFF.patch` vid avbrott.
 - **Observation 4 (Nätverkstolerans vid Bidi Live):** WebSockets kan drabbas av transienta serveravbrott (kod 1011/1006).
   *Åtgärd:* ADR-032 implementerar exponentiell backoff och återanslutning, med automatisk nollställning av felräknaren vid lyckat svar.
+
+- **Observation 5 (Rotfiler & Källkodsagentens mandat):** Vanliga byggbiljetter (TCK-XXX) får aldrig kräva ändringar i package.json eller rotkonfigurationer, eftersom Fas 2-grinden medvetet blockerar ändringar utanför måldomänen.
+  *Åtgärd:* Alla nya npm-skript eller rotkonfigurationer ska alltid installeras och commitas som infrastrukturell förberedelse innan den domänspecifika byggbiljetten startas.
+

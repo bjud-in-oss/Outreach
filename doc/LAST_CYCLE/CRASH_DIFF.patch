@@ -1,140 +1,149 @@
-diff --git a/src/features/path/__tests__/besiktningsport.test.ts b/src/features/path/__tests__/besiktningsport.test.ts
+diff --git a/src/features/path/__tests__/classicRecipe.test.ts b/src/features/path/__tests__/classicRecipe.test.ts
 new file mode 100644
-index 0000000..47fb135
+index 0000000..c774f48
 --- /dev/null
-+++ b/src/features/path/__tests__/besiktningsport.test.ts
-@@ -0,0 +1,50 @@
++++ b/src/features/path/__tests__/classicRecipe.test.ts
+@@ -0,0 +1,52 @@
 +import { describe, it, expect } from 'vitest';
-+import { knackaPaPorten, exekveraRecept, PortNekadError } from '..';
-+import { skapaBesiktningsport } from '../engine/besiktningsport';
-+import { skapaLeanRecept } from '../recipes/leanRecipe';
-+import { PathContext, Port } from '../model/types';
++import { exekveraRecept, skapaClassicRecept, PortNekadError } from '..';
++import { Port } from '../model/types';
 +
-+describe('TCK-039 Besiktningsporten och Recept-harmonisering', () => {
-+  it('skall öppna porten vid godkänd besiktning', async () => {
-+    const mockKontext: PathContext = {};
-+    const besiktningsport = skapaBesiktningsport({
-+      inspekterare: async (kontext: PathContext) => {
-+        return { godkand: true };
-+      }
-+    });
-+
-+    const resultat = await knackaPaPorten(besiktningsport, mockKontext);
-+    expect(resultat.oppnad).toBe(true);
++describe('transient_TCK-040: Classic 12-Step Recipe', () => {
++  const mockGodkand: Port = async () => ({ oppnad: true });
++  const mockNekad: Port = async () => ({
++    oppnad: false,
++    orsak: 'Testfel',
++    omvandelseKrav: 'ÅTGÄRDA',
 +  });
 +
-+  it('skall kasta PortNekadError vid underkänd besiktning', async () => {
-+    const mockKontext: PathContext = {};
-+    const besiktningsport = skapaBesiktningsport({
-+      inspekterare: async (kontext: PathContext) => {
-+        return { godkand: false, felmeddelande: 'Bristande insikt' };
-+      }
++  it('skall fullfölja exekveraRecept nÃ¤r alla portar Ã¤r godkÃ¤nda', async () => {
++    const recipe = skapaClassicRecept({
++      avsikt: mockGodkand,
++      provning: mockGodkand,
++      konstruktion: mockGodkand,
++      besiktning: mockGodkand,
 +    });
 +
-+    await expect(knackaPaPorten(besiktningsport, mockKontext)).rejects.toThrow(PortNekadError);
++    const resultat = await exekveraRecept(recipe, {});
++    expect(resultat.success).toBe(true);
 +  });
 +
-+  it('skall exekvera Lean Recept med 4 portar', async () => {
-+    const mockKontext: PathContext = {};
-+    
-+    // Skapa enkla mock-portar för de tre första stegen
-+    const mockPort: Port = async (kontext: PathContext) => ({ oppnad: true });
-+    
-+    const avsikt = mockPort;
-+    const provning = mockPort;
-+    const konstruktion = mockPort;
-+    
-+    const besiktning = skapaBesiktningsport({
-+      inspekterare: async (kontext: PathContext) => ({ godkand: true })
++  it('skall avbryta och kasta PortNekadError nÃ¤r provning nekas', async () => {
++    const recipe = skapaClassicRecept({
++      avsikt: mockGodkand,
++      provning: mockNekad,
++      konstruktion: mockGodkand,
++      besiktning: mockGodkand,
 +    });
 +
-+    const recept = skapaLeanRecept({ avsikt, provning, konstruktion, besiktning });
-+    const resultat = await exekveraRecept(recept, mockKontext);
++    await expect(exekveraRecept(recipe, {})).rejects.toThrow(PortNekadError);
++  });
 +
-+    expect(resultat.sucess).toBe(true);
++  it('skall avbryta med Error nÃ¤r stegExekverare misslyckas pÃ¥ step-1b', async () => {
++    const recipe = skapaClassicRecept({
++      avsikt: mockGodkand,
++      provning: mockGodkand,
++      konstruktion: mockGodkand,
++      besiktning: mockGodkand,
++      stegExekverare: async (stegId) => {
++        if (stegId === 'step-1b') {
++          return { success: false };
++        }
++        return { success: true };
++      },
++    });
++
++    await expect(exekveraRecept(recipe, {})).rejects.toThrow();
 +  });
 +});
-diff --git a/src/features/path/engine/besiktningsport.ts b/src/features/path/engine/besiktningsport.ts
-new file mode 100644
-index 0000000..84b909b
---- /dev/null
-+++ b/src/features/path/engine/besiktningsport.ts
-@@ -0,0 +1,21 @@
-+import { PathContext, Port, PortResult } from '../model/types';
-+
-+export interface BesiktningsportOptions {
-+  inspekterare: (kontext: PathContext) => Promise<{ godkand: boolean; felmeddelande?: string }>;
-+}
-+
-+export function skapaBesiktningsport(options: BesiktningsportOptions): Port {
-+  return async (kontext: PathContext): Promise<PortResult> => {
-+    const resultat = await options.inspekterare(kontext);
-+    
-+    if (resultat.godkand) {
-+      return { oppnad: true };
-+    }
-+    
-+    return { 
-+      oppnad: false, 
-+      orsak: "Besiktning underkänd: " + (resultat.felmeddelande || "Okänt fel"), 
-+      omvandelseKrav: "ÅTGÄRDA_BESIKTNING" 
-+    };
-+  };
-+}
 diff --git a/src/features/path/engine/pathRunner.ts b/src/features/path/engine/pathRunner.ts
-index e387d91..5ce0c86 100644
+index 5ce0c86..01a63f9 100644
 --- a/src/features/path/engine/pathRunner.ts
 +++ b/src/features/path/engine/pathRunner.ts
-@@ -15,7 +15,7 @@ export async function knackaPaPorten(port: Port, kontext: PathContext): Promise<
+@@ -15,16 +15,16 @@ export async function knackaPaPorten(port: Port, kontext: PathContext): Promise<
    return resultat;
  }
  
--export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<void> {
-+export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ sucess: boolean }> {
+-export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ sucess: boolean }> {
++export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ success: boolean }> {
    for (const node of recipe.nodes) {
-     if (node.type === 'STEP') {
-       const result = await node.execute(kontext);
-@@ -26,4 +26,5 @@ export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext):
-       await knackaPaPorten(node.port, kontext);
+-    if (node.type === 'STEP') {
+-      const result = await node.execute(kontext);
++    if (node.type === 'step') {
++      const result = await node.run(kontext);
+       if (!result.success) {
+-        throw new Error(`Steg misslyckades: ${node.name}`);
++        throw new Error(`Steg misslyckades: ${node.id}`);
+       }
+-    } else if (node.type === 'PORT') {
+-      await knackaPaPorten(node.port, kontext);
++    } else if (node.type === 'port') {
++      await knackaPaPorten(node.run, kontext);
      }
    }
-+  return { sucess: true };
+-  return { sucess: true };
++  return { success: true };
  }
 diff --git a/src/features/path/index.ts b/src/features/path/index.ts
-index 8e161b4..8ff526c 100644
+index 8ff526c..e657204 100644
 --- a/src/features/path/index.ts
 +++ b/src/features/path/index.ts
-@@ -4,3 +4,5 @@ export * from './engine/pathRunner';
- export * from './engine/avsiktsport';
- export * from './engine/provningsport';
+@@ -6,3 +6,4 @@ export * from './engine/provningsport';
  export * from './engine/konstruktionsport';
-+export * from './engine/besiktningsport';
-+export * from './recipes/leanRecipe';
-diff --git a/src/features/path/recipes/leanRecipe.ts b/src/features/path/recipes/leanRecipe.ts
+ export * from './engine/besiktningsport';
+ export * from './recipes/leanRecipe';
++export * from './recipes/classicRecipe';
+diff --git a/src/features/path/recipes/classicRecipe.ts b/src/features/path/recipes/classicRecipe.ts
 new file mode 100644
-index 0000000..fbf84de
+index 0000000..63f3fff
 --- /dev/null
-+++ b/src/features/path/recipes/leanRecipe.ts
-@@ -0,0 +1,22 @@
-+import { Port, PathRecipe } from '../model/types';
++++ b/src/features/path/recipes/classicRecipe.ts
+@@ -0,0 +1,48 @@
++import { PathRecipe, Port } from '../model/types';
 +
-+export interface LeanReceptOptions {
-+  avsikt: Port;
-+  provning: Port;
-+  konstruktion: Port;
-+  besiktning: Port;
-+}
++export type ClassicReceptOptions = {
++    avsikt: Port;
++    provning: Port;
++    konstruktion: Port;
++    besiktning: Port;
++    stegExekverare?: (stegId: string, kontext: any) => Promise<{ success: boolean }>;
++};
 +
-+export function skapaLeanRecept(options: LeanReceptOptions): PathRecipe {
-+  return {
-+    id: "path-lean",
-+    name: "Vägen Lean 4-Portar",
-+    description: "Deklarativ 4-ports tillståndsmaskin",
-+    nodes: [
-+      { id: "p1", name: "Avsikt", type: "PORT", port: options.avsikt },
-+      { id: "p2", name: "Provning", type: "PORT", port: options.provning },
-+      { id: "p3", name: "Konstruktion", type: "PORT", port: options.konstruktion },
-+      { id: "p4", name: "Besiktning", type: "PORT", port: options.besiktning }
-+    ]
-+  };
++export function skapaClassicRecept(options: ClassicReceptOptions): PathRecipe {
++    const exekverare = options.stegExekverare || (async () => ({ success: true }));
++
++    return {
++        id: "path-classic",
++        name: "Vägen Classic 12-Steg",
++        description: "Deklarativ referensmodell baserad på SI v10.5",
++        nodes: [
++            // Fas 0: Avsikt
++            { id: "step-1a", type: "step", run: async (k) => exekverare("step-1a", k) },
++            { id: "step-0a", type: "step", run: async (k) => exekverare("step-0a", k) },
++            { id: "step-0b", type: "step", run: async (k) => exekverare("step-0b", k) },
++            { id: "port-avsikt", type: "port", run: options.avsikt },
++
++            // Fas 1: Provning
++            { id: "step-1b", type: "step", run: async (k) => exekverare("step-1b", k) },
++            { id: "step-2a", type: "step", run: async (k) => exekverare("step-2a", k) },
++            { id: "step-2b", type: "step", run: async (k) => exekverare("step-2b", k) },
++            { id: "step-2c", type: "step", run: async (k) => exekverare("step-2c", k) },
++            { id: "step-2d", type: "step", run: async (k) => exekverare("step-2d", k) },
++            { id: "step-3a", type: "step", run: async (k) => exekverare("step-3a", k) },
++            { id: "step-3b", type: "step", run: async (k) => exekverare("step-3b", k) },
++            { id: "step-2e", type: "step", run: async (k) => exekverare("step-2e", k) },
++            { id: "step-3d", type: "step", run: async (k) => exekverare("step-3d", k) },
++            { id: "step-3e", type: "step", run: async (k) => exekverare("step-3e", k) },
++            { id: "step-3c", type: "step", run: async (k) => exekverare("step-3c", k) },
++            { id: "port-provning", type: "port", run: options.provning },
++
++            // Fas 2: Konstruktion
++            { id: "step-fas2", type: "step", run: async (k) => exekverare("step-fas2", k) },
++            { id: "port-konstruktion", type: "port", run: options.konstruktion },
++
++            // Fas 3: Besiktning
++            { id: "port-besiktning", type: "port", run: options.besiktning },
++            { id: "step-fas3", type: "step", run: async (k) => exekverare("step-fas3", k) },
++        ]
++    };
 +}
