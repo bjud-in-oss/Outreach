@@ -1,30 +1,33 @@
-import { PromptCompileInput, CompiledPrompt } from '../model/types';
+import { PromptCompileInput, CompiledPrompt } from '../contracts/pathSchema';
 
 export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
-  let systemInstruction = 'Du är en Systemarkitekt och Kodingenjör som främjar närhet och harmoni i systemdesign.';
-  
+  let systemInstruction = '';
+
   switch (input.fas) {
     case 'avsikt':
-      systemInstruction += ' Fokusera på mänsklig nytta, intention och Gherkin-scenarier.';
+      systemInstruction = 'Fokusera på mänsklig avsikt, intention och att formulera korta Gherkin-scenarier.';
       break;
     case 'provning':
-      systemInstruction += ' Kräver 3 ortogonala alternativ, resiliensgranskning och epistemisk rannsakan.';
+      systemInstruction = 'Fokusera på 3 ortogonala alternativ (reverse-direction), resiliensgranskning (check-alignment) och epistemisk rannsakan.';
       break;
     case 'konstruktion':
-      systemInstruction += ' Fokuserar på TDD, hermetisk isolering och kvalitetsgrindar.';
+      systemInstruction = 'Fokusera på TDD-loop, isolerad kodmodifiering och kvalitetsgrindar.';
       break;
     case 'besiktning':
-      systemInstruction += ' Fokuserar på debriefing och lärdomar.';
+      systemInstruction = 'Fokusera på reflekterande debriefing, programutvärdering och processlärdomar.';
       break;
+    default:
+      systemInstruction = 'Standard instruktion för swarm-agent.';
   }
 
-  const userPrompt = `Uppdrag: ${input.uppdrag}\nTicket: ${input.ticketId}\nDomän: ${input.malDoman}`;
-  
-  const beraknadeTokensUngefar = Math.ceil((systemInstruction.length + userPrompt.length) / 4);
+  // Slumpmässig men deterministisk beräkning av tokens
+  const baseTokens = 150;
+  const taskTokens = input.uppdrag.length * 2;
+  const beraknadeTokensUngefar = baseTokens + taskTokens;
 
   return {
     systemInstruction,
-    userPrompt,
-    beraknadeTokensUngefar
+    userPrompt: `Genomför uppdrag: ${input.uppdrag}`,
+    beraknadeTokensUngefar,
   };
 }
