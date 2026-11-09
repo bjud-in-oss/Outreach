@@ -478,7 +478,7 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
     const full = path.resolve(ROOT_DIR, rel);
 
     if (name === 'save_code') {
-      if (fs.existsSync(full) && (rel.endsWith("model/types.ts") || rel.endsWith("index.ts"))) {
+      if (fs.existsSync(full) && (rel.endsWith("model/types.ts") || rel.endsWith("index.ts") || rel.includes("contracts/"))) {
         const existingContent = fs.readFileSync(full, "utf-8");
         const existingExports = (existingContent.match(/export (?:interface|type|class|const|function) ([a-zA-Z0-9_]+)/g) || []);
         for (const exp of existingExports) {

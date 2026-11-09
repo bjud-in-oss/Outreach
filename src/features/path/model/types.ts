@@ -91,23 +91,7 @@ export interface BesiktningsportOptions {
   inspekterare: BesiktningsInspekterare;
 }
 
-export type PathPhase = 'avsikt' | 'provning' | 'konstruktion' | 'besiktning';
-
-export interface PromptCompileInput {
-  fas: PathPhase;
-  stegId: string;
-  ticketId: string;
-  malDoman: string;
-  uppdrag: string;
-  biljettText?: string;
-  kontextMinne?: Record<string, unknown>;
-}
-
-export interface CompiledPrompt {
-  systemInstruction: string;
-  userPrompt: string;
-  beraknadeTokensUngefar: number;
-}
+export type { PathPhase, PromptCompileInput, CompiledPrompt } from '../contracts/pathSchema';
 
 export interface SessionAdapter {
   skicka: (prompt: CompiledPrompt) => Promise<{ svar: string; tokensAnvanda?: number }>;

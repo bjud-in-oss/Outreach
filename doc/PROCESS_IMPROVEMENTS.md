@@ -9,6 +9,9 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 
 - **[2026-10-31] Bryt Moment 22 vid infrastrukturfel:** Ändra aldrig orkestreringsskript (`scripts/run-planera-live.ts`) eller drivrutiner via autonoma patch-biljetter om motorns egna verktyg fallerar. Tillämpa deterministisk Git Hard-Reset till senast kända stabila commit.
 - **[2026-11-01] Mekanisk förankring:** Introducera aldrig nya statuskoder eller promptval för modellen utan att den mottagande parser- och exekveringslogiken redan är implementerad i skripten.
+- **[2026-11-09] Enhetlig typlåsning och SSOT mellan Zod och model/types.ts:**
+  * *Förbjudet:* Deklarera manuella TypeScript-interfacen i `model/types.ts` parallellt med matchande `z.infer`-typer i `contracts/*Schema.ts`.
+  * *Obligatoriskt:* Re-exportera alltid de Zod-härledda typerna från `contracts/` via `model/types.ts` (`export type { X } from '../contracts/XSchema'`). Detta förhindrar typkonflikter och säkerställer att Zod-schemat är domänens enda sanningskälla.
 - **[2026-11-09] Skaloberoende skriptexekvering via Heredoc:**
   * *Förbjudet:* Instruera infrastrukturpatchar eller komplexa skript i terminalen via `node -e '...'` när koden innehåller mallsträngar (`${...}`), reguljära uttryck eller citattecken.
   * *Obligatoriskt:* Skriv alltid koden till en efemär fil via `cat << 'EOF' > fil.js && node fil.js && rm fil.js` med enkelciterad avgränsare (`'EOF'`) för att eliminera förtida variabel-evaluering i Bash.
