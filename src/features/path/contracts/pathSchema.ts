@@ -75,14 +75,30 @@ export const PromptCompileInputSchema = z.object({
 });
 
 export const CompiledPromptSchema = z.object({
-  systemInstruction: z.string(),
-  userPrompt: z.string(),
-  beraknadeTokensUngefar: z.number(),
+  templateId: z.string().optional(),
+  instructions: z.string().optional(),
+  model: z.string().optional(),
+  variables: z.record(z.any()).optional(),
+  renderedContent: z.string().optional(),
+  systemInstruction: z.string().optional(),
+  userPrompt: z.string().optional(),
+  beraknadeTokensUngefar: z.number().optional(),
 });
 
 export type PathPhase = z.infer<typeof PathPhaseSchema>;
 export type PromptCompileInput = z.infer<typeof PromptCompileInputSchema>;
 export type CompiledPrompt = z.infer<typeof CompiledPromptSchema>;
+
+export const BidiLiveAdapterConfigSchema = z.object({
+  apiKey: z.string().optional(),
+  model: z.string().default('gemini-3.8-live'),
+  systemInstruction: z.string().optional(),
+  modality: z.enum(['AUDIO', 'TEXT']).default('AUDIO'),
+  maxReconnectAttempts: z.number().default(3),
+  eventBus: z.custom<any>().optional(),
+});
+
+export type BidiLiveAdapterConfig = z.infer<typeof BidiLiveAdapterConfigSchema>;
 
 export const OrchestratorConfigSchema = z.object({
   receptTyp: z.enum(['classic', 'lean']),

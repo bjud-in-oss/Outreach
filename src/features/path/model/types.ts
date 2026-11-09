@@ -91,7 +91,7 @@ export interface BesiktningsportOptions {
   inspekterare: BesiktningsInspekterare;
 }
 
-export type { PathPhase, PromptCompileInput, CompiledPrompt } from '../contracts/pathSchema';
+export type { PathPhase, PromptCompileInput, CompiledPrompt, BidiLiveAdapterConfig } from '../contracts/pathSchema';
 
 export interface SessionAdapter {
   skicka: (prompt: CompiledPrompt) => Promise<{ svar: string; tokensAnvanda?: number }>;
