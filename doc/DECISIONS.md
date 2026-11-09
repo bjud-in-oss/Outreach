@@ -433,3 +433,6 @@ Vi fattar tre sammanhängande arkitekturbeslut:
 ## ADR-031: Källkodsmatriser, Mekanisk Konstruktionsintegritet och Typamputationsskydd
 - **Status:** Beslutad (2026-11-08)
 - **Beslut:** Konstruktionsporten validerar FilKrav[] mekaniskt; save_code skyddar mot typamputation; scripts/synka.ts kräver grön pnpm verify före push.
+## ADR-032: Exponentiell Nätverksresiliens och Automatisk Återanslutning i Bidi Live
+- **Status:** Beslutad (2026-11-08)
+- **Beslut:** För att skydda orkestreringen mot transienta WebSocket-avbrott (Google RPC 1011/1006) införs automatisk återanslutning med exponentiell backoff i `scripts/bidiLiveRunner.ts`. Vid lyckad leverans av tokens nollställs felräknaren omedelbart.
