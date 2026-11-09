@@ -29,22 +29,28 @@ export async function exekveraRecept(
 ): Promise<{ success: boolean; sucess: boolean; slutfold: boolean }> {
   const nodLista = (recipe as any)?.nodes || (recipe as any)?.noder || [];
   for (const node of nodLista) {
+    const nodFas = bestamFasForSteg(node.id);
+    const berikadKontext: PathContext = {
+      ...kontext,
+      aktuellFas: nodFas
+    };
+
     const rawType = (node.type || "").toUpperCase();
-    if (rawType === "STEP") {
+    if (rawType === "STEP" || (!rawType && (node.execute || node.run))) {
       const exec = node.execute || node.run;
       if (typeof exec === "function") {
-        const result = await exec(kontext);
-        if (!result || !result.success) {
+        const result = await exec(berikadKontext);
+        if (!result || (!result.success && result.status !== 'success')) {
           throw new Error(`Steg misslyckades: ${node.name || node.id || "Okänt steg"}`);
         }
       }
-    } else if (rawType === "PORT") {
+    } else if (rawType === "PORT" || (!rawType && node.port)) {
       const portFn = node.port || node.run || node.oppna;
       if (portFn) {
-        await knackaPaPorten(portFn, kontext);
+        await knackaPaPorten(portFn, berikadKontext);
       }
     } else if (typeof node === "function") {
-      await knackaPaPorten(node, kontext);
+      await knackaPaPorten(node, berikadKontext);
     }
   }
   return { success: true, sucess: true, slutfold: true };
