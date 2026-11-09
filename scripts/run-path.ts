@@ -5,6 +5,7 @@ import {
 } from '../src/features/path';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'node:url';
 
 export async function exekveraRunPath(options: { 
   ticketId?: string; 
@@ -88,6 +89,12 @@ export async function exekveraRunPath(options: {
   }
 }
 
-if (require.main === module) {
+const isDirectCli = process.argv[1] && (
+  process.argv[1] === fileURLToPath(import.meta.url) ||
+  process.argv[1].endsWith('run-path.ts') ||
+  process.argv[1].endsWith('run-path.js')
+);
+
+if (isDirectCli) {
   exekveraRunPath().catch(() => process.exit(1));
 }

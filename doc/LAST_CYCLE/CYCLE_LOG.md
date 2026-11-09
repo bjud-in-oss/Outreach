@@ -1,42 +1,52 @@
-# BYGGCYKEL LOGG: TCK-MAINT-022
-**Starttid:** 2026-11-09T20:12:45.125Z
+# BYGGCYKEL LOGG: TCK-MAINT-023
+**Starttid:** 2026-11-09T20:30:36.154Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-022: Implementera run-path.ts och dess integrationstest
+# TCK-MAINT-023: Härda Action Loopens Filkrav och Etablera run-path Integrationstest
 
 ## 1. MÅL
-Ersätt stubben i `scripts/run-path.ts` med den kompletta orkestreringen mot `src/features/path/` och skapa det permanenta integrationstestet `scripts/__tests__/run-path.test.ts`. 
+Åtgärda blindfläcken i Action Loopen i `scripts/run-planera-live.ts` så att filer med flera punkter (t.ex. `.test.ts`) inkluderas i kravlistan och inte avbryts i förtid, samt etablera det permanenta integrationstestet `scripts/__tests__/run-path.test.ts` med ESM-säker start i `scripts/run-path.ts`.
 
 ## 2. INFRASTRUKTURSPECIFIKATION
-1. `scripts/run-path.ts`:
-   - Exportera funktionen `exekveraRunPath(options: { ticketId?: string; argv?: string[]; io?: any; adapter?: any })`.
-   - Läs in angiven biljett (fallback till PROMPT.md).
-   - Skapa ett komplett `OrchestratorConfig` med `ticketId`, `malDoman`, `receptTyp` och `uppdrag`.
-   - Välj recept dynamiskt: `--classic` ger 'classic', annars 'lean'.
-   - Instansiera `skapaPathOrkestrerare` med dummy-portar som loggar till `io.log`, och kör orkestreraren.
-   - Kör `exekveraRunPath()` om filen anropas direkt via CLI.
+1. `scripts/run-planera-live.ts`:
+   - I `getRequiredFiles()`: ändra regexen för MAINT till:
+     `const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];`
+   - I `isFas2Complete()`: säkerställ att för MAINT måste alla filer i `getRequiredFiles()` finnas i antingen `createdModules` eller `modifiedFiles` innan fasen får markeras som klar.
 
-2. `scripts/__tests__/run-path.test.ts`:
-   - Testa `exekveraRunPath` med ett syntetiskt `io`-objekt.
-   - Verifiera att både lean- och classic-receptet returnerar `success: true` och `slutfold: true`.
+2. `scripts/run-path.ts`:
+   - Ersätt CommonJS-kontrollen `if (require.main === module)` med ESM-säker CLI-detektering:
+     ```typescript
+     import { fileURLToPath } from 'node:url';
+     const isDirectCli = process.argv[1] && (
+       process.argv[1] === fileURLToPath(import.meta.url) ||
+       process.argv[1].endsWith('run-path.ts') ||
+       process.argv[1].endsWith('run-path.js')
+     );
+     if (isDirectCli) {
+       exekveraRunPath().catch(() => process.exit(1));
+     }
+     ```
+
+3. `scripts/__tests__/run-path.test.ts`:
+   - Skapa integrationstestet som anropar `exekveraRunPath` med syntetiskt I/O och verifierar att recepten (både default lean och classic) exekverar grönt.
 
 ## 3. ACCEPTANSKRITERIER
-1. Båda filerna existerar och kompilerar felfritt.
-2. `pnpm test` passerar 100 % grön med det nya testet inkluderat.
-3. Trepunktsbesiktningen godkänns manuellt med `j`.
+1. `scripts/__tests__/run-path.test.ts` existerar och körs grönt i `pnpm test`.
+2. `pnpm verify` passerar 100 % grön med 17 testfiler.
+3. Trepunktsbesiktningen visar explicit att testfilen skapats och godkänns med `j`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att vi har en utvecklingsbiljett som beskriver ett uppdrag för underhåll, När vi kör skriptet för `run-path.ts` med konfigurerat recept, Så förväntar vi oss att orkestreraren slutför uppdraget och att integrationstestet bekräftar detta. Speglade detta din intention?
+Den mänskliga nyttan ligger i att skapa en mer robust utvecklingsmiljö. Genom att lösa problemet med filnamn som innehåller flera punkter, säkerställer vi att kritiska testfiler inkluderas korrekt och inte avbryts i förtid. Detta stärker stabiliteten i hela motorstyrningen.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit för TCK-MAINT-022 är nu genomförd och godkänd. Uppdraget berör främst infrastrukturen i `scripts/` och påverkar inte mer än en domän under `src/features/` Kontraktet hålls.
+Jag utför nu kontraktsaudit för TCK-MAINT-023. Ändringarna rör enbart orchestreringsskript i `scripts/` och omfattar inte källkod under `src/features/`. Kontraktet för gränssnitt och felhantering är godkänt och inga tidigare testinvarianter bryts. Vi kan gå vidare till avsiktsgrinden.
 
 
 #### 0b Att förlikas: Vägval
@@ -48,18 +58,19 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-022 och implementera `run-path.ts` och dess integrationstest formulerar jag tre ortogonala alternativ:
+För TCK-MAINT-023 har jag tagit fram följande tre ortogonala alternativ för lösning: 
 
-Alternativ 1 är Direkt Skriptexekvering. Vi skapar en enkel, sekventiell funktion i `run-path.ts` som läser konfigurationen från fil eller fallback och kör orkestreraren direkt. Det är optimerat för enkelhet.
+Alternativ 1 innebär linjär uppdatering direkt i de berörda filerna (`run-planera-live.ts` och `run-path.ts`) och att simulera I/O direkt mot skriptets gränssnitt vid test.
 
-Alternativ 2 är Modulär Konfigurationsfabrik. Här extraheras logiken för att bygga `OrchestratorConfig` till en separat hjälpare, vilket gör det lättare att testa själva konfigurationsbygget oberoende.
+Alternativ 2 bygger på modulär separation genom att extrahera regex-kontroll och ESM-detektering till dedikerade verktygsfunktioner i en separat fil för att stärka testbarheten.
 
-Alternativ 3 är Testdriven Körtidssimulering. Vi fokuserar primärt på integrationstestets struktur och bygger upp `io`-adaptern och konfigurationen utifrån testets krav, vilket säkrar högsta resiliens.
+Alternativ 3 fokuserar på miljöinjektion och konfiguration, vilket låter integrationstesterna injicera testade sökvägar och syntetiskt I/O utan hårdkodade beroenden.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Granskningen visar att Alternativ 3, Testdriven Körtidssimulering, ger högst resiliens. Genom att låta integrationstestets krav styra hur `io`-adaptern och konfigurationen byggs upp, undviker vi latenta fel vid I/O-hantering och säkerställer robust felpropagering. Det skyddar systemet mot tysta krascher och främjar en stabil arkitektur.
+Vid en resiliensgranskning är Alternativ 2 det mest robusta valet. Genom att separera regex-kontroll och ESM-detektering till dedikerade hjälpfunktioner skyddar vi huvudloopen från direkta kodändringar och latenta fel, vilket stärker testbarheten och resiliensen avsevärt.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ 3, Testdriven Körtidssimulering, är fastställt som det vinnande alternativet. Den arkitektoniska resiliensen och den robusta felhanteringen genom det integrerade testdrivenhetskravet garanterar stabilitet. MÄTTNAD: JA.
+I egenskap av kraften Att förlikas har jag vägt spänningsfältet och mätt det semantiska deltat. Jag låser nu kontraktet och fastställer Alternativ 2 som vinnande.
+MÄTTNAD: JA.

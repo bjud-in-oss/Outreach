@@ -553,7 +553,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
   const getRequiredFiles = (): string[] => {
     if (isMaint) {
-      const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_/\-]+\.(ts|js)/g) || [];
+      const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];
       return Array.from(new Set(promptFiles));
     }
     const promptFiles = ticketPrompt.match(new RegExp(`src/features/${targetDomain}/[a-zA-Z0-9_/\\-]+\\.(ts|tsx)`, 'g')) || [];
@@ -566,6 +566,10 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
   const isFas2Complete = (): boolean => {
     if (!codeSaved) return false;
+    if (isMaint) {
+      const required = getRequiredFiles();
+      return required.every(f => modifiedFiles.includes(f) || createdModules.includes(f));
+    }
     const missing = getMissingFiles();
     return missing.length === 0;
   };
