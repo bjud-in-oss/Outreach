@@ -15,7 +15,7 @@ export default defineConfig({
     port: 3000,
   },
   test: {
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,js}'],
     exclude: ['**/*.legacy.ts', '**/node_modules/**'],
     globals: true,
   },

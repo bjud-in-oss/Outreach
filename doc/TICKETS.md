@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-020** (VERIFIED): Mekaniskt Förankrat Körskript för Vägmotorn (run-path.ts) -> Se `doc/.TICKETS/TCK-MAINT-020.md`
 - [x] **TCK-MAINT-019** (VERIFIED): Etablera Parallellt Körskript run-path.ts och package.json-alias -> Se `doc/.TICKETS/TCK-MAINT-019.md`
 - [x] **TCK-MAINT-018** (VERIFIED): Fullborda Recept-Integration och Prefixmatchning i Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-018.md`
 - [x] **TCK-MAINT-017** (VERIFIED): Infrastruktur-rest och Zod-kontrakt för Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-017.md`
