@@ -9,3 +9,4 @@ export * from './engine/provningsport';
 export * from './engine/runtimeAdapter';
 export * from './recipes/classicRecipe';
 export * from './recipes/leanRecipe';
+export * from './engine/pathOrchestrator';

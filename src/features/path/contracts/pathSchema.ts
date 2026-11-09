@@ -83,3 +83,13 @@ export const CompiledPromptSchema = z.object({
 export type PathPhase = z.infer<typeof PathPhaseSchema>;
 export type PromptCompileInput = z.infer<typeof PromptCompileInputSchema>;
 export type CompiledPrompt = z.infer<typeof CompiledPromptSchema>;
+
+export const OrchestratorConfigSchema = z.object({
+  receptTyp: z.enum(['classic', 'lean']),
+  ticketId: z.string(),
+  malDoman: z.string(),
+  uppdrag: z.string(),
+  kontextMinne: z.record(z.any()).optional(),
+});
+
+export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;

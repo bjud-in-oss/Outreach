@@ -49,3 +49,26 @@ export async function exekveraRecept(
   }
   return { success: true, sucess: true, slutfold: true };
 }
+
+export function bestamFasForSteg(stegId: string): string {
+  switch (stegId) {
+    case 'step-1a':
+    case 'step-0a':
+    case 'step-0b':
+    case 'avsikt':
+      return 'avsikt';
+    case 'step-1b':
+    case 'step-2':
+    case 'step-3':
+    case 'provning':
+      return 'provning';
+    case 'step-fas2':
+    case 'konstruktion':
+      return 'konstruktion';
+    case 'step-fas3':
+    case 'besiktning':
+      return 'besiktning';
+    default:
+      return 'avsikt';
+  }
+}
