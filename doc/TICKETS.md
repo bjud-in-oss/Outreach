@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-027** (VERIFIED): Skarp BidiLive-koppling och Dry-Run i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-027.md`
 - [x] **TCK-MAINT-026** (VERIFIED): Portintegration och Domänförankring i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-026.md`
 - [x] **TCK-MAINT-025** (VERIFIED): Dynamisk Modalietsväxling (BIDI_MODALITY) för BidiLiveSession -> Se `doc/.TICKETS/TCK-MAINT-025.md`
 - [x] **TCK-MAINT-024** (VERIFIED): Fallback-svar i run-path MockAdapter och Etablering av Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-024.md`

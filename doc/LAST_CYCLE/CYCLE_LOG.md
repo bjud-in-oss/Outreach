@@ -1,64 +1,46 @@
-# BYGGCYKEL LOGG: TCK-046
-**Starttid:** 2026-11-09T22:33:18.604Z
+# BYGGCYKEL LOGG: TCK-MAINT-027
+**Starttid:** 2026-11-09T22:52:46.055Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-046: Domänharmonisering, Polyglott Promptstöd och Portfas-spårning
+# TCK-MAINT-027: Skarp BidiLive-koppling och Dry-Run i run-path.ts
 
 ## 1. MÅL
-Gör `src/features/path/engine/bidiLiveAdapter.ts` polyglott så att den hanterar både systemInstruction/userPrompt och instructions/renderedContent, samt bredda `bestamFasForSteg` i `src/features/path/engine/pathRunner.ts` så att även portnoderna (p1–p4 och port-*) tilldelas sina korrekta faser deterministiskt.
+Aktivera skarp nätverksorkestrering i `scripts/run-path.ts` via flaggan `--live` med hjälp av `skapaBidiLiveAdapter`, samt stöd för `--dry-run` för riskfri prompt- och portverifiering. Standardläget utan `--live` ska förbli blixtsnabbt och nätverksoberoende.
 
-## 2. KÄLLKODSSPECIFIKATION FÖR DOMÄNEN
-Måldomän: `src/features/path/` (Max 250 rader per logikfil).
+## 2. INFRASTRUKTURSPECIFIKATION
+Berörda filer: `scripts/run-path.ts`, `scripts/__tests__/run-path.test.ts`.
 
-1. `src/features/path/engine/bidiLiveAdapter.ts`:
-   - Extrahera systeminstruktion och användarinnehåll polyglott:
-     ```typescript
-     const instruction = prompt.systemInstruction || prompt.instructions || '';
-     const content = prompt.userPrompt || prompt.renderedContent || '';
-     ```
-   - Använd `instruction` och `content` vid `client.send({ instruction, content })`.
-   - Säkra att `tokensAnvanda` beräknas och returneras pålitligt.
+1. `scripts/run-path.ts`:
+   - Importera `skapaBidiLiveAdapter` från `../src/features/path`.
+   - Läs in flaggorna `--live` och `--dry-run` från `argv`.
+   - Vid `--dry-run`: Sätt en flagga i kontexten och logga: `   🛡️ [DRY-RUN]: Skarpt läge utan diskmodifiering aktivt.`.
+   - Vid `--live`:
+     * Instansiera `skapaBidiLiveAdapter` med konfiguration från `process.env` (`apiKey: process.env.GEMINI_API_KEY`, `model: process.env.LIVE_MODEL || 'gemini-3.8-live'`, `modality: (process.env.BIDI_MODALITY as any) || 'AUDIO'`).
+     * Klientfabriken skapar en live-klient som ansluter till Gemini Live och exponerar `connect`, `send`, `stream` och `close` enligt adapterns kontrakt.
+   - Utan `--live`: Använd befintlig mock-adapter med syntetiska svar för omedelbar och nätverksoberoende testning.
 
-2. `src/features/path/engine/pathRunner.ts`:
-   - Uppdatera `bestamFasForSteg(stegId: string): string`:
-     ```typescript
-     export function bestamFasForSteg(stegId: string): string {
-       const s = stegId.toLowerCase();
-       if (s.includes('avsikt') || s.startsWith('step-0') || s.startsWith('step-1a') || s === 'p1') {
-         return 'avsikt';
-       }
-       if (s.includes('provning') || s.startsWith('step-1b') || s.startsWith('step-2') || s.startsWith('step-3') || s === 'p2') {
-         return 'provning';
-       }
-       if (s.includes('konstruktion') || s.startsWith('step-fas2') || s === 'p3') {
-         return 'konstruktion';
-       }
-       if (s.includes('besiktning') || s.startsWith('step-fas3') || s === 'p4') {
-         return 'besiktning';
-       }
-       return 'avsikt';
-     }
-     ```
+2. `scripts/__tests__/run-path.test.ts`:
+   - Verifiera att `exekveraRunPath` hanterar flaggan `--dry-run` utan fel.
+   - Verifiera att en injicerad `adapter` eller `clientFactory` exekverar framgångsrikt med `success: true` och `slutfold: true`.
 
-## 3. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
-1. Det transienta testet `src/__tests__/transient_TCK-046.test.ts` ska:
-   - Testa att `bestamFasForSteg('p2')` returnerar 'provning' och `bestamFasForSteg('port-konstruktion')` returnerar 'konstruktion'.
-   - Testa att `skapaBidiLiveAdapter` skickar prompt med `systemInstruction` och `userPrompt` till klienten och returnerar ackumulerat svar.
-2. Testet ska fallera rött mot repots befintliga kod (Fail-First) innan källkoden patchas.
-3. Efter implementation ska samtliga tester i `pnpm verify` passera 100 % gröna.
+## 3. ACCEPTANSKRITERIER
+1. `scripts/run-path.ts` stöder både standard mock, `--dry-run` och `--live`.
+2. Samtliga 20 testfiler i `pnpm test` passerar 100 % gröna.
+3. `pnpm verify` passerar 100 % grön.
+4. Trepunktsbesiktningen godkänns manuellt med `j`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Förståelsen för TCK-046 är glasklar: vi harmoniserar domänen genom att göra våra komponenter polyglotta så att olika gränssnitt kan samverka sömlöst. Den mänskliga nyttan ligger i en mer robust och förutsägbar användarupplevelse.
+Givet att användaren exekverar run-path.ts med flaggan --dry-run När körningen startar Så ska systemet markera kontexten för dry-run och logga meddelandet: 🛡️ [DRY-RUN]: Skarpt läge utan diskmodifiering aktivt Givet att användaren exekverar run-path.ts med flaggan --live När körningen startar Så ska en BidiLive-adapter instansieras och ansluta till Gemini Live Givet att användaren exekverar run-path.ts utan flaggor När körningen startar Så ska en mock-adapter användas för nätverksoberoende testning.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit för TCK-046 är nu slutförd. Jag har verifierat att samtliga ändringar ryms inom samma FSD-domän under src/features/path/ och att API-kontrakten följs. Inga avvikelser eller behov av destruktiv sanering har identifierats. Vi är redo att gå vidare.
+Detta uppdrag berör exekveringsskripten `run-path.ts` och dess test, och håller sig strikt inom gällande arkitekturkontrakt. Inga modifieringar under `src/features/` krävs, och integrationen sker via godkända kontraktsexporter. Kontraktet är godkänt för Fas 1.
 
 
 #### 0b Att förlikas: Vägval
@@ -70,24 +52,22 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-046 och harmonisera domänen formulerar jag härmed tre ortogonala alternativ. Alternativ 1 är en direkt implementation med villkorlig extrahering och enkel if-else-logik, vilket är simpelt och uppfyller kraven direkt. Alternativ 2 introducerar en dedikerad normaliseringsfunktion för prompter och reguljära uttryck för fasbestämning för ökad modularitet. Alternativ 3 bygger på en konfigurationskarta för faser och ett utbyggbart normaliseringsmönster, vilket ger maximal flexibilitet och avkoppling av logik.
+För att lösa TCK-MAINT-027 formulerar jag tre ortogonala alternativ:
+
+Alternativ 1: Direkt integration och villkorsstyrd instansiering i `run-path.ts`. Vi läser `argv` direkt och instansierar `skapaBidiLiveAdapter` vid flaggan `--live`, samt hanterar `--dry-run` genom flödeskontroll.
+
+Alternativ 2: Fabriksmönster för adaptergenerering. Vi bryter ut adapterns tillblivelse till en egen modul i `scripts/` som returnerar rätt implementering baserat på CLI-parametrarna, vilket håller huvudlogiken ren.
+
+Alternativ 3: Konfigurationsdriven exekvering med injicerad klientfabrik. Vi samlar upp konfigurationen och injicerar en fabrik i exekveringsmotorn, vilket möjliggör testning även utan att behöva parsas från globala `process.argv`.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 1 har högsta resiliensen tack vare sin enkelhet, då risken för dolda fel eller komplexa avbrott minimeras vid källkodskritiska uppdrag. Alternativ 2 och 3 riskerar mer friktion i framtida modulbyggen.
+Efter en noga resiliensgranskning av de tre alternativen kan jag konstatera att Alternativ 3 är det mest resilienta.
+
+Genom att använda en injicerad klientfabrik frikopplar vi exekveringslogiken från globala `process.argv`. Detta ger oss en stabil grund för testbarhet och skyddar systemet mot latenta haverier vid nätverksfel.
+
+Vi bör nu gå vidare och låsa Alternativ 3.
 
 
 #### 2d Att förlikas: Mättnad
-Med utgångspunkt i analysen av resiliens och enkelhet slår jag fast att Alternativ 1 är det vinnande valet. MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Jag bekräftar det slutgiltiga byggkontraktet för TCK-046. Vi kommer att skapa det transienta testet src/__tests__/transient_TCK-046.test.ts och därefter uppdatera källkoden i src/features/path/engine/bidiLiveAdapter.ts samt src/features/path/engine/pathRunner.ts enligt specifikationerna. Vi är redo för Fas 2.
+Jag har vägt spänningsfältet och analyserat riskanalysen. Alternativ 3 är det vinnande kontraktet och vi deklarerar härmed MÄTTNAD: JA.
