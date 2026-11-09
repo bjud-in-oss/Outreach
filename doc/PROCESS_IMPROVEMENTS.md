@@ -9,6 +9,9 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 
 - **[2026-10-31] Bryt Moment 22 vid infrastrukturfel:** Ändra aldrig orkestreringsskript (`scripts/run-planera-live.ts`) eller drivrutiner via autonoma patch-biljetter om motorns egna verktyg fallerar. Tillämpa deterministisk Git Hard-Reset till senast kända stabila commit.
 - **[2026-11-01] Mekanisk förankring:** Introducera aldrig nya statuskoder eller promptval för modellen utan att den mottagande parser- och exekveringslogiken redan är implementerad i skripten.
+- **[2026-11-09] Skaloberoende skriptexekvering via Heredoc:**
+  * *Förbjudet:* Instruera infrastrukturpatchar eller komplexa skript i terminalen via `node -e '...'` när koden innehåller mallsträngar (`${...}`), reguljära uttryck eller citattecken.
+  * *Obligatoriskt:* Skriv alltid koden till en efemär fil via `cat << 'EOF' > fil.js && node fil.js && rm fil.js` med enkelciterad avgränsare (`'EOF'`) för att eliminera förtida variabel-evaluering i Bash.
 - **[2026-11-01] Inga råa promptar via Bash CLI:** Skicka aldrig flerradiga promptar, systeminstruktioner eller JSON-data som råa argument i `child_process.execSync`. Skriv alltid till en efemär payload-fil på disk och läs in den i Node för att eliminera `/bin/sh`-syntaxfel.
 - **[2026-11-02] TDD Fail-First kräver extern import:** En transient testfil i Fas 1 Steg 3a får aldrig deklarera eller mocka den källkod den avser att testa. Den MÅSTE importera funktioner och typer från den framtida domänen (`../features/[domän]/...`) så att testet bevisat fallerar rött (exit 1) innan källkoden implementeras.
 - **[2026-11-02] Rekursiva testvägar och FSD-kataloger:** Alla konsoliderings- och sparmekanismer i orkestreringen måste tillämpa `fs.mkdirSync(path.dirname(p), { recursive: true })` och strikt exkludera `__tests__` från domänens publika `index.ts`.
@@ -39,4 +42,7 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 
 - **Observation 5 (Rotfiler & Källkodsagentens mandat):** Vanliga byggbiljetter (TCK-XXX) får aldrig kräva ändringar i package.json eller rotkonfigurationer, eftersom Fas 2-grinden medvetet blockerar ändringar utanför måldomänen.
   *Åtgärd:* Alla nya npm-skript eller rotkonfigurationer ska alltid installeras och commitas som infrastrukturell förberedelse innan den domänspecifika byggbiljetten startas.
+
+- **Observation 6 (Polyglotta nodkontrakt och skiftlägestolerans i Vägmotorn):** När olika biljetter implementerar eller anropar recept kan små skiftningar i namngivning (STEP vs step, execute vs run, success vs sucess) skapa regressionskrascher i äldre tester.
+  *Åtgärd:* Vägmotorn i pathRunner.ts ska alltid normalisera nodtyper via .toUpperCase(), acceptera alternativa metodnamn (execute || run, port || run) samt returnera polyglotta statusobjekt ({ success, sucess, slutfold }).
 

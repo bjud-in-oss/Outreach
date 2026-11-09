@@ -1,50 +1,44 @@
-# BYGGCYKEL LOGG: TCK-040
-**Starttid:** 2026-11-08T16:31:20.614Z
+# BYGGCYKEL LOGG: TCK-MAINT-017
+**Starttid:** 2026-11-09T05:19:39.937Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-040: Det Klassiska Receptet (Classic 12-Step Recipe)
+# TCK-MAINT-017: Infrastruktur-rest och Zod-kontrakt för Vägmotorn
 
 ## 1. MÅL
-Implementera det beprövade 12-stegsflödet från SI v10.5 som ett deklarativt recept (src/features/path/recipes/classicRecipe.ts) enligt ADR-030. Genom att formalisera classicRecipe som referensspår i den nya domänen säkerställs att alla arkitektoniska skyddsåtgärder (3 ortogonala alternativ, resiliensgranskning, epistemisk rannsakan och fail-first) förblir intakta i vägmotorn.
+Åtgärda den resterande infrastrukturskulden inför TCK-041. Bygg in skydd mot dolda testkrascher i Fail-First, slutför Zod-valideringen för alla Vägportar och formalisera profilmätningen för framtida jämförelser av 4-ports vs 12-stegsreceptet.
 
-## 2. KÄLLKODSSPECIFIKATION FÖR DOMÄNEN
-1. src/features/path/recipes/classicRecipe.ts:
-   - Exportera funktionen skapaClassicRecept(options: { avsikt: Port; provning: Port; konstruktion: Port; besiktning: Port; stegExekverare?: (stegId: string, kontext: any) => Promise<{ success: boolean }> }): PathRecipe.
-   - Returnera ett PathRecipe med:
-       id: "path-classic"
-       name: "Vägen Classic 12-Steg"
-       description: "Deklarativ referensmodell baserad på SI v10.5"
-   - Noder i receptet ska sekventiellt representera de 12 stegen och 4 portarna:
-       * Fas 0: Steg 1a (step-1a), Steg 0a (step-0a), Steg 0b (step-0b) -> Port: Avsikt (port-avsikt)
-       * Fas 1: Steg 1b (step-1b), Steg 2a (step-2a), Steg 2b (step-2b), Steg 2c (step-2c), Steg 2d (step-2d), Steg 3a (step-3a), Steg 3b (step-3b), Steg 2e (step-2e), Steg 3d (step-3d), Steg 3e (step-3e), Steg 3c (step-3c) -> Port: Provning (port-provning)
-       * Fas 2: Steg Fas 2 (step-fas2) -> Port: Konstruktion (port-konstruktion)
-       * Fas 3: Port: Besiktning (port-besiktning) -> Steg Fas 3 (step-fas3)
-   - Om stegExekverare skickas med i options ska varje STEP-nod anropa denna: async (k) => options.stegExekverare!(nodeId, k). Om den returnerar { success: false } eller kastar fel ska steget misslyckas. Om ingen stegExekverare skickas med ska standard vara: async () => ({ success: true }).
-2. src/features/path/index.ts:
-   - Exportera skapaClassicRecept och ClassicReceptOptions från ./recipes/classicRecipe.
+## 2. KÄLLKODSSPECIFIKATION
+1. scripts/run-planera-live.ts:
+   - Leta upp "Gate 3a Fail-First". Läs ut hela stderr/stdout från vitest-körningen. Om terminalutskriften innehåller 'TypeError:' eller 'ReferenceError:' måste testet omedelbart underkännas, även om processen kraschar med kod 1 (Testet har dolda fel i sin egen kod).
+   - I slutet av filen (vid lyckad körning om !isMaint): Skriv en automatisk mätprofil till doc/LAST_CYCLE/BENCHMARK.json med formatet { "ticket": ticketId, "durationMs": <tiden från scriptstart till hit>, "timestamp": <ISO-datum> }.
+2. scripts/drivers/ts.js (Kontraktsspeglare):
+   - För Gate 3a (check-alibi): Inför en regel som varnar eller kastar fel om testet anropar interna port-fabriker (som t.ex. skapaAvsiktsport) om inte port-fabriken specifikt testas. För exekverings-tester ska anonyma funktioner (lambdas) användas för dependencies.
+3. src/features/path/contracts/pathSchema.ts (Zod-Scheman):
+   - Skapa och exportera de saknade schemana:
+     * ProvningsportOptionsSchema
+     * KonstruktionsportOptionsSchema
+     * BesiktningsportOptionsSchema
+     * ClassicReceptOptionsSchema
+     * LeanReceptOptionsSchema
 
-## 3. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
-1. Skapa transient test för classicRecipe:
-   - VIKTIGT FÖR TESTFÖRFATTAREN: Anropa INTE port-fabriker (såsom skapaAvsiktsport). Skapa rena mock-portar direkt som funktioner:
-       const mockGodkand: Port = async () => ({ oppnad: true });
-       const mockNekad: Port = async () => ({ oppnad: false, orsak: "Testfel", omvandelseKrav: "ÅTGÄRDA" });
-   - Testfall 1: Verifiera att ett fullt godkänt classicRecipe (där alla 4 portar är mockGodkand) fullföljs av exekveraRecept.
-   - Testfall 2: Verifiera att classicRecipe avbryts omedelbart och kastar PortNekadError om provning är mockNekad.
-   - Testfall 3: Verifiera att recept med stegExekverare som returnerar { success: false } för "step-1b" avbryts med ett Error vid exekvering.
-2. pnpm verify ska vara 100 % grön.
+## 3. ACCEPTANSKRITERIER
+1. Gate 3a Fail-First blockerar trasiga tester (TypeScript-fel) istället för att bara kräva exit-kod 1.
+2. BENCHMARK.json skapas vid lyckade cykler.
+3. Alla options i Vägmotorn har Zod-validering.
+4. pnpm verify är 100 % grön.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att vi formaliserar SI v10.5 klassiska 12-stegsflöde som ett deklarativt recept inom path-domänen, Så skapar jag nu en `.feature`-fil för att låsa beteendekontraktet.
+Givet att jag har initierat TCK-MAINT-017, när jag uppdaterar 'scripts/run-planera-live.ts' för att avvisa tester med 'TypeError' eller 'ReferenceError', och lägger till BENCHMARK.json generering vid lyckade cykler, samt skapar saknade Zod-scheman i 'pathSchema.ts', så uppnår vi en robust infrastruktur och kontraktstillförlitlighet för Vägmotorn.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har utfört min audiostream och granskat kontraktet för TCK-040. Alla arkitektoniska ramar är intakta och vi opererar strikt inom domängränsen för path.
+Granskningen är genomförd. TCK-MAINT-017 berör endast en FSD-domän (källkod under `src/features/path`), och alla verktyg och API-skills finns tillgängliga. Vi kan nu gå vidare till avsiktsgrinden.
 
 
 #### 0b Att förlikas: Vägval
@@ -56,144 +50,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att implementera `classicRecipe.ts` för TCK-040 föreslår jag tre ortogonala lösningsalternativ. Det första alternativet bygger på en hårdkodad, linjär sekvens av noder i en platt array, vilket garanterar exakt kontroll över ordningen. Det andra alternativet använder en fasbaserad fabriksfunktion som grupperar steg per fas och minskar repetitiv kod. Det tredje alternativet implementerar ett konfigurationsobjekt för faser och portar som mappas till receptstrukturen programmatiskt, vilket ger en hög modularitet och tydlig deklarativ struktur.
+För att lösa TCK-MAINT-017 och möta kraven formulerar jag här tre ortogonala alternativ:
+
+Alternativ 1 innebär direkt integrering och procedurell parsning i skripten. Vi använder reguljära uttryck för att skanna terminalutdatan i `run-planera-live.ts` och lägger till enkla AST-kontroller via `ts.js`. Zod-schemana definieras direkt i `pathSchema.ts`.
+
+Alternativ 2 satsar på en dedikerad kontrollmekanism för testströmmen och djupare AST-analys. Här implementeras en separat klass för att fånga upp körtidskrascher med full stacktrace, och en fullständig AST-traversering används i `ts.js` för att säkerställa att port-fabriker inte används felaktigt.
+
+Alternativ 3 bygger på strict runtime-isolering och explicit schemabyggnad. Testmiljön i sig kastar fel om förbjudna mönster upptäcks, medan mätprofildata hanteras via anpassade hookar i Vitest. Zod-schemana specificeras med full typinferens och dokumenteras separat.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid en resiliensgranskning av de tre alternativen framstår alternativ två – den fasbaserade fabriksfunktionen – som det tryggaste valet för långsiktig stabilitet. Den isolerar felhantering per fas, vilket hindrar en krasch i ett enskilt steg från att korrumpera hela receptets tillstånd. Detta är i linje med fail-fast-principen och säkrar att AST-gränserna förblir intakta vid varje övergång.
+Resiliensgranskningen visar att Alternativ 2 erbjuder den högsta driftsäkerheten genom djupare AST-analys och en dedikerad mekanism för att fånga krascher. Denna lösning minimerar risken för dolda fel och undviker att förlita sig på spröda textmatchningar.
 
 
 #### 2d Att förlikas: Mättnad
-Efter att ha vägt alternativen och bekräftat att den fasbaserade fabriksfunktionen isolerar felhantering per steg för maximal stabilitet, slår jag fast att alternativ två vinner. MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Följande källkodsspecifikation och transienta test genereras för TCK-040.
-
-**GENERERAT TEST:**
-```typescript
-import { describe, it, expect } from 'vitest';
-import { exekveraRecept, Port } from './index';
-import { PortNekadError } from '../contracts/pathSchema';
-import { skapaClassicRecept } from './recipes/classicRecipe';
-
-describe('classicRecipe.ts', () => {
-    const mockGodkand: Port = async () => ({ oppnad: true });
-    const mockNekad: Port = async () => ({ oppnad: false, orsak: "Testfel", omvandelseKrav: "ÅTGÄRDA" });
-
-    it('Testfall 1: bör fullföljas när alla portar är godkända', async () => {
-        const recept = skapaClassicRecept({
-            avsikt: mockGodkand,
-            provning: mockGodkand,
-            konstruktion: mockGodkand,
-            besiktning: mockGodkand
-        });
-        const resultat = await exekveraRecept(recept, {});
-        expect(resultat.komplett).toBe(true);
-    });
-
-    it('Testfall 2: avbryts och kastar PortNekadError när provning är nekad', async () => {
-        const recept = skapaClassicRecept({
-            avsikt: mockGodkand,
-            provning: mockNekad,
-            konstruktion: mockGodkand,
-            besiktning: mockGodkand
-        });
-        await expect(exekveraRecept(recept, {})).rejects.toThrow(PortNekadError);
-    });
-
-    it('Testfall 3: avbryts med ett Error när stegExekverare nekar ett steg', async () => {
-        const recept = skapaClassicRecept({
-            avsikt: mockGodkand,
-            provning: mockGodkand,
-            konstruktion: mockGodkand,
-            besiktning: mockGodkand,
-            stegExekverare: async (stegId) => {
-                if (stegId === 'step-1b') return { success: false };
-                return { success: true };
-            }
-        });
-        await expect(exekveraRecept(recept, {})).rejects.toThrow();
-    });
-});
-```
-
-**KÄLLKODSSPECIFIKATION:**
-Följande två filer utgör kontraktet för källkoden.
-
-File 1: `src/features/path/recipes/classicRecipe.ts`
-```typescript
-import { PathRecipe, Port } from '../model/types';
-import { exekveraRecept } from '../engine/pathRunner';
-
-export type ClassicReceptOptions = {
-    avsikt: Port;
-    provning: Port;
-    konstruktion: Port;
-    besiktning: Port;
-    stegExekverare?: (stegId: string, kontext: any) => Promise<{ success: boolean }>;
-};
-
-export function skapaClassicRecept(options: ClassicReceptOptions): PathRecipe {
-    const exekverare = options.stegExekverare || (async () => ({ success: true }));
-
-    return {
-        id: "path-classic",
-        name: "Vägen Classic 12-Steg",
-        description: "Deklarativ referensmodell baserad på SI v10.5",
-        nodes: [
-            // Fas 0: Avsikt
-            { id: "step-1a", type: "step", run: async (k) => exekverare("step-1a", k) },
-            { id: "step-0a", type: "step", run: async (k) => exekverare("step-0a", k) },
-            { id: "step-0b", type: "step", run: async (k) => exekverare("step-0b", k) },
-            { id: "port-avsikt", type: "port", run: options.avsikt },
-
-            // Fas 1: Provning
-            { id: "step-1b", type: "step", run: async (k) => exekverare("step-1b", k) },
-            { id: "step-2a", type: "step", run: async (k) => exekverare("step-2a", k) },
-            { id: "step-2b", type: "step", run: async (k) => exekverare("step-2b", k) },
-            { id: "step-2c", type: "step", run: async (k) => exekverare("step-2c", k) },
-            { id: "step-2d", type: "step", run: async (k) => exekverare("step-2d", k) },
-            { id: "step-3a", type: "step", run: async (k) => exekverare("step-3a", k) },
-            { id: "step-3b", type: "step", run: async (k) => exekverare("step-3b", k) },
-            { id: "step-2e", type: "step", run: async (k) => exekverare("step-2e", k) },
-            { id: "step-3d", type: "step", run: async (k) => exekverare("step-3d", k) },
-            { id: "step-3e", type: "step", run: async (k) => exekverare("step-3e", k) },
-            { id: "step-3c", type: "step", run: async (k) => exekverare("step-3c", k) },
-            { id: "port-provning", type: "port", run: options.provning },
-
-            // Fas 2: Konstruktion
-            { id: "step-fas2", type: "step", run: async (k) => exekverare("step-fas2", k) },
-            { id: "port-konstruktion", type: "port", run: options.konstruktion },
-
-            // Fas 3: Besiktning
-            { id: "port-besiktning", type: "port", run: options.besiktning },
-            { id: "step-fas3", type: "step", run: async (k) => exekverare("step-fas3", k) },
-        ]
-    };
-}
-```
-
-File 2: `src/features/path/index.ts`
-Uppdateras för att inkludera export:
-```typescript
-// Befintliga exporter...
-export * from './contracts/pathSchema';
-export * from './engine/pathRunner';
-export * from './engine/avsiktsport';
-export * from './engine/provningsport';
-export * from './engine/konstruktionsport';
-export * from './engine/besiktningsport';
-export * from './model/types';
-export * from './recipes/leanRecipe';
-// Nya exporter för TCK-040:
-export * from './recipes/classicRecipe';
-```
+Vi väljer Alternativ 2. Vår resiliensgranskning bekräftar att detta alternativ ger högst driftsäkerhet genom den djupare AST-analysen och det dedikerade kraschskyddet. MÄTTNAD: JA.

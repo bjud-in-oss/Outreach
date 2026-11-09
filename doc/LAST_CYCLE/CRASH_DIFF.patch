@@ -1,149 +1,67 @@
-diff --git a/src/features/path/__tests__/classicRecipe.test.ts b/src/features/path/__tests__/classicRecipe.test.ts
-new file mode 100644
-index 0000000..c774f48
---- /dev/null
-+++ b/src/features/path/__tests__/classicRecipe.test.ts
-@@ -0,0 +1,52 @@
-+import { describe, it, expect } from 'vitest';
-+import { exekveraRecept, skapaClassicRecept, PortNekadError } from '..';
-+import { Port } from '../model/types';
-+
-+describe('transient_TCK-040: Classic 12-Step Recipe', () => {
-+  const mockGodkand: Port = async () => ({ oppnad: true });
-+  const mockNekad: Port = async () => ({
-+    oppnad: false,
-+    orsak: 'Testfel',
-+    omvandelseKrav: 'ÅTGÄRDA',
-+  });
-+
-+  it('skall fullfölja exekveraRecept nÃ¤r alla portar Ã¤r godkÃ¤nda', async () => {
-+    const recipe = skapaClassicRecept({
-+      avsikt: mockGodkand,
-+      provning: mockGodkand,
-+      konstruktion: mockGodkand,
-+      besiktning: mockGodkand,
-+    });
-+
-+    const resultat = await exekveraRecept(recipe, {});
-+    expect(resultat.success).toBe(true);
-+  });
-+
-+  it('skall avbryta och kasta PortNekadError nÃ¤r provning nekas', async () => {
-+    const recipe = skapaClassicRecept({
-+      avsikt: mockGodkand,
-+      provning: mockNekad,
-+      konstruktion: mockGodkand,
-+      besiktning: mockGodkand,
-+    });
-+
-+    await expect(exekveraRecept(recipe, {})).rejects.toThrow(PortNekadError);
-+  });
-+
-+  it('skall avbryta med Error nÃ¤r stegExekverare misslyckas pÃ¥ step-1b', async () => {
-+    const recipe = skapaClassicRecept({
-+      avsikt: mockGodkand,
-+      provning: mockGodkand,
-+      konstruktion: mockGodkand,
-+      besiktning: mockGodkand,
-+      stegExekverare: async (stegId) => {
-+        if (stegId === 'step-1b') {
-+          return { success: false };
-+        }
-+        return { success: true };
-+      },
-+    });
-+
-+    await expect(exekveraRecept(recipe, {})).rejects.toThrow();
-+  });
-+});
-diff --git a/src/features/path/engine/pathRunner.ts b/src/features/path/engine/pathRunner.ts
-index 5ce0c86..01a63f9 100644
---- a/src/features/path/engine/pathRunner.ts
-+++ b/src/features/path/engine/pathRunner.ts
-@@ -15,16 +15,16 @@ export async function knackaPaPorten(port: Port, kontext: PathContext): Promise<
-   return resultat;
- }
- 
--export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ sucess: boolean }> {
-+export async function exekveraRecept(recipe: PathRecipe, kontext: PathContext): Promise<{ success: boolean }> {
-   for (const node of recipe.nodes) {
--    if (node.type === 'STEP') {
--      const result = await node.execute(kontext);
-+    if (node.type === 'step') {
-+      const result = await node.run(kontext);
-       if (!result.success) {
--        throw new Error(`Steg misslyckades: ${node.name}`);
-+        throw new Error(`Steg misslyckades: ${node.id}`);
+diff --git a/scripts/verify-architecture.js b/scripts/verify-architecture.js
+index eb15a12..5eaffcb 100644
+--- a/scripts/verify-architecture.js
++++ b/scripts/verify-architecture.js
+@@ -44,6 +44,23 @@ function checkFsdImports(filePath) {
        }
--    } else if (node.type === 'PORT') {
--      await knackaPaPorten(node.port, kontext);
-+    } else if (node.type === 'port') {
-+      await knackaPaPorten(node.run, kontext);
      }
-   }
--  return { sucess: true };
-+  return { success: true };
- }
-diff --git a/src/features/path/index.ts b/src/features/path/index.ts
-index 8ff526c..e657204 100644
---- a/src/features/path/index.ts
-+++ b/src/features/path/index.ts
-@@ -6,3 +6,4 @@ export * from './engine/provningsport';
- export * from './engine/konstruktionsport';
- export * from './engine/besiktningsport';
- export * from './recipes/leanRecipe';
-+export * from './recipes/classicRecipe';
-diff --git a/src/features/path/recipes/classicRecipe.ts b/src/features/path/recipes/classicRecipe.ts
-new file mode 100644
-index 0000000..63f3fff
---- /dev/null
-+++ b/src/features/path/recipes/classicRecipe.ts
-@@ -0,0 +1,48 @@
-+import { PathRecipe, Port } from '../model/types';
+ 
++        // Kontroll 3: Zod-scheman vs Interface
++    if (filePath.endsWith("Schema.ts")) {
++      ts.forEachChild(sf, node => {
++        if (ts.isVariableStatement(node)) {
++          const decl = node.declarationList.declarations[0];
++          if (decl && decl.name && decl.name.text && decl.name.text.endsWith("Schema")) {
++            const baseName = decl.name.text.replace("Schema", "");
++            if (!content.includes("type " + baseName) && !content.includes("interface " + baseName)) {
++              const { line } = sf.getLineAndCharacterOfPosition(decl.getStart());
++              console.error("❌ ZOD-BROTT i " + path.relative(ROOT_DIR, filePath) + ":" + (line + 1) + ":");
++              console.error("   Zod-schemat '" + decl.name.text + '' saknar matchande Typescript-typ/interface ('" + baseName + "'). Export av z.infer rekommenderas.");
++              fsdViolations++;
++            }
++          }
++        }
++      });
++    }
+     if (targetFeature && targetFeature !== currentFeature && targetFeature !== 'shared') {
+       const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
+       console.error(`❌ FSD-BROTT i ${path.relative(ROOT_DIR, filePath)}:${line + 1}:`);
+diff --git a/src/features/path/contracts/pathSchema.ts b/src/features/path/contracts/pathSchema.ts
+index 5c03764..b285d86 100644
+--- a/src/features/path/contracts/pathSchema.ts
++++ b/src/features/path/contracts/pathSchema.ts
+@@ -18,6 +18,34 @@ export const AvsiktsportOptionsSchema = z.object({
+   exempel: z.string().optional(),
+ });
+ 
++export const ProvningsportOptionsSchema = z.object({
++  testFilVag: z.string(),
++  forvantatFel: z.string(),
++  testExekverare: z.custom<Function>(),
++});
 +
-+export type ClassicReceptOptions = {
-+    avsikt: Port;
-+    provning: Port;
-+    konstruktion: Port;
-+    besiktning: Port;
-+    stegExekverare?: (stegId: string, kontext: any) => Promise<{ success: boolean }>;
-+};
++export const KonstruktionsportOptionsSchema = z.object({
++  matris: z.array(z.custom<any>()),
++  inspekterare: z.custom<Function>(),
++  barrelVag: z.string().optional(),
++});
 +
-+export function skapaClassicRecept(options: ClassicReceptOptions): PathRecipe {
-+    const exekverare = options.stegExekverare || (async () => ({ success: true }));
++export const BesiktningsportOptionsSchema = z.object({
++  inspekterare: z.custom<Function>(),
++});
 +
-+    return {
-+        id: "path-classic",
-+        name: "Vägen Classic 12-Steg",
-+        description: "Deklarativ referensmodell baserad på SI v10.5",
-+        nodes: [
-+            // Fas 0: Avsikt
-+            { id: "step-1a", type: "step", run: async (k) => exekverare("step-1a", k) },
-+            { id: "step-0a", type: "step", run: async (k) => exekverare("step-0a", k) },
-+            { id: "step-0b", type: "step", run: async (k) => exekverare("step-0b", k) },
-+            { id: "port-avsikt", type: "port", run: options.avsikt },
++export const ClassicReceptOptionsSchema = z.object({
++  id: z.string(),
++  name: z.string(),
++  steps: z.array(z.custom<any>()),
++});
 +
-+            // Fas 1: Provning
-+            { id: "step-1b", type: "step", run: async (k) => exekverare("step-1b", k) },
-+            { id: "step-2a", type: "step", run: async (k) => exekverare("step-2a", k) },
-+            { id: "step-2b", type: "step", run: async (k) => exekverare("step-2b", k) },
-+            { id: "step-2c", type: "step", run: async (k) => exekverare("step-2c", k) },
-+            { id: "step-2d", type: "step", run: async (k) => exekverare("step-2d", k) },
-+            { id: "step-3a", type: "step", run: async (k) => exekverare("step-3a", k) },
-+            { id: "step-3b", type: "step", run: async (k) => exekverare("step-3b", k) },
-+            { id: "step-2e", type: "step", run: async (k) => exekverare("step-2e", k) },
-+            { id: "step-3d", type: "step", run: async (k) => exekverare("step-3d", k) },
-+            { id: "step-3e", type: "step", run: async (k) => exekverare("step-3e", k) },
-+            { id: "step-3c", type: "step", run: async (k) => exekverare("step-3c", k) },
-+            { id: "port-provning", type: "port", run: options.provning },
++export const LeanReceptOptionsSchema = z.object({
++  id: z.string(),
++  name: z.string(),
++  phases: z.array(z.custom<any>()),
++});
 +
-+            // Fas 2: Konstruktion
-+            { id: "step-fas2", type: "step", run: async (k) => exekverare("step-fas2", k) },
-+            { id: "port-konstruktion", type: "port", run: options.konstruktion },
-+
-+            // Fas 3: Besiktning
-+            { id: "port-besiktning", type: "port", run: options.besiktning },
-+            { id: "step-fas3", type: "step", run: async (k) => exekverare("step-fas3", k) },
-+        ]
-+    };
-+}
+ export const PathRecipeSchema = z.object({
+   id: z.string(),
+   name: z.string(),

@@ -44,6 +44,23 @@ function checkFsdImports(filePath) {
       }
     }
 
+        // Kontroll 3: Zod-scheman vs Interface
+    if (filePath.endsWith("Schema.ts")) {
+      ts.forEachChild(sf, node => {
+        if (ts.isVariableStatement(node)) {
+          const decl = node.declarationList.declarations[0];
+          if (decl && decl.name && decl.name.text && decl.name.text.endsWith("Schema")) {
+            const baseName = decl.name.text.replace("Schema", "");
+            if (!content.includes("type " + baseName) && !content.includes("interface " + baseName)) {
+              const { line } = sf.getLineAndCharacterOfPosition(decl.getStart());
+              console.error("❌ ZOD-BROTT i " + path.relative(ROOT_DIR, filePath) + ":" + (line + 1) + ":");
+              console.error("   Zod-schemat '" + decl.name.text + '' saknar matchande Typescript-typ/interface ('" + baseName + "'). Export av z.infer rekommenderas.");
+              fsdViolations++;
+            }
+          }
+        }
+      });
+    }
     if (targetFeature && targetFeature !== currentFeature && targetFeature !== 'shared') {
       const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
       console.error(`❌ FSD-BROTT i ${path.relative(ROOT_DIR, filePath)}:${line + 1}:`);

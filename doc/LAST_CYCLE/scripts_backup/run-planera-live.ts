@@ -55,7 +55,7 @@ function dumpCrashDiff() {
 }
 
 function restoreScriptsBackup() {
-  const isMaintRun = process.argv.some(a => a.includes("TCK-MAINT"));
+  const isMaintRun = process.argv.some(a => a.toUpperCase().includes("MAINT"));
   if (isMaintRun) {
     const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
     if (fs.existsSync(backupDir)) {
@@ -145,7 +145,7 @@ async function runMicroChannel(
 }
 
 async function main() {
-  const isMaintRun = process.argv.some(a => a.includes("MAINT") || a.includes("maint"));
+  const isMaintRun = process.argv.some(a => a.toUpperCase().includes("MAINT"));
   if (isMaintRun) {
     const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
     try {

@@ -109,6 +109,10 @@ if (args.includes('--check-alibi')) {
   let hasRuntimeAnchor = false;
   let hasSourceTextAssertion = false;
   let hasIllegalFsRead = false;
+  let hasForbiddenPortFactoryMock = false;
+  let forbiddenPortFactoryName = '';
+  const PORT_FACTORIES = ['skapaAvsiktsport', 'skapaProvningsport', 'skapaKonstruktionsport', 'skapaBesiktningsport'];
+  const isDirectFactoryTest = PORT_FACTORIES.some(pf => targetFile.toLowerCase().includes(pf.toLowerCase().replace('skapa', '')));
 
   const RUNTIME_ANCHORS = [
     'emit', 'addEventListener', 'dispatchEvent', 'fetch', 'WebSocket',
@@ -139,6 +143,14 @@ if (args.includes('--check-alibi')) {
         }
       }
 
+      if (!isDirectFactoryTest) {
+        for (const pf of PORT_FACTORIES) {
+          if (text === pf || text.startsWith(pf + '(') || text.endsWith('.' + pf)) {
+            hasForbiddenPortFactoryMock = true;
+            forbiddenPortFactoryName = pf;
+          }
+        }
+      }
       for (const anchor of RUNTIME_ANCHORS) {
         if (text.includes(anchor)) hasRuntimeAnchor = true;
       }
@@ -161,6 +173,12 @@ if (args.includes('--check-alibi')) {
   if (hasSourceTextAssertion) {
     console.error(`❌ GATE 3a BROTT i ${targetFile}:`);
     console.error(`   Testet assertar på rå källkodstext ('export function' etc.) i stället för exekverbar logik!`);
+    process.exit(1);
+  }
+
+  if (hasForbiddenPortFactoryMock) {
+    console.error(`❌ GATE 3a BROTT i ${targetFile}:`);
+    console.error(`   Testet anropar '${forbiddenPortFactoryName}' som mock! Använd rena asynkrona lambdas (async () => ({ oppnad: true })) vid testning av recept/runners.`);
     process.exit(1);
   }
 

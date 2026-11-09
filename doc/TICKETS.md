@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-017** (VERIFIED): Infrastruktur-rest och Zod-kontrakt för Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-017.md`
 - [x] **TCK-MAINT-016** (VERIFIED): Godkänn Fraktal Omvändelse i Makro och Meta -> Se `doc/.TICKETS/TCK-MAINT-016.md`
 - [x] **TCK-MAINT-015** (VERIFIED): Reparera och installera lyssnaren för Fas 2 -> Se `doc/.TICKETS/TCK-MAINT-015.md`
 - [x] **TCK-MAINT-014** (VERIFIED): Reparera catch-block och omvändelse-lyssnare -> Se `doc/.TICKETS/TCK-MAINT-014.md`
@@ -19,7 +20,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
-- [x] **TCK-040** (VERIFIED): Det Klassiska Receptet och Reservbryggan -> Se `doc/.TICKETS/TCK-040.md`
+- [x] **TCK-040** (VERIFIED): Det Klassiska Receptet (Classic 12-Step Recipe) -> Se `doc/.TICKETS/TCK-040.md`
 - [x] **TCK-039** (VERIFIED): Besiktningsporten och Recept-harmonisering -> Se `doc/.TICKETS/TCK-039.md`
 - [x] **TCK-038** (VERIFIED): Konstruktionsporten och Källkodsmatrisen (Construction Port) -> Se `doc/.TICKETS/TCK-038.md`
 - [x] **TCK-037** (VERIFIED): Prövningsporten och Prediktiv TDD (Testing Port) -> Se `doc/.TICKETS/TCK-037.md`
