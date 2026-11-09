@@ -49,3 +49,11 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 - **Observation 6 (Polyglotta nodkontrakt och skiftlägestolerans i Vägmotorn):** När olika biljetter implementerar eller anropar recept kan små skiftningar i namngivning (STEP vs step, execute vs run, success vs sucess) skapa regressionskrascher i äldre tester.
   *Åtgärd:* Vägmotorn i pathRunner.ts ska alltid normalisera nodtyper via .toUpperCase(), acceptera alternativa metodnamn (execute || run, port || run) samt returnera polyglotta statusobjekt ({ success, sucess, slutfold }).
 
+
+## [2026-11-09] Erfarenheter från TCK-041 till TCK-045 (Vägmotorns Exekveringsmiljö)
+- **Observation 1 (Över-restriktiv strängmatchning i tillståndsmaskinen):** `bestamFasForSteg` i `pathRunner.ts` förlitade sig ursprungligen på `startsWith('provning')` etc. Detta orsakade att renodlade port-noder (t.ex. `p2` eller `port-provning`) föll tillbaka till default-fasen 'avsikt', vilket i sin tur riskerar att ge `promptCompiler` fel `PathPhase`-instruktion när Bidi Live-adaptern ansluts.
+  *Åtgärd:* Vid nästa domänjustering i `src/features/path/` ska matchningslogiken breddas till `stegId.includes('provning') || stegId === 'p2'` för att garantera deterministisk fasspårning.
+
+## [2026-11-09] Erfarenheter från TCK-041 till TCK-045 (Vägmotorns Exekveringsmiljö)
+- **Observation 1 (Över-restriktiv strängmatchning i tillståndsmaskinen):** `bestamFasForSteg` i `pathRunner.ts` förlitade sig ursprungligen på `startsWith('provning')` etc. Detta orsakade att renodlade port-noder (t.ex. `p2` eller `port-provning`) föll tillbaka till default-fasen 'avsikt', vilket i sin tur riskerar att ge `promptCompiler` fel `PathPhase`-instruktion när Bidi Live-adaptern ansluts.
+  *Åtgärd:* Vid nästa domänjustering i `src/features/path/` ska matchningslogiken breddas till `stegId.includes('provning') || stegId === 'p2'` för att garantera deterministisk fasspårning.
