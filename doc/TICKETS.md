@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-024** (VERIFIED): Fallback-svar i run-path MockAdapter och Etablering av Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-024.md`
 - [x] **TCK-MAINT-023** (VERIFIED): Härda Action Loopens Filkrav och Etablera run-path Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-023.md`
 - [x] **TCK-MAINT-022** (VERIFIED): Implementera run-path.ts och dess integrationstest -> Se `doc/.TICKETS/TCK-MAINT-022.md`
 - [x] **TCK-MAINT-021** (VERIFIED): Territorievakt i Fas 0, Skriptgranskare i Verify och Förankring av run-path -> Se `doc/.TICKETS/TCK-MAINT-021.md`
