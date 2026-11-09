@@ -1,13 +1,26 @@
 import { 
   skapaPathOrkestrerare, 
-  skapaMockSessionAdapter 
+  skapaMockSessionAdapter,
+  OrchestratorConfig
 } from '../src/features/path';
 import * as fs from 'fs';
 import * as path from 'path';
 
-async function main() {
-  const ticketId = process.argv[2] || 'PROMPT';
-  console.log(`🚀 Kör Vägmotorn för biljett: ${ticketId}`);
+export async function exekveraRunPath(options: { 
+  ticketId?: string; 
+  argv?: string[]; 
+  io?: any; 
+  adapter?: any 
+} = {}) {
+  const io = options.io || {
+    log: console.log,
+    error: console.error,
+    warn: console.warn
+  };
+  
+  const argv = options.argv || process.argv.slice(2);
+  const ticketId = options.ticketId || argv[0] || 'PROMPT';
+  io.log(`🚀 Kör Vägmotorn för biljett: ${ticketId}`);
 
   let ticketContent = '';
   if (ticketId === 'PROMPT') {
@@ -20,40 +33,61 @@ async function main() {
     if (fs.existsSync(ticketPath)) {
       ticketContent = fs.readFileSync(ticketPath, 'utf-8');
     } else {
-      console.warn(`⚠️ Biljettfil ej hittad: ${ticketPath}`);
+      io.warn(`⚠️ Biljettfil ej hittad: ${ticketPath}`);
     }
   }
 
-  // Dummy-portar som uppfyller kontrakten för orkestreraren
-  const dummyPortar = {
-    avsiktsport: async () => ({ godkand: true, data: {} }),
-    konstruktionsport: async () => ({ godkand: true, data: {} }),
-    besiktningsport: async () => ({ godkand: true, data: {} }),
-    provningsport: async () => ({ godkadot: true, data: {} }),
+  const isClassic = argv.includes('--classic');
+  const receptTyp = isClassic ? 'classic' : 'lean';
+  
+  const config: OrchestratorConfig = {
+    ticketId,
+    malDoman: 'path', // Standard domän för dessa underhållsuppgifter
+    receptTyp,
+    uppdrag: ticketContent
   };
 
-  const adapter = skapaMockSessionAdapter();
+  // Dummy-portar som loggar till io.log och uppfyller kontrakten
+  const dummyPortar = {
+    avsikt: async (ctx: any) => {
+      io.log(` port:avsikt körs, fas: ${ctx.aktuellFas}`);
+      return { oppnad: true };
+    },
+    konstruktion: async () => {
+      io.log(` port:konstruktion körs`);
+      return { oppnad: true };
+    },
+    besiktning: async () => {
+      io.log(` port:besiktning körs`);
+      return { oppnad: true, godkand: true };
+    },
+    provning: async () => {
+      io.log(` port:provning körs`);
+      return { oppnad: true };
+    },
+  };
+
+  const adapter = options.adapter || skapaMockSessionAdapter();
   const orkestrerare = skapaPathOrkestrerare({
     adapter,
-    portar: dummyPortar as any
+    portar: dummyPortar as any,
+    config
   });
 
   try {
-    console.log('📦 Initierar orkestrering...');
-    // Kör orkestreraren (anpassad efter faktiskt kontrakt i nästa steg om det behövs)
-    // Eftersom vi inte har den exakta signaturen för körning exponerad i detalj här, 
-    // anropar vi en standardkörningsmetod för receptet.
-    const resultat = await orkestrerare.kor({
-      doman: 'path',
-      kontext: { biljettId, ticketContent }
-    });
+    io.log(`📦 Initierar orkestrering med recept: ${receptTyp}...`);
+    const resultat = await orkestrerare.kor();
 
-    console.log('🏁 Orkestrering slutförd.');
-    console.log('📝 Slutrapport:', JSON.stringify(resultat, null, 2));
+    io.log('🏁 Orkestrering slutförd.');
+    io.log('📝 Slutrapport:', JSON.stringify(resultat, null, 2));
+    
+    return resultat;
   } catch (error) {
-    console.error('❌ Fel under exekvering av Vägmotorn:', error);
-    process.exit(1);
+    io.error('❌ Fel under exekvering av Vägmotorn:', error);
+    throw error;
   }
 }
 
-main();
+if (require.main === module) {
+  exekveraRunPath().catch(() => process.exit(1));
+}

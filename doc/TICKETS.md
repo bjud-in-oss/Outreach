@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-022** (VERIFIED): Implementera run-path.ts och dess integrationstest -> Se `doc/.TICKETS/TCK-MAINT-022.md`
 - [x] **TCK-MAINT-021** (VERIFIED): Territorievakt i Fas 0, Skriptgranskare i Verify och Förankring av run-path -> Se `doc/.TICKETS/TCK-MAINT-021.md`
 - [x] **TCK-MAINT-020** (VERIFIED): Mekaniskt Förankrat Körskript för Vägmotorn (run-path.ts) -> Se `doc/.TICKETS/TCK-MAINT-020.md`
 - [x] **TCK-MAINT-019** (VERIFIED): Etablera Parallellt Körskript run-path.ts och package.json-alias -> Se `doc/.TICKETS/TCK-MAINT-019.md`
