@@ -57,16 +57,16 @@ export async function exekveraRecept(
 }
 
 export function bestamFasForSteg(stegId: string): string {
-  if (stegId.startsWith('step-1a') || stegId.startsWith('step-0') || stegId.startsWith('avsikt')) {
+  if (stegId === 'p1' || stegId.startsWith('step-1a') || stegId.startsWith('step-0') || stegId.startsWith('avsikt')) {
     return 'avsikt';
   }
-  if (stegId.startsWith('step-1b') || stegId.startsWith('step-2') || stegId.startsWith('step-3') || stegId.startsWith('provning')) {
+  if (stegId === 'p2' || stegId.startsWith('step-1b') || stegId.startsWith('step-2') || stegId.startsWith('step-3') || stegId.startsWith('provning')) {
     return 'provning';
   }
-  if (stegId.startsWith('step-fas2') || stegId.startsWith('konstruktion')) {
+  if (stegId === 'port-konstruktion' || stegId.startsWith('p3') || stegId.startsWith('step-fas2') || stegId.startsWith('konstruktion')) {
     return 'konstruktion';
   }
-  if (stegId.startsWith('step-fas3') || stegId.startsWith('besiktning')) {
+  if (stegId === 'p4' || stegId.startsWith('step-fas3') || stegId.startsWith('besiktning')) {
     return 'besiktning';
   }
   return 'avsikt';

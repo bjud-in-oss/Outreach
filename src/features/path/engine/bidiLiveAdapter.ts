@@ -19,10 +19,9 @@ export function skapaBidiLiveAdapter(
       }
 
       if (typeof client.send === 'function') {
-        await client.send({
-          instruction: prompt.instructions,
-          content: prompt.renderedContent,
-        });
+        const instruction = prompt.systemInstruction || prompt.instructions || '';
+        const content = prompt.userPrompt || prompt.renderedContent || '';
+        await client.send({ instruction, content });
       }
 
       let svar = '';

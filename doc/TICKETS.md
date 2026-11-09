@@ -29,6 +29,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-046** (VERIFIED): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
 - [x] **TCK-045** (VERIFIED): Bidi Live Multimodal SessionAdapter (Path Domain) -> Se `doc/.TICKETS/TCK-045.md`
 - [x] **TCK-044** (VERIFIED): Deterministisk Fasberikning av PathContext i PathRunner -> Se `doc/.TICKETS/TCK-044.md`
 - [x] **TCK-043** (VERIFIED): Den Integrerade Recept-Orkestreraren (Path Orchestrator) -> Se `doc/.TICKETS/TCK-043.md`

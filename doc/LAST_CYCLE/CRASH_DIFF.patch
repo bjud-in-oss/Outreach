@@ -1,74 +1,51 @@
-diff --git a/scripts/run-path.ts b/scripts/run-path.ts
-index 9ca5118..c23bae9 100644
---- a/scripts/run-path.ts
-+++ b/scripts/run-path.ts
-@@ -1,7 +1,11 @@
- import { 
-   skapaPathOrkestrerare, 
-   skapaMockSessionAdapter,
--  OrchestratorConfig
-+  OrchestratorConfig,
-+  skapaAvsiktsport,
-+  skapaProvningsport,
-+  skapaKonstruktionsport,
-+  skapaBesiktningsport
- } from '../src/features/path';
- import * as fs from 'fs';
- import * as path from 'path';
-@@ -11,7 +15,8 @@ export async function exekveraRunPath(options: {
-   ticketId?: string; 
-   argv?: string[]; 
-   io?: any; 
--  adapter?: any 
-+  adapter?: any;
-+  portar?: any 
- } = {}) {
-   const io = options.io || {
-     log: console.log,
-@@ -48,26 +53,28 @@ export async function exekveraRunPath(options: {
-     uppdrag: ticketContent
-   };
- 
--  // Dummy-portar som loggar till io.log och uppfyller kontrakten
--  const dummyPortar = {
--    avsikt: async (ctx: any) => {
--      io.log(` port:avsikt körs, fas: ${ctx.aktuellFas}`);
--      return { oppnad: true };
--    },
--    konstruktion: async () => {
--      io.log(` port:konstruktion körs`);
--      return { oppnad: true };
--    },
--    besiktning: async () => {
--      io.log(` port:besiktning körs`);
--      return { oppnad: true, godkand: true };
--    },
--    provning: async () => {
--      io.log(` port:provning körs`);
--      return { oppnad: true };
--    },
-+  // Portar som uppfyller de verkliga domänkontrakten
-+  const standardPortar = {
-+    avsikt: skapaAvsiktsport({ 
-+      prompter: async (q) => { io.log('   🚪 [PORT: AVSIKT] ' + q); return 'y'; }, 
-+      beskrivning: 'Validera intention för ' + ticketId 
-+    }),
-+    provning: skapaProvningsport({ 
-+      testFilVag: 'transient_test.ts', 
-+      forvantatFel: 'Fail-First', 
-+      testExekverare: async () => ({ passerade: false, exitKod: 1, felmeddelande: 'Förväntat Fail-First fel' }) 
-+    }),
-+    konstruktion: skapaKonstruktionsport({ 
-+      matris: [], 
-+      inspekterare: async () => ({ existerar: true, antalRader: 50, exporteradIIndex: true }) 
-+    }),
-+    besiktning: skapaBesiktningsport({ 
-+      inspekterare: async () => ({ godkand: true }) 
-+    }),
-   };
- 
-+  const portar = options.portar || standardPortar;
+diff --git a/src/__tests__/transient_TCK-046.test.ts b/src/__tests__/transient_TCK-046.test.ts
+new file mode 100644
+index 0000000..71c8876
+--- /dev/null
++++ b/src/__tests__/transient_TCK-046.test.ts
+@@ -0,0 +1,45 @@
++import { describe, it, expect } from 'vitest';
++import { bestamFasForSteg, skapaBidiLiveAdapter } from '../features/path';
 +
-   const adapter = options.adapter || {
-     skicka: async (prompt: any) => {
-       const stegMatch = prompt.userPrompt.match(/StegId: ([^\n]+)/);
++describe('TCK-046 Transient Test - Polyglott Prompt & Portfas', () => {
++
++  describe('bestamFasForSteg', () => {
++    it('should determine correct phase for portnod p2', () => {
++      const result = bestamFasForSteg('p2');
++      expect(result).toBe('provning');
++    });
++
++    it('should determine correct phase for portnod port-konstruktion', () => {
++      const result = bestamFasForSteg('port-konstruktion');
++      expect(result).toBe('konstruktion');
++    });
++
++    it('should determine correct phase for step-0', () => {
++      const result = bestamFasForSteg('step-0-initial');
++      expect(result).toBe('avsikt');
++    });
++  });
++
++  describe('skapaBidiLiveAdapter Polyglott Support', () => {
++    it('should process polyglott prompts with systemInstruction and userPrompt', async () => {
++      // Initialize the adapter (this should not throw if the constructor/factory is present)
++      const adapter = skapaBidiLiveAdapter({});
++      
++      const promptPayload = {
++        systemInstruction: 'Du är en hjälpsam guide för närhet.',
++        userPrompt: 'Hur finner jag frid?'
++      };
++
++      try {
++        // Execute the prompt handling – expected to fail since implementation is missing
++        const response = await adapter.skickaPrompt(promptPayload);
++        
++        expect(response).toBeDefined();
++        expect(response.tokensAnvanda).toBeGreaterThan(0);
++      } catch (error) {
++        // In the TDD phase before implementation, this is expected to fail or throw
++        throw error;
++      }
++    });
++  });
++});

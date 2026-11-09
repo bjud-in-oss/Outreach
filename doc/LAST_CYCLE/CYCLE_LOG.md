@@ -1,72 +1,64 @@
-# BYGGCYKEL LOGG: TCK-MAINT-026
-**Starttid:** 2026-11-09T22:18:05.433Z
+# BYGGCYKEL LOGG: TCK-046
+**Starttid:** 2026-11-09T22:33:18.604Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-026: Portintegration och Domänförankring i run-path.ts
+# TCK-046: Domänharmonisering, Polyglott Promptstöd och Portfas-spårning
 
 ## 1. MÅL
-Integrera Vägmotorns fyra verkliga portkontrakt i körskriptet `scripts/run-path.ts` med korrekta options-parametrar så att orkestreringen passerar genom faktiska domänportar utan körtidsfel, samt säkra regressionen via `scripts/__tests__/run-path.test.ts`.
+Gör `src/features/path/engine/bidiLiveAdapter.ts` polyglott så att den hanterar både systemInstruction/userPrompt och instructions/renderedContent, samt bredda `bestamFasForSteg` i `src/features/path/engine/pathRunner.ts` så att även portnoderna (p1–p4 och port-*) tilldelas sina korrekta faser deterministiskt.
 
-## 2. INFRASTRUKTURSPECIFIKATION
-Berörda filer: `scripts/run-path.ts`, `scripts/__tests__/run-path.test.ts`.
+## 2. KÄLLKODSSPECIFIKATION FÖR DOMÄNEN
+Måldomän: `src/features/path/` (Max 250 rader per logikfil).
 
-1. `scripts/run-path.ts`:
-   - Ersätt `dummyPortar` med anrop till de riktiga portfabrikerna från `../src/features/path`:
+1. `src/features/path/engine/bidiLiveAdapter.ts`:
+   - Extrahera systeminstruktion och användarinnehåll polyglott:
      ```typescript
-     const portar = {
-       avsikt: options.portar?.avsikt || skapaAvsiktsport({
-         prompter: async (fraga: string) => {
-           io.log(`   🚪 [PORT: AVSIKT] ${fraga}`);
-           return 'y';
-         },
-         beskrivning: `Verifiera intention för ${ticketId}`,
-       }),
-       provning: options.portar?.provning || skapaProvningsport({
-         testFilVag: 'transient_test.ts',
-         forvantatFel: 'Fail-First',
-         testExekverare: async () => ({
-           passerade: false,
-           exitKod: 1,
-           felmeddelande: 'Förväntat Fail-First fel'
-         })
-       }),
-       konstruktion: options.portar?.konstruktion || skapaKonstruktionsport({
-         matris: [],
-         inspekterare: async () => ({
-           existerar: true,
-           antalRader: 50,
-           exporteradIIndex: true
-         })
-       }),
-       besiktning: options.portar?.besiktning || skapaBesiktningsport({
-         inspekterare: async () => ({ godkand: true })
-       }),
-     };
+     const instruction = prompt.systemInstruction || prompt.instructions || '';
+     const content = prompt.userPrompt || prompt.renderedContent || '';
      ```
-   - Tillåt `options.portar` som valfri override för testbarhet.
-   - Behåll mock-adaptern med deterministiska syntetiska svar som standard.
+   - Använd `instruction` och `content` vid `client.send({ instruction, content })`.
+   - Säkra att `tokensAnvanda` beräknas och returneras pålitligt.
 
-2. `scripts/__tests__/run-path.test.ts`:
-   - Verifiera att `exekveraRunPath` exekverar framgångsrikt genom alla fyra domänportarna för både lean- och classic-receptet och returnerar `success: true` och `slutfold: true`.
+2. `src/features/path/engine/pathRunner.ts`:
+   - Uppdatera `bestamFasForSteg(stegId: string): string`:
+     ```typescript
+     export function bestamFasForSteg(stegId: string): string {
+       const s = stegId.toLowerCase();
+       if (s.includes('avsikt') || s.startsWith('step-0') || s.startsWith('step-1a') || s === 'p1') {
+         return 'avsikt';
+       }
+       if (s.includes('provning') || s.startsWith('step-1b') || s.startsWith('step-2') || s.startsWith('step-3') || s === 'p2') {
+         return 'provning';
+       }
+       if (s.includes('konstruktion') || s.startsWith('step-fas2') || s === 'p3') {
+         return 'konstruktion';
+       }
+       if (s.includes('besiktning') || s.startsWith('step-fas3') || s === 'p4') {
+         return 'besiktning';
+       }
+       return 'avsikt';
+     }
+     ```
 
-## 3. ACCEPTANSKRITERIER
-1. `scripts/run-path.ts` kompilerar och körs utan `TypeError` mot domänportarna.
-2. Samtliga tester i `pnpm test` passerar 100 % gröna.
-3. `pnpm verify` godkänner hela projektet.
-4. Trepunktsbesiktningen godkänns manuellt med `j`.
+## 3. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
+1. Det transienta testet `src/__tests__/transient_TCK-046.test.ts` ska:
+   - Testa att `bestamFasForSteg('p2')` returnerar 'provning' och `bestamFasForSteg('port-konstruktion')` returnerar 'konstruktion'.
+   - Testa att `skapaBidiLiveAdapter` skickar prompt med `systemInstruction` och `userPrompt` till klienten och returnerar ackumulerat svar.
+2. Testet ska fallera rött mot repots befintliga kod (Fail-First) innan källkoden patchas.
+3. Efter implementation ska samtliga tester i `pnpm verify` passera 100 % gröna.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att Vägmotorns fyra portar är korrekt integrerade i körskriptet, när en körning exekveras med full portvalidering, då ska systemet passera samtliga grindar och returnera framgång.
+Förståelsen för TCK-046 är glasklar: vi harmoniserar domänen genom att göra våra komponenter polyglotta så att olika gränssnitt kan samverka sömlöst. Den mänskliga nyttan ligger i en mer robust och förutsägbar användarupplevelse.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har genomfört en kontraktsaudit för TCK-MAINT-026. Ändringarna berör primärt `scripts/` och integrerar korrekt med `src/features/path`, vilket uppfyller FSD- och domänkontraktet. Jag bekräftar att alla tekniska krav och API-skills hanteras enligt protokollet.
+Kontraktsaudit för TCK-046 är nu slutförd. Jag har verifierat att samtliga ändringar ryms inom samma FSD-domän under src/features/path/ och att API-kontrakten följs. Inga avvikelser eller behov av destruktiv sanering har identifierats. Vi är redo att gå vidare.
 
 
 #### 0b Att förlikas: Vägval
@@ -78,12 +70,24 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-De tre ortogonala alternativen för lösningen är: Alternativ ett, direkt integration där portfabrikerna anropas direkt i `run-path.ts` med fallbacks mot optionerna. Alternativ två, en konfigurations-wrapper som isolerar portbygget i en separat fabriksfunktion för renare kod. Alternativ tre, dependency injection där portarna skickas in som ett färdigt objekt i orkestreringskonfigurationen för maximal testbarhet och flexibilitet.
+För att lösa TCK-046 och harmonisera domänen formulerar jag härmed tre ortogonala alternativ. Alternativ 1 är en direkt implementation med villkorlig extrahering och enkel if-else-logik, vilket är simpelt och uppfyller kraven direkt. Alternativ 2 introducerar en dedikerad normaliseringsfunktion för prompter och reguljära uttryck för fasbestämning för ökad modularitet. Alternativ 3 bygger på en konfigurationskarta för faser och ett utbyggbart normaliseringsmönster, vilket ger maximal flexibilitet och avkoppling av logik.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ tre, dependency injection, är det mest resilienta valet. Genom att isolera portbygget i en separat fabriksfunktion kan vi lägga in try-catch-block för att hantera eventuella initieringsfel och falla tillbaka på säkra mock-tillstånd om en riktig port skulle krascha. Det håller huvudexekveringen ren och skyddar mot körtidsfel.
+Alternativ 1 har högsta resiliensen tack vare sin enkelhet, då risken för dolda fel eller komplexa avbrott minimeras vid källkodskritiska uppdrag. Alternativ 2 och 3 riskerar mer friktion i framtida modulbyggen.
 
 
 #### 2d Att förlikas: Mättnad
-Med utgångspunkt i det som presenterats, vinner Alternativ tre, dependency injection, som det mest resilienta valet. Jag bekräftar beslutet och deklarerar MÄTTNAD: JA.
+Med utgångspunkt i analysen av resiliens och enkelhet slår jag fast att Alternativ 1 är det vinnande valet. MÄTTNAD: JA.
+
+
+#### 3a Att följa: Testspecifikation
+
+
+
+#### 3b Att följa: Källkod
+
+
+
+#### 3c Att förlikas: Slutgiltigt Byggkontrakt
+Jag bekräftar det slutgiltiga byggkontraktet för TCK-046. Vi kommer att skapa det transienta testet src/__tests__/transient_TCK-046.test.ts och därefter uppdatera källkoden i src/features/path/engine/bidiLiveAdapter.ts samt src/features/path/engine/pathRunner.ts enligt specifikationerna. Vi är redo för Fas 2.
