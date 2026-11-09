@@ -1,67 +1,108 @@
-diff --git a/scripts/verify-architecture.js b/scripts/verify-architecture.js
-index eb15a12..5eaffcb 100644
---- a/scripts/verify-architecture.js
-+++ b/scripts/verify-architecture.js
-@@ -44,6 +44,23 @@ function checkFsdImports(filePath) {
+diff --git a/src/features/path/engine/pathRunner.ts b/src/features/path/engine/pathRunner.ts
+index 701659f..1d3c203 100644
+--- a/src/features/path/engine/pathRunner.ts
++++ b/src/features/path/engine/pathRunner.ts
+@@ -51,24 +51,17 @@ export async function exekveraRecept(
+ }
+ 
+ export function bestamFasForSteg(stegId: string): string {
+-  switch (stegId) {
+-    case 'step-1a':
+-    case 'step-0a':
+-    case 'step-0b':
+-    case 'avsikt':
+-      return 'avsikt';
+-    case 'step-1b':
+-    case 'step-2':
+-    case 'step-3':
+-    case 'provning':
+-      return 'provning';
+-    case 'step-fas2':
+-    case 'konstruktion':
+-      return 'konstruktion';
+-    case 'step-fas3':
+-    case 'besiktning':
+-      return 'besiktning';
+-    default:
+-      return 'avsikt';
++  if (stegId.startsWith('step-1a') || stegId.startsWith('step-0') || stegId.startsWith('avsikt')) {
++    return 'avsikt';
+   }
++  if (stegId.startsWith('step-1b') || stegId.startsWith('step-2') || stegId.startsWith('step-3') || stegId.startsWith('provning')) {
++    return 'provning';
++  }
++  if (stegId.startsWith('step-fas2') || stegId.startsWith('konstruktion')) {
++    return 'konstruktion';
++  }
++  if (stegId.startsWith('step-fas3') || stegId.startsWith('besiktning')) {
++    return 'besiktning';
++  }
++  return 'avsikt';
+ }
+diff --git a/src/features/path/engine/promptCompiler.ts b/src/features/path/engine/promptCompiler.ts
+index 5fc8d28..dec6b3b 100644
+--- a/src/features/path/engine/promptCompiler.ts
++++ b/src/features/path/engine/promptCompiler.ts
+@@ -27,7 +27,7 @@ export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
+ 
+   return {
+     systemInstruction,
+-    userPrompt: `Genomför uppdrag: ${input.uppdrag}`,
++    userPrompt: `StegId: ${input.stegId}\nInput: ${JSON.stringify(input.kontextMinne || {})}\nUppdrag: ${input.uppdrag}`,
+     beraknadeTokensUngefar,
+   };
+ }
+diff --git a/src/features/path/engine/runtimeAdapter.ts b/src/features/path/engine/runtimeAdapter.ts
+index 39c52e5..8c8d8ab 100644
+--- a/src/features/path/engine/runtimeAdapter.ts
++++ b/src/features/path/engine/runtimeAdapter.ts
+@@ -1,4 +1,6 @@
+ import { SessionAdapter, CompiledPrompt, StepResult } from '../model/types';
++import { kompileraPrompt } from './promptCompiler';
++import { bestamFasForSteg } from './pathRunner';
+ 
+ export function skapaMockSessionAdapter(svarstabell: Record<string, string> = {}): SessionAdapter {
+   return {
+@@ -13,18 +15,33 @@ export function skapaMockSessionAdapter(svarstabell: Record<string, string> = {}
+   };
+ }
+ 
+-export function skapaStegExekverare(adapter: SessionAdapter, doman: string) {
+-  return async (stegId: string, input: Record<string, unknown>): Promise<StepResult> => {
+-    const prompt: CompiledPrompt = {
+-      systemInstruction: 'Exekverar steg.',
+-      userPrompt: `StegId: ${stegId}\nInput: ${JSON.stringify(input)}`,
+-      beraknadeTokensUngefar: 50
+-    };
++export function skapaStegExekverare(
++  adapter: SessionAdapter, 
++  configOrDomain: string | { ticketId?: string; malDoman: string; basUppdrag?: string }
++) {
++  const malDoman = typeof configOrDomain === 'string' 
++    ? configOrDomain 
++    : configOrDomain.malDoman;
++
++  return async (stegId: string, input: Record<string, unknown>, uppdrag?: string): Promise<StepResult> => {
++    const fas = bestamFasForSteg(stegId);
++    const resolvedUppdrag = uppdrag || (typeof configOrDomain !== 'string' ? configOrDomain.basUppdrag : undefined) || 'Utför uppdrag';
++
++    const prompt = kompileraPrompt({
++      fas,
++      stegId,
++      kontextMinne: input,
++      uppdrag: resolvedUppdrag
++    });
+ 
+     try {
+       const result = await adapter.skicka(prompt);
+-      if (result.svar) {
+-        return { success: true, data: result.svar };
++      if (result && result.svar) {
++        return { 
++          success: true, 
++          data: result.svar,
++          tokensUsed: (result as any).tokensAnvanda 
++        };
        }
-     }
- 
-+        // Kontroll 3: Zod-scheman vs Interface
-+    if (filePath.endsWith("Schema.ts")) {
-+      ts.forEachChild(sf, node => {
-+        if (ts.isVariableStatement(node)) {
-+          const decl = node.declarationList.declarations[0];
-+          if (decl && decl.name && decl.name.text && decl.name.text.endsWith("Schema")) {
-+            const baseName = decl.name.text.replace("Schema", "");
-+            if (!content.includes("type " + baseName) && !content.includes("interface " + baseName)) {
-+              const { line } = sf.getLineAndCharacterOfPosition(decl.getStart());
-+              console.error("❌ ZOD-BROTT i " + path.relative(ROOT_DIR, filePath) + ":" + (line + 1) + ":");
-+              console.error("   Zod-schemat '" + decl.name.text + '' saknar matchande Typescript-typ/interface ('" + baseName + "'). Export av z.infer rekommenderas.");
-+              fsdViolations++;
-+            }
-+          }
-+        }
-+      });
-+    }
-     if (targetFeature && targetFeature !== currentFeature && targetFeature !== 'shared') {
-       const { line } = sf.getLineAndCharacterOfPosition(node.getStart());
-       console.error(`❌ FSD-BROTT i ${path.relative(ROOT_DIR, filePath)}:${line + 1}:`);
-diff --git a/src/features/path/contracts/pathSchema.ts b/src/features/path/contracts/pathSchema.ts
-index 5c03764..b285d86 100644
---- a/src/features/path/contracts/pathSchema.ts
-+++ b/src/features/path/contracts/pathSchema.ts
-@@ -18,6 +18,34 @@ export const AvsiktsportOptionsSchema = z.object({
-   exempel: z.string().optional(),
- });
- 
-+export const ProvningsportOptionsSchema = z.object({
-+  testFilVag: z.string(),
-+  forvantatFel: z.string(),
-+  testExekverare: z.custom<Function>(),
-+});
-+
-+export const KonstruktionsportOptionsSchema = z.object({
-+  matris: z.array(z.custom<any>()),
-+  inspekterare: z.custom<Function>(),
-+  barrelVag: z.string().optional(),
-+});
-+
-+export const BesiktningsportOptionsSchema = z.object({
-+  inspekterare: z.custom<Function>(),
-+});
-+
-+export const ClassicReceptOptionsSchema = z.object({
-+  id: z.string(),
-+  name: z.string(),
-+  steps: z.array(z.custom<any>()),
-+});
-+
-+export const LeanReceptOptionsSchema = z.object({
-+  id: z.string(),
-+  name: z.string(),
-+  phases: z.array(z.custom<any>()),
-+});
-+
- export const PathRecipeSchema = z.object({
-   id: z.string(),
-   name: z.string(),
+       return { success: false, data: 'Inget svar erhölls' };
+     } catch (error) {

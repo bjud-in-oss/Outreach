@@ -145,6 +145,7 @@ async function runMicroChannel(
 }
 
 async function main() {
+  const startTime = Date.now();
   const isMaintRun = process.argv.some(a => a.toUpperCase().includes("MAINT"));
   if (isMaintRun) {
     const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
@@ -418,17 +419,24 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
 
     console.log('\n🔴 Gate 3a Fail-First: Verifierar att testet fallerar rött (exit 1)...');
     let testFailedAsExpected = false;
+    let failFirstOutput = '';
     try {
       syncDomainBarrel();
-        execSync(`npx vitest run ${transientTestFile}`, { stdio: 'pipe', cwd: ROOT_DIR });
+      execSync(`npx vitest run ${transientTestFile}`, { stdio: 'pipe', cwd: ROOT_DIR });
     } catch (err: any) {
       testFailedAsExpected = true;
+      failFirstOutput = (err.stdout ? err.stdout.toString() : '') + '\n' + (err.stderr ? err.stderr.toString() : '');
     }
     if (!testFailedAsExpected) {
       console.error('❌ GATE 3a UNDERKÄND: Transient-testet måste fallera med exit-kod 1 innan kod får skrivas.');
       process.exit(1);
     }
-    console.log('✅ Godkänt Fail-First: Testet fallerade rött.');
+    if (failFirstOutput.includes('TypeError:') || failFirstOutput.includes('ReferenceError:')) {
+      console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på körtidsfel (TypeError/ReferenceError) i testkoden!');
+      console.error(failFirstOutput.slice(0, 1000));
+      process.exit(1);
+    }
+    console.log('✅ Godkänt Fail-First: Testet fallerade rött av rätt orsak.');
   }
 
   console.log('\n⚡ Exekverar kodändringar via Bidi Live WebSocket...');
@@ -470,7 +478,7 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
     const full = path.resolve(ROOT_DIR, rel);
 
     if (name === 'save_code') {
-      if (fs.existsSync(full) && (rel.endsWith("model/types.ts") || rel.endsWith("index.ts"))) {
+      if (fs.existsSync(full) && (rel.endsWith("model/types.ts") || rel.endsWith("index.ts") || rel.includes("contracts/"))) {
         const existingContent = fs.readFileSync(full, "utf-8");
         const existingExports = (existingContent.match(/export (?:interface|type|class|const|function) ([a-zA-Z0-9_]+)/g) || []);
         for (const exp of existingExports) {
@@ -764,9 +772,35 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera TICKETS.md: ${err?.message || err}`);
   }
 
+  
+  if (isMaint) {
+    console.log("\n🔍 Verifierar underhållsleverans...");
+    const changedFiles = execSync("git diff --name-only", { encoding: "utf-8", cwd: ROOT_DIR }).split("\n").filter(Boolean);
+    const spec = fs.readFileSync(ticketPath, "utf-8");
+    const expectedFiles = (spec.match(/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+(?:ts|js|json|md))/g) || [])
+      .filter((v, i, a) => a.indexOf(v) === i && !v.includes("TCK-"));
+    const missing = expectedFiles.filter(f => !changedFiles.some(cf => cf.includes(path.basename(f))));
+    if (missing.length > 0) {
+      console.warn("⚠️ [LEVERANSVARNING]: Följande filer nämndes i specifikationen men ändrades inte:");
+      missing.forEach(f => console.warn(`   - ${f}`));
+    } else {
+      console.log("✅ Alla filer som nämndes i specifikationen har berörts.");
+    }
+  }
+
   console.log('\n🔍 Slutverifiering: Kör hela projektets arkitektur- och regressionskontroll...');
   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
   console.log('\n🎉 ALLA TESTER OCH ARKITEKTURKONTROLLER GRÖNA!');
+  try {
+    const benchData = {
+      ticket: ticketId,
+      durationMs: Date.now() - startTime,
+      timestamp: new Date().toISOString()
+    };
+    fs.writeFileSync(path.join(CYCLE_LOG_DIR, "BENCHMARK.json"), JSON.stringify(benchData, null, 2), "utf-8");
+    console.log("📊 [BENCHMARK]: doc/LAST_CYCLE/BENCHMARK.json sparad.");
+  } catch {}
+
 
   // --- DEN MÄNSKLIGA BESLUTSGRINDEN FÖR SYSTEMÄNDRINGAR ---
   if (isMaint) {

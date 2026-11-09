@@ -51,24 +51,17 @@ export async function exekveraRecept(
 }
 
 export function bestamFasForSteg(stegId: string): string {
-  switch (stegId) {
-    case 'step-1a':
-    case 'step-0a':
-    case 'step-0b':
-    case 'avsikt':
-      return 'avsikt';
-    case 'step-1b':
-    case 'step-2':
-    case 'step-3':
-    case 'provning':
-      return 'provning';
-    case 'step-fas2':
-    case 'konstruktion':
-      return 'konstruktion';
-    case 'step-fas3':
-    case 'besiktning':
-      return 'besiktning';
-    default:
-      return 'avsikt';
+  if (stegId.startsWith('step-1a') || stegId.startsWith('step-0') || stegId.startsWith('avsikt')) {
+    return 'avsikt';
   }
+  if (stegId.startsWith('step-1b') || stegId.startsWith('step-2') || stegId.startsWith('step-3') || stegId.startsWith('provning')) {
+    return 'provning';
+  }
+  if (stegId.startsWith('step-fas2') || stegId.startsWith('konstruktion')) {
+    return 'konstruktion';
+  }
+  if (stegId.startsWith('step-fas3') || stegId.startsWith('besiktning')) {
+    return 'besiktning';
+  }
+  return 'avsikt';
 }

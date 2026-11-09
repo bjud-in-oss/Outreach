@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-018** (VERIFIED): Fullborda Recept-Integration och Prefixmatchning i Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-018.md`
 - [x] **TCK-MAINT-017** (VERIFIED): Infrastruktur-rest och Zod-kontrakt för Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-017.md`
 - [x] **TCK-MAINT-016** (VERIFIED): Godkänn Fraktal Omvändelse i Makro och Meta -> Se `doc/.TICKETS/TCK-MAINT-016.md`
 - [x] **TCK-MAINT-015** (VERIFIED): Reparera och installera lyssnaren för Fas 2 -> Se `doc/.TICKETS/TCK-MAINT-015.md`
