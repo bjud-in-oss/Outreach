@@ -260,7 +260,9 @@
         "engine/besiktningsport.ts",
         "engine/konstruktionsport.ts",
         "engine/pathRunner.ts",
+        "engine/promptCompiler.ts",
         "engine/provningsport.ts",
+        "engine/runtimeAdapter.ts",
         "index.ts",
         "model/types.ts",
         "recipes/classicRecipe.ts",
@@ -280,12 +282,15 @@
         "ProvningsportOptionsSchema",
         "exekveraRecept",
         "knackaPaPorten",
+        "kompileraPrompt",
         "skapaAvsiktsport",
         "skapaBesiktningsport",
         "skapaClassicRecept",
         "skapaKonstruktionsport",
         "skapaLeanRecept",
-        "skapaProvningsport"
+        "skapaMockSessionAdapter",
+        "skapaProvningsport",
+        "skapaStegExekverare"
       ]
     },
     "telemetry": {
