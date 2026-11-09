@@ -1,108 +1,16 @@
-diff --git a/src/features/path/engine/pathRunner.ts b/src/features/path/engine/pathRunner.ts
-index 701659f..1d3c203 100644
---- a/src/features/path/engine/pathRunner.ts
-+++ b/src/features/path/engine/pathRunner.ts
-@@ -51,24 +51,17 @@ export async function exekveraRecept(
- }
+diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
+index 28ee146..83032fc 100644
+--- a/scripts/run-planera-live.ts
++++ b/scripts/run-planera-live.ts
+@@ -248,6 +248,11 @@ async function main() {
  
- export function bestamFasForSteg(stegId: string): string {
--  switch (stegId) {
--    case 'step-1a':
--    case 'step-0a':
--    case 'step-0b':
--    case 'avsikt':
--      return 'avsikt';
--    case 'step-1b':
--    case 'step-2':
--    case 'step-3':
--    case 'provning':
--      return 'provning';
--    case 'step-fas2':
--    case 'konstruktion':
--      return 'konstruktion';
--    case 'step-fas3':
--    case 'besiktning':
--      return 'besiktning';
--    default:
--      return 'avsikt';
-+  if (stegId.startsWith('step-1a') || stegId.startsWith('step-0') || stegId.startsWith('avsikt')) {
-+    return 'avsikt';
-   }
-+  if (stegId.startsWith('step-1b') || stegId.startsWith('step-2') || stegId.startsWith('step-3') || stegId.startsWith('provning')) {
-+    return 'provning';
+   fs.writeFileSync(CYCLE_LOG_PATH, `# BYGGCYKEL LOGG: ${ticketId}\n**Starttid:** ${new Date().toISOString()}\n**Modell:** ${MODEL_NAME}\n\n---\n### INITIAL PROMPT\n\`\`\`\n${ticketPrompt}\n\`\`\`\n`, 'utf-8');
+ 
++  if (!isMaint && (/scripts\/|package\.json|vite\.config/.test(ticketPrompt))) {
++    console.error(`❌ GRINDBROTT (Fas 0): Biljetten '${ticketId}' kräver ändringar i infrastruktur (scripts/rotfiler) men är inte en TCK-MAINT-biljett. Använd TCK-MAINT för infrastruktur.`);
++    process.exit(1);
 +  }
-+  if (stegId.startsWith('step-fas2') || stegId.startsWith('konstruktion')) {
-+    return 'konstruktion';
-+  }
-+  if (stegId.startsWith('step-fas3') || stegId.startsWith('besiktning')) {
-+    return 'besiktning';
-+  }
-+  return 'avsikt';
- }
-diff --git a/src/features/path/engine/promptCompiler.ts b/src/features/path/engine/promptCompiler.ts
-index 5fc8d28..dec6b3b 100644
---- a/src/features/path/engine/promptCompiler.ts
-+++ b/src/features/path/engine/promptCompiler.ts
-@@ -27,7 +27,7 @@ export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
- 
-   return {
-     systemInstruction,
--    userPrompt: `Genomför uppdrag: ${input.uppdrag}`,
-+    userPrompt: `StegId: ${input.stegId}\nInput: ${JSON.stringify(input.kontextMinne || {})}\nUppdrag: ${input.uppdrag}`,
-     beraknadeTokensUngefar,
-   };
- }
-diff --git a/src/features/path/engine/runtimeAdapter.ts b/src/features/path/engine/runtimeAdapter.ts
-index 39c52e5..8c8d8ab 100644
---- a/src/features/path/engine/runtimeAdapter.ts
-+++ b/src/features/path/engine/runtimeAdapter.ts
-@@ -1,4 +1,6 @@
- import { SessionAdapter, CompiledPrompt, StepResult } from '../model/types';
-+import { kompileraPrompt } from './promptCompiler';
-+import { bestamFasForSteg } from './pathRunner';
- 
- export function skapaMockSessionAdapter(svarstabell: Record<string, string> = {}): SessionAdapter {
-   return {
-@@ -13,18 +15,33 @@ export function skapaMockSessionAdapter(svarstabell: Record<string, string> = {}
-   };
- }
- 
--export function skapaStegExekverare(adapter: SessionAdapter, doman: string) {
--  return async (stegId: string, input: Record<string, unknown>): Promise<StepResult> => {
--    const prompt: CompiledPrompt = {
--      systemInstruction: 'Exekverar steg.',
--      userPrompt: `StegId: ${stegId}\nInput: ${JSON.stringify(input)}`,
--      beraknadeTokensUngefar: 50
--    };
-+export function skapaStegExekverare(
-+  adapter: SessionAdapter, 
-+  configOrDomain: string | { ticketId?: string; malDoman: string; basUppdrag?: string }
-+) {
-+  const malDoman = typeof configOrDomain === 'string' 
-+    ? configOrDomain 
-+    : configOrDomain.malDoman;
 +
-+  return async (stegId: string, input: Record<string, unknown>, uppdrag?: string): Promise<StepResult> => {
-+    const fas = bestamFasForSteg(stegId);
-+    const resolvedUppdrag = uppdrag || (typeof configOrDomain !== 'string' ? configOrDomain.basUppdrag : undefined) || 'Utför uppdrag';
-+
-+    const prompt = kompileraPrompt({
-+      fas,
-+      stegId,
-+      kontextMinne: input,
-+      uppdrag: resolvedUppdrag
-+    });
- 
-     try {
-       const result = await adapter.skicka(prompt);
--      if (result.svar) {
--        return { success: true, data: result.svar };
-+      if (result && result.svar) {
-+        return { 
-+          success: true, 
-+          data: result.svar,
-+          tokensUsed: (result as any).tokensAnvanda 
-+        };
-       }
-       return { success: false, data: 'Inget svar erhölls' };
-     } catch (error) {
+   // ==========================================
+   // FAS 0: PREMISSVALIDERING & DÖRRVAKT
+   // ==========================================

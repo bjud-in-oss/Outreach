@@ -21,7 +21,8 @@
     "synka": "tsx --env-file=.env scripts/synka.ts",
     "compress-adrs": "node scripts/compress-adrs.js",
     "start": "pnpm samrad",
-    "bygg:classic": "tsx --env-file=.env scripts/run-planera-live.ts"
+    "bygg:classic": "tsx --env-file=.env scripts/run-planera-live.ts",
+    "bygg:path": "tsx --env-file=.env scripts/run-path.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

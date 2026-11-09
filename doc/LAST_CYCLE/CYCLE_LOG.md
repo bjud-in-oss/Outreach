@@ -1,49 +1,62 @@
-# BYGGCYKEL LOGG: TCK-MAINT-020
-**Starttid:** 2026-11-09T19:15:36.198Z
+# BYGGCYKEL LOGG: TCK-MAINT-021
+**Starttid:** 2026-11-09T19:35:52.358Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-020: Mekaniskt Förankrat Körskript för Vägmotorn (run-path.ts)
+# TCK-MAINT-021: Territorievakt i Fas 0, Skriptgranskare i Verify och Förankring av run-path
 
 ## 1. MÅL
-Ersätt det trasiga körskriptet med en ny, testdriven implementation av `scripts/run-path.ts` som kan exekvera Vägmotorn parallellt, och registrera kommandot `bygg:path` i `package.json`. För att garantera att skriptet fungerar och att FSD-gränser respekteras införs även ett formellt integrationstest i `scripts/__tests__/`. 
+Installera tre permanenta arkitekturgrindar som förhindrar att infrastrukturförändringar slinker förbi som vanliga feature-biljetter eller döljs i besiktningsgrinden, samt slutför och verifiera `scripts/run-path.ts` med ett permanent integrationstest i `scripts/__tests__/`.
 
-## 2. KÄLLKODSSPECIFIKATION
-Domäner: `scripts/`, `vite.config.ts`, `package.json`.
+## 2. INFRASTRUKTUR- OCH KÄLLKODSSPECIFIKATION
+Berörda filer: `scripts/run-planera-live.ts`, `scripts/verify-architecture.js`, `scripts/run-path.ts`, `scripts/__tests__/run-path.test.ts`, `package.json`.
 
-1. `vite.config.ts`:
-   - Lägg till `'scripts/**/*.test.{ts,js}'` i `test.include`-arrayen så att Vitest även plockar upp tester under `scripts/`.
+1. `scripts/run-planera-live.ts` (Grind A & C):
+   - **Grind A (Territorievakt i Fas 0):** Före Fas 0-micro-channels, kontrollera om `!isMaint` och biljetten refererar till filer i `scripts/`, `package.json` eller rotkonfigurationer (`vite.config.ts`). Om så är fallet, avbryt omedelbart:
+     ```typescript
+     if (!isMaint && (/scripts\/|package\.json|vite\.config/.test(ticketPrompt))) {
+       console.error(`❌ GRINDBROTT (Fas 0): Biljetten '${ticketId}' kräver ändringar i infrastruktur (scripts/rotfiler) men är inte en TCK-MAINT-biljett. Använd TCK-MAINT för infrastruktur.`);
+       process.exit(1);
+     }
+     ```
+   - **Trepunktsbesiktning (Full transparens):** Kör `execSync('git add -N scripts/ src/ doc/ package.json 2>/dev/null || true', { cwd: ROOT_DIR });` omedelbart före `git diff --stat` så att nyskapade, ospårade filer alltid syns i diffen som människan godkänner.
+   - **Grind C (Kravkontroll för MAINT):** Ta bort frikortet `if (isMaint) return [];` i `getRequiredFiles()`. För MAINT-biljetter ska filer under `scripts/` och `scripts/__tests__/` som listas i biljetten inkluderas i kontrollen så att Fas 2 inte kan avslutas utan att filerna faktiskt har skapats.
 
-2. `scripts/run-path.ts`:
-   - Skall exportera en testbar modulär funktion `exekveraRunPath(ticketId: string, argv: string[], env: Record<string, string>, io: { log: Function, error: Function })` som instansierar orkestreraren, kör receptet (lean eller classic) och returnerar resultatet utan att anropa `process.exit()`.
-   - Skall endast anropa `process.exit()` i ett fristående if-block längst ned (`if (require.main === module) { ... }` motsvarande) om filen körs direkt från CLI.
-   - Skall initiera `skapaPathOrkestrerare` (från `src/features/path`) med dummy-portar och en `skapaMockSessionAdapter`.
-   - `config.receptTyp` styrs av om flaggan `--classic` finns i argumenten.
-   - Skall formatera `userPrompt` korrekt till `MockSessionAdapter`.
+2. `scripts/verify-architecture.js` (Grind B):
+   - **Grind 2b (Typ- och referenskontroll i scripts/):** Utöka AST-skanningen av `scripts/` så att alla `.ts`-filer under `scripts/` skannas efter uppenbara referensfel (t.ex. odefinierade identifierare som `biljettId` utan deklaration) eller valideras programmatiskt med TypeScript AST för att stoppa felaktiga skript innan de når GitHub.
 
-3. `scripts/__tests__/run-path.test.ts`:
-   - Skapa ett permanent enhetstest för `run-path.ts`.
-   - Testet ska anropa `exekveraRunPath` med syntetiska I/O-objekt (mocks för log/error) och bevisa att orkestreraren kan köras utan `ReferenceError` eller `TypeError`.
+3. `scripts/run-path.ts` & `scripts/__tests__/run-path.test.ts`:
+   - Implementera `scripts/run-path.ts` så att den exporterar den testbara funktionen:
+     ```typescript
+     export async function exekveraRunPath(options: { 
+       ticketId?: string; 
+       argv?: string[]; 
+       io?: { log: (...args: any[]) => void; warn: (...args: any[]) => void; error: (...args: any[]) => void };
+       adapter?: any;
+     })
+     ```
+   - Skriptet ska läsa biljetten, instansiera `skapaPathOrkestrerare` med ett komplett `OrchestratorConfig` (`receptTyp`, `ticketId`, `malDoman`, `uppdrag`, `kontextMinne`), stödja flaggan `--classic` kontra default `lean`, och köra orkestreraren.
+   - Skapa det permanenta testet `scripts/__tests__/run-path.test.ts` som importerar och anropar `exekveraRunPath` med ett syntetiskt I/O-objekt och verifierar att `success: true` returneras för både lean- och classic-receptet utan krascher.
 
 4. `package.json`:
-   - Skall innehålla skriptet `"bygg:path": "tsx --env-file=.env scripts/run-path.ts"`.
+   - Säkerställ att `"bygg:path": "tsx --env-file=.env scripts/run-path.ts"` är registrerat under `scripts`.
 
 ## 3. ACCEPTANSKRITERIER (Hermetisk TDD och Gate 3a)
-1. Det ska finnas ett transient test `src/__tests__/transient_TCK-MAINT-020.test.ts` som instansierar `exekveraRunPath` och verifierar att `success: true` returneras för ett mockat körfall.
-2. `pnpm test` ska visa att både det nya testet i `scripts/__tests__/` och det transienta testet är 100 % gröna.
-3. Trepunktsbesiktningen i slutet av körningen måste manuellt godkännas av användaren.
+1. Samtliga domäntester och det nya testet `scripts/__tests__/run-path.test.ts` ska passera 100 % gröna i `pnpm test`.
+2. `pnpm verify` ska validera samtliga filer och passera 100 % grön.
+3. Trepunktsbesiktningen i slutet av `pnpm bygg TCK-MAINT-021` ska explicit visa de modifierade och nyskapade filerna i sin diff-stat inför mänskligt godkännande (`j`).
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att ett trasigt körskript hindrar exekvering av Vägmotorn, När skriptet scripts run-path ts körs genom bygg path med korrekta parametrar, Så ska Vägmotorn exekvera orkestreraren framgångsrikt och returnera success true utan att stänga processen abruptly.
+Givet att en infrastrukturvakt och nya skriptgranskare införs för att skydda systemets arkitektur, När gränserna kontrolleras och `run-path.ts` testas, Så säkerställs att alla ändringar följer rätt kontrakt och att systemet förblir intakt och transparent.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har genomfört en kontraktsaudit för TCK-MAINT-020 och verifierarJag har genomfört kontraktsauditen och den är godkänd. Uppdraget rör justeringar i konfigurationsfiler och körskript i roten, vilket inte påverkar de isolerade domänerna under `src/features/`. Vi kan därmed gå vidare.
+Kontraktsaudit genomförd. TCK-MAINT-021 berör enbart infrastruktur (scripts och rotfiler) och ingrepp sker inte i fler än en FSD-domän. Inga skadliga eller destruktiva ingrepp krävs. Vi kan gå vidare direkt mot Intent Gatefasen.
 
 
 #### 0b Att förlikas: Vägval
@@ -55,18 +68,20 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att lösa TCK-MAINT-020:
+Här är tre ortogonala alternativ för att lösa TCK-MAINT-021 på ett robust och modulärt sätt.
 
-Alternativ 1 fokuserar på en minimalistisk och direkt modell, där `run-path.ts` samlar all nödvändig logik i en och samma fil och strikt följer exportkraven.
+Alternativ Ett: Direkt integration och linjär skriptutbyggnad. Vi uppdaterar `run-planera-live.ts` och `verify-architecture.js` direkt med grindarna för territorievakt och arkitekturkontroll, samt implementerar `run-path.ts` med dess testsvit i ett sammanhållet svep.
 
-Alternativ 2 bygger ut med en mer modulär arkitektur, där vi separerar skapandet av portar och adaptrar i hjälpare, vilket underlättar framtida underhåll.
+Alternativ Två: Modulär gränshantering och delegerad validering. Vi bryter ut grindslogiken i dedikerade hjälpfunktioner i `scripts/` för att hålla huvudskripten rena, och använder AST-analys för att rigoröst verifiera alla TypeScript-referenser i skriptkatalogen.
 
-Alternativ 3 prioriterar TDD genom att definiera testfallen först, vilket säkerställer perfekt täckning och stabilitet innan källkoden slutförs.
+Alternativ Tre: Tvåstegs utrullning med strikt kontraktsseparation. Vi implementerar `run-path.ts först via en isolerad process för att säkra dess funktion mot `OrchestratorConfig`, och därefter aktiverar vi territorievakten och de tre arkitekturgrindarna.
+
+Vilket av dessa arkitekturval reflekterar bäst er syn på framtida resiliens och kodstruktur?
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid granskning av alternativen för TCK-MAINT-020 visar det sig att Alternativ 2, med separata hjälpare för portar och adaptrar, ger bäst robusthet och enklare felisolering. Det minskar risken för ReferenceErrors och främjar god FSD-isolering.
+Alternativ Två reflekterar bäst vår syn på framtida resiliens och kodstruktur. Genom att bryta ut grindslogiken i dedikerade hjälpfunktioner och använda AST-analys, minskar vi risken för mänskliga faktorn-fel och skapar en mycket mer robust valideringskedja som stoppar trasiga skript innan de når produktion.
 
 
 #### 2d Att förlikas: Mättnad
-Jag fastställer att Alternativ 2 är det vinnande kontraktet. Genom att använda separata hjälpare för portar och adaptrar maximerar vi robustheten och förenklar felisoleringen, vilket säkerställer en god FSD-isolering. Jag deklarerar härmed MÄTTNAD: JA.
+Efter en noggrann avvägning av de arkitektoniska alternativen står det klart att Alternativ Två är det vinnande kontraktet. Genom att bryta ut grindslogiken och använda AST-analys skapar vi en nödvändig resiliens och skyddar produktionsmiljön mekaniskt. MÄTTNAD: JA.

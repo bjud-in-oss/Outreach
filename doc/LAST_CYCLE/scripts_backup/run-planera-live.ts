@@ -51,7 +51,9 @@ function dumpCrashDiff() {
       console.log(diff.slice(0, 2500) + (diff.length > 2500 ? "\n... (trunkerad vid 2500 tecken)" : ""));
       console.log("───────────────────────────────────────────────────────────────────────────\n");
     }
-  } catch {}
+  } catch (err: any) {
+    console.warn("⚠️ [KRASCH-DIFF]: Kunde inte spara diff:", err?.message || err);
+  }
 }
 
 function restoreScriptsBackup() {
@@ -550,7 +552,10 @@ ${fs.existsSync(transientTestFullPath) ? fs.existsSync(transientTestFullPath) ? 
 Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive engine, types och export i index.ts) innan du avslutar!`;
 
   const getRequiredFiles = (): string[] => {
-    if (isMaint) return [];
+    if (isMaint) {
+      const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_/\-]+\.(ts|js)/g) || [];
+      return Array.from(new Set(promptFiles));
+    }
     const promptFiles = ticketPrompt.match(new RegExp(`src/features/${targetDomain}/[a-zA-Z0-9_/\\-]+\\.(ts|tsx)`, 'g')) || [];
     return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
   };
@@ -799,7 +804,9 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     };
     fs.writeFileSync(path.join(CYCLE_LOG_DIR, "BENCHMARK.json"), JSON.stringify(benchData, null, 2), "utf-8");
     console.log("📊 [BENCHMARK]: doc/LAST_CYCLE/BENCHMARK.json sparad.");
-  } catch {}
+  } catch (err: any) {
+    console.warn("⚠️ [BENCHMARK]: Kunde inte spara benchmark:", err?.message || err);
+  }
 
 
   // --- DEN MÄNSKLIGA BESLUTSGRINDEN FÖR SYSTEMÄNDRINGAR ---
@@ -892,7 +899,9 @@ main().catch(err => {
     fs.mkdirSync(path.join(ROOT_DIR, "doc", "LAST_CYCLE"), { recursive: true });
     fs.writeFileSync(path.join(ROOT_DIR, "doc", "LAST_CYCLE", "CRASH_DIFF.patch"), diff, "utf-8");
     console.log("\n📄 [KRASCH-DIFF SPARAD]: doc/LAST_CYCLE/CRASH_DIFF.patch");
-  } catch {}
+  } catch (diffErr: any) {
+    console.warn("⚠️ Kunde inte spara kraschdiff:", diffErr?.message || diffErr);
+  }
   console.error("\n💥 Byggfel:", err);
   process.exit(1);
 });
