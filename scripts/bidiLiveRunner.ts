@@ -40,15 +40,21 @@ export class BidiLiveSession {
     this.isClosed = false;
 
     const isExtendedThinking = this.config.model.includes('extended-thinking');
+    const modality = process.env.BIDI_MODALITY;
     process.stdout.write(`   📡 Ansluter Bidi Live WebSocket (${this.config.model})...`);
     
     const connectConfig: any = {
-      responseModalities: ["AUDIO"],
-      outputAudioTranscription: {},
       systemInstruction: {
         parts: [{ text: this.config.systemInstruction }],
       },
     };
+
+    if (modality === 'TEXT') {
+      connectConfig.responseModalities = ["TEXT"];
+    } else {
+      connectConfig.responseModalities = ["AUDIO"];
+      connectConfig.outputAudioTranscription = {};
+    }
 
     if (isExtendedThinking) {
       connectConfig.thinkingConfig = { thinkingLevel: 'low' };

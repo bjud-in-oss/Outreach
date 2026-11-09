@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-025** (VERIFIED): Dynamisk Modalietsväxling (BIDI_MODALITY) för BidiLiveSession -> Se `doc/.TICKETS/TCK-MAINT-025.md`
 - [x] **TCK-MAINT-024** (VERIFIED): Fallback-svar i run-path MockAdapter och Etablering av Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-024.md`
 - [x] **TCK-MAINT-023** (VERIFIED): Härda Action Loopens Filkrav och Etablera run-path Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-023.md`
 - [x] **TCK-MAINT-022** (VERIFIED): Implementera run-path.ts och dess integrationstest -> Se `doc/.TICKETS/TCK-MAINT-022.md`

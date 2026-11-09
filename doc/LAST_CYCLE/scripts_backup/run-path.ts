@@ -68,7 +68,15 @@ export async function exekveraRunPath(options: {
     },
   };
 
-  const adapter = options.adapter || skapaMockSessionAdapter();
+  const adapter = options.adapter || {
+    skicka: async (prompt: any) => {
+      const stegMatch = prompt.userPrompt.match(/StegId: ([^\n]+)/);
+      const stegId = stegMatch ? stegMatch[1].trim() : 'okänt-steg';
+      io.log(`   ⚡ [STEG: ${stegId}] Prompt kompilerad (${prompt.beraknadeTokensUngefar || 50} tokens) -> Exekverar.`);
+      return { svar: `Syntetiskt källkodssvar för ${stegId}`, tokensAnvanda: 50 };
+    }
+  };
+
   const orkestrerare = skapaPathOrkestrerare({
     adapter,
     portar: dummyPortar as any,
