@@ -120,8 +120,61 @@ for (const scriptName of scriptsToCheck) {
   checkScriptNode(sf);
 }
 
-if (fsdViolations > 0 || leakViolations > 0) {
-  console.error(`\n💥 Arkitekturkontrollen underkändes (${fsdViolations} FSD-fel, ${leakViolations} läckage).`);
+
+// ============================================================================
+// GRIND 3: SI-VERSIONSKONTROLL OCH LÄNKGILTIGHET
+// ============================================================================
+console.log('🔗 [SI-Versionskontroll] Skannar dokumentation och skript efter gamla SI-länkar...');
+
+let siLinkViolations = 0;
+const docDir = path.join(ROOT_DIR, 'doc');
+const docFiles = fs.readdirSync(docDir).filter(f => f.startsWith('SI_v') && f.endsWith('.md'));
+
+if (docFiles.length > 0) {
+  // Hitta den nyaste SI-versionen på disk
+  const latestSiFile = docFiles.sort((a, b) => {
+    const vA = parseFloat(a.replace('SI_v', '').replace('.md', ''));
+    const vB = parseFloat(b.replace('SI_v', '').replace('.md', ''));
+    return vB - vA;
+  })[0];
+  
+  const latestVersionStr = latestSiFile.replace('.md', ''); // T.ex. 'SI_v10.5'
+
+  // Hitta alla gamla versioner som ligger på disk för att kunna varna
+  const outdatedSiFiles = docFiles.filter(f => f !== latestSiFile).map(f => f.replace('.md', ''));
+
+  // Bygg en regex för att hitta omnämnanden av SI_vX.X i koden/dokumentationen
+  const siRegex = /SI_v\d+\.\d+/g;
+
+  function checkSiReferences(dir) {
+    if (!fs.existsSync(dir)) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules' && entry.name !== '.git') checkSiReferences(full);
+      } else if (entry.name.endsWith('.md') || entry.name.endsWith('.ts') || entry.name.endsWith('.js') || entry.name === 'package.json') {
+        const content = fs.readFileSync(full, 'utf-8');
+        let match;
+        while ((match = siRegex.exec(content)) !== null) {
+          const foundVersion = match[0]; // T.ex. SI_v10.5
+          if (foundVersion !== latestVersionStr) {
+            console.warn(`⚠️ FÖRÅLDRAD SI-REFERENS i ${path.relative(ROOT_DIR, full)}:`);
+            console.warn(`   Filen refererar till '${foundVersion}' men repots aktuella standard är '${latestVersionStr}'.`);
+            siLinkViolations++;
+          }
+        }
+      }
+    }
+  }
+
+  // Skanna igenom viktiga mappar efter brutna SI-länkar
+  checkSiReferences(path.join(ROOT_DIR, 'doc'));
+  checkSiReferences(path.join(ROOT_DIR, 'scripts'));
+  checkSiReferences(path.join(ROOT_DIR, '.agents'));
+}
+
+if (fsdViolations > 0 || leakViolations > 0 || siLinkViolations > 0) {
+  console.error(`\n💥 Arkitekturkontrollen underkändes (${fsdViolations} FSD-fel, ${leakViolations} läckage, ${siLinkViolations} SI-länkningsfel).`);
   process.exit(1);
 }
 

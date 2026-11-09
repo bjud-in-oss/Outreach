@@ -239,7 +239,7 @@ Tidigare dokumenterades lärdomar från byggcykler som passiv text i loggar elle
 
 ### Kontext
 Under utvecklingen av bootstrappade v10.4 identifierades fyra kritiska flaskhalsar i motorns orkestrering:
-1. **Monolitiskt kontextslitage:** Hela `doc/SI_v10.4.md` (över 10 000 tecken) skickas i sin helhet till varje enskild mikrosession. Detta förbrukar onödigt mycket av budgeten mot 65K TPM-taket för Gemini Live WebSockets.
+1. **Monolitiskt kontextslitage:** Hela `doc/SI_v10.5.md` (över 10 000 tecken) skickas i sin helhet till varje enskild mikrosession. Detta förbrukar onödigt mycket av budgeten mot 65K TPM-taket för Gemini Live WebSockets.
 2. **Kognitiva blinda fläckar för färdigheter (Skills):** Kritiska färdigheter i `.agents/skills/` (särskilt `decomposing-tickets`) förutsattes läsas in autonomt av modellen via `read_file`. Modellen missade ofta att göra detta under tidspress i Fas 0, vilket ledde till regelbrott mot FSD-gränsen (max 1 domän).
 3. **Passivt processminne:** `doc/PROCESS_IMPROVEMENTS.md` existerade enbart som en passiv idé. Lärdomar från tidigare krascher togs inte tillvara som aktiva restriktioner vid nästa byggstart.
 4. **Tröskeln vid manuell återställning:** När ett infrastrukturfel inträffade i `scripts/` tvingades användaren manuellt leta upp föregående commit-hash (`git checkout [HASH] -- scripts/...`) i stället för att systemet självt vet vad som är senast kända stabila tillstånd.
@@ -247,7 +247,7 @@ Under utvecklingen av bootstrappade v10.4 identifierades fyra kritiska flaskhals
 ### Beslut
 
 #### 1. Fasspecifik JIT-injektion (Kognitiv minimering)
-`doc/SI_v10.4.md` upphör att skickas som en monolitisk textsträng. Orkestreringsskriptet (`scripts/run-planera-live.ts`) delar upp och injicerar uteslutande den kontext, de grindar och de regler som krävs för det specifika delsteget:
+`doc/SI_v10.5.md` upphör att skickas som en monolitisk textsträng. Orkestreringsskriptet (`scripts/run-planera-live.ts`) delar upp och injicerar uteslutande den kontext, de grindar och de regler som krävs för det specifika delsteget:
 - **Fas 0 (Premissvalidering & Dörrvakt):**
   - Injicerar: FSD-avgränsning (max 1 domän under `src/features/`), krav på destruktiv sanering och Exploration Budget (max 3 tool-turns för mikrokanaler).
   - Inbäddad färdighet: Innehållet i `.agents/skills/decomposing-tickets/SKILL.md` inbäddas mekaniskt direkt i startankaret. Om biljetten bryter mot FSD klyvs den omedelbart utan att modellen först behöver leta efter instruktionsfilen på disken.
@@ -267,7 +267,7 @@ Under motorns nuvarande utvecklingsfas i Linux-miljön automatiseras Git så att
     `git tag -f last-known-green`
 - **Automatiserad återställning vid Moment 22:**
   - Om ett internt syntaxfel, verktygshaveri eller korrupt tillstånd inträffar i infrastrukturen (`scripts/`), tillhandahåller systemet ett standardiserat återställningskommando baserat på taggen:
-    `git checkout last-known-green -- scripts/ doc/SI_v10.4.md`
+    `git checkout last-known-green -- scripts/ doc/SI_v10.5.md`
     vilket omedelbart återställer systemet till senast verifierade tillstånd utan att behöva söka i git-loggen.
 
 ### Konsekvenser
