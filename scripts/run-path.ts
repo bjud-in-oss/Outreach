@@ -1,7 +1,11 @@
 import { 
   skapaPathOrkestrerare, 
   skapaMockSessionAdapter,
-  OrchestratorConfig
+  OrchestratorConfig,
+  skapaAvsiktsport,
+  skapaProvningsport,
+  skapaKonstruktionsport,
+  skapaBesiktningsport
 } from '../src/features/path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -48,24 +52,35 @@ export async function exekveraRunPath(options: {
     uppdrag: ticketContent
   };
 
-  // Dummy-portar som loggar till io.log och uppfyller kontrakten
-  const dummyPortar = {
-    avsikt: async (ctx: any) => {
-      io.log(` port:avsikt körs, fas: ${ctx.aktuellFas}`);
-      return { oppnad: true };
-    },
-    konstruktion: async () => {
-      io.log(` port:konstruktion körs`);
-      return { oppnad: true };
-    },
-    besiktning: async () => {
-      io.log(` port:besiktning körs`);
-      return { oppnad: true, godkand: true };
-    },
-    provning: async () => {
-      io.log(` port:provning körs`);
-      return { oppnad: true };
-    },
+  // Portkontrakt som använder Vägmotorns riktiga portfabriker
+  const portar = {
+    avsikt: options.portar?.avsikt || skapaAvsiktsport({
+      prompter: async (fraga: string) => {
+        io.log(`   🚪 [PORT: AVSIKT] ${fraga}`);
+        return 'y';
+      },
+      beskrivning: `Verifiera intention för ${ticketId}`,
+    }),
+    provning: options.portar?.provning || skapaProvningsport({
+      testFilVag: 'transient_test.ts',
+      forvantatFel: 'Fail-First',
+      testExekverare: async () => ({
+        passerade: false,
+        exitKod: 1,
+        felmeddelande: 'Förväntat Fail-First fel'
+      })
+    }),
+    konstruktion: options.portar?.konstruktion || skapaKonstruktionsport({
+      matris: [],
+      inspekterare: async () => ({
+        existerar: true,
+        antalRader: 50,
+        exporteradIIndex: true
+      })
+    }),
+    besiktning: options.portar?.besiktning || skapaBesiktningsport({
+      inspekterare: async () => ({ godkand: true })
+    }),
   };
 
   const adapter = options.adapter || {
@@ -79,7 +94,7 @@ export async function exekveraRunPath(options: {
 
   const orkestrerare = skapaPathOrkestrerare({
     adapter,
-    portar: dummyPortar as any,
+    portar,
     config
   });
 

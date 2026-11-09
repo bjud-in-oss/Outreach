@@ -1,0 +1,74 @@
+diff --git a/scripts/run-path.ts b/scripts/run-path.ts
+index 9ca5118..c23bae9 100644
+--- a/scripts/run-path.ts
++++ b/scripts/run-path.ts
+@@ -1,7 +1,11 @@
+ import { 
+   skapaPathOrkestrerare, 
+   skapaMockSessionAdapter,
+-  OrchestratorConfig
++  OrchestratorConfig,
++  skapaAvsiktsport,
++  skapaProvningsport,
++  skapaKonstruktionsport,
++  skapaBesiktningsport
+ } from '../src/features/path';
+ import * as fs from 'fs';
+ import * as path from 'path';
+@@ -11,7 +15,8 @@ export async function exekveraRunPath(options: {
+   ticketId?: string; 
+   argv?: string[]; 
+   io?: any; 
+-  adapter?: any 
++  adapter?: any;
++  portar?: any 
+ } = {}) {
+   const io = options.io || {
+     log: console.log,
+@@ -48,26 +53,28 @@ export async function exekveraRunPath(options: {
+     uppdrag: ticketContent
+   };
+ 
+-  // Dummy-portar som loggar till io.log och uppfyller kontrakten
+-  const dummyPortar = {
+-    avsikt: async (ctx: any) => {
+-      io.log(` port:avsikt körs, fas: ${ctx.aktuellFas}`);
+-      return { oppnad: true };
+-    },
+-    konstruktion: async () => {
+-      io.log(` port:konstruktion körs`);
+-      return { oppnad: true };
+-    },
+-    besiktning: async () => {
+-      io.log(` port:besiktning körs`);
+-      return { oppnad: true, godkand: true };
+-    },
+-    provning: async () => {
+-      io.log(` port:provning körs`);
+-      return { oppnad: true };
+-    },
++  // Portar som uppfyller de verkliga domänkontrakten
++  const standardPortar = {
++    avsikt: skapaAvsiktsport({ 
++      prompter: async (q) => { io.log('   🚪 [PORT: AVSIKT] ' + q); return 'y'; }, 
++      beskrivning: 'Validera intention för ' + ticketId 
++    }),
++    provning: skapaProvningsport({ 
++      testFilVag: 'transient_test.ts', 
++      forvantatFel: 'Fail-First', 
++      testExekverare: async () => ({ passerade: false, exitKod: 1, felmeddelande: 'Förväntat Fail-First fel' }) 
++    }),
++    konstruktion: skapaKonstruktionsport({ 
++      matris: [], 
++      inspekterare: async () => ({ existerar: true, antalRader: 50, exporteradIIndex: true }) 
++    }),
++    besiktning: skapaBesiktningsport({ 
++      inspekterare: async () => ({ godkand: true }) 
++    }),
+   };
+ 
++  const portar = options.portar || standardPortar;
++
+   const adapter = options.adapter || {
+     skicka: async (prompt: any) => {
+       const stegMatch = prompt.userPrompt.match(/StegId: ([^\n]+)/);
