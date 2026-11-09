@@ -1,57 +1,37 @@
-# BYGGCYKEL LOGG: TCK-MAINT-018
-**Starttid:** 2026-11-09T16:21:24.063Z
+# BYGGCYKEL LOGG: TCK-MAINT-019
+**Starttid:** 2026-11-09T18:17:33.016Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-018: Fullborda Recept-Integration och Prefixmatchning i Vägmotorn
+# TCK-MAINT-019: Etablera Parallellt Körskript run-path.ts och package.json-alias
 
 ## 1. MÅL
-Slutför integrationen mellan `runtimeAdapter.ts` och `promptCompiler.ts` samt inför robust prefix-matchning i `bestamFasForSteg` under `src/features/path/`. Befintliga tester i `promptCompiler.test.ts` och `pathOrchestrator.test.ts` måste förbli 100 % gröna samtidigt som steg-exekveraren bevisat anropar `kompileraPrompt`.
+Etablera det parallella körskriptet `scripts/run-path.ts` och registrera npm-kommandot `"bygg:path"` i `package.json` enligt ADR-029 (Strangler Fig). Skriptet ska möjliggöra autonom provkörning av Vägmotorn (`src/features/path/`) via terminalen.
 
-## 2. KÄLLKODSSPECIFIKATION FÖR DOMÄNEN
-Måldomän: `src/features/path/` (Max 250 rader per logikfil enligt SI v10.5).
-
-1. `src/features/path/engine/pathRunner.ts`:
-   - Uppdatera `bestamFasForSteg(stegId: string): PathPhase`:
-     * Prefix `step-1a`, `step-0`, `avsikt` -> `'avsikt'`
-     * Prefix `step-1b`, `step-2`, `step-3`, `provning` -> `'provning'`
-     * Prefix `step-fas2`, `konstruktion` -> `'konstruktion'`
-     * Prefix `step-fas3`, `besiktning` -> `'besiktning'`
-     * Fallback -> `'avsikt'`
-
-2. `src/features/path/engine/promptCompiler.ts`:
-   - `userPrompt` ska formateras rent och deterministiskt som:
-     `StegId: ${input.stegId}\nInput: ${JSON.stringify(input.kontextMinne || {})}`
-     Detta uppfyller exakt det kontrakt som både `pathOrchestrator.test.ts` och `promptCompiler.test.ts` förväntar sig.
-
-3. `src/features/path/engine/runtimeAdapter.ts`:
-   - `skapaMockSessionAdapter(svarstabell)`:
-     * Hämta ut `stegId` via `prompt.userPrompt.match(/StegId: ([^\n]+)/)`.
-     * Slå upp: `svarstabell[stegId] || svarstabell[prompt.userPrompt] || ''`.
-   - `skapaStegExekverare(adapter, configOrDomain)`:
-     * Stöd både `string` och `StegExekverarConfig` (`{ ticketId, malDoman, basUppdrag }`).
-     * Anropa `kompileraPrompt` med fasen från `bestamFasForSteg(stegId)`.
-     * Om adaptern ger svar: `{ success: true, data: res.svar, tokensUsed: res.tokensAnvanda }`.
-     * Om tomt svar: `{ success: false, data: 'Inget svar erhölls' }`.
+## 2. INFRASTRUKTURSPECIFIKATION
+1. `scripts/run-path.ts`:
+   - Läser in biljett-id från `process.argv[2]` (fallback: 'PROMPT').
+   - Läser biljetttexten och extraherar måldomän.
+   - Instansierar `skapaPathOrkestrerare` med `skapaMockSessionAdapter` och dummy-portar.
+   - Kör orkestreraren och loggar slutrapport i terminalen.
+2. `package.json`:
+   - Lägg till skriptet `"bygg:path": "tsx --env-file=.env scripts/run-path.ts"`.
 
 ## 3. ACCEPTANSKRITERIER
-1. Samtliga testfiler under `src/**/__tests__/` ska passera 100 % gröna.
-2. `pnpm verify` ska passera 100 % grön.
+1. `scripts/run-path.ts` existerar och kan exekveras utan syntax- eller körtidsfel.
+2. `pnpm verify` passerar 100 % grön.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-<TALA kraft="följa">
-Jag har förstått intentionen. Vi ska fullborda recept-integrationen, införa robust prefixmatchning i vägmotorn samt säkerställa att prompt-formateringen blir helt deterministisk för att garantera att testerna förblir gröna. Jag skapar nu Gherkin-scenariot för Intent Gate.
-</TALA>
+Givet att utvecklingsmiljön är redo och konfigurerad, när användaren exekverar kommandot bygg path med ett specifikt biljett id så ska skriptet run path ts initiera orkestreraren och köra Vägmotorns logik autonomt utan körtidsfel.
 
 
 #### 0a Att vända om: Kontraktsaudit
-<TALA kraft="vända-om">
-Kontraktsaudit genomförd. Måldomänen är begränsad till en domän (`src/features/path`), och berörda filer existerar enligt repots topologi. Samtliga modifikationer håller sig inom kontraktets gränser för FSD-isolering. Vi fortsätter planen.
+Jag har granskat kontraktet för TCK-MAINT-019. Jag bekräftar att uppdraget ryms inom en enskild FSD-domän under src/features/ (nämligen path) och att infrastrukturella tillägg i rotfilerna är tillåtna enligt kontraktet. Inga externa paket utanför den godkända listan krävs. Kontraktet är godkänt för vidare exekvering.
 
 
 #### 0b Att förlikas: Vägval
@@ -63,18 +43,22 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-018 och fullborda integrationen i vägmotorn formulerar jag följande tre ortogonala alternativ.
+Vi har tre ortogonala alternativ för att etablera körskriptet.
 
-Alternativ 1: Direkt imperativ implementation. Vi uppdaterar `bestamFasForSteg` med enkla `startsWith`-kontroller i `pathRunner.ts`, formaterar prompten sekventiellt enligt specifikationen i `promptCompiler.ts`, och hanterar konfigurationer direkt i `runtimeAdapter.ts` genom att kontrollera typen.
+Alternativ ett är direkt exekvering med synkron initiering, då biljetten läses direkt och orkestreraren monteras utan asynkron bootstrap.
 
-Alternativ 2: Utnyttjande av dedikerade hjälpfunktioner. Vi bryter ut reguljära uttryck och fasmappning till interna hjälpfunktioner för ökad modularitet och testbarhet inom domänen.
+Alternativ två är en modulär fabrik och asynkron uppstart, där vi döljer monteringslogiken i en isolerad funktion.
 
-Alternativ 3: Modulär konfigurationsstyrning med strikt typvalidering. Vi fokuserar på extremt robust hantering av adapterns konfiguration och felloggning för att garantera att inga fel slinker igenom utan att flaggas korrekt.
+Alternativ tre är konfigurationsdriven exekvering som matchar befintliga kontrakt strikt, där parametrar från miljövariabler styr instansieringen.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 3 ger den bästa resiliensen då den strikta typvalideringen och robusta felloggningen i `runtimeAdapter` skyddar mot oförutsedda konfigurationsfel, vilket helt överensstämmer med systemets Fail Fast-princip och våra kvalitetsgrindar. Genom att garantera att inga fel döljs stärks systemets långsiktiga stabilitet och spårbarhet avsevärt.
+Vid en resiliensgranskning av de tre alternativen framstår det andra alternativet – modulär fabrik med asynkron bootstrap – som det mest resilienta för utvecklingsskriptet.
+
+Detta alternativ isolerar monteringslogiken, hanterar asynkrona beroenden på ett kontrollerat sätt och minimerar risken för att ohanterade fel stoppar exekveringsmotorn abrupt under uppstarten.
+
+Direkt exekvering saknar nödvändig felhanteringsbrygga, och konfigurationsdrivna alternativ introducerar onödig komplexitet för ett enskilt skript, vilket kan försämra systemets transparens.
 
 
 #### 2d Att förlikas: Mättnad
-Jag bekräftar härmed att Alternativ 3 är det vinnande kontraktet. Den strikta typvalideringen och robusta felloggningen i `runtimeAdapter` garanterar systemets stabilitet och följer Fail Fast-principen. MÄTTNAD: JA.
+Vi har vägt spänningsfältet mellan enkelhet och resiliens. Med hänsyn till kraven på kontrollerad asynkron bootstrap och isolerad monteringslogik slår vi fast att det andra alternativet är det vinnande kontraktet. MÄTTNAD: JA.

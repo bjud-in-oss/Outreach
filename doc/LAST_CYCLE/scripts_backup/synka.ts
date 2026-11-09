@@ -70,6 +70,12 @@ async function main() {
     console.log('✅ Inga ändringar eller opushade commits att synka. Repot är helt i fas.');
     process.exit(0);
   }
+  
+  if (!status && unpushed) {
+    console.log('ℹ️ Arbetskopian är ren, men följande commits väntar på att pushas till GitHub:');
+    console.log(unpushed);
+    console.log('🚀 Pushar ackumulerade commits direkt...');
+  }
 
   if (status) {
     const diffText = getGitDiffSummary();
@@ -83,15 +89,17 @@ async function main() {
     console.log(`\n📝 COMMIT-MEDDELANDE:\n${finalMessage}\n`);
     execSync('git add -A', { cwd: ROOT_DIR });
     
-    console.log('🔍 Kör pnpm verify före synkronisering...');
-    try {
-      execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
-    } catch (err: any) {
-      console.error('\n❌ [SYNK AVBRUTEN]: pnpm verify underkändes. Rätta koden innan du synkar.');
-      process.exit(1);
-    }
+
 
     execSync(`git commit -m "${finalMessage.replace(/"/g, '\\"')}"`, { stdio: 'inherit', cwd: ROOT_DIR });
+  }
+
+    console.log('🔍 Kör pnpm verify före synkronisering...');
+  try {
+    execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
+  } catch (err: any) {
+    console.error('\n❌ [SYNK AVBRUTEN]: pnpm verify underkändes. Rätta koden innan du synkar.');
+    process.exit(1);
   }
 
   const remoteUrl = GITHUB_TOKEN 
