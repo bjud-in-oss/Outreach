@@ -1,46 +1,53 @@
-# BYGGCYKEL LOGG: TCK-MAINT-027
-**Starttid:** 2026-11-09T22:52:46.055Z
+# BYGGCYKEL LOGG: TCK-MAINT-028
+**Starttid:** 2026-11-10T21:00:16.613Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-027: Skarp BidiLive-koppling och Dry-Run i run-path.ts
+# TCK-MAINT-028: Jidoka-härdning av Fas 2 (AST-exempel & Lokal Genchi Genbutsu)
 
-## 1. MÅL
-Aktivera skarp nätverksorkestrering i `scripts/run-path.ts` via flaggan `--live` med hjälp av `skapaBidiLiveAdapter`, samt stöd för `--dry-run` för riskfri prompt- och portverifiering. Standardläget utan `--live` ska förbli blixtsnabbt och nätverksoberoende.
+**Måldomän:** `scripts` (`scripts/`)
+**Mekanisk Acceptans:** Ett transient skripttest bevisar att `run-planera-live.ts` injicerar korrekt AST-exempel vid Gate 3a-brott, och att skriptet omedelbart efter grönt transient-test exekverar domänens lokala testsvit innan Fas 2 tillåts slutföras.
 
-## 2. INFRASTRUKTURSPECIFIKATION
-Berörda filer: `scripts/run-path.ts`, `scripts/__tests__/run-path.test.ts`.
+---
 
-1. `scripts/run-path.ts`:
-   - Importera `skapaBidiLiveAdapter` från `../src/features/path`.
-   - Läs in flaggorna `--live` och `--dry-run` från `argv`.
-   - Vid `--dry-run`: Sätt en flagga i kontexten och logga: `   🛡️ [DRY-RUN]: Skarpt läge utan diskmodifiering aktivt.`.
-   - Vid `--live`:
-     * Instansiera `skapaBidiLiveAdapter` med konfiguration från `process.env` (`apiKey: process.env.GEMINI_API_KEY`, `model: process.env.LIVE_MODEL || 'gemini-3.8-live'`, `modality: (process.env.BIDI_MODALITY as any) || 'AUDIO'`).
-     * Klientfabriken skapar en live-klient som ansluter till Gemini Live och exponerar `connect`, `send`, `stream` och `close` enligt adapterns kontrakt.
-   - Utan `--live`: Använd befintlig mock-adapter med syntetiska svar för omedelbar och nätverksoberoende testning.
+## Poka-Yoke & Systemiska Invarianter (Stoppklossar)
+1. **Gate 3a (AST-grindens återkoppling):** När Gate 3a underkänner ett test på grund av alibimönster (`vi.fn()`) får felmeddelandet INTE enbart innehålla ett generellt text-tips. Det MÅSTE innehålla ett explicit, fullständigt kodexempel i TypeScript (t.ex. `let anropad = false; const fn = () => { anropad = true; };`) för att bryta språkmodellens kognitiva låsning under tidspress.
+2. **Fail-Fast (Lokal Genchi Genbutsu):** I Fas 2, efter att det transienta testet blivit grönt och källkoden modifierats, MÅSTE orkestreringsskriptet exekvera den aktiva domänens befintliga testsvit (`pnpm vitest run src/features/[aktiv_domän]/__tests__/`). Om domänens tester fallerar (t.ex. på grund av brutet externt gränssnitt) ska Fas 2-loopen fånga felet, återkoppla till agenten och fortsätta oscillationen i stället för att maskera felet till slutverifieringen.
+3. **Oförstörbar orkestrering:** Inga befintliga kvalitetsgrindar (Gate 2c, Token Gate) får avlägsnas från `run-planera-live.ts`.
 
-2. `scripts/__tests__/run-path.test.ts`:
-   - Verifiera att `exekveraRunPath` hanterar flaggan `--dry-run` utan fel.
-   - Verifiera att en injicerad `adapter` eller `clientFactory` exekverar framgångsrikt med `success: true` och `slutfold: true`.
+---
 
-## 3. ACCEPTANSKRITERIER
-1. `scripts/run-path.ts` stöder både standard mock, `--dry-run` och `--live`.
-2. Samtliga 20 testfiler i `pnpm test` passerar 100 % gröna.
-3. `pnpm verify` passerar 100 % grön.
-4. Trepunktsbesiktningen godkänns manuellt med `j`.
+## Scenariotriad (Den relationella och systemiska avsikten)
+
+**Scenario: ATT FÖLJA – Agenten vägleds ur kognitiv låsning**
+  Givet att agenten genererar ett alibitest med `vi.fn()` i Fas 2
+  När Gate 3a underkänner testet
+  Så ska skriptet injicera ett konkret, körbart AST-exempel för funktionell minnestestning
+  Så att agenten genast ser hur den uttrycker tillståndet primitivt utan mocking-bibliotek.
+
+**Scenario: ATT VÄNDA OM – Bakåtinkompatibilitet fångas omedelbart i källan**
+  Givet att källkodsagenten i Fas 2 döper om en publik metod som `skicka` till `startStreaming`
+  När agentens egna transienta test blir grönt
+  Så ska skriptet omedelbart köra domänens övriga tester och fånga regressionsfelet i Fas 2-loopen
+  Och tvinga agenten till omvändelse innan koden tillåts passera till slutverifiering.
+
+**Scenario: ATT FÖRLIKAS – Resurser städas och cykeln sluts i frid**
+  Givet att ett bygge havererar mekaniskt under domänvalideringen
+  När Andon-linan (nödbromsen) dras
+  Så ska det kraschade tillståndet sparas i `doc/LAST_CYCLE/CRASH_DIFF.patch`
+  Och `src/`-katalogen ska återställas till rent tillstånd.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Givet att användaren exekverar run-path.ts med flaggan --dry-run När körningen startar Så ska systemet markera kontexten för dry-run och logga meddelandet: 🛡️ [DRY-RUN]: Skarpt läge utan diskmodifiering aktivt Givet att användaren exekverar run-path.ts med flaggan --live När körningen startar Så ska en BidiLive-adapter instansieras och ansluta till Gemini Live Givet att användaren exekverar run-path.ts utan flaggor När körningen startar Så ska en mock-adapter användas för nätverksoberoende testning.
+Avsikten med detta ärende är att bygga in Jidoka-härdning i Fas 2, vilket innebär att vi mekaniskt och omedelbart vägleder utvecklaren ur kognitiva låsningar med fullständiga kodexempel, och att vi säkrar den lokala testsvitens integritet innan bygget tillåts gå vidare. Mänsklig nytta uppnås genom minskad friktion och direkt feedback vid regressionsfel.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Detta uppdrag berör exekveringsskripten `run-path.ts` och dess test, och håller sig strikt inom gällande arkitekturkontrakt. Inga modifieringar under `src/features/` krävs, och integrationen sker via godkända kontraktsexporter. Kontraktet är godkänt för Fas 1.
+Jag har genomfört en kontraktsaudit av TCK-MAINT-028. Måldomänen är isolerad till `scripts/` och uppdraget följer reglerna för oförstörbar orkestrering. Jag går vidare till Intent Gate och skapar Gherkin-scenariot.
 
 
 #### 0b Att förlikas: Vägval
@@ -52,22 +59,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-027 formulerar jag tre ortogonala alternativ:
+Här är tre ortogonala alternativ för att härda Fas 2 i orkestreringsskriptet baserat på TCK-MAINT-028:
 
-Alternativ 1: Direkt integration och villkorsstyrd instansiering i `run-path.ts`. Vi läser `argv` direkt och instansierar `skapaBidiLiveAdapter` vid flaggan `--live`, samt hanterar `--dry-run` genom flödeskontroll.
+Alternativ 1 innebär att vi injicerar TypeScript-exempel och kör domäntester via `execSync` direkt i `run-planera-live.ts` vid Gate 3a-brott.
 
-Alternativ 2: Fabriksmönster för adaptergenerering. Vi bryter ut adapterns tillblivelse till en egen modul i `scripts/` som returnerar rätt implementering baserat på CLI-parametrarna, vilket håller huvudlogiken ren.
+Alternativ 2 abstraherar AST-validering och testexekvering till dedikerade hjälpfunktioner inuti `scripts` för tydligare separation.
 
-Alternativ 3: Konfigurationsdriven exekvering med injicerad klientfabrik. Vi samlar upp konfigurationen och injicerar en fabrik i exekveringsmotorn, vilket möjliggör testning även utan att behöva parsas från globala `process.argv`.
+Alternativ 3 bygger om `run-planera-live.ts` till en deklarativ pipeline där varje kontrollgrind och valideringssteg definieras och exekveras sekventiellt i loopen.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Efter en noga resiliensgranskning av de tre alternativen kan jag konstatera att Alternativ 3 är det mest resilienta.
-
-Genom att använda en injicerad klientfabrik frikopplar vi exekveringslogiken från globala `process.argv`. Detta ger oss en stabil grund för testbarhet och skyddar systemet mot latenta haverier vid nätverksfel.
-
-Vi bör nu gå vidare och låsa Alternativ 3.
+Utifrån ett motståndskraftsperspektiv har jag granskat alternativen. Alternativ 2 är det mest resilient val eftersom det isolerar valideringslogik i dedikerade hjälpare, vilket minskar risken för monolitisk skörhet och möjliggör felisolering i händelse av brott. Alternativ 1 riskerar att göra huvudskriptet för komplext och svårtestat.
 
 
 #### 2d Att förlikas: Mättnad
-Jag har vägt spänningsfältet och analyserat riskanalysen. Alternativ 3 är det vinnande kontraktet och vi deklarerar härmed MÄTTNAD: JA.
+Jag accepterar utvärderingen och fastställer att Alternativ 2 är det vinnande valet. Vi undviker monolitisk skörhet och säkrar resiliens genom isolerad valideringslogik. MÄTTNAD: JA.

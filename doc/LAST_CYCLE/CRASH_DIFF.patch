@@ -1,51 +1,170 @@
-diff --git a/src/__tests__/transient_TCK-046.test.ts b/src/__tests__/transient_TCK-046.test.ts
+diff --git a/src/features/path/__tests__/tck-047.test.ts b/src/features/path/__tests__/tck-047.test.ts
 new file mode 100644
-index 0000000..71c8876
+index 0000000..058b8dd
 --- /dev/null
-+++ b/src/__tests__/transient_TCK-046.test.ts
-@@ -0,0 +1,45 @@
-+import { describe, it, expect } from 'vitest';
-+import { bestamFasForSteg, skapaBidiLiveAdapter } from '../features/path';
++++ b/src/features/path/__tests__/tck-047.test.ts
+@@ -0,0 +1,84 @@
++import { describe, it, expect, beforeEach } from 'vitest';
++import { skapaBidiLiveAdapter } from '../engine/bidiLiveAdapter';
++import { getGlobalSwarmEventBus } from '../../gemini_live_swarm/bus/swarmEventBus';
++import type { CompiledPrompt } from '../contracts/pathSchema';
 +
-+describe('TCK-046 Transient Test - Polyglott Prompt & Portfas', () => {
-+
-+  describe('bestamFasForSteg', () => {
-+    it('should determine correct phase for portnod p2', () => {
-+      const result = bestamFasForSteg('p2');
-+      expect(result).toBe('provning');
++describe('BidiLiveAdapter Resilient Streaming (TCK-047)', () => {
++    beforeEach(() => {
++        const eventBus = getGlobalSwarmEventBus();
++        eventBus.clear();
 +    });
 +
-+    it('should determine correct phase for portnod port-konstruktion', () => {
-+      const result = bestamFasForSteg('port-konstruktion');
-+      expect(result).toBe('konstruktion');
++    it('ska ackumulera strömmen i minnet och anropa close', async () => {
++        const eventBus = getGlobalSwarmEventBus();
++        let closeCalled = false;
++
++        const mockClientFactory = async () => {
++            return {
++                sendPrompt: async () => {},
++                receiveStream: async function* () {
++                    yield { text: 'Hej ' };
++                    yield { text: 'världen!' };
++                },
++                close: async () => {
++                    closeCalled = true;
++                }
++            };
++        };
++
++        const adapter = skapaBidiLiveAdapter({ 
++            clientFactory: mockClientFactory as any, 
++            eventBus 
++        });
++
++        const prompt: CompiledPrompt = { 
++            model: 'gemini-2.5-flash',
++            systemPrompt: 'Du är en hjälpsam assistent.',
++            userPrompt: 'Hälsa' 
++        };
++
++        const resultat = await adapter.skicka(prompt);
++
++        expect(resultat.svar).toBe('Hej världen!');
++        expect(closeCalled).toBe(true);
 +    });
 +
-+    it('should determine correct phase for step-0', () => {
-+      const result = bestamFasForSteg('step-0-initial');
-+      expect(result).toBe('avsikt');
-+    });
-+  });
++    it('ska fånga upp nätverksfel, larma via eventBus och kasta om', async () => {
++        const eventBus = getGlobalSwarmEventBus();
++        let closeCalled = false;
++        let emittatFel: unknown = null;
 +
-+  describe('skapaBidiLiveAdapter Polyglott Support', () => {
-+    it('should process polyglott prompts with systemInstruction and userPrompt', async () => {
-+      // Initialize the adapter (this should not throw if the constructor/factory is present)
-+      const adapter = skapaBidiLiveAdapter({});
-+      
-+      const promptPayload = {
-+        systemInstruction: 'Du är en hjälpsam guide för närhet.',
-+        userPrompt: 'Hur finner jag frid?'
-+      };
++        eventBus.subscribe('error', (err) => {
++            emittatFel = err;
++        });
 +
-+      try {
-+        // Execute the prompt handling – expected to fail since implementation is missing
-+        const response = await adapter.skickaPrompt(promptPayload);
-+        
-+        expect(response).toBeDefined();
-+        expect(response.tokensAnvanda).toBeGreaterThan(0);
-+      } catch (error) {
-+        // In the TDD phase before implementation, this is expected to fail or throw
-+        throw error;
-+      }
++        const networkError = new Error('Nätverkskrasch');
++
++        const mockClientFactory = async () => {
++            return {
++                sendPrompt: async () => {},
++                receiveStream: async function* () {
++                    throw networkError;
++                },
++                close: async () => {
++                    closeCalled = true;
++                }
++            };
++        };
++
++        const adapter = skapaBidiLiveAdapter({ 
++            clientFactory: mockClientFactory as any, 
++            eventBus 
++        });
++
++        const prompt: CompiledPrompt = { 
++            model: 'gemini-2.5-flash',
++            systemPrompt: '',
++            userPrompt: '' 
++        };
++
++        await expect(adapter.skicka(prompt)).rejects.toThrow('Nätverkskrasch');
++        expect(emittatFel).toBe(networkError);
++        expect(closeCalled).toBe(true);
 +    });
-+  });
 +});
+\ No newline at end of file
+diff --git a/src/features/path/engine/bidiLiveAdapter.ts b/src/features/path/engine/bidiLiveAdapter.ts
+index 4cdd03e..1a3ed0b 100644
+--- a/src/features/path/engine/bidiLiveAdapter.ts
++++ b/src/features/path/engine/bidiLiveAdapter.ts
+@@ -3,43 +3,48 @@ import { CompiledPrompt } from '../contracts/pathSchema';
+ import { SessionAdapter } from '../model/types';
+ 
+ export function skapaBidiLiveAdapter(
+-  config: Partial<BidiLiveAdapterConfig>,
+-  clientFactory?: any
++  config: Partial<BidiLiveAdapterConfig> & { clientFactory?: any }
+ ): SessionAdapter {
+-  const model = config.model || 'gemini-3.8-live';
+   const eventBus = config.eventBus;
++  const clientFactory = config.clientFactory;
+ 
+   return {
+     async skicka(prompt: CompiledPrompt): Promise<{ svar: string; tokensAnvanda?: number }> {
+-      // Skapa klient via factory (eller mock i test)
+-      const client = clientFactory ? clientFactory() : {};
+-
+-      if (typeof client.connect === 'function') {
+-        await client.connect();
+-      }
+-
+-      if (typeof client.send === 'function') {
+-        const instruction = prompt.systemInstruction || prompt.instructions || '';
+-        const content = prompt.userPrompt || prompt.renderedContent || '';
+-        await client.send({ instruction, content });
+-      }
++      const client = clientFactory ? await clientFactory() : {
++        sendPrompt: async () => {},
++        receiveStream: async function* () {},
++        close: async () => {}
++      };
+ 
+       let svar = '';
+       let tokensAnvanda = 0;
+ 
+-      if (client.stream) {
+-        for await (const chunk of client.stream) {
+-          if (chunk.text) {
+-            svar += chunk.text;
+-          }
+-          if (chunk.usage) {
+-            tokensAnvanda += chunk.usage;
+-          }
++      try {
++        if (typeof client.sendPrompt === 'function') {
++          const instruction = prompt.systemPrompt || '';
++          const content = prompt.userPrompt || '';
++          await client.sendPrompt({ instruction, content });
+         }
+-      }
+ 
+-      if (typeof client.close === 'function') {
+-        await client.close();
++        if (typeof client.receiveStream === 'function') {
++          for await (const chunk of client.receiveStream()) {
++            if (chunk.text) {
++              svar += chunk.text;
++            }
++            if (chunk.usage) {
++              tokensAnvanda += chunk.usage;
++            }
++          }
++        }
++      } catch (err) {
++        if (eventBus && typeof eventBus.emit === 'function') {
++          eventBus.emit('error', err);
++        }
++        throw err;
++      } finally {
++        if (typeof client.close === 'function') {
++          await client.close();
++        }
+       }
+ 
+       return { svar, tokensAnvanda };

@@ -5,7 +5,8 @@ import {
   skapaAvsiktsport,
   skapaProvningsport,
   skapaKonstruktionsport,
-  skapaBesiktningsport
+  skapaBesiktningsport,
+  skapaBidiLiveAdapter
 } from '../src/features/path';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -15,7 +16,8 @@ export async function exekveraRunPath(options: {
   ticketId?: string; 
   argv?: string[]; 
   io?: any; 
-  adapter?: any 
+  adapter?: any;
+  clientFactory?: any;
 } = {}) {
   const io = options.io || {
     log: console.log,
@@ -43,11 +45,17 @@ export async function exekveraRunPath(options: {
   }
 
   const isClassic = argv.includes('--classic');
+  const isLive = argv.includes('--live');
+  const isDryRun = argv.includes('--dry-run');
   const receptTyp = isClassic ? 'classic' : 'lean';
+
+  if (isDryRun) {
+    io.log(`   🛡️ [DRY-RUN]: Skarpt läge utan diskmodifiering aktivt.`);
+  }
   
   const config: OrchestratorConfig = {
     ticketId,
-    malDoman: 'path', // Standard domän för dessa underhållsuppgifter
+    malDoman: 'path',
     receptTyp,
     uppdrag: ticketContent
   };
@@ -83,14 +91,27 @@ export async function exekveraRunPath(options: {
     }),
   };
 
-  const adapter = options.adapter || {
-    skicka: async (prompt: any) => {
-      const stegMatch = prompt.userPrompt.match(/StegId: ([^\n]+)/);
-      const stegId = stegMatch ? stegMatch[1].trim() : 'okänt-steg';
-      io.log(`   ⚡ [STEG: ${stegId}] Prompt kompilerad (${prompt.beraknadeTokensUngefar || 50} tokens) -> Exekverar.`);
-      return { svar: `Syntetiskt källkodssvar för ${stegId}`, tokensAnvanda: 50 };
+  let adapter = options.adapter;
+
+  if (!adapter) {
+    if (isLive) {
+      io.log(`🌐 Aktiverar skarp BidiLive-koppling mot Gemini...`);
+      adapter = skapaBidiLiveAdapter({
+        apiKey: process.env.GEMINI_API_KEY,
+        model: process.env.LIVE_MODEL || 'gemini-3.8-live',
+        modality: (process.env.BIDI_MODALITY as any) || 'AUDIO'
+      }, options.clientFactory);
+    } else {
+      adapter = {
+        skicka: async (prompt: any) => {
+          const stegMatch = prompt.userPrompt.match(/StegId: ([^\n]+)/);
+          const stegId = stegMatch ? stegMatch[1].trim() : 'okänt-steg';
+          io.log(`   ⚡ [STEG: ${stegId}] Prompt kompilerad (${prompt.beraknadeTokensUngefar || 50} tokens) -> Exekverar.`);
+          return { svar: `Syntetiskt källkodssvar för ${stegId}`, tokensAnvanda: 50 };
+        }
+      };
     }
-  };
+  }
 
   const orkestrerare = skapaPathOrkestrerare({
     adapter,

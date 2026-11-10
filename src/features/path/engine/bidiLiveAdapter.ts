@@ -1,45 +1,65 @@
-import { BidiLiveAdapterConfig } from '../model/types';
+import { BidiLiveAdapterConfig, SessionAdapter } from '../model/types';
 import { CompiledPrompt } from '../contracts/pathSchema';
-import { SessionAdapter } from '../model/types';
 
 export function skapaBidiLiveAdapter(
-  config: Partial<BidiLiveAdapterConfig>,
-  clientFactory?: any
+  config: Partial<BidiLiveAdapterConfig> & { clientFactory?: any },
+  explicitClientFactory?: any
 ): SessionAdapter {
-  const model = config.model || 'gemini-3.8-live';
   const eventBus = config.eventBus;
+  const clientFactory = config.clientFactory || explicitClientFactory;
 
   return {
     async skicka(prompt: CompiledPrompt): Promise<{ svar: string; tokensAnvanda?: number }> {
-      // Skapa klient via factory (eller mock i test)
-      const client = clientFactory ? clientFactory() : {};
-
-      if (typeof client.connect === 'function') {
-        await client.connect();
-      }
-
-      if (typeof client.send === 'function') {
-        const instruction = prompt.systemInstruction || prompt.instructions || '';
-        const content = prompt.userPrompt || prompt.renderedContent || '';
-        await client.send({ instruction, content });
-      }
+      // Defensiv fallback om ingen factory injiceras
+      const client = clientFactory ? await clientFactory() : {
+        connect: async () => {},
+        send: async () => {},
+        close: async () => {}
+      };
 
       let svar = '';
       let tokensAnvanda = 0;
 
-      if (client.stream) {
-        for await (const chunk of client.stream) {
-          if (chunk.text) {
-            svar += chunk.text;
-          }
-          if (chunk.usage) {
-            tokensAnvanda += chunk.usage;
+      try {
+        // 1. Polyglott connect
+        if (typeof client.connect === 'function') {
+          await client.connect();
+        }
+
+        // 2. Polyglott prompt-sändning (stödjer både send och sendPrompt)
+        const instruction = prompt.systemPrompt || prompt.systemInstruction || prompt.instructions || '';
+        const content = prompt.userPrompt || prompt.renderedContent || '';
+
+        if (typeof client.send === 'function') {
+          await client.send({ instruction, content });
+        } else if (typeof client.sendPrompt === 'function') {
+          await client.sendPrompt({ instruction, content });
+        }
+
+        // 3. Polyglott strömhantering (stödjer både client.stream och client.receiveStream())
+        const streamSource = client.stream 
+          ? client.stream 
+          : (typeof client.receiveStream === 'function' ? client.receiveStream() : null);
+
+        if (streamSource) {
+          for await (const chunk of streamSource) {
+            if (chunk.text) {
+              svar += chunk.text;
+            }
+            if (chunk.usage) {
+              tokensAnvanda += chunk.usage;
+            }
           }
         }
-      }
-
-      if (typeof client.close === 'function') {
-        await client.close();
+      } catch (err) {
+        if (eventBus && typeof eventBus.emit === 'function') {
+          eventBus.emit('error', err);
+        }
+        throw err;
+      } finally {
+        if (typeof client.close === 'function') {
+          await client.close();
+        }
       }
 
       return { svar, tokensAnvanda };

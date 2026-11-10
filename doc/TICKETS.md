@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-028** (VERIFIED): Jidoka-härdning av Fas 2 (AST-exempel & Lokal Genchi Genbutsu) -> Se `doc/.TICKETS/TCK-MAINT-028.md`
 - [x] **TCK-MAINT-027** (VERIFIED): Skarp BidiLive-koppling och Dry-Run i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-027.md`
 - [x] **TCK-MAINT-026** (VERIFIED): Portintegration och Domänförankring i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-026.md`
 - [x] **TCK-MAINT-025** (VERIFIED): Dynamisk Modalietsväxling (BIDI_MODALITY) för BidiLiveSession -> Se `doc/.TICKETS/TCK-MAINT-025.md`
@@ -30,6 +31,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-047** (VERIFIED): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
 - [x] **TCK-046** (VERIFIED): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
 - [x] **TCK-045** (VERIFIED): Bidi Live Multimodal SessionAdapter (Path Domain) -> Se `doc/.TICKETS/TCK-045.md`
 - [x] **TCK-044** (VERIFIED): Deterministisk Fasberikning av PathContext i PathRunner -> Se `doc/.TICKETS/TCK-044.md`
