@@ -1,53 +1,59 @@
-# BYGGCYKEL LOGG: TCK-MAINT-028
-**Starttid:** 2026-11-10T21:00:16.613Z
+# BYGGCYKEL LOGG: TCK-048
+**Starttid:** 2026-11-10T22:53:05.128Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-028: Jidoka-härdning av Fas 2 (AST-exempel & Lokal Genchi Genbutsu)
+# TCK-048: Kärnfull Relevans och Typberikning i Promptkompilatorn
 
-**Måldomän:** `scripts` (`scripts/`)
-**Mekanisk Acceptans:** Ett transient skripttest bevisar att `run-planera-live.ts` injicerar korrekt AST-exempel vid Gate 3a-brott, och att skriptet omedelbart efter grönt transient-test exekverar domänens lokala testsvit innan Fas 2 tillåts slutföras.
+**Måldomän:** `path` (`src/features/path/`)
+**Mekanisk Acceptans:** Ett transient test bevisar Fail-First (exit 1) vid saknad domänkontext, passerar Gate 3a via funktionell minnesexekvering (noll syntetiska spioner), och avslutas med 100 % grön regressionssvit (exit 0).
 
 ---
 
-## Poka-Yoke & Systemiska Invarianter (Stoppklossar)
-1. **Gate 3a (AST-grindens återkoppling):** När Gate 3a underkänner ett test på grund av alibimönster (`vi.fn()`) får felmeddelandet INTE enbart innehålla ett generellt text-tips. Det MÅSTE innehålla ett explicit, fullständigt kodexempel i TypeScript (t.ex. `let anropad = false; const fn = () => { anropad = true; };`) för att bryta språkmodellens kognitiva låsning under tidspress.
-2. **Fail-Fast (Lokal Genchi Genbutsu):** I Fas 2, efter att det transienta testet blivit grönt och källkoden modifierats, MÅSTE orkestreringsskriptet exekvera den aktiva domänens befintliga testsvit (`pnpm vitest run src/features/[aktiv_domän]/__tests__/`). Om domänens tester fallerar (t.ex. på grund av brutet externt gränssnitt) ska Fas 2-loopen fånga felet, återkoppla till agenten och fortsätta oscillationen i stället för att maskera felet till slutverifieringen.
-3. **Oförstörbar orkestrering:** Inga befintliga kvalitetsgrindar (Gate 2c, Token Gate) får avlägsnas från `run-planera-live.ts`.
+## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
+1. **Vaccin mot kontextsvält (Kärnfull Relevans):**
+   - `kompileraPrompt` i `src/features/path/engine/promptCompiler.ts` får INTE banta bort domänens typdefinitioner för att nå ett godtyckligt tokental.
+   - När en prompt sammanställs för faserna 'avsikt', 'provning' eller 'konstruktion' MÅSTE systeminstruktionen deterministiskt berikas med måldomänens aktiva typkontrakt (t.ex. `model/types.ts`) om sådana skickas med i `kontextMinne` eller via explicit parameter.
+2. **Förbud mot syntetiska spioner (Gate 3a):**
+   - Testfilen får INTE importera eller anropa `vi.fn()` eller `vi.spyOn()`. Alla utfall valideras genom primitiva tillståndsvariabler och direkta strängjämförelser i minnet.
+3. **Bevara bakåtkompatibilitet i promptSchema:**
+   - `PromptCompileInputSchema` och `CompiledPromptSchema` i `contracts/pathSchema.ts` ska förbli orubbliga sanningskällor (SSOT) och härleda typer via `z.infer`.
+4. **Inga tysta fel:**
+   - Felaktiga eller saknade indata till kompilatorn ska valideras strikt via schemat och kasta kontrollerade fel snarare än att generera tomma prompter.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Agenten vägleds ur kognitiv låsning**
-  Givet att agenten genererar ett alibitest med `vi.fn()` i Fas 2
-  När Gate 3a underkänner testet
-  Så ska skriptet injicera ett konkret, körbart AST-exempel för funktionell minnestestning
-  Så att agenten genast ser hur den uttrycker tillståndet primitivt utan mocking-bibliotek.
+**Scenario: ATT FÖLJA – Modellen förses med full sanning och klar blick**
+  Givet en måldomän med definierade typer och barrel-exporter
+  När `kompileraPrompt` anropas för konstruktionsfasen
+  Så ska den returnerade `systemInstruction` innehålla domänens fullständiga typdefinitioner
+  Och beräknat token-antal ska återspegla den faktiska payloaden utan godtycklig trunkering.
 
-**Scenario: ATT VÄNDA OM – Bakåtinkompatibilitet fångas omedelbart i källan**
-  Givet att källkodsagenten i Fas 2 döper om en publik metod som `skicka` till `startStreaming`
-  När agentens egna transienta test blir grönt
-  Så ska skriptet omedelbart köra domänens övriga tester och fånga regressionsfelet i Fas 2-loopen
-  Och tvinga agenten till omvändelse innan koden tillåts passera till slutverifiering.
+**Scenario: ATT VÄNDA OM – Avvisande av förvanskad eller tom domänkontext**
+  Givet att kompilatorn matas med ogiltig fas eller saknar obligatoriska uppdragsparametrar
+  När kompileringen exekveras
+  Så ska funktionen omedelbart kasta ett valideringsfel enligt Zod-kontraktet
+  Och felaktiga antaganden ska inte släppas igenom till exekveringsmotorn.
 
-**Scenario: ATT FÖRLIKAS – Resurser städas och cykeln sluts i frid**
-  Givet att ett bygge havererar mekaniskt under domänvalideringen
-  När Andon-linan (nödbromsen) dras
-  Så ska det kraschade tillståndet sparas i `doc/LAST_CYCLE/CRASH_DIFF.patch`
-  Och `src/`-katalogen ska återställas till rent tillstånd.
+**Scenario: ATT FÖRLIKAS – Helheten bevaras och resurser förblir fria från brus**
+  Givet att kompileringen fullföljs framgångsrikt
+  När svaret levereras
+  Så ska den färdiga prompten vara helt renad från historiska felloggar och samtalstranskript
+  Och endast det kärnfulla uppdraget och dess systemiska ramverk ska återstå.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Avsikten med detta ärende är att bygga in Jidoka-härdning i Fas 2, vilket innebär att vi mekaniskt och omedelbart vägleder utvecklaren ur kognitiva låsningar med fullständiga kodexempel, och att vi säkrar den lokala testsvitens integritet innan bygget tillåts gå vidare. Mänsklig nytta uppnås genom minskad friktion och direkt feedback vid regressionsfel.
+Hej! Jag är redo att sätta igång med att stärka promptkompilatorn så att den alltid behåller rätt typdefinitioner och kärnfull relevans. För att jag ska kunna göra ett så bra jobb som möjligt, finns det något särskilt scenario eller någon risk du tänker på som vi absolut behöver ta hänsyn till i det här arbetet?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har genomfört en kontraktsaudit av TCK-MAINT-028. Måldomänen är isolerad till `scripts/` och uppdraget följer reglerna för oförstörbar orkestrering. Jag går vidare till Intent Gate och skapar Gherkin-scenariot.
+Jag har auditerat kontraktet för TCK-048 och kan bekräfta att avgränsningen till `path`-domänen är tydlig. Vi kommer att säkra att `kompileraPrompt` levererar fullständiga typdefinitioner och att våra tester håller sig till ren minnesexekvering utan syntetiska spioner. Allt är redo för nästa steg.
 
 
 #### 0b Att förlikas: Vägval
@@ -59,18 +65,30 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att härda Fas 2 i orkestreringsskriptet baserat på TCK-MAINT-028:
+För att lösa TCK-048 och säkerställa att kompilatorn bevarar domänens typkontrakt, har jag tagit fram följande tre separata alternativ:
 
-Alternativ 1 innebär att vi injicerar TypeScript-exempel och kör domäntester via `execSync` direkt i `run-planera-live.ts` vid Gate 3a-brott.
+Alternativ ett: Vi utökar `PromptCompileInput` med en specifik egenskap för direkt injektion av typdefinitioner.
 
-Alternativ 2 abstraherar AST-validering och testexekvering till dedikerade hjälpfunktioner inuti `scripts` för tydligare separation.
+Alternativ två: Kompilatorn läser automatiskt domänens `model/types.ts` via filsystemet och injekterar innehållet mekaniskt.
 
-Alternativ 3 bygger om `run-planera-live.ts` till en deklarativ pipeline där varje kontrollgrind och valideringssteg definieras och exekveras sekventiellt i loopen.
+Alternativ tre: Vi bygger in ett dedikerat typlager i prompt-mallen, vilket separerar typdefinitioner från övriga och bibehåller relevans.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Utifrån ett motståndskraftsperspektiv har jag granskat alternativen. Alternativ 2 är det mest resilient val eftersom det isolerar valideringslogik i dedikerade hjälpare, vilket minskar risken för monolitisk skörhet och möjliggör felisolering i händelse av brott. Alternativ 1 riskerar att göra huvudskriptet för komplext och svårtestat.
+Alternativ två innebär en hög risk för systemkrasch och bryter dessutom mot arkitekturprincipen om en isolerad VFS-miljö. Alternativ ett är absolut säkrast för långsiktig resiliens, då det kräver att typkontraktet injiceras explicit utan dolda filsystemberoenden.
 
 
 #### 2d Att förlikas: Mättnad
-Jag accepterar utvärderingen och fastställer att Alternativ 2 är det vinnande valet. Vi undviker monolitisk skörhet och säkrar resiliens genom isolerad valideringslogik. MÄTTNAD: JA.
+Jag har vägt spänningsfältet mellan alternativen och ser tydligt att Alternativ ett är den trygga vägen framåt. Genom att injicera typkontraktet explicit skyddar vi systemets resiliens och eliminerar dolda beroenden. Jag låser nu detta kontrakt. MÄTTNAD: JA.
+
+
+#### 3a Att följa: Testspecifikation
+
+
+
+#### 3b Att följa: Källkod
+
+
+
+#### 3c Att förlikas: Slutgiltigt Byggkontrakt
+För att säkra att prompterna bibehåller full typkontext och är fria från ovidkommande brus, kommer vi att bevara `pathSchema.ts` och `index.ts` som de är. Vi skapar det transienta testet `promptCompiler.test.ts` och uppdaterar därefter `promptCompiler.ts` för att implementera de nödvändiga kraven för typberikning.

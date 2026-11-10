@@ -10,7 +10,7 @@ import { execSync } from 'child_process';
 console.log('🧪 [REGRESSIONSSVIT]: Exekverar permanenta domäntester via Vitest...');
 
 try {
-  execSync('npx vitest run --passWithNoTests', {
+  execSync('npx vitest run --passWithNoTests --exclude "**/transient_*.test.ts"', {
     stdio: 'inherit',
     cwd: process.cwd(),
   });

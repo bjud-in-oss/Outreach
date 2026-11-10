@@ -180,6 +180,49 @@
         "useSwarmContext",
         "useSwarmTelemetry",
         "useUserActivityLock"
+      ],
+      "types": [
+        "AccumulatedTurn",
+        "AgentForce",
+        "AgentThoughtResponse",
+        "AudioWorkerMessage",
+        "BidiRealtimeInputPayload",
+        "CampaignInput",
+        "CampaignPlan",
+        "CrownState",
+        "CrownStatusColor",
+        "ExecutionCardProps",
+        "FloorQueueItem",
+        "ImmersiveModeReturn",
+        "PendulumMode",
+        "PendulumOptions",
+        "ReconciliationForce",
+        "ReconciliationState",
+        "ReconciliationUnitConfig",
+        "ReflectionMode",
+        "ReflectionModeEventPayload",
+        "ReflectionModeOption",
+        "ReflectionModeSelectorProps",
+        "SplitArrowConfig",
+        "SplitOrientation",
+        "SplitSnapState",
+        "SwarmAgentConfig",
+        "SwarmAgentRole",
+        "SwarmAudioChannel",
+        "SwarmCoreContextValue",
+        "SwarmCoreInstances",
+        "SwarmIntent",
+        "SwarmIntentDef",
+        "SwarmProviderProps",
+        "SwarmStep",
+        "SymbolCrownProps",
+        "TurnBoundaryInput",
+        "TurnBoundaryResult",
+        "TurnContainerProps",
+        "UnifiedPromptBarProps",
+        "UserActivityLockReturn",
+        "VadAnalysisResult",
+        "VoiceFlowMetrics"
       ]
     },
     "google_drive_sync": {
@@ -208,6 +251,13 @@
         "listVfsFiles",
         "setVfsFile",
         "useDriveStore"
+      ],
+      "types": [
+        "DriveFileMetadata",
+        "DriveState",
+        "DriveWorkspaceFolders",
+        "TokenRefresher",
+        "UploadFileParams"
       ]
     },
     "mcp_bridge": {
@@ -251,6 +301,19 @@
         "createUnifiedMcpServer",
         "createWalToolHandlers",
         "getGlobalMcpSwarmBridge"
+      ],
+      "types": [
+        "BidiFunctionCall",
+        "BidiFunctionDeclaration",
+        "BidiFunctionResponse",
+        "BidiGenerateContentToolResponse",
+        "IncomingToolCall",
+        "McpRequest",
+        "McpResponse",
+        "McpToolDefinition",
+        "ToolExecutionResult",
+        "ToolHandler",
+        "ToolRoutingResult"
       ]
     },
     "path": {
@@ -262,6 +325,7 @@
         "engine/konstruktionsport.ts",
         "engine/pathOrchestrator.ts",
         "engine/pathRunner.ts",
+        "engine/promptCompiler.test.ts",
         "engine/promptCompiler.ts",
         "engine/provningsport.ts",
         "engine/runtimeAdapter.ts",
@@ -306,6 +370,37 @@
         "skapaPathOrkestrerare",
         "skapaProvningsport",
         "skapaStegExekverare"
+      ],
+      "types": [
+        "AvsiktsportOptions",
+        "BaseNode",
+        "BesiktningResultat",
+        "BesiktningsInspekterare",
+        "BesiktningsportOptions",
+        "BidiLiveAdapterConfig",
+        "ClassicReceptOptions",
+        "CompiledPrompt",
+        "FilInspekterare",
+        "FilInspektion",
+        "FilKrav",
+        "KonstruktionsportOptions",
+        "LeanReceptOptions",
+        "OrchestratorConfig",
+        "PathContext",
+        "PathNode",
+        "PathPhase",
+        "PathRecipe",
+        "Port",
+        "PortNode",
+        "PortResult",
+        "PromptCompileInput",
+        "Prompter",
+        "ProvningsportOptions",
+        "SessionAdapter",
+        "StepNode",
+        "StepResult",
+        "TestExekverare",
+        "TestKorselResultat"
       ]
     },
     "telemetry": {
@@ -318,6 +413,11 @@
         "PingEventSchema",
         "emitHeartbeat",
         "emitPing"
+      ],
+      "types": [
+        "Heartbeat",
+        "PingEvent",
+        "PingResult"
       ]
     },
     "wal_logger": {
@@ -341,6 +441,13 @@
         "WalStatus",
         "WalStatusSchema",
         "WalUiTelemetryListener"
+      ],
+      "types": [
+        "ReplayResult",
+        "TransientDiagnosticEntry",
+        "TransientDiagnosticEntryType",
+        "WalEntry",
+        "WalStatus"
       ]
     }
   }

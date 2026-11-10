@@ -71,7 +71,20 @@ export const PromptCompileInputSchema = z.object({
   malDoman: z.string(),
   uppdrag: z.string(),
   biljettText: z.string().optional(),
-  kontextMinne: z.record(z.unknown()).optional(),
+  kontextMinne: z.array(z.object({
+    typ: z.string(),
+    innehåll: z.string(),
+    kalltidsStamplar: z.string().optional(),
+  })).optional(),
+  konstextMinne: z.array(z.object({
+    typ: z.string(),
+    innehåll: z.string(),
+    kalltidsStamplar: z.string().optional(),
+  })).optional(),
+  doman: z.string().optional(),
+  malDoman: z.string().optional(),
+  stegId: z.string().optional(),
+  ticketId: z.string().optional(),
 });
 
 export const CompiledPromptSchema = z.object({

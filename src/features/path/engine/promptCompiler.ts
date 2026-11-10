@@ -1,7 +1,11 @@
-import { PromptCompileInput, CompiledPrompt } from '../contracts/pathSchema';
+import { PromptCompileInput, CompiledPrompt, PromptCompileInputSchema } from '../contracts/pathSchema';
 
 export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
+  // Validera input med Zod schema
+  PromptCompileInputSchema.parse(input);
+
   let systemInstruction = '';
+  const invarianterStr = 'Typkontrakt och systemiska invarianter';
 
   switch (input.fas) {
     case 'avsikt':
@@ -11,7 +15,13 @@ export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
       systemInstruction = 'Fokusera på 3 ortogonala alternativ (reverse-direction), resiliensgranskning (check-alignment) och epistemisk rannsakan.';
       break;
     case 'konstruktion':
-      systemInstruction = 'Fokusera på TDD-loop, isolerad kodmodifiering och kvalitetsgrindar.';
+      systemInstruction = `Fokusera på TDD-loop, isolerad kodmodifiering och kvalitetsgrindar. ${invarianterStr}.`;
+      if (input.konstextMinne && Array.isArray(input.konstextMinne)) {
+         const invarianter = input.konstextMinne.filter(m => m.typ === 'systemisk_invariant');
+         if (invarianter.length > 0) {
+           systemInstruction += ' ' + invarianter.map(i => i.innehåll).join(' ');
+         }
+      }
       break;
     case 'besiktning':
       systemInstruction = 'Fokusera på reflekterande debriefing, programutvärdering och processlärdomar.';

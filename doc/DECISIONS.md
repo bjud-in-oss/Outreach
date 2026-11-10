@@ -436,3 +436,36 @@ Vi fattar tre sammanhängande arkitekturbeslut:
 ## ADR-032: Exponentiell Nätverksresiliens och Automatisk Återanslutning i Bidi Live
 - **Status:** Beslutad (2026-11-08)
 - **Beslut:** För att skydda orkestreringen mot transienta WebSocket-avbrott (Google RPC 1011/1006) införs automatisk återanslutning med exponentiell backoff i `scripts/bidiLiveRunner.ts`. Vid lyckad leverans av tokens nollställs felräknaren omedelbart.
+
+## ADR-033: Scenariotriaden, Försoningsvektorerna och det Minimalistiska Biljettkuvertet
+
+### Status
+Godkänd (2026-11-10)
+
+### Kontext
+Tidigare biljetter i `doc/.TICKETS/` pendlade mellan två ytterligheter: antingen en detaljstyrd instruktionsbok med kodrader (som fråntog källkodsagenten dess arkitektoniska uppdrag och orsakade regressionskrascher) eller vaga tre-raders scenarier som saknade förståelse för nätverksfel och resursläckage. Samtidigt riskerade försök att dela upp biljetter i för många obligatoriska formulärfält att skapa konstlade alibin vid enkla datatransformationer.
+
+### Beslut
+1. **Scenariotriaden som Beteendekontrakt:**
+   Alla byggbiljetter och scenarier i Fas 0 ska uttryckas genom de tre försoningskrafterna i stället för teknisk ingenjörsjargong:
+   - **Scenario: ATT FÖLJA (Närhet i normalfallet):** Beskriver samtalet och dataströmmen när kontakten etableras och uppdraget fullföljs utan hinder.
+   - **Scenario: ATT VÄNDA OM (Uppriktighet vid brott):** Beskriver körtidskrisen (nätverkskrasch, brutet protokoll). Kräver omedelbart erkännande, felpropagering till händelsebussen och förbud mot tysta felblock.
+   - **Scenario: ATT FÖRLIKAS (Helhet och frid):** Beskriver skyddet för helheten. Säkerställer att resurser alltid städas i upprensningsblock (finally) och att systemets överordnade kontrakt bevaras.
+
+2. **Det Minimalistiska Biljettkuvertet:**
+   För att undvika stela blanketter begränsas biljettens maskinella kuvert till två orubbliga koordinater:
+   - `id`: Biljettens identitet (t.ex. TCK-048).
+   - `doman`: Måldomänen under `src/features/`.
+   Hela det intentionella innehållet och Scenariotriaden förvaras som ett öppet textrum i Markdown inuti kuvertet.
+
+3. **Misstagsäkring och Systemiska Invarianter framför Källkodsspecifikation:**
+   Avsnittet "Källkodsspecifikation" i biljettmallen ersätts med "Misstagsäkring & Systemiska Invarianter". I stället för att diktera programsyntax anger biljetten systemets gränsvillkor:
+   - *Självstoppande kvalitetsgrindar:* Förbud mot syntetiska testspioner utan körtidsankare och förbud mot tysta felblock.
+   - *Källgranskning:* Tester måste förankras i verkligt körtidsminne eller nätverksprotokoll.
+   - *Nödstoppslina:* Rätten att avbryta bygget och återställa källkoden vid kontraktsbrott.
+   - *Prestigelös självrannsakan:* Att borra genom fem nivåer av orsaker i reflektionsfasen för att bota processbrister.
+
+### Konsekvenser
+- Källkodsagenten får frihet att härleda den bästa programkoden inuti säkra systemramar.
+- Förhindrar att befintliga publika gränssnitt bryts av ogenomtänkta namnbyten.
+- Människan äger intentionen på sitt eget språk vid avsiktsgrinden, medan maskinen garanterar ordningen.

@@ -22,7 +22,7 @@ Du har inga hårdkodade API-specifikationer i detta promptminne. När ett ämne 
 - **Händelsereplay (Protokoll & Tillstånd i Node/VFS):** Händelsedriven uppspelning av autentiska EventBus-strömmar exekveras på **< 3 sekunder**. Verifierar att systemets inre tillståndshantering och dynamik uppfyller syftet. Inkluderar negativa kontrollfixtures (avbrott, commits, timeouts) för att verifiera att protokollbrus filtreras bort och inte läcker till tursfären.
 - **Körtidsankare (Steel Thread / Skarp Liveline):** När en biljett berör användarinteraktion eller externa gränssnitt verifieras testet mot ett **erkänt körtidsankare** (ex. `getUserMedia`, `AudioContext`, `WebSocket`, `userEvent`, `eventBus.emit`, `Browserless`). Skriptet godkänner uteslutande testfiler med fysisk koppling till körtids-API:er enligt mönstret `steel-thread`.
 - **Mekanisk Alibispärr (Kvalitetsgrind Gate 3a):** AST-granskaren i `scripts/drivers/ts.js` godkänner uteslutande tester som:
-  1. Testar källkod genom funktionell exekvering i minnet (inte genom inspektion av rå `.ts`-kod som text via textmatchningar som `.includes()` eller `.toMatch()` mot deklarationsnyckelord).
+  1. Testar källkod genom funktionell exekvering i minnet (inte genom inspektion av rå `.ts`-kod som text). Användning av syntetiska spioner som `vi.fn()` är strikt förbjudet vid minnestestning; använd rena variabler och funktionslambdor i stället.
   2. Instansierar komponenten eller kör dess logik i minnet i stället för att enbart asserta på mockade hjälpfunktioner.
   3. Låter testfallens fel passera källkodens faktiska felkanaler och händelsebuss.
   4. Begränsar `fs.readFileSync` i testsviten till ren arkitekturmätning via `checkAstMetrics` och `checkNoProductionMocks`.
@@ -35,12 +35,12 @@ Körningen sker via det sammanhållna kommandot `pnpm bygg [TCK-XXX]` (eller `pn
 
 ### 3.1 Fas 0: Premissvalidering & Dörrvakt (Intent Gate)
 Makrokanalen öppnas via Bidi Live WebSocket (`gemini-3.8-live-extended-thinking`) och behåller sitt kontextminne genom hela planeringen. Utförs i `doc/LAST_CYCLE/CYCLE_LOG.md` innan källkodsarbete påbörjas:
-- 1a Att följa: Förstå Intention & Mänsklig Nytta. Utifrån TCK-prompten formulerar agenten ett kortfattat, läsbart Gherkin-scenario (Givet/När/Så) och sparar det fysiskt som en `.feature`-fil under `doc/features/`.
-- 0a Att vända om: Kontraktsaudit (1. Max 1 FSD under `src/features/`, 2. API-skills i `.agents/skills/`, 3. Krav på destruktiv sanering).
-- 0b Att förlikas: Vägval & Förlikningsport.
-  * Väg 1 (Avbrott vid Kontraktsbrott): Om TCK berör >1 FSD eller avviker från API-kontrakt -> Exekvera skillen `decomposing-tickets`, skapa nya TCK-filer under `doc/.TICKETS/`, markera TCK-XXX som SUPERSEDED i `doc/TICKETS.md` och avbryt körningen mekaniskt.
-  * Väg 2 (Godkänd): Fortsätt direkt till Intent Gate.
-- **Intent Gate (Avsiktsgrinden):** Byggmotorn pausar i terminalen. Den nyskapade `.feature`-filen skrivs ut på skärmen och användaren tillfrågas: *"Speglade detta din intention? (y/n)"*. Vid 'y' låses beteendekontraktet och Fas 1 körs autonomt. Vid 'n' avbryts bygget mekaniskt.
+- 1a Att följa: Förstå Intention & Mänsklig Nytta via Samråd. I stället för tysta textdokument för agenten ett kortfattat, empatiskt klarspråkssamtal med användaren för att fånga uppdragets verkliga behov och risker.
+- 0a Att vända om: Kontraktsaudit (Max 1 FSD, krav på destruktiv sanering).
+- 0b Att förlikas: Vägval & Det Naturliga Godkännandet.
+  * Agenten speglar användarens avsikt i klarspråk i terminalen (utan stelt Gherkin-tvång) och inväntar ett naturligt svar.
+  * **Intent Gate (Avsiktsgrinden):** Fångas inte längre via en strikt y/n-prompt i Bash. Agenten känner i stället av när människan gett en informell klarsignal i dialogen. Först då aktiveras Byggmotorn i bakgrunden.
+  * **Scenariotriaden (ADR-033):** När intentionen är låst genererar agenten autonomt en Scenariotriad (Att följa, Att vända om, Att förlikas) samt Misstagsäkringar och Systemiska Invarianter. Människan behöver aldrig se eller redigera formella Gherkin-scenarier.
 
 ### 3.2 Fas 1: Linjärt Planeringssvep med Inre Triadisk Mikro-oscillation & Fraktal Omvändelse
 Makrostegen skrivs sekventiellt till `doc/LAST_CYCLE/CYCLE_LOG.md`. 
