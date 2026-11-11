@@ -224,14 +224,38 @@ async function main() {
   };
 
   // ==========================================
-  // GENERISK GIT-BASERAD STARTSANERING
+  // DYNAMISK TESTEXTENSION & STARTSANERING
   // ==========================================
-  const transientTestFile = `src/__tests__/transient_${ticketId}.test.ts`;
-  const transientTestFullPath = path.join(ROOT_DIR, transientTestFile);
-  if (fs.existsSync(transientTestFullPath)) {
-    console.log(`🧹 [STARTSANERING]: Tar bort transient testfil från tidigare cykel: ${transientTestFile}`);
-    fs.unlinkSync(transientTestFullPath);
+  let testExt = 'ts';
+  const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
+  
+  const hasTsxExtensions = (dir: string): boolean => {
+    if (!fs.existsSync(dir)) return false;
+    const items = fs.readdirSync(dir, { withFileTypes: true });
+    for (const item of items) {
+      if (item.isDirectory() && item.name !== '__tests__') {
+        if (hasTsxExtensions(path.join(dir, item.name))) return true;
+      } else if (item.name.endsWith('.tsx')) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (targetDomain === 'a2ui' || ticketPrompt.includes('.tsx') || ticketPrompt.includes('React') || hasTsxExtensions(domainDir)) {
+    testExt = 'tsx';
   }
+
+  const transientTestFile = `src/__tests__/transient_${ticketId}.test.${testExt}`;
+  const transientTestFullPath = path.join(ROOT_DIR, transientTestFile);
+
+  ['ts', 'tsx'].forEach(ext => {
+    const oldPath = path.join(ROOT_DIR, 'src', '__tests__', `transient_${ticketId}.test.${ext}`);
+    if (fs.existsSync(oldPath)) {
+      console.log(`🧹 [STARTSANERING]: Tar bort transient testfil från tidigare cykel: transient_${ticketId}.test.${ext}`);
+      fs.unlinkSync(oldPath);
+    }
+  });
 
   if (!isMaint) {
     try {

@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-034** (VERIFIED): TSX-stöd för Transienta Tester och Syntaxspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-034.md`
 - [x] **TCK-MAINT-033** (VERIFIED): Aktivera Tailwind i Vite, Harmonisera SwarmEventBus och Montera A2UI i App -> Se `doc/.TICKETS/TCK-MAINT-033.md`
 - [x] **TCK-MAINT-032** (VERIFIED): Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition -> Se `doc/.TICKETS/TCK-MAINT-032.md`
 - [x] **TCK-MAINT-031** (VERIFIED): Harmonisera ast-mutator.test.js med Vitest-standarden -> Se `doc/.TICKETS/TCK-MAINT-031.md`
@@ -36,6 +37,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-050** (VERIFIED): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
 - [x] **TCK-049** (VERIFIED): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
 - [x] **TCK-048** (VERIFIED): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
 - [x] **TCK-047** (VERIFIED): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
