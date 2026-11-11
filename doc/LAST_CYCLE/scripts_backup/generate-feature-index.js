@@ -3,7 +3,7 @@
  * 
  * OUTREACH COORDINATION ENGINE (v10.5)
  * Genererar doc/FEATURE_INDEX.json genom att parsa TypeScripts syntaxträd (AST).
- * Noll regex, 100 % deterministisk.
+ * Noll regex, 100 % deterministisk extraktion av komponenter OCH typkontrakt.
  */
 
 import fs from 'fs';
@@ -26,6 +26,7 @@ function scanFeature(featureName) {
 
   const files = [];
   const exportsList = [];
+  const typesList = [];
 
   function scanDir(dir) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -41,9 +42,9 @@ function scanFeature(featureName) {
         const content = fs.readFileSync(fullPath, 'utf-8');
         const sf = ts.createSourceFile(fullPath, content, ts.ScriptTarget.Latest, true);
 
-        // Parsa AST för att hitta faktiska exporter
+        // Parsa AST för att hitta funktionella exporter och typkontrakt
         ts.forEachChild(sf, node => {
-          // Namngivna exporter: export const foo = ... / export function bar()
+          // 1. Funktionella exporter (variabler, funktioner, klasser)
           if (ts.isVariableStatement(node) && isExported(node)) {
             node.declarationList.declarations.forEach(d => {
               if (ts.isIdentifier(d.name)) exportsList.push(d.name.text);
@@ -53,7 +54,11 @@ function scanFeature(featureName) {
           } else if (ts.isClassDeclaration(node) && isExported(node) && node.name) {
             exportsList.push(node.name.text);
           }
-          // Re-exporter: export { foo } from './bar'
+          // 2. Typkontrakt (interfaces, type alias, enums)
+          else if ((ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) && isExported(node) && node.name) {
+            typesList.push(node.name.text);
+          }
+          // 3. Re-exporter
           else if (ts.isExportDeclaration(node) && node.exportClause && ts.isNamedExports(node.exportClause)) {
             node.exportClause.elements.forEach(el => exportsList.push(el.name.text));
           }
@@ -64,14 +69,14 @@ function scanFeature(featureName) {
 
   scanDir(featureDir);
   
-  // Ta bort dubbletter och sortera
   featureIndex.features[featureName] = {
     files: [...new Set(files)].sort(),
-    exports: [...new Set(exportsList)].sort()
+    exports: [...new Set(exportsList)].sort(),
+    types: [...new Set(typesList)].sort()
   };
 }
 
-console.log('🗺️  Skapar deterministisk resurskarta via TypeScript AST...');
+console.log('🗺️  Skapar deterministisk resurs- och typkarta via TypeScript AST...');
 
 if (fs.existsSync(SRC_DIR)) {
   for (const entry of fs.readdirSync(SRC_DIR, { withFileTypes: true })) {

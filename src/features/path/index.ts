@@ -11,4 +11,3 @@ export * from './recipes/classicRecipe';
 export * from './recipes/leanRecipe';
 export * from './engine/pathOrchestrator';
 export * from './engine/bidiLiveAdapter';
-export * from './engine/promptCompiler.test';

@@ -1,59 +1,58 @@
-# BYGGCYKEL LOGG: TCK-048
-**Starttid:** 2026-11-10T22:53:05.128Z
+# BYGGCYKEL LOGG: TCK-MAINT-029
+**Starttid:** 2026-11-11T06:50:33.574Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-048: Kärnfull Relevans och Typberikning i Promptkompilatorn
+# TCK-MAINT-029: Fas 2-isolering, Barrel-skydd mot testfiler och typindexering
 
-**Måldomän:** `path` (`src/features/path/`)
-**Mekanisk Acceptans:** Ett transient test bevisar Fail-First (exit 1) vid saknad domänkontext, passerar Gate 3a via funktionell minnesexekvering (noll syntetiska spioner), och avslutas med 100 % grön regressionssvit (exit 0).
+**Måldomän:** `scripts` (`scripts/`)
+**Mekanisk Acceptans:** Ett transient skripttest bevisar att `syncDomainBarrel` i `run-planera-live.ts` aldrig exporterar filer med `.test.` eller `.spec.` till domänens `index.ts`, att transienta testkörningar i Fas 2 är konfigurationsisolerade, samt att regressionssviten passerar med 100 % grönt utfall (exit 0).
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Vaccin mot kontextsvält (Kärnfull Relevans):**
-   - `kompileraPrompt` i `src/features/path/engine/promptCompiler.ts` får INTE banta bort domänens typdefinitioner för att nå ett godtyckligt tokental.
-   - När en prompt sammanställs för faserna 'avsikt', 'provning' eller 'konstruktion' MÅSTE systeminstruktionen deterministiskt berikas med måldomänens aktiva typkontrakt (t.ex. `model/types.ts`) om sådana skickas med i `kontextMinne` eller via explicit parameter.
-2. **Förbud mot syntetiska spioner (Gate 3a):**
-   - Testfilen får INTE importera eller anropa `vi.fn()` eller `vi.spyOn()`. Alla utfall valideras genom primitiva tillståndsvariabler och direkta strängjämförelser i minnet.
-3. **Bevara bakåtkompatibilitet i promptSchema:**
-   - `PromptCompileInputSchema` och `CompiledPromptSchema` i `contracts/pathSchema.ts` ska förbli orubbliga sanningskällor (SSOT) och härleda typer via `z.infer`.
-4. **Inga tysta fel:**
-   - Felaktiga eller saknade indata till kompilatorn ska valideras strikt via schemat och kasta kontrollerade fel snarare än att generera tomma prompter.
+1. **Barrel-skydd mot testläckage:**
+   - Funktionen `syncDomainBarrel` i `scripts/run-planera-live.ts` MÅSTE filtrera bort alla filer vars namn innehåller `.test.` eller `.spec.`.
+   - Testfiler får ALDRIG skrivas in som `export * from ...` i en domäns publika `index.ts`.
+   - Eventuella befintliga testexporter i `src/features/path/index.ts` (t.ex. `promptCompiler.test`) ska saneras bort.
+2. **Isolerad transient-körning i Fas 2:**
+   - När Fas 2 exekverar transienta tester via Vitest ska anropet isoleras så att det inte kolliderar med eller kräver manipulering av repots delade `vite.config.ts`.
+3. **Bevara orkestreringens integritet:**
+   - Befintliga kvalitetsgrindar (Gate 2c, Gate 3a AST-kontroll, Git-sanering vid start) ska förbli 100 % intakta.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Modellen förses med full sanning och klar blick**
-  Givet en måldomän med definierade typer och barrel-exporter
-  När `kompileraPrompt` anropas för konstruktionsfasen
-  Så ska den returnerade `systemInstruction` innehålla domänens fullständiga typdefinitioner
-  Och beräknat token-antal ska återspegla den faktiska payloaden utan godtycklig trunkering.
+**Scenario: ATT FÖLJA – Domänens fasad förblir ren och tydlig**
+  Givet en domän där utvecklaren skapar både logikfiler och interna tester
+  När `syncDomainBarrel` körs inför en byggcykel
+  Så ska endast rena produktionsmoduler exporteras i `index.ts`
+  Och inga testfiler får någonsin synas i domänens publika barrel.
 
-**Scenario: ATT VÄNDA OM – Avvisande av förvanskad eller tom domänkontext**
-  Givet att kompilatorn matas med ogiltig fas eller saknar obligatoriska uppdragsparametrar
-  När kompileringen exekveras
-  Så ska funktionen omedelbart kasta ett valideringsfel enligt Zod-kontraktet
-  Och felaktiga antaganden ska inte släppas igenom till exekveringsmotorn.
+**Scenario: ATT VÄNDA OM – Avvisande av testläckage och konfigurationskonflikter**
+  Givet att en källkodsagent placerar en testfil i samma mapp som logiken
+  När barrel-synken undersöker katalogen
+  Så ska testmönster omedelbart ignoreras
+  Och tillfälliga Fas 2-tester ska kunna köras rött och grönt utan att påverka repots globala testinställningar.
 
-**Scenario: ATT FÖRLIKAS – Helheten bevaras och resurser förblir fria från brus**
-  Givet att kompileringen fullföljs framgångsrikt
-  När svaret levereras
-  Så ska den färdiga prompten vara helt renad från historiska felloggar och samtalstranskript
-  Och endast det kärnfulla uppdraget och dess systemiska ramverk ska återstå.
+**Scenario: ATT FÖRLIKAS – Helheten läks och källkoden lämnas i frid**
+  Givet att gamla testrester eller felaktiga exporter existerar i `src/features/path/index.ts`
+  När underhållet slutförs
+  Så ska domänens `index.ts` vara återställd till rena domänexporter
+  Och regressionssviten (`pnpm verify`) ska passera helt utan anmärkning.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag är redo att sätta igång med att stärka promptkompilatorn så att den alltid behåller rätt typdefinitioner och kärnfull relevans. För att jag ska kunna göra ett så bra jobb som möjligt, finns det något särskilt scenario eller någon risk du tänker på som vi absolut behöver ta hänsyn till i det här arbetet?
+Hej. Jag har tagit emot uppdraget rörande TCK-MAINT-029 och skyddet av våra domänexporter. Det känns angeläget att säkerställa att våra testfiler förblir helt isolerade och inte läcker in i systemets publika gränssnitt. Finns det någon särskild typ av konfigurationskonflikt under transienta testkörningar du har noterat tidigare som vi bör lägga extra fokus vid?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har auditerat kontraktet för TCK-048 och kan bekräfta att avgränsningen till `path`-domänen är tydlig. Vi kommer att säkra att `kompileraPrompt` levererar fullständiga typdefinitioner och att våra tester håller sig till ren minnesexekvering utan syntetiska spioner. Allt är redo för nästa steg.
+Jag har granskat kontraktet för TCK-MAINT-029 och can bekräfta att det är fullt i linje med våra systemiska krav. Vi kommer att fokusera hårt på att rensa bort testexporter i `index.ts` och isolera körningsmiljön för Fas 2. Jag är redo att gå vidare till nästa steg.
 
 
 #### 0b Att förlikas: Vägval
@@ -65,30 +64,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-048 och säkerställa att kompilatorn bevarar domänens typkontrakt, har jag tagit fram följande tre separata alternativ:
+För att lösa TCK-MAINT-029 och skydda domänens fasad formulerar jag tre ortogonala alternativ.
 
-Alternativ ett: Vi utökar `PromptCompileInput` med en specifik egenskap för direkt injektion av typdefinitioner.
+Alternativ 1 är direkt regex-filtrering inne i syncDomainBarrel där vi utesluter filer med `.test.` eller `.spec.` innan exporten skrivs.
 
-Alternativ två: Kompilatorn läser automatiskt domänens `model/types.ts` via filsystemet och injekterar innehållet mekaniskt.
+Alternativ 2 innebär att vi modifierar själva insamlingsloggan för filer så att testfiler ignoreras redan vid kataloggenomlysningen.
 
-Alternativ tre: Vi bygger in ett dedikerat typlager i prompt-mallen, vilket separerar typdefinitioner från övriga och bibehåller relevans.
+Alternativ 3 är att skapa en separat hjälppunktion för filtrering i ett nytt modullager för att följa strikt modulär expansion och bevara ren separation.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ två innebär en hög risk för systemkrasch och bryter dessutom mot arkitekturprincipen om en isolerad VFS-miljö. Alternativ ett är absolut säkrast för långsiktig resiliens, då det kräver att typkontraktet injiceras explicit utan dolda filsystemberoenden.
+Alternativ 1, med direkt regex-filtrering, ger direkt skydd, men kan bli en flaskhals i underhållet. Alternativ 2 är mer resilient eftersom det hanterar källkodsinsamlingens grund, men kan dölja latenta problem om insamlingen misslyckas. Alternativ 3 främjar modularitet, vilket är mest i linje med våra strikta FSD-principer och ger ren felpropagering.
 
 
 #### 2d Att förlikas: Mättnad
-Jag har vägt spänningsfältet mellan alternativen och ser tydligt att Alternativ ett är den trygga vägen framåt. Genom att injicera typkontraktet explicit skyddar vi systemets resiliens och eliminerar dolda beroenden. Jag låser nu detta kontrakt. MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-För att säkra att prompterna bibehåller full typkontext och är fria från ovidkommande brus, kommer vi att bevara `pathSchema.ts` och `index.ts` som de är. Vi skapar det transienta testet `promptCompiler.test.ts` och uppdaterar därefter `promptCompiler.ts` för att implementera de nödvändiga kraven för typberikning.
+Efter att ha vägt avvägningarna står det klart att Alternativ 3 är det vinnande kontraktet. Genom att prioritera modularitet och strikt följa FSD-principerna säkerställer vi ren felpropagering och långsiktig resiliens i vår arkitektur. MÄTTNAD: JA.

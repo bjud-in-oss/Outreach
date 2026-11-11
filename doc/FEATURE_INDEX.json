@@ -325,7 +325,6 @@
         "engine/konstruktionsport.ts",
         "engine/pathOrchestrator.ts",
         "engine/pathRunner.ts",
-        "engine/promptCompiler.test.ts",
         "engine/promptCompiler.ts",
         "engine/provningsport.ts",
         "engine/runtimeAdapter.ts",
