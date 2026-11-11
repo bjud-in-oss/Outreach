@@ -33,6 +33,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-049** (VERIFIED): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
 - [x] **TCK-048** (VERIFIED): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
 - [x] **TCK-047** (VERIFIED): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
 - [x] **TCK-046** (VERIFIED): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
