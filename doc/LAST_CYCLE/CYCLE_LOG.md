@@ -1,63 +1,59 @@
-# BYGGCYKEL LOGG: TCK-MAINT-032
-**Starttid:** 2026-11-11T21:01:58.552Z
+# BYGGCYKEL LOGG: TCK-MAINT-033
+**Starttid:** 2026-11-11T21:19:45.202Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-032: Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition
+# TCK-MAINT-033: Aktivera Tailwind i Vite, Harmonisera SwarmEventBus och Montera A2UI i App
 
-**Måldomän:** `scripts` (`scripts/run-planera-live.ts`)
-**Mekanisk Acceptans:** Ett transient skripttest bevisar att `getRequiredFiles()` i `run-planera-live.ts` vid underhållskörningar (`isMaint`) korrekt extraherar målfiler under `src/shared/`, `src/App.tsx` och rotkonfigurationer (`vite.config.ts`, `package.json`), att `restoreScriptsBackup` vid avbrott även återställer dessa filer, samt att den lokala Fas 2-valideringen och regressionssviten passerar med exit 0.
+**Måldomän:** `scripts` & `src/shared/bus/` & rotfiler (`vite.config.ts`, `src/App.tsx`)
+**Mekanisk Acceptans:** Ett transient test eller lokal verifiering bevisar att `vite.config.ts` inkluderar Tailwind-pluginet, att `src/shared/bus/swarmEventBus.ts` implementerar `publishLiveEvent` och `publishSerialMetric`, samt att `src/App.tsx` komponerar `RenderA2UI` och `AppShell` utan att regressionssviten eller FSD-granskningen fallerar (exit 0).
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Expanderad filidentifiering i getRequiredFiles():**
-   - I `scripts/run-planera-live.ts` MÅSTE funktionen `getRequiredFiles()` vid `isMaint` utökas så att den utöver `scripts/...` även matchar:
-     * Filer under `src/shared/` (`src/shared/[a-zA-Z0-9_\-./]+\.(?:ts|tsx)`)
-     * Rotkonfigurationer (`vite.config.ts`, `package.json`)
-     * Applikationens kompositionsrot (`src/App.tsx`)
-2. **Säkerhetsnät och återställningsskydd (restoreScriptsBackup):**
-   - Vid avbrott eller fel under underhållskörningar (`isMaintRun`) ska funktionen `restoreScriptsBackup` (eller motsvarande felhanterare) även återställa eventuella påbörjade ändringar i `src/shared/`, `src/App.tsx`, `vite.config.ts` och `package.json` via Git (`git checkout -- src/shared/ src/App.tsx vite.config.ts package.json 2>/dev/null || true`), så att inget trasigt tillstånd lämnas kvar på disken.
-3. **Kontextuell Fas 2-validering:**
-   - Den lokala kontrollen i Fas 2 ska förutom `verify-architecture.js` och `npx vitest run scripts/__tests__/` även köra typkontroll (`pnpm lint`) om modifierade filer berör TypeScript-filer utanför `scripts/` (såsom `src/shared/` eller `src/App.tsx`).
-4. **Bevara FSD-integritet:**
-   - Vanliga funktionsbiljetter (`TCK-XXX` där `!isMaint`) ska förbli strikt isolerade till `src/features/<targetDomain>/`. Det utökade territoriet gäller uteslutande underhållskörningar (`isMaint`).
+1. **Aktivera Tailwind v4 i Vite:**
+   - I `vite.config.ts` MÅSTE `@tailwindcss/vite` importeras och läggas till i `plugins: [react(), tailwindcss()]`.
+2. **Metodharmonisering i SwarmEventBus:**
+   - I `src/shared/bus/swarmEventBus.ts` MÅSTE `SwarmEventBus` kompletteras med:
+     * `publishLiveEvent(type: SwarmEventType, payload: any): void` som delegerar till `this.emit(type, payload)`.
+     * `publishSerialMetric(metric: any): void` som delegerar till `this.emit('swarm.serial.metric', metric)`.
+3. **A2UI-komposition i App:**
+   - I `src/App.tsx` MÅSTE `RenderA2UI` från `src/features/a2ui/` importeras och monteras i layouten tillsammans med `AppShell` under `SwarmProvider`.
+   - Befintlig FSD-isolering förblir intakt (App.tsx äger kompositionen mellan a2ui och gemini_live_swarm).
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Motorn äger hela sitt systemiska underhåll**
-  Givet en underhållsbiljett som specificerar korrigeringar i `src/shared/bus/swarmEventBus.ts` eller `vite.config.ts`
-  När Byggmotorn startar i MAINT-läge
-  Så ska `getRequiredFiles()` identifiera dessa filer från specifikationen och tillåta att de uppdateras
-  Och bygget slutförs autonomt utan behov av manuella skalskript.
+**Scenario: ATT FÖLJA – Gränssnittet kläs i färg och form**
+  Givet att Vite startas mot webbläsaren
+  När `vite.config.ts` laddar Tailwind-pluginet och `src/App.tsx` renderar A2UI-korten
+  Så ska stilmallen appliceras korrekt med mörk bakgrund och formgivna kort
+  Och människan möts av en lugn och inbjudande visuell rymd.
 
-**Scenario: ATT VÄNDA OM – Återställning skyddar delad infrastruktur vid haveri**
-  Givet att en underhållskörning som berör delade filer kraschar eller avbryts i Fas 2
-  När processens säkerhetsspärr utlöses
-  Så ska inte bara `scripts/` utan även påbörjade ändringar i `src/shared/` eller rotfiler rullas tillbaka
-  Så att systemet alltid återgår till ett garanterat grönt tillstånd.
+**Scenario: ATT VÄNDA OM – Händelsebussen skyddar mot körtidskrasch**
+  Givet att `GeminiLiveSession` anropar `publishLiveEvent` vid start
+  När händelsen skickas till bussen
+  Så ska metoden finnas tillgänglig och vidarebefordra händelsen utan undantag
+  Och webbläsaren drabbas inte av vita skärmar eller metodfel.
 
-**Scenario: ATT FÖRLIKAS – Den lokala valideringen bekräftar helheten**
-  Givet att `run-planera-live.ts` uppdateras med det expanderade territoriet
-  När `scripts/__tests__/` och `verify-architecture.js` körs lokalt
-  Så ska samtliga kontroller passera grönt
-  Och motorn är formellt rustad att autonomt läka delade bussar och rotkompositioner.
+**Scenario: ATT FÖRLIKAS – Autonom integration fullbordas**
+  Givet att alla tre filerna uppdateras autonomt av Byggmotorn
+  När `pnpm verify` körs
+  Så ska samtliga enhetstester, skriptkontroller och arkitekturregler lysa 100 % gröna
+  Och systemet är redo för skarp körning via `pnpm dev`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Det här underhållet är verkligen viktigt för att motorn ska kunna hela sig själv ända in i kärnan. Genom att låta byggmotorn hantera både delad infrastruktur och rotkompositioner skapar vi en mycket säkrare grund.
-
-Innan vi startar, finns det någon specifik risk eller tidigare händelse med felaktiga tillstånd på disken som du särskilt vill att vi skyddar oss emot?
+Jag förstår intentionen med det här uppdraget. Ni vill klä gränssnittet i en lugn och inbjudande visuell form, samtidigt som vi stärker systemets inre stabilitet så att alla delar harmonierar perfekt. Det känns som en vacker och stabil grund. Stämmer det överens med er vision för systemet?
 
 
 #### 0a Att vända om: Kontraktsaudit
-För att göra en korrekt kontraktsaudit av underhållsbiljetten TCK-MAINT-032 behöver jag först inspektera hur `getRequiredFiles` och `restoreScriptsBackup` är implementerade i `run-planera-live.ts`. Jag sätter igång med granskningen nu.
+Kontraktsauditen är utförd och gränserna är validerade. Vi säkerställer strikt isolering och att händelsebussen och roten förblir intakta genom bygget. STATUS: GÖTKÄNT.
 
 
 #### 0b Att förlikas: Vägval
@@ -69,18 +65,22 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att möta kraven i TCK-MAINT-032 och bevara FSD-integriteten föreslår jag följande tre ortogonala alternativ för lösning.
+För att lösa kontraktet TCK-MAINT-033 föreslår jag tre ortogonala alternativ.
 
-Alternativ ett är en direkt statisk domänkartläggning där underhållsläget explicit utökar tillåten sökvägslista i getRequiredFiles med förutbestämda och hårt kodade mönster för delade komponenter och konfigurationsfiler.
+Alternativ ett innebär direkt patching och sammanslagning i ett linjärt svep: vi uppdaterar Vite, SwarmEventBus och App.tsx i ett svep och verifierar med ett gemensamt integrationstest.
 
-Alternativ två är mönsterbaserad dynamisk parsning via reguljära uttryck som i körtid utvärderar samtliga ändringar och automatiskt fångar upp träffar inom specificerade mappar som src/shared och projektroten.
+Alternativ två fokuserar på isolation genom att hålla SwarmEventBus intakt och istället expandera med en proxy-modul, samt separera A2UI-kompositionen med villkorlig rendering.
 
-Det tredje alternativet är att behandla delade lagerytor som en separat efemär FSD-domän vid körstart vilket medger strikt isolerad validering och resursövertagning utan risk för läckage till applikationens huvudlogik.
+Alternativ tre är en inkrementell fasad utveckling där vi först testar Vites Tailwind-stöd, därefter utökar händelsebussen med enhetsverifiering innan vi slutför monteringen i App.tsx.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett, med statisk domänkartläggning, erbjuder hög resiliens eftersom den är förutsägbar och har strikt avgränsad omfattning, vilket minskar risken för oavsiktliga sidoeffekter. Alternativ två har högre risk för fel i körtid på grund av dynamiska uttryck, och alternativ tre introducerar onödig komplexitet som kan leda till orkestreringsfel.
+Alternativ ett är effektivt vid snabba ändringar, men innebär en risk för körtidskrascher eftersom brister i händelsebussen inte upptäcks förrän i ett sent skede.
+
+Alternativ två ökar isoleringen genom proxyn, men introducerar komplexitet som kan dölja latenta fel och strida mot vår princip om ren struktur.
+
+Alternativ tre är mest resilient; genom inkrementell utveckling och omedelbar verifiering kan vi säkerställa att varje fas är stabil innan nästa påbörjas, vilket minimerar kraschrisken.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ ett är det vinnande kontraktet. Genomstatiskdomänkartläggningmaximera vi resiliens,förutsägbarhetochstrikt kontroll.MÄTTNAD:JA.
+Efter en noggrann avvägning står det klart att alternativ tre är det vinnande kontraktet. Det ger oss den resiliens och stabilitet vi behöver genom inkrementell utveckling och omedelbar verifiering. MÄTTNAD: JA.

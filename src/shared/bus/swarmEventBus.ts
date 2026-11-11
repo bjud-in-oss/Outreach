@@ -71,6 +71,14 @@ export class SwarmEventBus {
     this.emit(type, payload);
   }
 
+  public publishLiveEvent(type: SwarmEventType, payload: any): void {
+    this.emit(type, payload);
+  }
+
+  public publishSerialMetric(metric: any): void {
+    this.emit('swarm.serial.metric', metric);
+  }
+
   public clear(): void {
     this.listeners.clear();
   }
