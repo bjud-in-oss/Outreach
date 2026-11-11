@@ -1,62 +1,59 @@
-# BYGGCYKEL LOGG: TCK-049
-**Starttid:** 2026-11-11T17:10:04.033Z
+# BYGGCYKEL LOGG: TCK-MAINT-031
+**Starttid:** 2026-11-11T20:53:20.777Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-049: Etablera FSD-domänen A2UI med Komponentkatalog och Renderare
+# TCK-MAINT-031: Harmonisera ast-mutator.test.js med Vitest-standarden
 
-**Måldomän:** `a2ui` (`src/features/a2ui/`)
-**Mekanisk Acceptans:** Ett transient test bevisar Fail-First vid okänd komponent eller ogiltigt dataformat enligt Zod-kontraktet, passerar Gate 3a via funktionell minnesexekvering (noll `vi.fn()`), samt avslutas med 100 % grön regressionssvit och noll FSD-arkitekturfel (exit 0).
+**Måldomän:** `scripts` (`scripts/__tests__/ast-mutator.test.js`)
+**Mekanisk Acceptans:** Ett enhetstest bevisar att `scripts/__tests__/ast-mutator.test.js` exekverar framgångsrikt via `npx vitest run scripts/__tests__/` med registrerade testsviter (`describe`, `it`, `expect`), samt att den lokala Fas 2-valideringen passerar utan fel (exit 0).
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Fristående FSD-domän:**
-   - All ny källkod ska skapas under `src/features/a2ui/`.
-   - Domänen får INTE importera från andra domäner under `src/features/`. Kommunikation med omvärlden sker uteslutande via typade kontrakt och händelser.
-2. **SSOT & Zod-kontrakt för A2UI:**
-   - Definiera `A2UIPayloadSchema` i `contracts/a2uiSchema.ts` med fälten `componentId` (sträng) och `dataModel` (z.record(z.any())).
-   - Återexportera typerna i `model/types.ts` via `z.infer`.
-3. **Katalogmönstret (Registry):**
-   - Skapa baskomponenterna `ListeningCard` (spegling av användarens intention) och `ActionPrompt` (bekräftelseknappar) under `catalog/`.
-   - Renderaren `RenderA2UI` måste deterministiskt matcha `payload.componentId` mot katalogen.
-   - Dynamisk sträng-kodexekvering (`eval`, `Function`) är strikt förbjuden.
-4. **Defensiv felhantering:**
-   - Om en okänd `componentId` skickas in ska renderaren inte krascha React, utan returnera en kontrollerad reservvy (fallback) som deklarerar att komponenten saknas i katalogen.
+1. **Vitest-kompatibilitet:**
+   - `scripts/__tests__/ast-mutator.test.js` MÅSTE migreras från råa Node.js `assert`-satser till Vitests standard-API (`describe`, `it`, `expect`).
+   - Filen får inte innehålla oinkapslade toppnivå-satser som får Vitest att rapportera "No test suite found".
+2. **Bevara testtäckning:**
+   - Båda de ursprungliga testfallen för AST-mutatorn ska bevaras och verifieras:
+     1. Scope-isolering (global konfiguration ignoreras och funktionens returvärde muteras).
+     2. Händelsebuss-sidoeffekter (`eventBus.emit`) släcks med högsta prioritet.
+3. **Oförändrad orkestrering:**
+   - Inga ändringar får göras i `scripts/run-planera-live.ts` under denna biljett; målet är enbart att läka testfixturen.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Agentens avsikt tar form i katalogen**
-  Givet en giltig A2UI-payload med `componentId: 'ListeningCard'` och tillhörande textdata
-  När `RenderA2UI` tar emot payloaden
-  Så ska komponenten slås upp ur katalogen och renderas med fullständigt dataunderlag
-  Och mottagaren möts av en tydlig och formgiven visuell representation.
+**Scenario: ATT FÖLJA – Skripttestet talar samma språk som testmotorn**
+  Givet testfixturen för AST-mutatorn i `scripts/__tests__/`
+  När `npx vitest run scripts/__tests__/` exekveras
+  Så ska Vitest omedelbart identifiera testsviten och rapportera gröna tester
+  Och infrastrukturen förblir enhetlig.
 
-**Scenario: ATT VÄNDA OM – Avvisande av okända eller felaktiga komponenter**
-  Givet att en agent skickar en payload med en komponent som saknas i katalogen
-  När `RenderA2UI` evaluerar förfrågan
-  Så ska systemet fånga avvikelsen utan att krascha
-  Och visa en kontrollerad felindikering som beskriver vilken komponent som saknades.
+**Scenario: ATT VÄNDA OM – Avvisande av ostrukturerade testskript**
+  Givet att en fil med ändelsen `.test.js` saknar formella testblock
+  När testmotorn skannar katalogen
+  Så ska avvikelsen elimineras genom att kapsla logiken i `describe` och `it`
+  Så att inga falsklarm eller tomma testkörningar uppstår.
 
-**Scenario: ATT FÖRLIKAS – Ren och isolerad domänfasad**
-  Givet att implementationen fullbordas
-  När `src/features/a2ui/index.ts` kompileras
-  Så ska alla publika scheman, typer och renderaren exporteras rent
-  Och `node scripts/verify-architecture.js` ska bekräfta noll FSD-överträdelser.
+**Scenario: ATT FÖRLIKAS – Den lokala Fas 2-grinden öppnas**
+  Givet att `ast-mutator.test.js` uppdateras
+  När den lokala grinden i `run-planera-live.ts` körs under underhåll
+  Så ska samtliga tester i `scripts/__tests__/` passera grönt
+  Och vägen är fri för efterföljande systemförbättringar.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Syftet med det här uppdraget är att ge våra agenter möjligheten att kommunicera mer visuellt och mänskligt med användaren. Genom att bygga en centraliserad katalog med komponenter som ListeningCard och ActionPrompt, säkerställer vi att agentens avsikter renderas korrekt och säkert utan att krascha ifall någon felaktig information skickas. Det ger en trygg och förutsebar upplevelse. Hur känns den här bilden av intentionen?
+Jag uppfattar din avsikt helt. Vi ska uppdatera vårt test för AST-mutatorn så att det talar samma moderna språk som testmotorn, det vill säga Vitest. Vi ser till att kapsla in testerna korrekt, bevara all testtäckning och hålla orkestreringen helt intakt. Detta stärker vår infrastruktur och låter grinden passera utan friktion. Är det en korrekt bild av uppdraget?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Syftet med att skapa en trygg, visuell brygga till användaren känns helt rätt i tiden. Jag ser att kontraktet strikt följer reglerna om FSD-isolering och defensiv felhantering, vilket minimerar risken för krascher. Vi står på fast mark och inga destruktiva saneringar krävs för detta nysläpp.
+Kontraktet är granskat och godkänt. Vi fokuserar uteslutande på att migrera testsviten i 'scripts/__tests__/ast-mutator.test.js' till Vitest-standarden, utan att röra produktionskod eller orkestreringslogik.
 
 
 #### 0b Att förlikas: Vägval
@@ -68,30 +65,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Vi formulerar tre ortogonala alternativ för lösningen av A2UI som uppfyller era strikta FSD-regler och isolering.
+För att lösa TCK-MAINT-031 och harmonisera ast-mutator.test.js med Vitest, formulerar jag här tre ortogonala alternativ:
 
-Alternativ 1 är en statisk upplagsbok. Vi skapar ett direkt uppslagsregister i form av ett objekt som mappar `componentId` till React-komponenter. Register-objektet är helt isolerat i domänen.
+Det första alternativet är direkt migrering och kapsling, där vi behåller befintliga tester men ersätter Node-asserts med Vitests förväntnings-API.
 
-Alternativ 2 är en fabriksfunktion. Vi implementerar en funktion `getComponentFactory` som bygger upp vyn utifrån ID. Detta tillåter logik för validering och reservvyer innan komponenten skickas tillbaka.
+Det andra alternativet innebär funktionell refaktorering, där vi skapar en isolerad händelsebuss-stub lokalt i testet för att hantera sidoeffekter.
 
-Alternativ 3 är en datainriktad renderare med strikt Zod-kontroll. Vi låter en central kontrollkomponent ta emot payloaden, slå upp komponenten ur katalogen, och garantera att data stämmer överens med kontraktet innan den visas.
+Det tredje alternativet är deklarativ verifiering via isolerade exekveringsfunktioner, vilket separerar logiken från miljön helt och hållet.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Granskningen visar att Alternativ 3 är mest resilient, då den kombinerar Zod-validering av datamodellen med en central kontrollkomponent och en skyddad katalogfasad som förhindrar krascher vid saknade komponenter. Detta minimerar risken för runtime-fel i gränssnittet.
+Alternativ ett är sårbart vid händelsebuss-uppdateringar då det kräver tyst acceptans av sidoeffekter. Alternativ två ger bäst resiliens genom isolerad stubbning, men alternativ tre är absolut säkrast för framtida felmodellering eftersom det helt frikopplar miljöbunden logik.
 
 
 #### 2d Att förlikas: Mättnad
-Jag väger spänningsfältet och fastslår att Alternativ 3 är det vinnande kontraktet. Det ger bäst resiliens och skyddar gränssnittet effektivt. Kontraktet är låst och jag deklarerar MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Vi bekräftar att kontraktet för A2UI är helt förstått och låst. Vi kommer att skapa domänstrukturen under `src/features/a2ui/` med scheman, typer och en komponentkatalog, samt upprätta ett funktionellt minnestest som verifierar arkitekturen och felhanteringen.
+Efter en noggrann avvägning av de tre alternativen står det klart att alternativ tre är vinnaren. Det erbjuder den säkraste strukturen för framtida felmodellering genom sin fullständiga frikoppling från miljöbunden logik, vilket stämmer bäst överens med vår strävan efter resiliens. Jag deklarerar härmed att vi uppnått mättnad: JA.

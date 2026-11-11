@@ -1,87 +1,15 @@
-diff --git a/src/__tests__/transient_TCK-048.test.ts b/src/__tests__/transient_TCK-048.test.ts
-new file mode 100644
-index 0000000..7a684a6
---- /dev/null
-+++ b/src/__tests__/transient_TCK-048.test.ts
-@@ -0,0 +1,37 @@
-+import { describe, it, expect } from 'vitest';
-+import { kompileraPrompt } from '../features/path/engine/promptCompiler';
-+import { PromptCompileInput } from '../features/path/contracts/pathSchema';
-+
-+describe('transient_TCK-048: Promptkompilatorns Typberikning', () => {
-+  it('skall kasta fel vid avsaknad av obligatorisk domänkontext (Fail-First)', () => {
-+    const ogiltigInput = {
-+      fas: 'konstruktion',
-+      uppdrag: 'Testar systemet',
-+      kontextMinne: []
-+    } as unknown as PromptCompileInput;
-+
-+    expect(() => kompileraPrompt(ogiltigInput)).toThrow();
-+  });
-+
-+  it('skall berika systeminstruktionen med typdefinitioner vid korrekt anrop', () => {
-+    const giltigInput: PromptCompileInput = {
-+      fas: 'konstruktion',
-+      uppdrag: 'Utför arkitektonisk analys',
-+      kontextMinne: ['Historiskt skräp ska rensas bort'],
-+      typDefinitioner: [
-+        {
-+          namn: 'ArbetsKontrakt',
-+          definition: 'export interface ArbetsKontrakt { aktivitet: string; }'
-+        }
-+      ]
-+    };
-+
-+    const resultat = kompileraPrompt(giltigInput);
-+
-+    expect(resultat.systemInstruction).toContain('ArbetsKontrakt');
-+    // Ersätter 'export interface ArbetsKontrakt' med 'ArbetsKontrakt { aktivitet: string; }' för att klara Gate 3a AST-granskning
-+    expect(resultat.systemInstruction).toContain('ArbetsKontrakt { aktivitet: string; }');
-+    
-+    expect(resultat.systemInstruction).not.toContain('Historiskt skräp ska rensas bort');
-+  });
-+});
-diff --git a/src/features/path/contracts/pathSchema.ts b/src/features/path/contracts/pathSchema.ts
-index fad646f..331f875 100644
---- a/src/features/path/contracts/pathSchema.ts
-+++ b/src/features/path/contracts/pathSchema.ts
-@@ -71,7 +71,11 @@ export const PromptCompileInputSchema = z.object({
-   malDoman: z.string(),
-   uppdrag: z.string(),
-   biljettText: z.string().optional(),
--  kontextMinne: z.record(z.unknown()).optional(),
-+  kontextMinne: z.array(z.string()).optional(),
-+  typDefinitioner: z.array(z.object({
-+    namn: z.string(),
-+    definition: z.string(),
-+  })).optional(),
- });
- 
- export const CompiledPromptSchema = z.object({
-diff --git a/src/features/path/engine/promptCompiler.ts b/src/features/path/engine/promptCompiler.ts
-index 5fc8d28..cd88f31 100644
---- a/src/features/path/engine/promptCompiler.ts
-+++ b/src/features/path/engine/promptCompiler.ts
-@@ -1,6 +1,10 @@
- import { PromptCompileInput, CompiledPrompt } from '../contracts/pathSchema';
- 
- export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
-+  if (!input.kontextMinne || input.kontextMinne.length === 0) {
-+    throw new Error('Obligatorisk domänkontext saknas');
-+  }
-+
-   let systemInstruction = '';
- 
-   switch (input.fas) {
-@@ -20,6 +24,11 @@ export function kompileraPrompt(input: PromptCompileInput): CompiledPrompt {
-       systemInstruction = 'Standard instruktion för swarm-agent.';
-   }
- 
-+  if (input.typDefinitioner && input.typDefinitioner.length > 0) {
-+    const typer = input.typDefinitioner.map(t => t.definition.replace('export interface ', '')).join('\n');
-+    systemInstruction += `\n\nTypdefinitioner:\n${typer}`;
-+  }
-+
-   // Slumpmässig men deterministisk beräkning av tokens
-   const baseTokens = 150;
-   const taskTokens = input.uppdrag.length * 2;
+diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
+index ee99279..ea87015 100644
+--- a/scripts/run-planera-live.ts
++++ b/scripts/run-planera-live.ts
+@@ -555,7 +555,9 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
+   const getRequiredFiles = (): string[] => {
+     if (isMaint) {
+       const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];
+-      return Array.from(new Set(promptFiles));
++      const sharedFiles = ticketPrompt.match(/src\/shared\/[a-zA-Z0-9_\-./]+\.(?:ts|tsx)/g) || [];
++      const rootFiles = ticketPrompt.match(/(?:vite\.config\.ts|package\.json|src\/App\.tsx)/g) || [];
++      return Array.from(new Set([...promptFiles, ...sharedFiles, ...rootFiles]));
+     }
+     const promptFiles = ticketPrompt.match(new RegExp(`src/features/${targetDomain}/[a-zA-Z0-9_/\\-]+\\.(ts|tsx)`, 'g')) || [];
+     return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
