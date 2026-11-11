@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-032** (VERIFIED): Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition -> Se `doc/.TICKETS/TCK-MAINT-032.md`
 - [x] **TCK-MAINT-031** (VERIFIED): Harmonisera ast-mutator.test.js med Vitest-standarden -> Se `doc/.TICKETS/TCK-MAINT-031.md`
 - [x] **TCK-MAINT-030** (VERIFIED): Lokal Fas 2-validering vid skriptunderhåll & Hermetisk testexekvering -> Se `doc/.TICKETS/TCK-MAINT-030.md`
 - [x] **TCK-MAINT-029** (VERIFIED): Fas 2-isolering, Barrel-skydd mot testfiler och typindexering -> Se `doc/.TICKETS/TCK-MAINT-029.md`

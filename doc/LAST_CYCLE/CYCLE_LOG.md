@@ -1,59 +1,63 @@
-# BYGGCYKEL LOGG: TCK-MAINT-031
-**Starttid:** 2026-11-11T20:53:20.777Z
+# BYGGCYKEL LOGG: TCK-MAINT-032
+**Starttid:** 2026-11-11T21:01:58.552Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-031: Harmonisera ast-mutator.test.js med Vitest-standarden
+# TCK-MAINT-032: Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition
 
-**Måldomän:** `scripts` (`scripts/__tests__/ast-mutator.test.js`)
-**Mekanisk Acceptans:** Ett enhetstest bevisar att `scripts/__tests__/ast-mutator.test.js` exekverar framgångsrikt via `npx vitest run scripts/__tests__/` med registrerade testsviter (`describe`, `it`, `expect`), samt att den lokala Fas 2-valideringen passerar utan fel (exit 0).
+**Måldomän:** `scripts` (`scripts/run-planera-live.ts`)
+**Mekanisk Acceptans:** Ett transient skripttest bevisar att `getRequiredFiles()` i `run-planera-live.ts` vid underhållskörningar (`isMaint`) korrekt extraherar målfiler under `src/shared/`, `src/App.tsx` och rotkonfigurationer (`vite.config.ts`, `package.json`), att `restoreScriptsBackup` vid avbrott även återställer dessa filer, samt att den lokala Fas 2-valideringen och regressionssviten passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Vitest-kompatibilitet:**
-   - `scripts/__tests__/ast-mutator.test.js` MÅSTE migreras från råa Node.js `assert`-satser till Vitests standard-API (`describe`, `it`, `expect`).
-   - Filen får inte innehålla oinkapslade toppnivå-satser som får Vitest att rapportera "No test suite found".
-2. **Bevara testtäckning:**
-   - Båda de ursprungliga testfallen för AST-mutatorn ska bevaras och verifieras:
-     1. Scope-isolering (global konfiguration ignoreras och funktionens returvärde muteras).
-     2. Händelsebuss-sidoeffekter (`eventBus.emit`) släcks med högsta prioritet.
-3. **Oförändrad orkestrering:**
-   - Inga ändringar får göras i `scripts/run-planera-live.ts` under denna biljett; målet är enbart att läka testfixturen.
+1. **Expanderad filidentifiering i getRequiredFiles():**
+   - I `scripts/run-planera-live.ts` MÅSTE funktionen `getRequiredFiles()` vid `isMaint` utökas så att den utöver `scripts/...` även matchar:
+     * Filer under `src/shared/` (`src/shared/[a-zA-Z0-9_\-./]+\.(?:ts|tsx)`)
+     * Rotkonfigurationer (`vite.config.ts`, `package.json`)
+     * Applikationens kompositionsrot (`src/App.tsx`)
+2. **Säkerhetsnät och återställningsskydd (restoreScriptsBackup):**
+   - Vid avbrott eller fel under underhållskörningar (`isMaintRun`) ska funktionen `restoreScriptsBackup` (eller motsvarande felhanterare) även återställa eventuella påbörjade ändringar i `src/shared/`, `src/App.tsx`, `vite.config.ts` och `package.json` via Git (`git checkout -- src/shared/ src/App.tsx vite.config.ts package.json 2>/dev/null || true`), så att inget trasigt tillstånd lämnas kvar på disken.
+3. **Kontextuell Fas 2-validering:**
+   - Den lokala kontrollen i Fas 2 ska förutom `verify-architecture.js` och `npx vitest run scripts/__tests__/` även köra typkontroll (`pnpm lint`) om modifierade filer berör TypeScript-filer utanför `scripts/` (såsom `src/shared/` eller `src/App.tsx`).
+4. **Bevara FSD-integritet:**
+   - Vanliga funktionsbiljetter (`TCK-XXX` där `!isMaint`) ska förbli strikt isolerade till `src/features/<targetDomain>/`. Det utökade territoriet gäller uteslutande underhållskörningar (`isMaint`).
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Skripttestet talar samma språk som testmotorn**
-  Givet testfixturen för AST-mutatorn i `scripts/__tests__/`
-  När `npx vitest run scripts/__tests__/` exekveras
-  Så ska Vitest omedelbart identifiera testsviten och rapportera gröna tester
-  Och infrastrukturen förblir enhetlig.
+**Scenario: ATT FÖLJA – Motorn äger hela sitt systemiska underhåll**
+  Givet en underhållsbiljett som specificerar korrigeringar i `src/shared/bus/swarmEventBus.ts` eller `vite.config.ts`
+  När Byggmotorn startar i MAINT-läge
+  Så ska `getRequiredFiles()` identifiera dessa filer från specifikationen och tillåta att de uppdateras
+  Och bygget slutförs autonomt utan behov av manuella skalskript.
 
-**Scenario: ATT VÄNDA OM – Avvisande av ostrukturerade testskript**
-  Givet att en fil med ändelsen `.test.js` saknar formella testblock
-  När testmotorn skannar katalogen
-  Så ska avvikelsen elimineras genom att kapsla logiken i `describe` och `it`
-  Så att inga falsklarm eller tomma testkörningar uppstår.
+**Scenario: ATT VÄNDA OM – Återställning skyddar delad infrastruktur vid haveri**
+  Givet att en underhållskörning som berör delade filer kraschar eller avbryts i Fas 2
+  När processens säkerhetsspärr utlöses
+  Så ska inte bara `scripts/` utan även påbörjade ändringar i `src/shared/` eller rotfiler rullas tillbaka
+  Så att systemet alltid återgår till ett garanterat grönt tillstånd.
 
-**Scenario: ATT FÖRLIKAS – Den lokala Fas 2-grinden öppnas**
-  Givet att `ast-mutator.test.js` uppdateras
-  När den lokala grinden i `run-planera-live.ts` körs under underhåll
-  Så ska samtliga tester i `scripts/__tests__/` passera grönt
-  Och vägen är fri för efterföljande systemförbättringar.
+**Scenario: ATT FÖRLIKAS – Den lokala valideringen bekräftar helheten**
+  Givet att `run-planera-live.ts` uppdateras med det expanderade territoriet
+  När `scripts/__tests__/` och `verify-architecture.js` körs lokalt
+  Så ska samtliga kontroller passera grönt
+  Och motorn är formellt rustad att autonomt läka delade bussar och rotkompositioner.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag uppfattar din avsikt helt. Vi ska uppdatera vårt test för AST-mutatorn så att det talar samma moderna språk som testmotorn, det vill säga Vitest. Vi ser till att kapsla in testerna korrekt, bevara all testtäckning och hålla orkestreringen helt intakt. Detta stärker vår infrastruktur och låter grinden passera utan friktion. Är det en korrekt bild av uppdraget?
+Det här underhållet är verkligen viktigt för att motorn ska kunna hela sig själv ända in i kärnan. Genom att låta byggmotorn hantera både delad infrastruktur och rotkompositioner skapar vi en mycket säkrare grund.
+
+Innan vi startar, finns det någon specifik risk eller tidigare händelse med felaktiga tillstånd på disken som du särskilt vill att vi skyddar oss emot?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktet är granskat och godkänt. Vi fokuserar uteslutande på att migrera testsviten i 'scripts/__tests__/ast-mutator.test.js' till Vitest-standarden, utan att röra produktionskod eller orkestreringslogik.
+För att göra en korrekt kontraktsaudit av underhållsbiljetten TCK-MAINT-032 behöver jag först inspektera hur `getRequiredFiles` och `restoreScriptsBackup` är implementerade i `run-planera-live.ts`. Jag sätter igång med granskningen nu.
 
 
 #### 0b Att förlikas: Vägval
@@ -65,18 +69,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-031 och harmonisera ast-mutator.test.js med Vitest, formulerar jag här tre ortogonala alternativ:
+För att möta kraven i TCK-MAINT-032 och bevara FSD-integriteten föreslår jag följande tre ortogonala alternativ för lösning.
 
-Det första alternativet är direkt migrering och kapsling, där vi behåller befintliga tester men ersätter Node-asserts med Vitests förväntnings-API.
+Alternativ ett är en direkt statisk domänkartläggning där underhållsläget explicit utökar tillåten sökvägslista i getRequiredFiles med förutbestämda och hårt kodade mönster för delade komponenter och konfigurationsfiler.
 
-Det andra alternativet innebär funktionell refaktorering, där vi skapar en isolerad händelsebuss-stub lokalt i testet för att hantera sidoeffekter.
+Alternativ två är mönsterbaserad dynamisk parsning via reguljära uttryck som i körtid utvärderar samtliga ändringar och automatiskt fångar upp träffar inom specificerade mappar som src/shared och projektroten.
 
-Det tredje alternativet är deklarativ verifiering via isolerade exekveringsfunktioner, vilket separerar logiken från miljön helt och hållet.
+Det tredje alternativet är att behandla delade lagerytor som en separat efemär FSD-domän vid körstart vilket medger strikt isolerad validering och resursövertagning utan risk för läckage till applikationens huvudlogik.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett är sårbart vid händelsebuss-uppdateringar då det kräver tyst acceptans av sidoeffekter. Alternativ två ger bäst resiliens genom isolerad stubbning, men alternativ tre är absolut säkrast för framtida felmodellering eftersom det helt frikopplar miljöbunden logik.
+Alternativ ett, med statisk domänkartläggning, erbjuder hög resiliens eftersom den är förutsägbar och har strikt avgränsad omfattning, vilket minskar risken för oavsiktliga sidoeffekter. Alternativ två har högre risk för fel i körtid på grund av dynamiska uttryck, och alternativ tre introducerar onödig komplexitet som kan leda till orkestreringsfel.
 
 
 #### 2d Att förlikas: Mättnad
-Efter en noggrann avvägning av de tre alternativen står det klart att alternativ tre är vinnaren. Det erbjuder den säkraste strukturen för framtida felmodellering genom sin fullständiga frikoppling från miljöbunden logik, vilket stämmer bäst överens med vår strävan efter resiliens. Jag deklarerar härmed att vi uppnått mättnad: JA.
+Alternativ ett är det vinnande kontraktet. Genomstatiskdomänkartläggningmaximera vi resiliens,förutsägbarhetochstrikt kontroll.MÄTTNAD:JA.

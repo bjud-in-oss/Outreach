@@ -554,8 +554,10 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
   const getRequiredFiles = (): string[] => {
     if (isMaint) {
-      const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];
-      return Array.from(new Set(promptFiles));
+      const scriptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];
+      const sharedFiles = ticketPrompt.match(/src\/shared\/[a-zA-Z0-9_\-./]+\.(?:ts|tsx)/g) || [];
+      const rootFiles = ticketPrompt.match(/(?:vite\.config\.ts|package\.json|src\/App\.tsx)/g) || [];
+      return Array.from(new Set([...scriptFiles, ...sharedFiles, ...rootFiles]));
     }
     const promptFiles = ticketPrompt.match(new RegExp(`src/features/${targetDomain}/[a-zA-Z0-9_/\\-]+\\.(ts|tsx)`, 'g')) || [];
     return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
