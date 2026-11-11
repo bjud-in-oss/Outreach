@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-035** (VERIFIED): Dynamisk Testextension vid Fas 3-konsolidering -> Se `doc/.TICKETS/TCK-MAINT-035.md`
 - [x] **TCK-MAINT-034** (VERIFIED): TSX-stöd för Transienta Tester och Syntaxspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-034.md`
 - [x] **TCK-MAINT-033** (VERIFIED): Aktivera Tailwind i Vite, Harmonisera SwarmEventBus och Montera A2UI i App -> Se `doc/.TICKETS/TCK-MAINT-033.md`
 - [x] **TCK-MAINT-032** (VERIFIED): Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition -> Se `doc/.TICKETS/TCK-MAINT-032.md`
