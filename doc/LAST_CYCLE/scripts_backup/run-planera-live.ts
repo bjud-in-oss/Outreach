@@ -203,6 +203,7 @@ async function main() {
         if (item.isDirectory()) {
           if (item.name !== '__tests__') results = results.concat(getAllMods(full, baseDir));
         } else if ((item.name.endsWith('.ts') || item.name.endsWith('.tsx')) && item.name !== 'index.ts') {
+          if (item.name.includes('.test.') || item.name.includes('.spec.')) continue;
           results.push(path.relative(baseDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/'));
         }
       }

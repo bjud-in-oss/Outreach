@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-030** (VERIFIED): Lokal Fas 2-validering vid skriptunderhåll & Hermetisk testexekvering -> Se `doc/.TICKETS/TCK-MAINT-030.md`
 - [x] **TCK-MAINT-029** (VERIFIED): Fas 2-isolering, Barrel-skydd mot testfiler och typindexering -> Se `doc/.TICKETS/TCK-MAINT-029.md`
 - [x] **TCK-MAINT-028** (VERIFIED): Jidoka-härdning av Fas 2 (AST-exempel & Lokal Genchi Genbutsu) -> Se `doc/.TICKETS/TCK-MAINT-028.md`
 - [x] **TCK-MAINT-027** (VERIFIED): Skarp BidiLive-koppling och Dry-Run i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-027.md`

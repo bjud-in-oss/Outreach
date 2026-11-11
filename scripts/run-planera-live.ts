@@ -628,6 +628,49 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
     console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
     process.exit(1);
   }
+
+  if (isMaint) {
+    console.log('\n🛡️ [MAINT-VALIDERING]: Exekverar lokala kontroller för skriptdomänen...');
+    let maintPassed = false;
+    let maintAttempts = 0;
+    while (!maintPassed && maintAttempts < 3) {
+      maintAttempts++;
+      try {
+        console.log(`\n🔍 [MAINT]: Kör arkitekturkontroll (Försök ${maintAttempts}/3)...`);
+        execSync('node scripts/verify-architecture.js', { stdio: 'inherit', cwd: ROOT_DIR });
+
+        console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/3)...`);
+        execSync('npx vitest run scripts/__tests__/', { stdio: 'inherit', cwd: ROOT_DIR });
+
+        maintPassed = true;
+        console.log('✅ [MAINT]: Lokala skriptkontroller godkända!');
+      } catch (err: any) {
+        console.warn(`\n⚠️ [MAINT SJÄLVRÄTTNING]: Kontrollerna fallerade i försök ${maintAttempts}/3.`);
+        if (maintAttempts >= 3) {
+          console.error('❌ [MAINT]: Maximalt antal självrättningsförsök uppnått för skriptunderhåll.');
+          process.exit(1);
+        }
+        codeSaved = false;
+
+        const errLog = err.stdout?.toString() || err.stderr?.toString() || err.message;
+        const maintRetryPrompt = `FAS 2 MAINT SJÄLVRÄTTNING (Försök ${maintAttempts}/3):
+De lokala skriptkontrollerna fallerade!
+FELLOGG:
+${errLog}
+
+VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
+1. Analysera felet ovan från 'verify-architecture.js' och 'vitest run scripts/__tests__/'.
+2. Korrigera källkoden under 'scripts/' via 'save_code' eller 'apply_patch'!`;
+
+        await runMicroChannel('Att vända om', maintRetryPrompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
+          requireMutation: true,
+          maxTurns: 3,
+          onMutationCheck: () => codeSaved,
+          getFollowupPrompt: getFas2FollowupPrompt
+        });
+      }
+    }
+  }
     
   if (!isMaint) {
     const barrelPath = path.join(ROOT_DIR, `src/features/${targetDomain}/index.ts`);
