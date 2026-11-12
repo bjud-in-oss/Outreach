@@ -151,6 +151,11 @@ export class GeminiLiveSession {
   }
 
   public handleAgentMessage(channel: SwarmAudioChannel, message: any): void {
+    processLiveServerTranscripts(message, this.eventBus);
+    if (message?.toolCall?.functionCalls?.length) { 
+      handleLiveToolCalls(message.toolCall.functionCalls, this.eventBus, (r) => this.sendToolResponse(r)); 
+    }
+
     if (message?.serverContent?.interrupted) { this.audioPlayer.clearBuffer(channel); this.releaseFloor(channel); this.intentManager.emitAudioThinking(); return; }
     if (message?.serverContent?.turnComplete) { this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel }); }
     const parts = message?.serverContent?.modelTurn?.parts || [];
@@ -169,8 +174,11 @@ export class GeminiLiveSession {
     functionResponses: Array<{ id: string; name?: string; response: Record<string, unknown> }>,
     behavior: 'NON_BLOCKING' | 'BLOCKING' = 'NON_BLOCKING'
   ): void {
-    const payload = { toolResponse: { functionResponses, behavior } };
-    if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
+    if (this.activeSdkSession?.sendToolResponse) { 
+      this.activeSdkSession.sendToolResponse({ functionResponses }); 
+    } else if (this.activeSdkSession?.sendRealtimeInput) { 
+      this.activeSdkSession.sendRealtimeInput({ toolResponse: { functionResponses, behavior } }); 
+    }
     this.eventBus.publishLiveEvent('swarm.live.tool.response', { functionResponses, behavior, timestamp: new Date().toISOString() });
   }
 
