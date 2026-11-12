@@ -51,20 +51,37 @@ export class SwarmEventBus {
       data: payload,
     };
 
-    const handlers = new Set([
-      ...(this.listeners.get(type) || []),
-      ...(this.listeners.get('*') || [])
-    ]);
+    const specificHandlers = this.listeners.get(type);
+    if (specificHandlers) {
+      specificHandlers.forEach(callback => {
+        try {
+          const dataToSend = (payload && typeof payload === 'object' && 'data' in payload) ? payload.data : payload;
+          
+          if (dataToSend && typeof dataToSend === 'object' && !Array.isArray(dataToSend) && !('data' in dataToSend)) {
+            Object.defineProperty(dataToSend, 'data', {
+              value: dataToSend,
+              enumerable: false,
+              configurable: true
+            });
+          }
+          
+          callback(dataToSend);
+        } catch (err) {
+          console.error(`[SwarmEventBus] Callback error for ${type}:`, err);
+        }
+      });
+    }
 
-    handlers.forEach(callback => {
-      try {
-        // AI-Tolerant Unwrapping av CloudEvents
-        const dataToSend = (payload && typeof payload === 'object' && 'data' in payload) ? payload.data : payload;
-        callback(dataToSend);
-      } catch (err) {
-        console.error(`[SwarmEventBus] Callback error for ${type}:`, err);
-      }
-    });
+    const wildcardHandlers = this.listeners.get('*');
+    if (wildcardHandlers) {
+      wildcardHandlers.forEach(callback => {
+        try {
+          callback(cloudEvent);
+        } catch (err) {
+          console.error(`[SwarmEventBus] Wildcard callback error for ${type}:`, err);
+        }
+      });
+    }
   }
 
   public publish(type: SwarmEventType, payload: any): void {
