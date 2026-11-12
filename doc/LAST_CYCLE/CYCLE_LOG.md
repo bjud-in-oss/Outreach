@@ -1,74 +1,70 @@
-# BYGGCYKEL LOGG: TCK-MAINT-044
-**Starttid:** 2026-11-12T11:43:30.303Z
+# BYGGCYKEL LOGG: TCK-051
+**Starttid:** 2026-11-12T11:47:06.917Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-044: Rekursiv Självrättningskontext och Sanering av Tysta Catch-block
+# TCK-051: Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga
 
-**Måldomän:** `scripts`, `gemini_live_swarm`
-**Målfiler:** `scripts/run-planera-live.ts`, `src/features/gemini_live_swarm/session/geminiLiveSession.ts`
-**Mekanisk Acceptans:** Ett transient skripttest bevisar att `scripts/run-planera-live.ts` läser in domänens hela källkod (rekursivt eller utifrån `modifiedFiles` & `createdModules`) vid Fas 2:s självrättningsloop. Vidare åtgärdas befintliga tomma `catch {}`-block i `geminiLiveSession.ts` mekaniskt i detta underhållsarbete så att Gate 2c (`--check-catch-blocks`) passerar grönt inför framtida funktionella domänbyggen. Samtliga tester och arkitekturkontroller passerar med exit 0.
+**Måldomän:** `gemini_live_swarm` (`src/features/gemini_live_swarm/`)
+**Målfiler:** `src/features/gemini_live_swarm/session/liveBridgeHelper.ts`, `src/features/gemini_live_swarm/session/geminiLiveSession.ts`
+**Mekanisk Acceptans:** Ett transient test bevisar (Fail-First mot körtidsankare utan `vi.fn()`-spioner) att:
+1. PCM-ljud som emitteras på `SwarmEventBus` (`'swarm.live.stream.audio'`) vidarebefordras till den aktiva WebSocket-sessionens `sendRealtimeInput` med formatet `{ audio: { data, mimeType } }`.
+2. När `SessionIntentManager.activateIntent('CONSULT')` eller händelsen `'swarm.live.intent.activated'` körs publiceras `'a2ui:render'` med `{ componentId: 'ListeningCard', dataModel: { intent: 'Att förlikas' } }`, och vid `'swarm.live.intent.deactivated'` publiceras `'a2ui:clear'`.
+3. Verktygsanrop (`toolCall.functionCalls`) för `render_a2ui` och `clear_a2ui` i `handleAgentMessage` vidarebefordras till `SwarmEventBus` och besvaras via `sendToolResponse`.
+Samtliga tester, AST-kontroller (Gate 2c), radgränser (<250 rader i `.ts`) och FSD-arkitekturkontroller passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Djupseende Självrättningskontext i Fas 2 (`scripts/run-planera-live.ts`):**
-   - I Fas 2:s `catch (vitestErr)`-block (runt rad 818), ändra logiken för `currentSourceSummary`. I stället för ett oflexibelt och icke-rekursivt `fs.readdirSync`, skapa en hjälpfunktion inuti catch-blocket:
-     ```typescript
-     const getAllTsFiles = (dir: string): string[] => {
-       if (!fs.existsSync(dir)) return [];
-       let results: string[] = [];
-       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-         const full = path.join(dir, entry.name);
-         if (entry.isDirectory() && entry.name !== '__tests__') {
-           results = results.concat(getAllTsFiles(full));
-         } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
-           results.push(full);
-         }
-       }
-       return results;
-     };
-     ```
-   - Bygg sedan `currentSourceSummary` genom att loopa över resultatet från `getAllTsFiles(domainDir)` och skriva ut innehållet, så att modellen ALDRIG är blind för filer i undermappar under självrättningen.
-2. **Sanering av Gate 2c-brott i `src/features/gemini_live_swarm/session/geminiLiveSession.ts`:**
-   - Det finns två förbefintliga tomma catch-block i filen som hindrar framtida funktionsbyggen (`TCK-051`). Ersätt dem mekaniskt via `apply_patch`:
-     * Byt ut `if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch {} }` mot `if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch (err) { console.warn('[GeminiLiveSession] close', err); } }`
-     * Byt ut `private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch {} } }` mot `private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch (err) { console.warn('[GeminiLiveSession] listener', err); } } }`
-3. **Bevara skript- och FSD-invarianter:**
-   - Inga andra funktionsändringar får göras. Syftet är uteslutande att härda byggmotorn och rensa den tekniska skulden i domänen.
+1. **Modulär brygga i `src/features/gemini_live_swarm/session/liveBridgeHelper.ts` (< 130 rader):**
+   - Skriv över filen med `save_code` och exportera:
+     * `A2UI_TOOL_DECLARATIONS` (`render_a2ui` och `clear_a2ui`).
+     * `packBidiAudioChunk(data: string, mimeType = 'audio/pcm;rate=16000')` som returnerar `{ audio: { data, mimeType } }`.
+     * `bindLiveSwarmBridge(bus: SwarmEventBus, getSession: () => any, isConnected: () => boolean, onDisconnect: () => void)` som prenumererar på `'swarm.live.stream.audio'` (läser `audioChunkBase64` eller `data`), `'swarm.live.intent.activated'` (emitterar `'a2ui:render'` med `ListeningCard`) och `'swarm.live.intent.deactivated'` (emitterar `'a2ui:clear'`).
+     * `handleLiveToolCalls(functionCalls: any[], bus: SwarmEventBus, sendToolResponse: (responses: any[]) => void)` som hanterar `render_a2ui` och `clear_a2ui` och anropar `sendToolResponse([{ id, name, response: { ok: true } }])`.
+     * `processLiveServerTranscripts(message: any, bus: SwarmEventBus)` som emitterar `outputTranscription?.text` och `inputTranscription?.text` som `'swarm.session.text_delta'`.
+2. **Komplett uppdatering av `src/features/gemini_live_swarm/session/geminiLiveSession.ts` (< 250 rader):**
+   - **Obligatorisk Gate 2c-städning:** Ersätt de två befintliga tomma `catch {}`-blocken i `disconnectLive` och `notifyListeners` med `catch (err) { console.warn('[GeminiLiveSession]', err); }` så att Gate 2c godkänner filen på första försöket.
+   - **Anslutningskontroll & SDK-koppling:** Uppdatera `isLiveConnected()` till `return this.liveStatus === 'STREAMING' || this.liveStatus === 'CONNECTING' || Boolean(this.activeSdkSession);` och exponera `public attachSdkSession(sdkSession: any): void { this.activeSdkSession = sdkSession; this.liveStatus = 'STREAMING'; }`.
+   - **Delegering till bryggan:** Låt `packRealtimeAudioChunk` och `subscribeToMicPiping` anropa `packBidiAudioChunk` och `bindLiveSwarmBridge`.
+   - **Live-konfiguration i `connectLive`:** Lägg till `inputAudioTranscription: {}`, `outputAudioTranscription: {}` och `tools: [{ functionDeclarations: A2UI_TOOL_DECLARATIONS }]` i `makeAgentConfig`.
+   - **Polymorf `handleAgentMessage`:** Gör `handleAgentMessage(channelOrMsg: SwarmAudioChannel | any, maybeMessage?: any): void` bakåtkompatibel genom `const channel = typeof channelOrMsg === 'string' ? channelOrMsg : 'forlikas'; const message = typeof channelOrMsg === 'string' ? maybeMessage : channelOrMsg;` och anropa `processLiveServerTranscripts(message, this.eventBus)` samt `handleLiveToolCalls(message.toolCall.functionCalls, this.eventBus, (r) => this.sendToolResponse(r))` när `message?.toolCall?.functionCalls` finns.
+3. **Exakta signaturer i tester och FSD-isolering:**
+   - Instansiera sessionen med `new GeminiLiveSession('test-api-key', eventBus)` och använd `intentManager.activateIntent('CONSULT')`.
+   - Inga importer från `src/features/a2ui/` och inga tomma `catch {}`-block. Använd standard Vitest-assertions (`toBeDefined()`, `toEqual()`).
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Modellen ser sin egen källkod vid fel**
-  Givet att en källkodsagent introducerar ett fel i en undermapp (t.ex. `session/liveBridge.ts`)
-  När Vitest underkänner bygget och självrättningsloopen triggas i Fas 2
-  Så ska det nya rekursiva anropet läsa in filen och infoga dess innehåll i `retryAnchor`
-  Och agenten kan laga felet direkt utan att gissa blint.
+**Scenario: ATT FÖLJA – Rösten bär fram till agenten och väcker det generativa gränssnittet**
+  Givet att användaren aktiverar mikrofonen i chattfältet
+  När PCM-ljudströmmen och intent-händelser sänds över `SwarmEventBus`
+  Så ska ljudpaketen nå Gemini Live WebSocket utan att tappas bort, `ListeningCard` tändas automatiskt och agenten kunna styra A2UI-kort via `render_a2ui`
+  Och användaren upplever ett levande, multimodalt samtal.
 
-**Scenario: ATT VÄNDA OM – Avvisande av förbefintlig Gate 2c-skuld**
-  Givet att äldre kod innehåller tysta catch-block som fångas av vår nya striktare AST-skanner
-  När vi rensar dessa genom underhåll (MAINT)
-  Så belastar vi inte framtida funktionella biljetter (t.ex. TCK-051) med att behöva gissa och städa upp kod de inte själva skrivit
-  Så att domänbyggen förblir fokuserade.
+**Scenario: ATT VÄNDA OM – Avvisande av felaktiga ljudkuvert och tysta catch-block**
+  Givet att Gemini Live SDK kräver `{ audio: { data, mimeType } }` och Gate 2c förbjuder tomma `catch {}`
+  När `GeminiLiveSession` delegerar till `liveBridgeHelper.ts` och hanterar undantag
+  Så är varje felkanal dokumenterad och källkoden slank under 250 rader
+  Så att bygget och strömningen fungerar utan avbrott.
 
-**Scenario: ATT FÖRLIKAS – En redo och transparent motor inför TCK-051**
-  Givet att skript och domänkod har uppdaterats
+**Scenario: ATT FÖRLIKAS – En ren och modulär brygga**
+  Givet att källkod och tester är skapade under `src/features/gemini_live_swarm/`
   När `pnpm verify` körs
-  Så passerar samtliga tester och Gate 2c med exit 0.
+  Så ska samtliga domäntester och FSD-arkitekturkontroller passera med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår intentionen helt. Med det här underhållsarbetet härdar vi motorn så att våra agenter ser all källkod korrekt i undermappar vid fel, samtidigt som vi städar bort tysta catch-block. Det ger oss en ren och transparent bas för framtida funktionella domänbyggen.
+Jag förstår att syftet med det här uppdraget är att skapa en mycket mer levande och sömlös upplevelse i era möten med agenten. Genom att brygga mikrofonströmningen direkt till Gemini Live och låta agenten styra gränssnittet i realtid, får vi ett multimodalt och lyhört samtal. Ska vi sätta igång med planeringsfasen?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd och godkänd. Uppdateringarna i `run-planera-live.ts` och `geminiLiveSession.ts` följer våra principer och är helt i linje med syftet att stärka transparensen i vår motor. Jag är redo att låsa kontraktet.
+Jag har granskat kontraktet för TCK-051 och bekräftar att alla krav på FSD-isolering, radgränser och destruktiv hälsohantering är uppfyllda. Vi är redo att gå vidare med planeringsfasen.
 
 
 #### 0b Att förlikas: Vägval
@@ -80,18 +76,24 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att lösa uppdraget strikt inom de givna FSD-gränserna:
-
-Alternativ 1: Direkt integrerad filtraversering och inbyggd loggning i catch-blocket. Vi implementerar den rekursiva `getAllTsFiles` direkt i `scripts/run-planera-live.ts` och uppdaterar tysta catch-block i `geminiLiveSession.ts` med explicita varningsloggar. Detta är den mest raka lösningen.
-
-Alternativ 2: Modulär hjälpar-funktion för sökning och lokal felhanteringsstandard. Vi lyfter `getAllTsFiles` till en egen lokal utility-fil i `scripts/` för återanvändbarhet, och skapar ett internt error-hanteringsmönster i `geminiLiveSession.ts` för att standardisera stream-varningar. Detta håller huvudskriptet renare.
-
-Alternativ 3: Konfigurationsdriven kontextbreddning och utökad felpropagering. Vi definierar sök- och exkluderingsparametrar centralt i `scripts/run-planera-live.ts` för bättre flexibilitet, och bygger in en mer robust intern tillståndshantering i `geminiLiveSession.ts` i stället för att bara logga till `console`. Detta ökar spårbarheten under fel.
+De tre alternativen för lösningen är: Alternativ ett är en centraliserad brygga direkt i GeminiLiveSession där all hantering och EventBus-lyssning sker i en och samma klass. Alternativ två är en renodlad EventBus-avkoppling via en dedikerad liveBridgeHelper som agerar oberoende mellan sessionen och bussen. Alternativ tre är en proxybaserad sessionsadapter som skapar abstraktionslager för både ljudströmning och funktionsanrop.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vid en resilient granskning av alternativen framstår Alternativ 1 som det mest säkra och raka valet. Genom att hålla den rekursiva sökningen direkt i catch-blocket minimerar vi beroenden och risken för oväntade felkällor från separata moduler. Det uppfyller också vårt kontrakt exakt utan onödig komplexitet. Hur ställer du dig till detta?
+Alternativ ett skapar en monolitisk klass med för tätt kopplat tillstånd, vilket ökar risken för dolda fel. Alternativ tre med proxy bygger in abstraktioner som försvårar direkt felspårning. Alternativ två vinner resiliensgranskningen då den isolerar ansvarsområden via `liveBridgeHelper`, vilket ger ren felpropagering och håller källkoden inom satta gränser.
 
 
 #### 2d Att förlikas: Mättnad
-Jag ställer mig helt bakom det. Genom att välja Alternativ 1 säkrar vi en robust och förutsägbar lösning utan onödiga beroenden, vilket stämmer perfekt med vårt syfte att främja stabilitet. Jag deklarerar härmed MÄTTNAD: JA.
+Medan spänningsfältet mellan de tre alternativen har belysts tydligt, står det klart att Alternativ två vinner resiliensgranskningen. Genom att isolera ansvarsområden via `liveBridgeHelper` säkerställer vi ren felpropagering och håller källkoden inom satta gränser. MÄTTNAD: JA.
+
+
+#### 3a Att följa: Testspecifikation
+
+
+
+#### 3b Att följa: Källkod
+
+
+
+#### 3c Att förlikas: Slutgiltigt Byggkontrakt
+Byggkontraktet för TCK-051 är nu spikat. Vi skapar modulen `liveBridgeHelper.ts` för bryggfunktionen och uppdaterar `geminiLiveSession.ts` med obligatorisk felhantering och direktkoppling till SwarmEventBus.

@@ -5,7 +5,7 @@ import { SessionIntentManager, freezeStateToWal } from './sessionIntentAudio.ts'
 import { DSPRingBufferMixer, SwarmAudioChannel } from './liveAudioPlayback.ts';
 import { FloorController, CHANNEL_PRIORITY, AGENT_VOICE_MAP } from './floorController.ts';
 import { SwarmIntent } from '../ui/turnContainerHelper.ts';
-import { A2UI_TOOL_DECLARATIONS, bindLiveSwarmBridge, handleLiveToolCalls } from './liveBridgeHelper.ts';
+import { A2UI_TOOL_DECLARATIONS, packBidiAudioChunk, bindLiveSwarmBridge, handleLiveToolCalls, processLiveServerTranscripts } from './liveBridgeHelper.ts';
 
 export type { SwarmIntent, SwarmAudioChannel }; export { CHANNEL_PRIORITY, AGENT_VOICE_MAP };
 export interface AgentThoughtResponse { agentRole: string; thought: string; content: string; score?: number; }
