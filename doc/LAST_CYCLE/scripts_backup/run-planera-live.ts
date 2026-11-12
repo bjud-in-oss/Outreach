@@ -399,7 +399,12 @@ KRAV FÖR TDD OCH FAIL-FIRST:
       systemInstruction,
       testGenTools,
       executeTestGen,
-      { requireMutation: true, maxTurns: 3, onMutationCheck: () => testSaved }
+      { 
+        requireMutation: true, 
+        maxTurns: 5, 
+        onMutationCheck: () => testSaved,
+        getFollowupPrompt: () => `Du har inspekterat domänen. Spara nu den kompletta transienta testfilen till '${transientTestFile}' med verktyget 'save_code' omedelbart!`
+      }
     );
     appendCycleLog('3a Att följa: Testspecifikation', steg3a);
 
@@ -442,7 +447,8 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
           process.exit(1);
         }
         testSaved = false;
-        await runMicroChannel('Att vända om', `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.`, `BEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 3, onMutationCheck: () => testSaved });
+        const recoveryStartAnchor = `${startAnchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
+        await runMicroChannel('Att vända om', `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.`, recoveryStartAnchor, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 5, onMutationCheck: () => testSaved });
       }
     }
 

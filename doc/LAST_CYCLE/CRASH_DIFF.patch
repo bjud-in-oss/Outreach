@@ -1,51 +1,45 @@
 diff --git a/src/__tests__/transient_TCK-050.test.tsx b/src/__tests__/transient_TCK-050.test.tsx
-index e69de29..1532372 100644
---- a/src/__tests__/transient_TCK-050.test.tsx
+new file mode 100644
+index 0000000..f0b0189
+--- /dev/null
 +++ b/src/__tests__/transient_TCK-050.test.tsx
-@@ -0,0 +1,37 @@
-+import { render, act, screen } from '@testing-library/react';
+@@ -0,0 +1,39 @@
++import { render, screen, act } from '@testing-library/react';
 +import { describe, it, expect, beforeEach } from 'vitest';
 +import { A2UIContainer } from '../features/a2ui/engine/A2UIContainer';
 +import { SwarmEventBus } from '../shared/bus/swarmEventBus';
 +
-+describe('A2UIContainer TCK-050', () => {
++describe('A2UIContainer', () => {
 +  let eventBus: SwarmEventBus;
 +
 +  beforeEach(() => {
 +    eventBus = new SwarmEventBus();
 +  });
 +
-+  it('renders nothing when initialized and responds to a2ui:render and a2ui:clear events', () => {
++  it('ska börja dolt och rendera ListeningCard vid a2ui:render samt rensas vid a2ui:clear', () => {
 +    const { container } = render(<A2UIContainer bus={eventBus} />);
-+    
-+    // Att Vända OM: Förblir tyst och returnerar null i viloläge
++
++    // Givet att A2UIContainer är monterad och inget renderats än
 +    expect(container.firstChild).toBeNull();
 +
-+    // Att FÖLJA: Rendera ListeningCard vid a2ui:render
++    // När händelsen a2ui:render publiceras med ListeningCard
 +    act(() => {
 +      eventBus.publish('a2ui:render', {
-+        componentId: 'listening-card',
-+        dataModel: { prompt: 'Laddar...' }
++        componentId: 'ListeningCard',
++        dataModel: { intent: 'Lyssnar på användaren' }
 +      });
 +    });
 +
-+    // Verifiera att kortet visas
-+    expect(screen.getByText(/Laddar.../i)).toBeDefined();
++    // Så ska ListeningCard visas med rätt text
++    const cardElement = screen.getByText(/Lyssnar på användaren/i);
++    expect(cardElement).toBeDefined();
 +
-+    // Att Vända OM: Återgå till null vid a2ui:clear
++    // När händelsen a2ui:clear publiceras
 +    act(() => {
 +      eventBus.publish('a2ui:clear', {});
 +    });
 +
++    // Så ska komponenten återgå till dolt läge
 +    expect(container.firstChild).toBeNull();
 +  });
 +});
-diff --git a/src/features/a2ui/index.ts b/src/features/a2ui/index.ts
-index 560e1df..27f41f0 100644
---- a/src/features/a2ui/index.ts
-+++ b/src/features/a2ui/index.ts
-@@ -3,3 +3,4 @@ export * from './model/types';
- export * from './engine/renderer';
- export * from './catalog/ListeningCard';
- export * from './catalog/ActionPrompt';
-+export * from './engine/A2UIContainer';
