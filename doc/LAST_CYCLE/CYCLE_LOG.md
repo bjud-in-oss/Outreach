@@ -1,60 +1,56 @@
-# BYGGCYKEL LOGG: TCK-MAINT-035
-**Starttid:** 2026-11-12T07:13:35.130Z
+# BYGGCYKEL LOGG: TCK-MAINT-036
+**Starttid:** 2026-11-12T07:22:56.970Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-035: Global Startsanering, Scoped Happy-DOM och Dynamisk Konsolidering
+# TCK-MAINT-036: Skydd mot 0-bytesfiler i Fas 2 och Precisionsspärr i Fail-First
 
-**Måldomän:** `scripts` (`scripts/run-planera-live.ts`) & `vite.config.ts`
-**Mekanisk Acceptans:** Ett transient skripttest bevisar att `run-planera-live.ts` vid varje start ovillkorligen rensar samtliga transienta testfiler (`src/__tests__/transient_*`) och ospårade filer under `src/`, att `vite.config.ts` konfigurerar `environmentMatchGlobs` med `happy-dom` för UI-tester, samt att Fas 3 konsoliderar testfiler med `${testExt}` utan att bryta regressionssviten (exit 0).
+**Måldomän:** `scripts` (`scripts/run-planera-live.ts`)
+**Mekanisk Acceptans:** Ett transient skripttest bevisar att `getMissingFiles()` i `run-planera-live.ts` betraktar tomma 0-bytesfiler som saknade, att Fail-First tillåter oskapade relativa importer till `../features/${targetDomain}` men blockerar saknade externa paket, samt att regressionssviten passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Global Startsanering (Poka-Yoke mot spökfiler):**
-   - I `scripts/run-planera-live.ts` ska startsaneringen köras OVILLKORLIGEN (både när `isMaint` är sant och falskt):
-     * Radera ALLA filer i `src/__tests__/` som matchar `transient_*.test.*`.
-     * Skanna `git status --porcelain src/` och radera ALLA ospårade filer (`?? src/...`) så att arbetskatalogen är 100 % ren inför Fas 0.
-2. **Scoped Happy-DOM i Vite-konfigurationen:**
-   - I `vite.config.ts` ska sektionen `test` konfigureras med `environmentMatchGlobs: [['src/features/a2ui/**', 'happy-dom'], ['src/**/*.test.tsx', 'happy-dom']]` i stället för global `environment: 'happy-dom'`, så att rena backend-tester fortsätter köras snabbt i Node.
-3. **Importspärr i Gate 3a Fail-First:**
-   - I `scripts/run-planera-live.ts` ska Fail-First-grinden avvisa felloggar som innehåller `Failed to resolve import` eller `Cannot find package`.
-4. **Dynamisk testextension vid Fas 3-konsolidering:**
-   - På rad 807 i `scripts/run-planera-live.ts` MÅSTE `permanentTestPath` använda den dynamiska variabeln `testExt` i stället för hårdkodat `.test.ts`:
-     `path.join(permanentTestDir, `${path.basename(primaryModule)}.test.${testExt}`)`
+1. **0-bytes-skydd i getMissingFiles():**
+   - I `scripts/run-planera-live.ts` MÅSTE `getMissingFiles()` returnera en fil som saknad om filen antingen inte existerar på disk ELLER har filstorlek 0 bytes (`fs.statSync(fullPath).size === 0`).
+   - Därmed tvingar `getFas2FollowupPrompt()` modellen att anropa `save_code` i stället för att fastna på `apply_patch` mot en tom fil.
+2. **Precisionsspärr för importer i Gate 3a Fail-First:**
+   - I `scripts/run-planera-live.ts` ska Fail-First-grinden enbart underkänna `Failed to resolve import` om felet avser externa paket (d.v.s. INTE när felloggen refererar till `../features/${targetDomain}`, vilket är en legitim Fail-First-orsak innan Fas 2 skapat filen).
+3. **Epistemisk läsning i Steg 3a:**
+   - Instruktionen för Steg 3a i `run-planera-live.ts` ska uppmana modellen att via `read_file` inspektera befintliga filer i `src/features/${targetDomain}/` (t.ex. `renderer.tsx` och katalogkomponenter) innan den formulerar assertions på komponent-ID och props.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – En ren byggplatta och snabb testmiljö**
-  Givet att Byggmotorn startar ett nytt uppdrag
-  När startsaneringen och testmiljön initieras
-  Så ska eventuella kvarlämnade spökfiler vara bortstädade och DOM-miljön endast laddas för UI-komponenter
-  Och bygget exekverar snabbt och förutsägbart.
+**Scenario: ATT FÖLJA – Tomma filer fylls direkt via save_code**
+  Givet att en målfil i kontraktet saknas eller är 0 bytes på disk
+  När Fas 2 utvärderar saknade filer
+  Så ska filen flaggas som saknad och modellen instrueras att anropa `save_code`
+  Så att källkoden skrivs utan att fastna i läs-loopar.
 
-**Scenario: ATT VÄNDA OM – Avvisande av trasiga importer och felaktiga filändelser**
-  Givet att ett transient test saknar ett paket eller innehåller JSX-komponenter
-  När Gate 3a Fail-First och Fas 3-konsolideringen körs
-  Så ska trasiga importer avvisas direkt och godkända TSX-tester arkiveras med `.test.tsx`
-  Utan att oxc-parsern kraschar under slutverifiering.
+**Scenario: ATT VÄNDA OM – Legitimt rött test vid oskapad domänmodul**
+  Givet att ett transient test importerar en ny modul från `../features/${targetDomain}/...`
+  När Fail-First-grinden kör Vitest före källkodsgenerering
+  Så ska systemet godkänna det röda utfallet
+  Men fortsätta blockera saknade externa npm-paket.
 
-**Scenario: ATT FÖRLIKAS – Helheten förblir grön och stabil**
-  Givet att ändringarna i `scripts/run-planera-live.ts` och `vite.config.ts` tillämpas
+**Scenario: ATT FÖRLIKAS – En robust byggloop för UI-domäner**
+  Givet att ändringarna i `scripts/run-planera-live.ts` tillämpas
   När `pnpm verify` körs
-  Så ska samtliga tester och arkitekturkontroller passera med exit code 0.
+  Så ska alla skriptkontroller och arkitekturregler lysa 100 % gröna.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Det här uppdraget handlar om att skapa en helt ren och stabil grund för alla våra framtida byggcykler. Genom att ovillkorligen städa bort gamla testfiler, optimera testmiljön för UI och se till att konsolideringen sker med rätt ändelser, slipper vi konstigheter som spökfiler och trasiga importfel. Det gör att hela systemet blir mer förutsägbart och effektivt.
+Hej. Jag förstår att syftet med detta underhåll är att göra vår byggloop mer robust och resilient. Genom att införa skydd mot 0-bytesfiler och precisera hur vi hanterar importfel i Fail-First-grinden, förebygger vi tysta loopar och skapar en mer förutsägbar process. Vill du berätta kort om den positiva effekten du hoppas uppnå med detta för vår miljö?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Uppdraget för TCK-MAINT-035 är nu granskat och förstått. Vi har en tydlig plan för ovillkorlig startsanering, optimerad testmiljö med Happy-DOM och strikt importkontroll. Alla systemiska invarianter och destruktiva steg är säkrade. Vi är redo att gå vidare med nästa planeringsfas.
+Kontraktsaudit slutförd. Ingen FSD-domän under `src/features` påverkas, och inga brytningar mot arkitekturkontraktet har identifierats. Systemets integritet är säkrad.
 
 
 #### 0b Att förlikas: Vägval
@@ -66,18 +62,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-035 formulerar jag tre ortogonala alternativ.
+De tre ortogonala alternativen för lösningen är:
 
-Alternativ 1 bygger på integrerad terminal-exekvering, där vi använder `child_process` för att utföra alla rensnings- och gitkommandon direkt.
+Först, in-place-direkt modifiering, där vi direkt uppdaterar `getMissingFiles` med filstorlekskontroll och justerar felloggsfiltret i Gate 3a.
 
-Alternativ 2 fokuserar på programmatisk Node.js-logik, där vi använder `fs/promises` intensivt för att läsa av filsystemet och parsas resultatet från `git status` i Typescript för ökad typ-säkerhet.
+Sedan, modulär hjälpar-injektering, vilket innebär att vi skapar rena, isolerade funktioner för att hantera filvalidering och importanalys inom samma skript.
 
-Alternativ 3 innebär modulär domänisolering, där vi extraherar all saneringslogik till en isolerad modul som anropas genom definierade kontrakt, vilket gör systemet mer testbart.
+Slutligen, pre-flight tillståndsvalidering, där vi lägger till en dedikerad kontroll av både diskskick och importvägar innan Vitest exekveras.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett innebär snabb exekvering via terminalen men riskerar att dölja fel om kommandona skulle fallera. Alternativ två ger god typ-säkerhet och kontroll men kan bli komplext att underhålla vid förändringar. Alternativ tre är mest resilient tack vare modulär isolering vilket underlättar framtida tester och felhantering.
+Alternativ ett är direkt och effektivt, men Risken för regressionsfel ökar vid mer komplexa ändringar. Alternativ två, modulär hjälpar-injektering, ger bäst resiliens och är lättast att isolera i separata tester. Alternativ tre tillför en robust kontroll, men kan skapa redundans i tillståndshanteringen.
 
 
 #### 2d Att förlikas: Mättnad
-Efter att ha vägt alternativen och beaktat vårt mål om resiliens och långsiktig stabilitet står det klart att alternativ tre är det vinnande alternativet. Den modulära isoleringen ger oss den felmarginal och den testbarhet vi behöver. MÄTTNAD: JA.
+Med tanke på våra krav på moduläritet, resiliens och testbarhet är det tydligt att alternativ två, med modulär hjälpar-injektering, är det vinnande valet. Det ger den bästa balansen och minimerar risken för regression. Jag deklarerar därmed MÄTTNAD: JA.

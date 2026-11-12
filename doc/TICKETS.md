@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-036** (VERIFIED): Skydd mot 0-bytesfiler i Fas 2 och Precisionsspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-036.md`
 - [x] **TCK-MAINT-035** (VERIFIED): Global Startsanering, Scoped Happy-DOM och Dynamisk Konsolidering -> Se `doc/.TICKETS/TCK-MAINT-035.md`
 - [x] **TCK-MAINT-034** (VERIFIED): TSX-stöd för Transienta Tester och Syntaxspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-034.md`
 - [x] **TCK-MAINT-033** (VERIFIED): Aktivera Tailwind i Vite, Harmonisera SwarmEventBus och Montera A2UI i App -> Se `doc/.TICKETS/TCK-MAINT-033.md`
