@@ -8,6 +8,24 @@ const ROOT_DIR = process.cwd();
 const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
 const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
 
+export function saneraSkordadLegacy(ticketPath: string) {
+  if (!fs.existsSync(ticketPath)) return;
+  const ticketContent = fs.readFileSync(ticketPath, 'utf-8');
+  const match = ticketContent.match(/\*\*Skördad Legacy:\*\*\s*(.+)/);
+  if (match) {
+    const pathsPart = match[1];
+    const paths = pathsPart.match(/`([^`]+)`/g) || [];
+    for (const p of paths) {
+      const relPath = p.replace(/`/g, '');
+      const fullPath = path.resolve(ROOT_DIR, relPath);
+      if (fs.existsSync(fullPath)) {
+        console.log(`🧹 [SKÖRDAD LEGACY]: Raderar ${relPath}`);
+        fs.unlinkSync(fullPath);
+      }
+    }
+  }
+}
+
 export function konsolideraTest(
   targetDomain: string,
   ticketId: string,

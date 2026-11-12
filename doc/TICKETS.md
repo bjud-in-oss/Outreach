@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-054** (VERIFIED): Kompileringsskydd för scripts/*.ts, koppla saneraSkordadLegacy och laga pathNodePorts -> Se `doc/.TICKETS/TCK-MAINT-054.md`
 - [x] **TCK-MAINT-053** (VERIFIED): Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning -> Se `doc/.TICKETS/TCK-MAINT-053.md`
 - [x] **TCK-MAINT-052** (VERIFIED): Banta run-planera-live.ts under 250 rader, laga pathNodePorts.ts och logga kvarvarande legacy-skörd -> Se `doc/.TICKETS/TCK-MAINT-052.md`
 - [x] **TCK-MAINT-051** (VERIFIED): Modulär radgränsspärr (sizeGate.js) och undantagsfri rekursiv domänläckagekontroll för scripts/ -> Se `doc/.TICKETS/TCK-MAINT-051.md`
@@ -56,6 +57,8 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-055** (VERIFIED): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
+- [x] **TCK-054** (VERIFIED): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
 - [x] **TCK-053** (VERIFIED): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`
 - [x] **TCK-052** (VERIFIED): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
 - [x] **TCK-051** (VERIFIED): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
