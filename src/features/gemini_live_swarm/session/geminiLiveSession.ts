@@ -127,6 +127,9 @@ export class GeminiLiveSession {
         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
         thinkingConfig: { thinkingLevel: 'high' },
         systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        tools: [{ functionDeclarations: A2UI_TOOL_DECLARATIONS }],
       },
       callbacks: {
         onopen: onOpen,
@@ -178,7 +181,7 @@ export class GeminiLiveSession {
 
   public async disconnectLive(reason = 'Klientsession avslutad normalt'): Promise<void> {
     const streamId = this.currentStreamId || `stream-${Date.now()}`;
-    if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch {} }
+    if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch (err) { console.warn('[GeminiLiveSession] close', err); } }
     this.agentSessions.clear(); this.activeSdkSession = null; this.liveStatus = 'DISCONNECTED';
     this.audioPlayer.dispose(); this.floor.reset(); this.deactivateIntent();
     this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', reason });
@@ -228,7 +231,7 @@ export class GeminiLiveSession {
     return audioChunk;
   }
 
-  private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch {} } }
+  private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch (e) { console.error('Error in stream listener:', e); } } }
 
   public async generateAgentTurn(params: { role: string; systemInstruction: string; prompt: string; context?: string; model?: string; }): Promise<AgentThoughtResponse> {
     if (!this.aiClient || this.liveStatus === 'HALTED') throw new Error(`API-nyckel saknas för ${params.role}.`);

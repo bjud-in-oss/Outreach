@@ -152,9 +152,11 @@ async function runMicroChannel(
     }
 
     runner.close();
+    await new Promise((r) => setTimeout(r, 400));
     return response;
   } catch (err: any) {
     runner.close();
+    await new Promise((r) => setTimeout(r, 400));
     throw err;
   }
 }
@@ -709,13 +711,13 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
       maintAttempts++;
       try {
         console.log(`\n🔍 [MAINT]: Kör arkitekturkontroll (Försök ${maintAttempts}/3)...`);
-        execSync('node scripts/verify-architecture.js', { stdio: 'inherit', cwd: ROOT_DIR });
+        execCaptured('node scripts/verify-architecture.js');
 
         console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/3)...`);
-        execSync('npx vitest run scripts/__tests__/', { stdio: 'inherit', cwd: ROOT_DIR });
+        execCaptured(`npx vitest run scripts/__tests__/`);
 
         console.log(`\n🧪 [MAINT]: Kör full regressionssvit (Försök ${maintAttempts}/3)...`);
-        execSync('pnpm test', { stdio: 'inherit', cwd: ROOT_DIR });
+        execCaptured('pnpm test');
 
         maintPassed = true;
         console.log('✅ [MAINT]: Lokala skriptkontroller godkända!');
@@ -772,9 +774,9 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
       try {
         console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
         const filesToScan = modifiedFiles.length > 0 ? modifiedFiles.join(' ') : `src/features/${targetDomain}`;
-        execSync(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan}`, { stdio: 'inherit', cwd: ROOT_DIR });
+        execCaptured(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan}`);
 
-        execSync(`npx vitest run ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
+        execCaptured(`npx vitest run ${transientTestFile}`);
         testPassed = true;
       } catch (vitestErr: any) {
         const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;
@@ -821,14 +823,15 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
         }
 
         const retryPrompt = `FAS 2 SJÄLVRÄTTNING (Försök ${attempts}/3):
-Vitest underkände transient-testet!
+Vitest underkände transient-testet eller Gate 2c rapporterade brott!
 FELLOGG:
 ${testLog}
 
 VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 1. TESTFILEN ÄR STRIKT SKRIVSKYDDAD OCH FÅR INTE ÄNDRAS. Att försöka spara till '${transientTestFile}' avvisas mekaniskt!
-2. Du MÅSTE åtgärda felet genom att skriva och spara om källkoden under 'src/features/${targetDomain}/' via save_code!
-3. Analysera felet mot testet och din befintliga källkod nedan, korrigera källkoden och anropa save_code omedelbart.`;
+2. Använd UTESLUTANDE 'apply_patch' eller 'save_code' för att åtgärda källkoden under 'src/features/${targetDomain}/'!
+3. Om du ser 'GATE 2c BROTT', åtgärda det tomma 'catch {}'-blocket på den angivna raden.
+4. Analysera felet mot testet och din befintliga källkod nedan, korrigera källkoden och anropa save_code/apply_patch omedelbart.`;
 
         const retryAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${currentSourceSummary}\n\nFELLOGG:\n${testLog}`;
 

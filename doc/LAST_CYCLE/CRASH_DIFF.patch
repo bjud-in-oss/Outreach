@@ -1,155 +1,283 @@
 diff --git a/src/__tests__/transient_TCK-051.test.tsx b/src/__tests__/transient_TCK-051.test.tsx
 new file mode 100644
-index 0000000..9e3dab5
+index 0000000..3263142
 --- /dev/null
 +++ b/src/__tests__/transient_TCK-051.test.tsx
-@@ -0,0 +1,80 @@
-+import { describe, it, expect, beforeEach } from 'vitest';
-+import { getGlobalSwarmEventBus, SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
+@@ -0,0 +1,100 @@
++import { describe, it, expect, beforeEach, vi } from 'vitest';
++import { SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
 +import { GeminiLiveSession } from '../features/gemini_live_swarm/session/geminiLiveSession';
-+import { SessionIntentManager } from '../features/gemini_live_swarm/session/sessionIntentAudio';
++import { bindLiveSwarmBridge } from '../features/gemini_live_swarm/session/liveBridgeHelper';
 +
-+describe('TCK-051 Transient Integration Tests', () => {
-+  let eventBus: SwarmEventBus;
++describe('transient_TCK-051 TDD Suite', () => {
++    let eventBus: SwarmEventBus;
++    let session: GeminiLiveSession;
++    let sentPayload: any = null;
++    let sentToolResponse: any = null;
 +
-+  beforeEach(() => {
-+    eventBus = getGlobalSwarmEventBus();
-+    eventBus.clear();
-+  });
++    beforeEach(() => {
++        eventBus = new SwarmEventBus();
++        session = new GeminiLiveSession('test-api-key', eventBus);
++        sentPayload = null;
++        sentToolResponse = null;
 +
-+  it('Requirement 1: Routes PCM audio from event bus to Gemini SDK session', async () => {
-+    let capturedAudioData: any = null;
-+    let sendRealtimeInputCalled = false;
++        // Mock session methods to capture outgoing data without vi.fn() spies
++        (session as any).activeSdkSession = {
++            sendRealtimeInput: (payload: any) => {
++                sentPayload = payload;
++            }
++        };
 +
-+    // We do not mock with vi.fn(), we instantiate a minimal class implementing the expected interface
-+    class MockSession {
-+      async sendRealtimeInput(payload: any) {
-+        sendRealtimeInputCalled = true;
-+        capturedAudioData = payload;
-+      }
-+    }
-+
-+    const mockSession = new MockSession() as any;
-+    const session = new GeminiLiveSession(mockSession);
-+
-+    // Act
-+    const testData = new Uint8Array([1, 2, 3, 4]).buffer;
-+    eventBus.emit('swarm.live.stream.audio', {
-+      data: testData,
-+      mimeType: 'audio/pcm'
++        (session as any).sendToolResponse = (responses: any) => {
++            sentToolResponse = responses;
++        };
 +    });
 +
-+    // Wait for async processing if any
-+    await new Promise(resolve => setTimeout(resolve, 50));
++    it('should forward PCM swarm audio to websocket', () => {
++        // Initialize the bridge
++        bindLiveSwarmBridge(
++            eventBus,
++            () => (session as any).activeSdkSession,
++            () => true,
++            () => {}
++        );
 +
-+    // Assert
-+    expect(sendRealtimeInputCalled).toBe(true);
-+    expect(capturedAudioData).toEqual({
-+      audio: {
-+        data: testData,
-+        mimeType: 'audio/pcm'
-+      }
-+    });
-+  });
++        const pcmData = 'base64audio';
++        eventBus.emit('swarm.live.stream.audio', { data: pcmData });
 +
-+  it('Requirement 2: Publishes a2ui events on intent activation', () => {
-+    let capturedEvent: any = null;
-+    eventBus.subscribe('a2ui:render', (data) => {
-+      capturedEvent = data;
-+    });
-+
-+    const intentManager = new SessionIntentManager(eventBus);
-+
-+    // Act
-+    intentManager.activateIntent('test-intent', { title: 'Voice Activated Intent' });
-+
-+    // Assert
-+    expect(capturedEvent).toBeDefined();
-+    expect(capturedEvent.componentId).toBe('ListeningCard');
-+    expect(capturedEvent.dataModel.intent).toBe('Voice Activated Intent');
-+  });
-+
-+  it('Requirement 3: Clears a2ui events on intent deactivation', () => {
-+    let clearTriggered = false;
-+    eventBus.subscribe('a2ui:clear', () => {
-+      clearTriggered = true;
++        expect(sentPayload).toEqual({
++            audio: {
++                data: pcmData,
++                mimeType: 'audio/pcm;rate=16000',
++            },
++        });
 +    });
 +
-+    const intentManager = new SessionIntentManager(eventBus);
++    it('should emit a2ui:render on intent activation', () => {
++        let renderedComponent: any = null;
++        eventBus.subscribe('a2ui:render', (data) => {
++            renderedComponent = data;
++        });
 +
-+    // Act
-+    intentManager.deactivateIntent();
++        bindLiveSwarmBridge(
++            eventBus,
++            () => (session as any).activeSdkSession,
++            () => true,
++            () => {}
++        );
 +
-+    // Assert
-+    expect(clearTriggered).toBe(true);
-+  });
++        eventBus.emit('swarm.live.intent.activated', { title: 'Att förlikas' });
++
++        expect(renderedComponent).toEqual({
++            componentId: 'ListeningCard',
++            dataModel: { intent: 'Att förlikas' }
++        });
++    });
++
++    it('should handle render_a2ui tool call from agent', () => {
++        bindLiveSwarmBridge(
++            eventBus,
++            () => (session as any).activeSdkSession,
++            () => true,
++            () => {}
++        );
++
++        const message = {
++            toolCall: {
++                functionCalls: [{
++                    id: 'call-123',
++                    name: 'render_a2ui',
++                    args: JSON.stringify({ componentId: 'ListeningCard', dataModel: { intent: 'Att förlikas' } })
++                }]
++            }
++        };
++
++        // Delegate to session's handleAgentMessage which will trigger handleLiveToolCalls
++        (session as any).handleAgentMessage(message);
++
++        expect(sentToolResponse).toEqual([{
++            id: 'call-123',
++            name: 'render_a2ui',
++            response: {
++                ok: true,
++            },
++        }]);
++    });
 +});
-diff --git a/src/features/gemini_live_swarm/index.ts b/src/features/gemini_live_swarm/index.ts
-index 6149e30..4ec1f37 100644
---- a/src/features/gemini_live_swarm/index.ts
-+++ b/src/features/gemini_live_swarm/index.ts
-@@ -125,3 +125,7 @@ export type { ReflectionMode, ReflectionModeEventPayload } from './ui/reflection
- export { UnifiedPromptBar } from './ui/UnifiedPromptBar.tsx';
- export type { UnifiedPromptBarProps } from './ui/UnifiedPromptBar.tsx';
- export { usePromptBarState, getLiveButtonProps, formatMemoryIndicator } from './ui/promptBarHelper.ts';
-+export * from './context/swarmContextHelper';
-+export * from './ui/AppShell';
-+export * from './ui/crownStateHelper';
-+export * from './session/liveBridgeHelper';
+diff --git a/src/features/gemini_live_swarm/session/geminiLiveSession.ts b/src/features/gemini_live_swarm/session/geminiLiveSession.ts
+index 73498a7..0ec942a 100644
+--- a/src/features/gemini_live_swarm/session/geminiLiveSession.ts
++++ b/src/features/gemini_live_swarm/session/geminiLiveSession.ts
+@@ -127,6 +127,9 @@ export class GeminiLiveSession {
+         speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: AGENT_VOICE_MAP[channel] } } },
+         thinkingConfig: { thinkingLevel: 'high' },
+         systemInstruction: { parts: [{ text: config?.systemInstruction || defaultInstruction }] },
++        inputAudioTranscription: {},
++        outputAudioTranscription: {},
++        tools: [{ functionDeclarations: A2UI_TOOL_DECLARATIONS }],
+       },
+       callbacks: {
+         onopen: onOpen,
+@@ -178,7 +181,7 @@ export class GeminiLiveSession {
+ 
+   public async disconnectLive(reason = 'Klientsession avslutad normalt'): Promise<void> {
+     const streamId = this.currentStreamId || `stream-${Date.now()}`;
+-    if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch {} }
++    if (this.activeSdkSession?.close) { try { this.activeSdkSession.close(); } catch (e) { console.error('Error closing SDK session:', e); } }
+     this.agentSessions.clear(); this.activeSdkSession = null; this.liveStatus = 'DISCONNECTED';
+     this.audioPlayer.dispose(); this.floor.reset(); this.deactivateIntent();
+     this.eventBus.publishLiveEvent('swarm.live.session.disconnected', { streamId, status: 'DISCONNECTED', reason });
+@@ -228,7 +231,7 @@ export class GeminiLiveSession {
+     return audioChunk;
+   }
+ 
+-  private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch {} } }
++  private notifyListeners(chunk: LiveStreamChunk): void { for (const listener of this.streamListeners) { try { listener(chunk); } catch (e) { console.error('Error in stream listener:', e); } } }
+ 
+   public async generateAgentTurn(params: { role: string; systemInstruction: string; prompt: string; context?: string; model?: string; }): Promise<AgentThoughtResponse> {
+     if (!this.aiClient || this.liveStatus === 'HALTED') throw new Error(`API-nyckel saknas för ${params.role}.`);
 diff --git a/src/features/gemini_live_swarm/session/liveBridgeHelper.ts b/src/features/gemini_live_swarm/session/liveBridgeHelper.ts
-new file mode 100644
-index 0000000..4328097
---- /dev/null
+index 4328097..af05f86 100644
+--- a/src/features/gemini_live_swarm/session/liveBridgeHelper.ts
 +++ b/src/features/gemini_live_swarm/session/liveBridgeHelper.ts
-@@ -0,0 +1,28 @@
-+export const A2UI_TOOL_DECLARATIONS = [
-+  {
-+    name: 'render_a2ui',
-+    description: 'Render a specific A2UI component with the provided data model.',
-+    parameters: {
-+      type: 'OBJECT',
-+      properties: {
-+        componentId: {
-+          type: 'STRING',
-+          description: 'The ID of the component to render.',
-+        },
-+        dataModel: {
-+          type: 'OBJECT',
-+          description: 'The data model to pass to the component.',
-+        },
-+      },
-+      required: ['componentId', 'dataModel'],
-+    },
-+  },
-+  {
-+    name: 'clear_a2ui',
-+    description: 'Clear any currently rendered A2UI components.',
-+    parameters: {
-+      type: 'OBJECT',
-+      properties: {},
-+    },
-+  },
-+];
-diff --git a/src/features/gemini_live_swarm/session/sessionIntentAudio.ts b/src/features/gemini_live_swarm/session/sessionIntentAudio.ts
-index 3a72676..d032e4c 100644
---- a/src/features/gemini_live_swarm/session/sessionIntentAudio.ts
-+++ b/src/features/gemini_live_swarm/session/sessionIntentAudio.ts
-@@ -114,6 +114,10 @@ export class SessionIntentManager {
-     this.eventBus.publishLiveEvent('swarm.live.intent.activated', {
-       intent, force: meta.force, title: meta.title, status: 'ACTIVE', activityText: `Aktiv röstström: ${meta.title}`,
-     });
-+    this.eventBus.emit('a2ui:render', {
+@@ -1,28 +1,126 @@
++import { SwarmEventBus } from '../bus/swarmEventBus';
++import { BidiRealtimeInputPayload } from './geminiLiveSession';
++
+ export const A2UI_TOOL_DECLARATIONS = [
+   {
+     name: 'render_a2ui',
+-    description: 'Render a specific A2UI component with the provided data model.',
++    description: 'Render an A2UI component based on intent or state change',
+     parameters: {
+       type: 'OBJECT',
+       properties: {
+-        componentId: {
+-          type: 'STRING',
+-          description: 'The ID of the component to render.',
+-        },
+-        dataModel: {
+-          type: 'OBJECT',
+-          description: 'The data model to pass to the component.',
+-        },
++        componentId: { type: 'STRING' },
++        dataModel: { type: 'OBJECT' }
+       },
+-      required: ['componentId', 'dataModel'],
+-    },
++      required: ['componentId', 'dataModel']
++    }
+   },
+   {
+     name: 'clear_a2ui',
+-    description: 'Clear any currently rendered A2UI components.',
++    description: 'Clear the currently rendered A2UI component',
+     parameters: {
+       type: 'OBJECT',
+       properties: {},
+-    },
+-  },
++    }
++  }
+ ];
++
++export const packBidiAudioChunk = (data: string, mimeType = 'audio/pcm;rate=16000'): BidiRealtimeInputPayload => {
++  return { audio: { data, mimeType }, realtimeInput: { mediaChunks: [{ mimeType, data }] } };
++};
++
++export const bindLiveSwarmBridge = (
++  bus: SwarmEventBus,
++  getSession: () => any,
++  isConnected: () => boolean,
++  onDisconnect: () => void
++) => {
++  const audioSub = bus.subscribe('swarm.live.stream.audio', (env) => {
++    const data = (env.data as any)?.data || (env.data as any)?.audioChunkBase64;
++    if (!isConnected() || !data) return;
++    const session = getSession();
++    if (session?.sendRealtimeInput) {
++      session.sendRealtimeInput(packBidiAudioChunk(data));
++    }
++  });
++
++  const intentActivatedSub = bus.subscribe('swarm.live.intent.activated', (env) => {
++    const payload = env.data as any;
++    bus.emit('a2ui:render', {
 +      componentId: 'ListeningCard',
-+      dataModel: { intent: meta.title }
++      dataModel: { intent: payload?.title || 'Lyssnar aktivt' }
 +    });
-   }
- 
-   public deactivateIntent(): void {
-@@ -124,6 +128,7 @@ export class SessionIntentManager {
-     this.eventBus.publishLiveEvent('swarm.live.intent.deactivated', {
-       intent: null, status: 'THINKING', activityText: '🟡 Agenter i dvala',
-     });
-+    this.eventBus.emit('a2ui:clear');
-   }
- 
-   public emitAudioTalking(): void {
++  });
++
++  const intentDeactivatedSub = bus.subscribe('swarm.live.intent.deactivated', () => {
++    bus.emit('a2ui:clear', {});
++  });
++
++  return () => {
++    audioSub.unsubscribe();
++    intentActivatedSub.unsubscribe();
++    intentDeactivatedSub.unsubscribe();
++  };
++};
++
++export const handleLiveToolCalls = (
++  functionCalls: any[],
++  bus: SwarmEventBus,
++  sendToolResponse: (responses: any[]) => void
++) => {
++  const responses: any[] = [];
++  
++  for (const call of functionCalls) {
++    if (call.name === 'render_a2ui') {
++      try {
++        const args = typeof call.args === 'string' ? JSON.parse(call.args) : call.args;
++        bus.emit('a2ui:render', args);
++        responses.push({
++          id: call.id,
++          name: 'render_a2ui',
++          response: { ok: true }
++        });
++      } catch (err) {
++        responses.push({
++          id: call.id,
++          name: 'render_a2ui',
++          response: { ok: false, error: 'Invalid arguments' }
++        });
++      }
++    } else if (call.name === 'clear_a2ui') {
++      bus.emit('a2ui:clear', {});
++      responses.push({
++        id: call.id,
++        name: 'clear_a2ui',
++        response: { ok: true }
++      });
++    }
++  }
++
++  if (responses.length > 0) {
++    sendToolResponse(responses);
++  }
++};
++
++export const processLiveServerTranscripts = (message: any, bus: SwarmEventBus) => {
++  const parts = message?.serverContent?.modelTurn?.parts || [];
++  for (const part of parts) {
++    if (part.text) {
++      bus.emit('swarm.session.text_delta', {
++        sourceRole: 'assistant',
++        agentRole: 'Live Agent',
++        text: part.text,
++        timestamp: new Date().toISOString()
++      });
++    }
++  }
++  
++  const outputTranscription = message?.serverContent?.outputTranscription?.text;
++  if (outputTranscription) {
++    bus.emit('swarm.session.text_delta', {
++      sourceRole: 'assistant',
++      agentRole: 'Live Agent',
++      text: outputTranscription,
++      timestamp: new Date().toISOString()
++    });
++  }
++};

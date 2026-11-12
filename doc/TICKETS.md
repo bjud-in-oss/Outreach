@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-044** (VERIFIED): Rekursiv Självrättningskontext och Sanering av Tysta Catch-block -> Se `doc/.TICKETS/TCK-MAINT-044.md`
 - [x] **TCK-MAINT-043** (VERIFIED): Källkodskontext i Gate 2c, execCaptured och Efemär Handskakningsutjämning -> Se `doc/.TICKETS/TCK-MAINT-043.md`
 - [x] **TCK-MAINT-042** (VERIFIED): Handskakningssäker WS 1011-omsändning, Målfilskontroll, Gate 2c-kontext och execCaptured -> Se `doc/.TICKETS/TCK-MAINT-042.md`
 - [x] **TCK-MAINT-041** (VERIFIED): WS 1011-omsändning i BidiLiveSession och Universal Fas 2-filkontroll -> Se `doc/.TICKETS/TCK-MAINT-041.md`
