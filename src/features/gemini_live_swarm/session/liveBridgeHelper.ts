@@ -4,6 +4,7 @@ export const A2UI_TOOL_DECLARATIONS = [
   {
     name: 'render_a2ui',
     description: 'Render a UI component',
+    behavior: 'NON_BLOCKING',
     parameters: {
       type: 'OBJECT',
       properties: {
@@ -16,6 +17,7 @@ export const A2UI_TOOL_DECLARATIONS = [
   {
     name: 'clear_a2ui',
     description: 'Clear the rendered UI component',
+    behavior: 'NON_BLOCKING',
     parameters: {
       type: 'OBJECT',
       properties: {},
@@ -56,9 +58,10 @@ export function bindLiveSwarmBridge(
   });
 
   bus.subscribe('swarm.live.intent.activated', (env) => {
+    const intent = (env.data as any)?.title || 'Att förlikas';
     bus.publish('a2ui:render', {
       componentId: 'ListeningCard',
-      dataModel: { intent: 'Att förlikas' }
+      dataModel: { intent }
     });
   });
 
@@ -96,7 +99,11 @@ export function handleLiveToolCalls(
 }
 
 export function processLiveServerTranscripts(message: any, bus: SwarmEventBus) {
-  const text = message?.outputTranscription?.text || message?.inputTranscription?.text;
+  const text = message?.serverContent?.outputTranscription?.text || 
+               message?.serverContent?.inputTranscription?.text || 
+               message?.outputTranscription?.text || 
+               message?.inputTranscription?.text;
+               
   if (text) {
     bus.emit('swarm.session.text_delta', {
       sourceRole: 'assistant',

@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-046** (VERIFIED): Avgränsa självrättningskontext i Fas 2 till målfiler för att skydda 65K TPM -> Se `doc/.TICKETS/TCK-MAINT-046.md`
 - [x] **TCK-MAINT-045** (VERIFIED): Kräv publik ingångspunkt vid test av hjälpmoduler i Steg 3a -> Se `doc/.TICKETS/TCK-MAINT-045.md`
 - [x] **TCK-MAINT-044** (VERIFIED): Rekursiv Självrättningskontext och Sanering av Tysta Catch-block -> Se `doc/.TICKETS/TCK-MAINT-044.md`
 - [x] **TCK-MAINT-043** (VERIFIED): Källkodskontext i Gate 2c, execCaptured och Efemär Handskakningsutjämning -> Se `doc/.TICKETS/TCK-MAINT-043.md`
@@ -48,6 +49,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-052** (VERIFIED): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
 - [x] **TCK-051** (VERIFIED): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
 - [x] **TCK-050** (VERIFIED): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
 - [x] **TCK-049** (VERIFIED): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`

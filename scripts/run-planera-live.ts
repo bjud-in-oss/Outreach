@@ -813,28 +813,14 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
         codeSaved = false;
 
         // Samla ihop test och källkod så modellen slipper vara blind under självrättningen
-        const testContent = fs.existsSync(transientTestFullPath) ? fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '' : '';
-        const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
-        
-        const getAllTsFiles = (dir: string): string[] => {
-          if (!fs.existsSync(dir)) return [];
-          let results: string[] = [];
-          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            const full = path.join(dir, entry.name);
-            if (entry.isDirectory() && entry.name !== '__tests__') {
-              results = results.concat(getAllTsFiles(full));
-            } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
-              results.push(full);
-            }
-          }
-          return results;
-        };
+        const testContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';
 
         let currentSourceSummary = '';
-        if (fs.existsSync(domainDir)) {
-          const files = getAllTsFiles(domainDir);
-          for (const f of files) {
-            currentSourceSummary += `\n--- ${path.relative(ROOT_DIR, f)} ---\n` + fs.readFileSync(f, 'utf-8');
+        const filesToInclude = Array.from(new Set([...modifiedFiles, ...getRequiredFiles()]));
+        for (const relPath of filesToInclude) {
+          const fullPath = path.resolve(ROOT_DIR, relPath);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+            currentSourceSummary += `\n--- ${relPath} ---\n` + fs.readFileSync(fullPath, 'utf-8');
           }
         }
 

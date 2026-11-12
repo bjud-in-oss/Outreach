@@ -64,17 +64,12 @@ export class GeminiLiveSession {
   }
 
   private subscribeToMicPiping(): void {
-    this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
-      const chunk = (env.data as any)?.audioChunkBase64;
-      if (!this.isLiveConnected() || !chunk) return;
-      const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
-      try {
-        if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
-      } catch (e: any) {
-        this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
-        this.eventBus.publishLiveEvent('swarm.live.session.error', { error: `Audio stream error: ${e?.message || String(e)}` });
-      }
-    });
+    bindLiveSwarmBridge(
+      this.eventBus,
+      () => this.activeSdkSession,
+      () => this.isLiveConnected(),
+      () => { this.liveStatus = 'DISCONNECTED'; this.deactivateIntent(); }
+    );
   }
 
   public requestFloor(channel: SwarmAudioChannel): void {
