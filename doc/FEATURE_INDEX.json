@@ -33,6 +33,7 @@
         "session/floorController.ts",
         "session/geminiLiveSession.ts",
         "session/liveAudioPlayback.ts",
+        "session/liveBridgeHelper.ts",
         "session/pendulumStore.ts",
         "session/sessionIntentAudio.ts",
         "session/turnBoundaryDetector.ts",
@@ -54,6 +55,7 @@
         "ui/useUserActivityLock.ts"
       ],
       "exports": [
+        "A2UI_TOOL_DECLARATIONS",
         "AGENT_VOICE_MAP",
         "AccumulatedTurn",
         "AgentForce",

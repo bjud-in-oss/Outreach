@@ -114,6 +114,10 @@ export class SessionIntentManager {
     this.eventBus.publishLiveEvent('swarm.live.intent.activated', {
       intent, force: meta.force, title: meta.title, status: 'ACTIVE', activityText: `Aktiv röstström: ${meta.title}`,
     });
+    this.eventBus.emit('a2ui:render', {
+      componentId: 'ListeningCard',
+      dataModel: { intent: meta.title }
+    });
   }
 
   public deactivateIntent(): void {
@@ -124,6 +128,7 @@ export class SessionIntentManager {
     this.eventBus.publishLiveEvent('swarm.live.intent.deactivated', {
       intent: null, status: 'THINKING', activityText: '🟡 Agenter i dvala',
     });
+    this.eventBus.emit('a2ui:clear');
   }
 
   public emitAudioTalking(): void {

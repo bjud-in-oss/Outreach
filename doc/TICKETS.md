@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-040** (VERIFIED): Härdad Fas 2-avslutning, In-Loop AST-Grind och Maint-Regression -> Se `doc/.TICKETS/TCK-MAINT-040.md`
 - [x] **TCK-MAINT-039** (VERIFIED): Standardisera CloudEvent- och nyttolastleverans i SwarmEventBus -> Se `doc/.TICKETS/TCK-MAINT-039.md`
 - [x] **TCK-MAINT-038** (VERIFIED): Montera händelsestyrd A2UIContainer i applikationsroten -> Se `doc/.TICKETS/TCK-MAINT-038.md`
 - [x] **TCK-MAINT-037** (VERIFIED): Global Happy-DOM och Fail-First-förankring i Vitest v5 -> Se `doc/.TICKETS/TCK-MAINT-037.md`
@@ -42,6 +43,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-051** (VERIFIED): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
 - [x] **TCK-050** (VERIFIED): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
 - [x] **TCK-049** (VERIFIED): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
 - [x] **TCK-048** (VERIFIED): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
