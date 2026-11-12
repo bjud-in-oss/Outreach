@@ -17,6 +17,19 @@ import { mutateSourceCodeAST } from './drivers/astMutator.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
 
 const ROOT_DIR = process.cwd();
+
+function execCaptured(cmd: string): string {
+  try {
+    const out = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', cwd: ROOT_DIR });
+    if (out) process.stdout.write(out);
+    return out;
+  } catch (err: any) {
+    const combined = [err?.stdout, err?.stderr].filter(Boolean).join('\n').trim() || err?.message || String(err);
+    if (combined) process.stderr.write(combined + '\n');
+    throw new Error(combined);
+  }
+}
+
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const CRASH_DUMP_PATH = path.join(CYCLE_LOG_DIR, 'CRASH_DUMP.json');
@@ -591,6 +604,16 @@ ${fs.existsSync(transientTestFullPath) ? fs.existsSync(transientTestFullPath) ? 
 Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive engine, types och export i index.ts) innan du avslutar!`;
 
   const getRequiredFiles = (): string[] => {
+    const ticketPrompt = fs.readFileSync(ticketPath, 'utf-8');
+    const targetMatch = ticketPrompt.match(/\*\*Målfiler:\*\*\s*(.+)/);
+    if (targetMatch) {
+      const filesPart = targetMatch[1];
+      const fileMatches = filesPart.match(/`([^`]+)`/g);
+      if (fileMatches) {
+        return fileMatches.map(m => m.replace(/`/g, ''));
+      }
+    }
+
     if (isMaint) {
       const scriptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];
       const sharedFiles = ticketPrompt.match(/src\/shared\/[a-zA-Z0-9_\-./]+\.(?:ts|tsx)/g) || [];
@@ -615,18 +638,19 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
   const isFas2Complete = (): boolean => {
     if (!codeSaved) return false;
-    if (isMaint) {
-      const required = getRequiredFiles();
-      return required.every(f => modifiedFiles.includes(f) || createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));
-    }
+    const required = getRequiredFiles();
     const missing = getMissingFiles();
-    return missing.length === 0;
+    return missing.length === 0 && required.every(f => modifiedFiles.includes(f) || createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));
   };
 
   const getFas2FollowupPrompt = (): string => {
     const missing = getMissingFiles();
     if (missing.length > 0) {
       return `⚠️ Följande källkodsfiler från kontraktet saknas fortfarande på disk:\n${missing.map(f => `- ${f}`).join('\n')}\nDu MÅSTE använda 'save_code' för att skapa och spara dessa filer innan bygget kan gå vidare!`;
+    }
+    const untouched = getRequiredFiles().filter(f => !modifiedFiles.includes(f) && !createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));
+    if (untouched.length > 0) {
+       return `⚠️ Följande källkodsfiler från kontraktet har inte ändrats:\n${untouched.map(f => `- ${f}`).join('\n')}\nDu MÅSTE använda 'apply_patch' eller 'save_code' för att uppdatera dessa filer!`;
     }
     return `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`;
   };
