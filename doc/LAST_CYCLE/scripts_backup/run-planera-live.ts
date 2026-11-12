@@ -617,7 +617,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
     if (!codeSaved) return false;
     if (isMaint) {
       const required = getRequiredFiles();
-      return required.every(f => modifiedFiles.includes(f) || createdModules.includes(f));
+      return required.every(f => modifiedFiles.includes(f) || createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));
     }
     const missing = getMissingFiles();
     return missing.length === 0;
@@ -690,6 +690,9 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
         console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/3)...`);
         execSync('npx vitest run scripts/__tests__/', { stdio: 'inherit', cwd: ROOT_DIR });
 
+        console.log(`\n🧪 [MAINT]: Kör full regressionssvit (Försök ${maintAttempts}/3)...`);
+        execSync('pnpm test', { stdio: 'inherit', cwd: ROOT_DIR });
+
         maintPassed = true;
         console.log('✅ [MAINT]: Lokala skriptkontroller godkända!');
       } catch (err: any) {
@@ -735,10 +738,6 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     }
   }
 
-  console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
-  const filesToScan = modifiedFiles.length > 0 ? modifiedFiles.join(' ') : `src/features/${targetDomain}`;
-  execSync(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan}`, { stdio: 'inherit', cwd: ROOT_DIR });
-
   if (!isMaint) {
     console.log('\n🟢 Kör transient-testet mot den nyskapade källkoden...');
     let testPassed = false;
@@ -747,6 +746,10 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
       attempts++;
       syncDomainBarrel();
       try {
+        console.log('\n🔒 Verifierar Gate 2c: AST-kontroll mot tysta catch-block...');
+        const filesToScan = modifiedFiles.length > 0 ? modifiedFiles.join(' ') : `src/features/${targetDomain}`;
+        execSync(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan}`, { stdio: 'inherit', cwd: ROOT_DIR });
+
         execSync(`npx vitest run ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
         testPassed = true;
       } catch (vitestErr: any) {

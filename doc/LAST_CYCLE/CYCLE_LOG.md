@@ -1,58 +1,64 @@
-# BYGGCYKEL LOGG: TCK-MAINT-040
-**Starttid:** 2026-11-12T09:44:59.936Z
+# BYGGCYKEL LOGG: TCK-MAINT-041
+**Starttid:** 2026-11-12T10:01:07.889Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-040: Härdad Fas 2-avslutning, In-Loop AST-Grind och Maint-Regression
+# TCK-MAINT-041: WS 1011-omsändning i BidiLiveSession och Universal Fas 2-filkontroll
 
-**Måldomän:** `scripts` (`scripts/run-planera-live.ts`)
-**Mekanisk Acceptans:** Ett transient skripttest bevisar att `isFas2Complete()` kräver att alla filer i `getRequiredFiles()` finns i antingen `createdModules` eller `modifiedFiles`, att Gate 2c (AST-kontroll) körs inuti Fas 2:s självrättningsslinga innan testmotorn startas, samt att `isMaint`-körningar exekverar den fulla regressionssviten (`pnpm test`) i sin självrättningsloop. Alla tester passerar med exit 0.
+**Måldomän:** `scripts` (`scripts/bidiLiveRunner.ts`, `scripts/run-planera-live.ts`)
+**Mekanisk Acceptans:** Ett transient skripttest bevisar att:
+1. `BidiLiveSession` i `scripts/bidiLiveRunner.ts` sparar `pendingText` under `send()`, inväntar aktiv session via `waitForSession()`, skickar om `pendingText` automatiskt vid `WS 1011`/`1006`-återanslutning när `currentResolver` är aktiv, samt rensar `reconnectTimer` i `close()`.
+2. `isFas2Complete()` i `scripts/run-planera-live.ts` kontrollerar `required.every(f => modifiedFiles.includes(f))` för BÅDE `isMaint` och ordinarie funktionsbiljetter (`!isMaint`), och `getFas2FollowupPrompt()` listar opatchade målfiler.
+Samtliga skripttester, domäntester och FSD-kontroller passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Rigorös stängning av Fas 2 (isFas2Complete):**
-   - I `scripts/run-planera-live.ts` ska `isFas2Complete()` ändras för `!isMaint`. Den får inte bara kontrollera `getMissingFiles().length === 0`.
-   - Den måste kontrollera: `const required = getRequiredFiles(); return getMissingFiles().length === 0 && required.every(f => modifiedFiles.includes(f) || createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));` (där `createdModules` saknar filändelse).
-2. **Flytta in Gate 2c i Självrättningsslingan (TDD-loopen):**
-   - Raderna kring `Verifierar Gate 2c: AST-kontroll...` och `node scripts/drivers/ts.js --check-catch-blocks` (runt rad 738) MÅSTE flyttas IN inuti `while (!testPassed && attempts < 3)`-loopen, precis före anropet till `npx vitest run ${transientTestFile}`.
-   - Detta tillåter modellen att fånga och åtgärda AST-fel via underhållsprompten i stället för att hela bygget tvärdör.
-3. **Fullständig regressionskontroll vid Maint:**
-   - I MAINT-valideringen (runt rad 674) i `while (!maintPassed && maintAttempts < 3)`-loopen ska `execSync('pnpm test', { stdio: 'inherit', cwd: ROOT_DIR });` läggas till EFTER skripttesterna.
-   - Detta garanterar att ändringar i shared-infrastruktur (`isMaint`) inte tyst bryter funktionella domäner under underhåll.
+1. **Omsändning vid `WS 1011`/`1006` och timerstädning i `scripts/bidiLiveRunner.ts`:**
+   - Lägg till fälten `private pendingText: string | null = null;` och `private reconnectTimer: any = null;` i `BidiLiveSession`.
+   - I `send(text, timeoutMs = 120000)`: sätt `this.pendingText = text;` vid start och nollställ `this.pendingText = null;` i timeout-handlern, `currentResolver` och `currentRejecter`.
+   - Anropa `const activeSession = await this.waitForSession();` innan `activeSession.sendClientContent(...)` exekveras.
+   - I `onclose` vid `code === 1011 || code === 1006`: om `!this.currentResolver`, avbryt återanslutningen direkt. Annars lagra timer i `this.reconnectTimer = setTimeout(async () => { ... }, delay)` och när `await this.connect()` slutförts och `this.pendingText && this.session && !this.isClosed` gäller, anropa `this.session.sendClientContent({ turns: [{ role: 'user', parts: [{ text: this.pendingText }] }], turnComplete: true })`.
+   - I `close()`: rensa `if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }` och sätt `this.pendingText = null;`.
+2. **Universal Fas 2-filkontroll i `scripts/run-planera-live.ts`:**
+   - I `isFas2Complete()`: ta bort `if (isMaint)`-förgreningen och returnera:
+     `const required = getRequiredFiles(); const missing = getMissingFiles(); return missing.length === 0 && required.every(f => modifiedFiles.includes(f));`
+   - I `getFas2FollowupPrompt()`: efter kontrollen av `missing.length > 0`, kontrollera `const untouched = getRequiredFiles().filter(f => !modifiedFiles.includes(f));` och om `untouched.length > 0`, returnera en uppmaning som listar `untouched` och kräver `apply_patch` på dessa filer.
+3. **Bevara FSD- och skriptinvarianter:**
+   - Ändringarna berör uteslutande `scripts/bidiLiveRunner.ts` och `scripts/run-planera-live.ts`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Byggmotorn lagar sig själv innan krasch**
-  Givet en källkodsagent som skapar ett tomt catch-block eller glömmer uppdatera en befintlig fil
-  När Fas 2-loopen når sitt utvärderingssteg
-  Så ska AST-granskaren fånga felet inuti loopen och `isFas2Complete` hålla mikrokanalen öppen
-  Så att agenten kan självrätta felet.
+**Scenario: ATT FÖLJA – Oavbrutet byggflöde genom serveravbrott och flerfilsuppdateringar**
+  Givet att ett uppdrag skickas över Bidi Live WebSocket eller omfattar både ny och befintlig källkod
+  När `WS 1011` inträffar eller en första fil sparas i Fas 2
+  Så ska `BidiLiveSession` återuppta sändningen direkt och `isFas2Complete` hålla kanalen öppen tills samtliga målfiler uppdaterats
+  Och bygget slutförs utan hängning.
 
-**Scenario: ATT VÄNDA OM – Avvisande av för tidiga loop-avslut**
-  Givet att en biljett stipulerar uppdatering av fil A och nyskapande av fil B
-  När fil B skapats men fil A ännu inte är uppdaterad
-  Så ska `isFas2Complete()` returnera false och tvinga modellen att anropa `apply_patch` för A
-  Innan kanalen tillåts stängas.
+**Scenario: ATT VÄNDA OM – Avvisande av övergivna timers och ofullständiga Fas 2-avslut**
+  Givet att `close()` anropas eller att en målfil i `getRequiredFiles()` ännu inte ligger i `modifiedFiles`
+  När livscykeln utvärderas
+  Så ska timers städas omedelbart och mikrokanalen tvingas slutföra återstående patchar
+  Så att inga halvfärdiga ändringar når testgrinden.
 
-**Scenario: ATT FÖRLIKAS – Ett vattentätt ramverk för TCK-051**
-  Givet att `run-planera-live.ts` är uppdaterad
+**Scenario: ATT FÖRLIKAS – En helgjuten byggmotor inför TCK-051**
+  Givet att `scripts/bidiLiveRunner.ts` och `scripts/run-planera-live.ts` är uppdaterade
   När `pnpm verify` körs
-  Så passerar alla befintliga mekanismer med exit 0.
+  Så passerar samtliga skript- och domäntester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Vårt uppdrag med TCK-MAINT-040 är att göra vår byggmotor mer robust och självläkande. Vi ska härda stängningsvillkoren för Fas 2 och flytta in AST-granskningen i självrättningsslingan. Detta gör att vi kan fånga upp fel direkt och åtgärda dem innan bygget kraschar. Det ger ett mer förutsägbart och stabilt flöde för underhållskörningar.
+Jag förstår intentionen med TCK-MAINT-041. Målet är att skapa en mer robust byggmotor som tål serveravbrott och säkerställer att samtliga obligatoriska filer patchas korrekt innan testfasen. Jag är redo att sätta igång med detta.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har granskat kontraktet för TCK-MAINT-040. Det är tydligt och fokuserat på att härda byggmotorn genom att integrera AST-kontrollen direkt i loopen och kräva full regressionstestning vid underhåll. Avsikterna och de systemiska invarianterna är väl definierade. Jag är redo att påbörja arbetet.
+Jag har gått igenom kontraktet för TCK-MAINT-041. Ändringarna berör uteslutande `scripts`-domänen och städar upp sändare och kontroller utan att röra källkoden i `src/features`. Jag godkänner kontraktet för implementation.
 
 
 #### 0b Att förlikas: Vägval
@@ -64,12 +70,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För TCK-MAINT-040 utvärderar vi tre ortogonala alternativ för att uppfylla kontraktskraven; alternativ ett fokuserar på inline-integrering i befintlig loop, alternativ två bygger på modulära valideringsfunktioner, och alternativ tre använder en tillståndshanterare förloop-progressionen.
+Här är tre ortogonala alternativ för att lösa TCK-MAINT-041 inom `scripts`-domänen:
+
+Alternativ 1: Direkt felhantering och explicit tillståndshantering. Det innebär att vi lägger till `pendingText` och `reconnectTimer` direkt som privata fält i `BidiLiveSession`. Återanslutningslogik i `onclose` styrs av explicita timeout-kontroller för `WS 1011`.
+
+Alternativ 2: Modulär statemaskin för återanslutning. Vi kapslar in återanslutningslogiken i en efemär statemaskin inuti sessionen, som hanterar händelseströmmar för `reconnect` och resening av meddelanden.
+
+Alternativ 3: Zod-baserad validering av Fas 2. Vi unifierar kontrollen av modifierade filer genom att använda Zod-scheman som deklarativt utvärderar att alla kravställda filer i domänen är uppdaterade i `modifiedFiles`.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att alternativ ett, med inline-integrering, ger den högsta isoleringen mot sidoeffekter och uppfyller kontraktskravet på ett deterministiskt sätt inuti TDD-slingan utan att öka systemkomplexiteten.
+Resiliensgranskningen visar att Alternativ 1 är det mest robusta och direkt tillämpliga valet för att lösa TCK-MAINT-041. Det hanterar tillståndsförändringar som väntande text och timers helt lokalt och deterministiskt i `BidiLiveSession`. Alternativ 2 och 3 är överkomplicerade för denna specifika uppgift och riskerar att bryta mot principerna om isolering och enkelhet.
 
 
 #### 2d Att förlikas: Mättnad
-Vi slår fast att alternativ ett, med sin inbyggda isolering och deterministiska metod för TDD-slingan, är det vinnande kontraktet. Det uppfyller kraven perfekt utan att addera komplexitet. MÄTTNAD: JA.
+Jag har vägt spänningsfältet och granskat alternativen. Alternativ 1 vinner, då det hanterar tillståndsförändringar lokalt och deterministiskt helt i linje med våra principer. Jag deklarerar MÄTTNAD: JA och låser härmed byggkontraktet.

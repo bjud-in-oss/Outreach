@@ -17,6 +17,8 @@ export class BidiLiveSession {
   private currentResolver: ((text: string) => void) | null = null;
   private currentRejecter: ((err: any) => void) | null = null;
   private accumulatedText = '';
+  private pendingText: string | null = null;
+  private reconnectTimer: any = null;
 
   constructor(private config: BidiRunnerConfig) {}
 
@@ -165,19 +167,31 @@ export class BidiLiveSession {
           const reason = event?.reason || 'Ingen orsak';
           this.session = null;
           this.isClosed = true;
-          if ((code === 1011 || code === 1006) && this.reconnectAttempts < this.maxReconnectAttempts) {
+
+          if (!this.currentResolver) {
+            console.log(`\n   ℹ️ [WS CLOSE]: Ingen aktiv vända vid kod ${code}, avbryter återanslutning.`);
+          } else if ((code === 1011 || code === 1006) && this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             const delay = Math.pow(2, this.reconnectAttempts) * 1000;
             console.warn(`\n⚠️ [WS ${code} AVBROTT]: Återansluter automatiskt (försök ${this.reconnectAttempts}/${this.maxReconnectAttempts}) om ${delay}ms...`);
-            setTimeout(async () => {
+            
+            this.reconnectTimer = setTimeout(async () => {
               try {
                 await this.connect();
+                if (this.pendingText && this.session && !this.isClosed) {
+                  console.log('   🔄 Skickar om väntande text efter återanslutning...');
+                  await this.session.sendClientContent({
+                    turns: [{ role: 'user', parts: [{ text: this.pendingText }] }],
+                    turnComplete: true,
+                  });
+                }
               } catch (e: any) {
                 console.error("Återanslutning misslyckades:", e.message);
               }
             }, delay);
             return;
           }
+
           if (this.currentRejecter) {
             const rej = this.currentRejecter;
             this.currentResolver = null;
@@ -197,19 +211,24 @@ export class BidiLiveSession {
       await this.connect();
     }
     this.accumulatedText = '';
+    this.pendingText = text;
+
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.currentResolver = null;
         this.currentRejecter = null;
+        this.pendingText = null;
         reject(new Error(`Bidi Live timeout efter ${timeoutMs}ms`));
       }, timeoutMs);
 
       this.currentResolver = (val: string) => {
         clearTimeout(timer);
+        this.pendingText = null;
         resolve(val);
       };
       this.currentRejecter = (err: any) => {
         clearTimeout(timer);
+        this.pendingText = null;
         reject(err);
       };
 
@@ -228,6 +247,12 @@ export class BidiLiveSession {
   }
 
   close(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.pendingText = null;
+
     if (this.session?.close) {
       try {
         this.session.close();
