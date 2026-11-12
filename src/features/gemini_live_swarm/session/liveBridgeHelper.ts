@@ -1,5 +1,7 @@
 import { SwarmEventBus } from '../bus/swarmEventBus';
 
+const audioEndTimestamps = new WeakMap<SwarmEventBus, number>();
+
 export const A2UI_TOOL_DECLARATIONS = [
   {
     name: 'render_a2ui',
@@ -68,6 +70,16 @@ export function bindLiveSwarmBridge(
   bus.subscribe('swarm.live.intent.deactivated', (env) => {
     bus.publish('a2ui:clear', {});
   });
+
+  bus.subscribe('swarm.live.stream.audio_end', () => {
+    audioEndTimestamps.set(bus, Date.now());
+    if (isConnected()) {
+      const session = getSession();
+      if (session?.sendRealtimeInput) {
+        session.sendRealtimeInput({ audioStreamEnd: true });
+      }
+    }
+  });
 }
 
 export function handleLiveToolCalls(
@@ -111,5 +123,11 @@ export function processLiveServerTranscripts(message: any, bus: SwarmEventBus) {
       text,
       timestamp: new Date().toISOString()
     });
+  }
+
+  if (audioEndTimestamps.has(bus) && Boolean(text || message?.serverContent?.modelTurn?.parts?.length)) {
+    const vadToFirstByteMs = Math.max(0, Date.now() - audioEndTimestamps.get(bus)!);
+    audioEndTimestamps.delete(bus);
+    bus.emit('telemetry:voice_latency', { vadToFirstByteMs, audioEndSent: true, timestamp: new Date().toISOString() });
   }
 }

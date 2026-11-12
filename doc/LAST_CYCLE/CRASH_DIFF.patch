@@ -1,15 +1,14 @@
-diff --git a/src/__tests__/transient_TCK-052.test.tsx b/src/__tests__/transient_TCK-052.test.tsx
+diff --git a/src/__tests__/transient_TCK-053.test.tsx b/src/__tests__/transient_TCK-053.test.tsx
 new file mode 100644
-index 0000000..1691cb5
+index 0000000..acd1571
 --- /dev/null
-+++ b/src/__tests__/transient_TCK-052.test.tsx
-@@ -0,0 +1,76 @@
-+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
++++ b/src/__tests__/transient_TCK-053.test.tsx
+@@ -0,0 +1,80 @@
++import { describe, it, expect, beforeEach } from 'vitest';
 +import { GeminiLiveSession } from '../features/gemini_live_swarm/session/geminiLiveSession';
 +import { SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
-+import { SwarmAudioChannel } from '../features/gemini_live_swarm/index';
 +
-+describe('transient_TCK-052.test.tsx - End-to-End Live Bridge Integration', () => {
++describe('TCK-053: VAD End Signal and Latency Telemetry', () => {
 +  let eventBus: SwarmEventBus;
 +  let session: GeminiLiveSession;
 +
@@ -18,138 +17,218 @@ index 0000000..1691cb5
 +    session = new GeminiLiveSession('test-api-key', eventBus);
 +  });
 +
-+  afterEach(() => {
-+    eventBus.clear();
-+  });
++  it('should emit audio_end and send audioStreamEnd: true when VAD stops', async () => {
++    let audioEndEmitted = false;
++    let audioStreamEndSent = false;
 +
-+  it('verifies liveBridgeHelper integration end-to-end via GeminiLiveSession', () => {
-+    const emittedEvents: Array<{ type: string; payload: any }> = [];
-+    
-+    // Subscriba till alla relevanta event på event busen för att validera utfall
-+    eventBus.subscribe('*', (event) => {
-+      emittedEvents.push({ type: event.type, payload: event.data });
++    eventBus.subscribe('swarm.live.stream.audio_end', () => {
++      audioEndEmitted = true;
 +    });
 +
-+    // 1. Validera intent aktivering/inaktivering
-+    eventBus.emit('swarm.live.intent.activated', { data: { title: 'Att förlikas' } });
-+    
-+    const renderEvents = emittedEvents.filter(e => e.type === 'a2ui:render');
-+    const clearEvents = emittedEvents.filter(e => e.type === 'a2ui:clear');
-+
-+    expect(renderEvents.length).toBeGreaterThan(0);
-+    expect(renderEvents[renderEvents.length - 1].payload.componentId).toBe('ListeningCard');
-+
-+    eventBus.emit('swarm.live.intent.deactivated', {});
-+    expect(emittedEvents.some(e => e.type === 'a2ui:clear')).toBe(true);
-+
-+    // 2. Validera output transkription via handleAgentMessage
-+    const transcriptionMessage = {
-+      serverContent: {
-+        outputTranscription: {
-+          text: 'Hej från rösten'
++    // Mock the internal activeSdkSession to verify audioStreamEnd
++    // @ts-ignore
++    session.activeSdkSession = {
++      sendRealtimeInput: (payload: any) => {
++        if (payload.audioStreamEnd === true) {
++          audioStreamEndSent = true;
 +        }
 +      }
 +    };
 +
-+    session.handleAgentMessage('forlikas' as SwarmAudioChannel, transcriptionMessage);
++    // @ts-ignore - access intent manager and simulate VAD streaming
++    const intentManager = session.sessionIntentManager;
++    
++    // Simulate high amplitude chunk (Talking)
++    intentManager.processIncomingChunk(new Float32Array([0.5, 0.8, 0.9]));
 +
-+    const textDeltaEvents = emittedEvents.filter(e => e.type === 'swarm.session.text_delta');
-+    expect(textDeltaEvents.length).toBeGreaterThan(0);
-+    expect(textDeltaEvents[textDeltaEvents.length - 1].payload.text).toBe('Hej från rösten');
++    // Fast-forward time to simulate silence and post-roll
++    await new Promise(resolve => setTimeout(resolve, 600));
 +
-+    // 3. Validera tool call hantering och verktygssvar
-+    const toolCallMessage = {
-+      toolCall: {
-+        functionCalls: [
-+          {
-+            id: 'c1',
-+            name: 'render_a2ui',
-+            args: {
-+              componentId: 'ActionPrompt',
-+              dataModel: { actionLabel: 'Kör' }
-+            }
-+          }
-+        ]
-+      }
++    // Send another chunk after silence to trigger VAD end
++    intentManager.processIncomingChunk(new Float32Array([0.0]));
++
++    expect(audioEndEmitted).toBe(true);
++    expect(audioStreamEndSent).toBe(true);
++  });
++
++  it('should emit telemetry:voice_latency when agent responds after audio stream end', async () => {
++    let latencyEmitted = false;
++    let emittedLatency = 0;
++
++    eventBus.subscribe('telemetry:voice_latency', (data: any) => {
++      latencyEmitted = true;
++      emittedLatency = data.vadToFirstByteMs;
++    });
++
++    // @ts-ignore
++    session.activeSdkSession = {
++      sendRealtimeInput: () => {}
 +    };
 +
-+    session.handleAgentMessage('forlikas' as SwarmAudioChannel, toolCallMessage);
++    // @ts-ignore
++    const intentManager = session.sessionIntentManager;
++    
++    // Trigger VAD end setup
++    intentManager.processIncomingChunk(new Float32Array([0.1]));
++    await new Promise(resolve => setTimeout(resolve, 600));
++    intentManager.processIncomingChunk(new Float32Array([0]));
 +
-+    const a2uiRenderEvents = emittedEvents.filter(e => e.type === 'a2ui:render');
-+    expect(a2uiRenderEvents.length).toBeGreaterThan(renderEvents.length);
-+    expect(a2uiRenderEvents[a2uiRenderEvents.length - 1].payload.componentId).toBe('ActionPrompt');
++    // Simulate agent response
++    session.handleAgentMessage('forlikas', { 
++      serverContent: { 
++        outputTranscription: { text: 'Svar' } 
++      } 
++    });
++
++    expect(latencyEmitted).toBe(true);
++    expect(emittedLatency).toBeGreaterThanOrEqual(0);
 +  });
 +});
 diff --git a/src/features/gemini_live_swarm/session/geminiLiveSession.ts b/src/features/gemini_live_swarm/session/geminiLiveSession.ts
-index e74d0fc..6d1a131 100644
+index 45ecfff..c10f244 100644
 --- a/src/features/gemini_live_swarm/session/geminiLiveSession.ts
 +++ b/src/features/gemini_live_swarm/session/geminiLiveSession.ts
-@@ -64,17 +64,12 @@ export class GeminiLiveSession {
-   }
+@@ -27,6 +27,7 @@ export class GeminiLiveSession {
+   private audioPlayer = new DSPRingBufferMixer();
+   private floor: FloorController;
+   private abortController: AbortController | null = null;
++  private lastSpeechEndTimestamp: number | null = null;
+   private isPaused = false;
  
-   private subscribeToMicPiping(): void {
--    this.eventBus.subscribe('swarm.live.stream.audio', (env) => {
--      const chunk = (env.data as any)?.audioChunkBase64;
--      if (!this.isLiveConnected() || !chunk) return;
--      const payload = this.packRealtimeAudioChunk(chunk, (env.data as any)?.mimeType || 'audio/pcm;rate=16000');
--      try {
--        if (this.activeSdkSession?.sendRealtimeInput) this.activeSdkSession.sendRealtimeInput(payload);
--      } catch (e: any) {
--        this.liveStatus = 'DISCONNECTED'; this.deactivateIntent();
--        this.eventBus.publishLiveEvent('swarm.live.session.error', { error: `Audio stream error: ${e?.message || String(e)}` });
--      }
--    });
-+    bindLiveSwarmBridge(
-+      this.eventBus,
-+      () => this.activeSdkSession,
-+      () => this.isLiveConnected(),
-+      () => { this.liveStatus = 'DISCONNECTED'; this.deactivateIntent(); }
-+    );
-   }
+   constructor(apiKey?: string, eventBus?: SwarmEventBus) {
+@@ -157,7 +158,15 @@ export class GeminiLiveSession {
+     }
  
-   public requestFloor(channel: SwarmAudioChannel): void {
+     if (message?.serverContent?.interrupted) { this.audioPlayer.clearBuffer(channel); this.releaseFloor(channel); this.intentManager.emitAudioThinking(); return; }
+-    if (message?.serverContent?.turnComplete) { this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel }); }
++    if (message?.serverContent?.turnComplete) { 
++      this.releaseFloor(channel); 
++      this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel }); 
++      if (this.lastSpeechEndTimestamp) {
++        const latency = Date.now() - this.lastSpeechEndTimestamp;
++        this.eventBus.publish('telemetry:voice_latency', { vadToFirstByteMs: latency });
++        this.lastSpeechEndTimestamp = null;
++      }
++    }
+     const parts = message?.serverContent?.modelTurn?.parts || [];
+     for (const part of parts) {
+       if (part.inlineData?.data) { this.requestFloor(channel); this.audioPlayer.play24kHzPCMBase64(channel, part.inlineData.data, () => this.intentManager.emitAudioTalking()); }
+@@ -193,6 +202,7 @@ export class GeminiLiveSession {
+   public async start(): Promise<boolean> { return this.connectLive(); } public async stop(): Promise<void> { return this.disconnectLive(); }
+   public isSessionPaused(): boolean { return this.isPaused; } public getAbortController(): AbortController | null { return this.abortController; }
+   public setMicMuted(m: boolean): void { this.intentManager.setMicMuted(m); } public isMicMuted(): boolean { return this.intentManager.isMicMuted(); }
++  public setMicSpeechEnd(timestamp: number): void { this.lastSpeechEndTimestamp = timestamp; }
+   public setVadPaused(p: boolean): void { this.intentManager.setVadPaused(p); } public isVadPaused(): boolean { return this.intentManager.isVadPaused(); }
+   public triggerProactiveGreeting(): void {
+     this.eventBus.emit('PROACTIVE_TRIGGER_SENT', { timestamp: new Date().toISOString() });
 diff --git a/src/features/gemini_live_swarm/session/liveBridgeHelper.ts b/src/features/gemini_live_swarm/session/liveBridgeHelper.ts
-index d7cde2c..c309d12 100644
+index c309d12..a5f17b8 100644
 --- a/src/features/gemini_live_swarm/session/liveBridgeHelper.ts
 +++ b/src/features/gemini_live_swarm/session/liveBridgeHelper.ts
-@@ -4,6 +4,7 @@ export const A2UI_TOOL_DECLARATIONS = [
+@@ -1,5 +1,7 @@
+ import { SwarmEventBus } from '../bus/swarmEventBus';
+ 
++const audioEndTimestamps = new WeakMap<SwarmEventBus, number>();
++
+ export const A2UI_TOOL_DECLARATIONS = [
    {
      name: 'render_a2ui',
-     description: 'Render a UI component',
-+    behavior: 'NON_BLOCKING',
-     parameters: {
-       type: 'OBJECT',
-       properties: {
-@@ -16,6 +17,7 @@ export const A2UI_TOOL_DECLARATIONS = [
-   {
-     name: 'clear_a2ui',
-     description: 'Clear the rendered UI component',
-+    behavior: 'NON_BLOCKING',
-     parameters: {
-       type: 'OBJECT',
-       properties: {},
-@@ -56,9 +58,10 @@ export function bindLiveSwarmBridge(
-   });
+diff --git a/src/features/gemini_live_swarm/session/sessionIntentAudio.ts b/src/features/gemini_live_swarm/session/sessionIntentAudio.ts
+index d032e4c..b86ae06 100644
+--- a/src/features/gemini_live_swarm/session/sessionIntentAudio.ts
++++ b/src/features/gemini_live_swarm/session/sessionIntentAudio.ts
+@@ -131,13 +131,9 @@ export class SessionIntentManager {
+     this.eventBus.emit('a2ui:clear');
+   }
  
-   bus.subscribe('swarm.live.intent.activated', (env) => {
-+    const intent = (env.data as any)?.title || 'Att förlikas';
-     bus.publish('a2ui:render', {
-       componentId: 'ListeningCard',
--      dataModel: { intent: 'Att förlikas' }
-+      dataModel: { intent }
-     });
-   });
+-  public emitAudioTalking(): void {
+-    this.eventBus.publishLiveEvent('swarm.live.audio.talking', { state: 'SWARM_TALKING', activityText: '🔊 Agenten talar' });
+-  }
++  public emitAudioTalking(): void { this.eventBus.publishLiveEvent('swarm.live.audio.talking', { state: 'SWARM_TALKING', activityText: '🔊 Agenten talar' }); }
  
-@@ -96,7 +99,11 @@ export function handleLiveToolCalls(
+-  public emitAudioThinking(): void {
+-    this.eventBus.publishLiveEvent('swarm.live.audio.thinking', { state: 'SWARM_THINKING', activityText: '🧠 Agenten reflekterar' });
+-  }
++  public emitAudioThinking(): void { this.eventBus.publishLiveEvent('swarm.live.audio.thinking', { state: 'SWARM_THINKING', activityText: '🧠 Agenten reflekterar' }); }
+ 
+   public async initUserGestureAudio(): Promise<void> {
+     if (typeof window === 'undefined') return;
+@@ -147,7 +143,9 @@ export class SessionIntentManager {
+         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+         this.startPCM16Sampling(this.mediaStream);
+       }
+-    } catch { /* media fallback */ }
++    } catch (err: any) {
++      console.warn('Media Device access failed, audio streaming unavailable:', err);
++    }
+   }
+ 
+   public startPCM16Sampling(stream: MediaStream): void {
+@@ -160,7 +158,9 @@ export class SessionIntentManager {
+       };
+       source.connect(this.audioProcessor);
+       this.audioProcessor.connect(this.audioContext.destination);
+-    } catch { /* sampling fallback */ }
++    } catch (err: any) {
++      console.error('PCM16 Sampling setup failed:', err);
++    }
+   }
+ 
+   public processIncomingChunk(inputData: Float32Array): void {
+@@ -191,6 +191,13 @@ export class SessionIntentManager {
+       } else {
+         this.isVadStreaming = false;
+         this.preRollBuffer.push(target16k);
++        this.eventBus.publishLiveEvent('swarm.live.stream.audio_end', { streamId: `mic-${Date.now()}`, postRollMs: this.postRollMs, timestamp: new Date().toISOString() });
++        
++        if (typeof window !== 'undefined' && (window as any).geminiSession?.setMicSpeechEnd) {
++          (window as any).geminiSession.setMicSpeechEnd(Date.now());
++        } else if (typeof global !== 'undefined' && (global as any).geminiSession?.setMicSpeechEnd) {
++             (global as any).geminiSession.setMicSpeechEnd(Date.now());
++        }
+       }
+     } else {
+       this.preRollBuffer.push(target16k);
+@@ -216,17 +223,28 @@ export class SessionIntentManager {
+       try { this.audioContext = new AudioCtx({ sampleRate: 16000 }); } catch { this.audioContext = new AudioCtx(); }
+       return;
+     }
+-    if (this.audioContext.state === 'suspended') this.audioContext.resume().catch(() => {});
++    if (this.audioContext.state === 'suspended') {
++      this.audioContext.resume().catch((err: any) => console.error('Error resuming audio context:', err));
++    }
+   }
+ 
+   private stopAudioStream(): void {
+-    if (this.audioProcessor) { try { this.audioProcessor.disconnect(); } catch {} this.audioProcessor = null; }
+-    if (this.mediaStream) { try { this.mediaStream.getTracks().forEach((t) => t.stop()); } catch {} this.mediaStream = null; }
++    if (this.audioProcessor) { 
++      try { this.audioProcessor.disconnect(); } catch (err: any) { console.error('Error disconnecting audio processor:', err); }
++      this.audioProcessor = null; 
++    }
++    if (this.mediaStream) { 
++      try { this.mediaStream.getTracks().forEach((t) => t.stop()); } catch (err: any) { console.error('Error stopping media stream tracks:', err); }
++      this.mediaStream = null; 
++    }
+   }
+ 
+   public dispose(): void {
+     this.deactivateIntent();
+-    if (this.audioContext) { try { this.audioContext.close(); } catch {} this.audioContext = null; }
++    if (this.audioContext) { 
++      try { this.audioContext.close(); } catch (err: any) { console.error('Error closing audio context:', err); }
++      this.audioContext = null; 
++    }
+   }
  }
  
- export function processLiveServerTranscripts(message: any, bus: SwarmEventBus) {
--  const text = message?.outputTranscription?.text || message?.inputTranscription?.text;
-+  const text = message?.serverContent?.outputTranscription?.text || 
-+               message?.serverContent?.inputTranscription?.text || 
-+               message?.outputTranscription?.text || 
-+               message?.inputTranscription?.text;
-+               
-   if (text) {
-     bus.emit('swarm.session.text_delta', {
-       sourceRole: 'assistant',
+@@ -243,6 +261,8 @@ export function freezeStateToWal(): void {
+     data.is_paused = true;
+     data.paused_at = new Date().toISOString();
+     fsMod.writeFileSync(stateFile, JSON.stringify(data, null, 2), 'utf8');
+-  } catch {}
++  } catch (err: any) {
++    console.error('Failed to freeze state to WAL:', err);
++  }
+ }
+ 

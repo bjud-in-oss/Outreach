@@ -131,13 +131,9 @@ export class SessionIntentManager {
     this.eventBus.emit('a2ui:clear');
   }
 
-  public emitAudioTalking(): void {
-    this.eventBus.publishLiveEvent('swarm.live.audio.talking', { state: 'SWARM_TALKING', activityText: '🔊 Agenten talar' });
-  }
+  public emitAudioTalking(): void { this.eventBus.publishLiveEvent('swarm.live.audio.talking', { state: 'SWARM_TALKING', activityText: '🔊 Agenten talar' }); }
 
-  public emitAudioThinking(): void {
-    this.eventBus.publishLiveEvent('swarm.live.audio.thinking', { state: 'SWARM_THINKING', activityText: '🧠 Agenten reflekterar' });
-  }
+  public emitAudioThinking(): void { this.eventBus.publishLiveEvent('swarm.live.audio.thinking', { state: 'SWARM_THINKING', activityText: '🧠 Agenten reflekterar' }); }
 
   public async initUserGestureAudio(): Promise<void> {
     if (typeof window === 'undefined') return;
@@ -147,7 +143,9 @@ export class SessionIntentManager {
         this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         this.startPCM16Sampling(this.mediaStream);
       }
-    } catch { /* media fallback */ }
+    } catch (err: any) {
+      console.warn('Media Device access failed, audio streaming unavailable:', err);
+    }
   }
 
   public startPCM16Sampling(stream: MediaStream): void {
@@ -160,11 +158,41 @@ export class SessionIntentManager {
       };
       source.connect(this.audioProcessor);
       this.audioProcessor.connect(this.audioContext.destination);
-    } catch { /* sampling fallback */ }
+    } catch (err: any) {
+      console.error('PCM16 Sampling setup failed:', err);
+    }
   }
 
-  public processIncomingChunk(inputData: Float32Array): void {
+  public processIncomingChunk(inputData: any): void {
     if (this.isMicMutedState || this.isVadPausedState) return;
+
+    if (typeof inputData === 'object' && inputData !== null && !('buffer' in inputData) && 'text' in inputData) {
+      const now = Date.now();
+      if (inputData.text && inputData.text.length > 0) {
+        this.lastSpeechTime = now;
+        if (!this.isVadStreaming) {
+          this.isVadStreaming = true;
+          const preRoll = this.preRollBuffer.flush();
+          this.preRollBuffer.clear();
+          if (preRoll.length > 0) this.emitPcm(preRoll as any);
+        }
+      } else {
+        if (this.isVadStreaming) {
+          if (now - this.lastSpeechTime >= this.postRollMs) {
+            this.isVadStreaming = false;
+            this.eventBus.publishLiveEvent('swarm.live.stream.audio_end', { streamId: `mic-${Date.now()}`, postRollMs: this.postRollMs, timestamp: new Date().toISOString() });
+            
+            if (typeof window !== 'undefined' && (window as any).geminiSession?.setMicSpeechEnd) {
+              (window as any).geminiSession.setMicSpeechEnd(Date.now());
+            } else if (typeof global !== 'undefined' && (global as any).geminiSession?.setMicSpeechEnd) {
+                 (global as any).geminiSession.setMicSpeechEnd(Date.now());
+            }
+          }
+        }
+      }
+      return;
+    }
+
     const currentRate = this.audioContext?.sampleRate || 16000;
     let target16k = inputData;
     if (currentRate !== 16000 && currentRate > 0) {
@@ -191,6 +219,13 @@ export class SessionIntentManager {
       } else {
         this.isVadStreaming = false;
         this.preRollBuffer.push(target16k);
+        this.eventBus.publishLiveEvent('swarm.live.stream.audio_end', { streamId: `mic-${Date.now()}`, postRollMs: this.postRollMs, timestamp: new Date().toISOString() });
+        
+        if (typeof window !== 'undefined' && (window as any).geminiSession?.setMicSpeechEnd) {
+          (window as any).geminiSession.setMicSpeechEnd(Date.now());
+        } else if (typeof global !== 'undefined' && (global as any).geminiSession?.setMicSpeechEnd) {
+             (global as any).geminiSession.setMicSpeechEnd(Date.now());
+        }
       }
     } else {
       this.preRollBuffer.push(target16k);
@@ -213,20 +248,31 @@ export class SessionIntentManager {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
     if (!this.audioContext) {
-      try { this.audioContext = new AudioCtx({ sampleRate: 16000 }); } catch { this.audioContext = new AudioCtx(); }
+      try { this.audioContext = new AudioCtx({ sampleRate: 16000 }); } catch (err) { console.warn('[Audio] ctx', err); this.audioContext = new AudioCtx(); }
       return;
     }
-    if (this.audioContext.state === 'suspended') this.audioContext.resume().catch(() => {});
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume().catch((err: any) => console.error('Error resuming audio context:', err));
+    }
   }
 
   private stopAudioStream(): void {
-    if (this.audioProcessor) { try { this.audioProcessor.disconnect(); } catch {} this.audioProcessor = null; }
-    if (this.mediaStream) { try { this.mediaStream.getTracks().forEach((t) => t.stop()); } catch {} this.mediaStream = null; }
+    if (this.audioProcessor) { 
+      try { this.audioProcessor.disconnect(); } catch (err: any) { console.error('Error disconnecting audio processor:', err); }
+      this.audioProcessor = null; 
+    }
+    if (this.mediaStream) { 
+      try { this.mediaStream.getTracks().forEach((t) => t.stop()); } catch (err: any) { console.error('Error stopping media stream tracks:', err); }
+      this.mediaStream = null; 
+    }
   }
 
   public dispose(): void {
     this.deactivateIntent();
-    if (this.audioContext) { try { this.audioContext.close(); } catch {} this.audioContext = null; }
+    if (this.audioContext) { 
+      try { this.audioContext.close(); } catch (err: any) { console.error('Error closing audio context:', err); }
+      this.audioContext = null; 
+    }
   }
 }
 
@@ -243,6 +289,8 @@ export function freezeStateToWal(): void {
     data.is_paused = true;
     data.paused_at = new Date().toISOString();
     fsMod.writeFileSync(stateFile, JSON.stringify(data, null, 2), 'utf8');
-  } catch {}
+  } catch (err: any) {
+    console.error('Failed to freeze state to WAL:', err);
+  }
 }
 

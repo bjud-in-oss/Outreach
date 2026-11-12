@@ -27,6 +27,7 @@ export class GeminiLiveSession {
   private audioPlayer = new DSPRingBufferMixer();
   private floor: FloorController;
   private abortController: AbortController | null = null;
+  private lastSpeechEndTimestamp: number | null = null;
   private isPaused = false;
 
   constructor(apiKey?: string, eventBus?: SwarmEventBus) {
@@ -157,7 +158,15 @@ export class GeminiLiveSession {
     }
 
     if (message?.serverContent?.interrupted) { this.audioPlayer.clearBuffer(channel); this.releaseFloor(channel); this.intentManager.emitAudioThinking(); return; }
-    if (message?.serverContent?.turnComplete) { this.releaseFloor(channel); this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel }); }
+    if (message?.serverContent?.turnComplete) { 
+      this.releaseFloor(channel); 
+      this.eventBus.publishLiveEvent('swarm.live.turn.complete', { channel }); 
+      if (this.lastSpeechEndTimestamp) {
+        const latency = Date.now() - this.lastSpeechEndTimestamp;
+        this.eventBus.publish('telemetry:voice_latency', { vadToFirstByteMs: latency });
+        this.lastSpeechEndTimestamp = null;
+      }
+    }
     const parts = message?.serverContent?.modelTurn?.parts || [];
     for (const part of parts) {
       if (part.inlineData?.data) { this.requestFloor(channel); this.audioPlayer.play24kHzPCMBase64(channel, part.inlineData.data, () => this.intentManager.emitAudioTalking()); }
@@ -193,6 +202,7 @@ export class GeminiLiveSession {
   public async start(): Promise<boolean> { return this.connectLive(); } public async stop(): Promise<void> { return this.disconnectLive(); }
   public isSessionPaused(): boolean { return this.isPaused; } public getAbortController(): AbortController | null { return this.abortController; }
   public setMicMuted(m: boolean): void { this.intentManager.setMicMuted(m); } public isMicMuted(): boolean { return this.intentManager.isMicMuted(); }
+  public setMicSpeechEnd(timestamp: number): void { this.lastSpeechEndTimestamp = timestamp; }
   public setVadPaused(p: boolean): void { this.intentManager.setVadPaused(p); } public isVadPaused(): boolean { return this.intentManager.isVadPaused(); }
   public triggerProactiveGreeting(): void {
     this.eventBus.emit('PROACTIVE_TRIGGER_SENT', { timestamp: new Date().toISOString() });

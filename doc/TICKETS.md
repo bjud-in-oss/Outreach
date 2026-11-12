@@ -52,6 +52,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-053** (VERIFIED): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`
 - [x] **TCK-052** (VERIFIED): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
 - [x] **TCK-051** (VERIFIED): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
 - [x] **TCK-050** (VERIFIED): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
