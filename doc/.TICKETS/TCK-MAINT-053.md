@@ -1,0 +1,51 @@
+# TCK-MAINT-053: Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning
+
+**Måldomän:** `scripts`
+**Målfiler:** `scripts/lib/fas2Tooling.ts`, `scripts/lib/fas3Consolidation.ts`, `scripts/run-planera-live.ts`, `scripts/lib/sizeGate.js`, `scripts/lib/pathNodePorts.ts`, `scripts/run-path.ts`, `scripts/run-tests.js`
+**Mekanisk Acceptans:**
+1. `scripts/run-planera-live.ts` importerar och använder `channelRunner.ts`, `fas2Tooling.ts` och `fas3Consolidation.ts`, tar bort de duplicerade inline-blocken och krymper strikt under 250 rader.
+2. `LEGACY_SCRIPT_CAPS['run-planera-live.ts']` i `scripts/lib/sizeGate.js` sänks från `1000` till `250`.
+3. `scripts/lib/fas3Consolidation.ts` (< 250 rader) exporterar `saneraSkordadLegacy(ticketPath)` som raderar filer listade under `**Skördad Legacy:**` efter grön `pnpm verify`, och `scripts/run-tests.js` (< 50 rader) listar kvarvarande `*.legacy.ts`-filer.
+4. `scripts/lib/pathNodePorts.ts` (< 250 rader) returnerar `{ avsikt, provning, konstruktion, besiktning }` med korrekta portfabriker och `scripts/run-path.ts` (< 250 rader) importerar `skapaBidiLiveAdapter`.
+5. `pnpm verify` passerar med exit 0.
+
+---
+
+## Destruktiva Handlingssteg (Obligatorisk städning)
+- **Radera utbruten kod ur `scripts/run-planera-live.ts`:** Ta bort de lokala definitionerna av `getFeatureIndexText`, `getInstalledDependencies`, `appendCycleLog`, `runMicroChannel`, `inspectionTools`, `executeInspection`, `codegenTools`, `executeFas2Tools`, `getRequiredFiles`, `getMissingFiles`, `isFas2Complete`, `getFas2FollowupPrompt`, Fas 3-konsolideringsblocket, Trepunktsbesiktningen (`[j/s/n]`) samt Git commit/push-blocket och ersätt dem med anrop till `./lib/channelRunner.js`, `./lib/fas2Tooling.js` och `./lib/fas3Consolidation.js`.
+- **Ersätt felaktiga portnycklar i `scripts/lib/pathNodePorts.ts`:** Ta bort `{ avsiktsport, provningsport, konstruktionsport, besiktningsport }` och returnera `{ avsikt, provning, konstruktion, besiktning }`.
+
+---
+
+## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
+1. **Laga `apply_patch`-schemat i `scripts/lib/fas2Tooling.ts` (< 250 rader):**
+   - Säkerställ att `apply_patch` har `parameters: { type: 'OBJECT', properties: { file_path: { type: 'STRING' }, search_block: { type: 'STRING' }, replace_block: { type: 'STRING' } }, required: ['file_path', 'search_block', 'replace_block'] }`.
+2. **Lägg till `saneraSkordadLegacy(ticketPath)` i `scripts/lib/fas3Consolidation.ts` (< 250 rader):**
+   - Läs `ticketPath` och matcha `\*\*Skördad Legacy:\*\*\s*(.+)`. Extrahera alla bakåtciterade sökvägar (t.ex. `src/__tests__/swarm_telemetry.legacy.ts`) och radera dem med `fs.unlinkSync` om de existerar (efter att `pnpm verify` har passerat grönt i `run-planera-live.ts`).
+3. **Banta `scripts/run-planera-live.ts` (< 250 rader) och sänk taket i `scripts/lib/sizeGate.js`:**
+   - Använd ett muterbart objekt `const codeSaved = { value: false };` så att `createFas2ToolExecutor` och `isFas2Complete` i `fas2Tooling.ts` delar tillstånd.
+   - Anropa `saneraSkordadLegacy(ticketPath)` direkt efter `execSync('pnpm verify', ...)` i Fas 3.
+   - Ändra `LEGACY_SCRIPT_CAPS['run-planera-live.ts']` i `scripts/lib/sizeGate.js` från `1000` till `250`.
+4. **Laga `scripts/lib/pathNodePorts.ts` (< 250 rader), `scripts/run-path.ts` (< 250 rader) och `scripts/run-tests.js` (< 50 rader):**
+   - Returnera `{ avsikt: skapaAvsiktsport({ prompter: async () => 'y', beskrivning: ... }), provning: skapaProvningsport({ testFilVag: ..., forvantatFel: 'Fail-First', testExekverare: ... }), konstruktion: skapaKonstruktionsport({ matris: deps.matris || [], inspekterare: ... }), besiktning: skapaBesiktningsport({ inspekterare: ... }) }` i `pathNodePorts.ts`.
+   - Importera `skapaBidiLiveAdapter` från `'../src/features/path'` i `scripts/run-path.ts`.
+   - Låt `scripts/run-tests.js` logga eventuella kvarvarande `*.legacy.ts`-filer i `src/__tests__/`.
+
+---
+
+## Scenariotriad (Den relationella och systemiska avsikten)
+
+**Scenario: ATT FÖLJA – Hela byggmotorn under 250 rader och automatisk legacy-skördstädning**
+  Givet att `channelRunner.ts`, `fas2Tooling.ts` och `fas3Consolidation.ts` är utbrutna
+  När `run-planera-live.ts` kopplas till dem och `saneraSkordadLegacy` aktiveras i Fas 3
+  Så krymper hela skriptlagret under 250 rader per fil och skördade `*.legacy.ts`-filer städas bort tryggt efter grön verifiering.
+
+**Scenario: ATT VÄNDA OM – Avvisande av 1000-radersundantag och trasiga portnycklar**
+  Givet att `sizeGate.js` sänker taket för `run-planera-live.ts` till 250 rader och `pathNodePorts.ts` rättas
+  När `pnpm verify` och `pnpm test` körs
+  Så valideras både radgränser och Vägmotorns portkontrakt mekaniskt.
+
+**Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
+  Givet att samtliga moduler och grindar är uppdaterade
+  När `pnpm verify` körs
+  Så passerar alla tester och arkitekturgrindar med exit 0.

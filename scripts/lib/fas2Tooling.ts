@@ -31,11 +31,14 @@ export const codegenTools = [
     behavior: 'NON_BLOCKING',
     description: 'Gör en kirurgisk ändring i en BEFINTLIG fil via search & replace. Kräver 1-2 omgivande rader i search_block för att garantera unikhet.',
     parameters: {
-      file_path: { type: 'STRING', description: 'Relativ sökväg till filen' },
-      search_block: { type: 'STRING', description: 'Exakt kodblock som ska bytas ut (inkludera 1-2 rader omgivande kontext)' },
-      replace_block: { type: 'STRING', description: 'Ny kod som ska ersätta search_block' },
+      type: 'OBJECT',
+      properties: {
+        file_path: { type: 'STRING', description: 'Relativ sökväg till filen' },
+        search_block: { type: 'STRING', description: 'Exakt kodblock som ska bytas ut (inkludera 1-2 rader omgivande kontext)' },
+        replace_block: { type: 'STRING', description: 'Ny kod som ska ersätta search_block' },
+      },
+      required: ['file_path', 'search_block', 'replace_block'],
     },
-    required: ['file_path', 'search_block', 'replace_block'],
   }
 ];
 

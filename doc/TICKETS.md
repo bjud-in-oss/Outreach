@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-053** (VERIFIED): Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning -> Se `doc/.TICKETS/TCK-MAINT-053.md`
 - [x] **TCK-MAINT-052** (VERIFIED): Banta run-planera-live.ts under 250 rader, laga pathNodePorts.ts och logga kvarvarande legacy-skörd -> Se `doc/.TICKETS/TCK-MAINT-052.md`
 - [x] **TCK-MAINT-051** (VERIFIED): Modulär radgränsspärr (sizeGate.js) och undantagsfri rekursiv domänläckagekontroll för scripts/ -> Se `doc/.TICKETS/TCK-MAINT-051.md`
 - [x] **TCK-MAINT-050** (VERIFIED): Flytta formatMemoryIndicator till shared, återkoppla MAINT-exit-skydd och koppla Node-portar till Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-050.md`

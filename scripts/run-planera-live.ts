@@ -1,121 +1,25 @@
-import { mutateSourceCodeAST } from './drivers/astMutator.js';
-/**
- * scripts/run-planera-live.ts
- * 
- * OUTREACH COORDINATION ENGINE (v10.5)
- * Helautonom orkestreringsmotor med Action Loop, testkonsolidering,
- * dokumentationssynk, och en interaktiv mänsklig beslutsgrind för systemunderhåll.
- */
-
 import * as fs from 'fs';
 import * as path from 'path';
-import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.js';
-import { mutateSourceCodeAST } from './drivers/astMutator.js';
-import { applySourcePatch } from './drivers/patchMutator.js';
+import { 
+  getFeatureIndexText, 
+  getInstalledDependencies, 
+  appendCycleLog, 
+  runMicroChannel,
+  executeInspection
+} from './lib/channelRunner.js';
+import { createFas2ToolExecutor, isFas2Complete, getFas2FollowupPrompt } from './lib/fas2Tooling.js';
+import { konsolideraTest, synkaDomanBarrel, uppdateraFeatureIndex, uppdateraBiljettstatus, hanteraTrepunktsbesiktning, genomforGitCommitPush, saneraSkordadLegacy } from './lib/fas3Consolidation.js';
 import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
-import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
+import { buildRetryAnchor } from './lib/ticketAndAnchor.js';
 
 const ROOT_DIR = process.cwd();
-
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
 const CRASH_DUMP_PATH = path.join(CYCLE_LOG_DIR, 'CRASH_DUMP.json');
 const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
-const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
-const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
-const PKG_PATH = path.join(ROOT_DIR, 'package.json');
-
-const MODEL_NAME = process.env.LIVE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-live';
-const API_KEY = process.env.GEMINI_API_KEY;
-
-if (!API_KEY) {
-  console.error('❌ KRITISKT FEL: GEMINI_API_KEY saknas i miljövariablerna.');
-  process.exit(1);
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
-
-if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
-
-process.on("exit", (code) => {
-  if (code !== 0) {
-    dumpCrashDiff();
-    restoreScriptsBackup();
-  }
-});
-let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
-if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
-
-function getFeatureIndexText(): string {
-  if (fs.existsSync(FEATURE_INDEX_PATH)) return fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8');
-  return '';
-}
-
-function getInstalledDependencies(): string {
-  if (!fs.existsSync(PKG_PATH)) return '';
-  try {
-    const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
-    const deps = Object.keys(pkg.dependencies || {});
-    const devDeps = Object.keys(pkg.devDependencies || {});
-    return `TILLGÄNGLIGA PAKET I PROJEKTET (Importera ALDRIG externa paket utanför denna lista! För övrigt, använd Node.js inbyggda API:er):\n${[...deps, ...devDeps].join(', ')}`;
-  } catch {
-    return '';
-  }
-}
-
-function appendCycleLog(header: string, content: string) {
-  fs.appendFileSync(CYCLE_LOG_PATH, `\n\n#### ${header}\n${content.trim()}\n`, 'utf-8');
-}
-
-interface ChannelOptions {
-  requireMutation?: boolean;
-  maxTurns?: number;
-  onMutationCheck?: () => boolean;
-  getFollowupPrompt?: () => string;
-}
-
-async function runMicroChannel(
-  kraft: 'Att följa' | 'Att vända om' | 'Att förlikas',
-  stepInstruction: string,
-  startAnchor: string,
-  si: string,
-  tools: any[] = [],
-  executeTool?: (name: string, args: any) => string,
-  options: ChannelOptions = {}
-): Promise<string> {
-  const runner = new BidiLiveSession({
-    ai,
-    model: MODEL_NAME,
-    systemInstruction: `${si}\n\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\n\n${getInstalledDependencies()}\n\nDu agerar som kraften: ${kraft}.\nUppgift: ${stepInstruction}`,
-    tools,
-    executeTool,
-  });
-
-  try {
-    let response = await runner.send(`STARTANKARE:\n${startAnchor}\n\nUPPDRAG:\n${stepInstruction}`);
-    
-    const maxTurns = options.maxTurns || 3;
-    let turn = 1;
-
-    while (options.requireMutation && options.onMutationCheck && !options.onMutationCheck() && turn < maxTurns) {
-      turn++;
-      const followUp = options.getFollowupPrompt ? options.getFollowupPrompt() : `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`;
-      console.log(`\n   🔁 [ACTION LOOP]: Krav ej uppfyllt ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
-      response = await runner.send(followUp);
-    }
-
-    runner.close();
-    await new Promise((r) => setTimeout(r, 400));
-    return response;
-  } catch (err: any) {
-    runner.close();
-    await new Promise((r) => setTimeout(r, 400));
-    throw err;
-  }
-}
 
 async function main() {
   const startTime = Date.now();
