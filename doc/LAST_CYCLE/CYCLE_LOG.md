@@ -1,75 +1,60 @@
-# BYGGCYKEL LOGG: TCK-052
-**Starttid:** 2026-11-12T12:30:05.351Z
+# BYGGCYKEL LOGG: TCK-MAINT-047
+**Starttid:** 2026-11-12T12:33:54.989Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-052: Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript)
+# TCK-MAINT-047: Radgränsspärr och Strangler Fig-ratchet för scripts/ i verify-architecture.js
 
-**Måldomän:** `gemini_live_swarm` (`src/features/gemini_live_swarm/`)
-**Målfiler:** `src/features/gemini_live_swarm/session/geminiLiveSession.ts`, `src/features/gemini_live_swarm/session/liveBridgeHelper.ts`
-**Mekanisk Acceptans:** Ett transient test bevisar (Fail-First mot körtidsankare utan `vi.fn()`-spioner) att när enbart `new GeminiLiveSession('test-api-key', eventBus)` instansieras (utan att anropa `bindLiveSwarmBridge` manuellt i testet):
-1. Händelsen `'swarm.live.intent.activated'` på `eventBus` automatiskt publicerar `'a2ui:render'` med `ListeningCard`, och `'swarm.live.intent.deactivated'` publicerar `'a2ui:clear'`.
-2. `session.handleAgentMessage('forlikas', { serverContent: { outputTranscription: { text: 'Hej från rösten' } } })` emitterar `'swarm.session.text_delta'` med `text: 'Hej från rösten'`.
-3. `session.handleAgentMessage('forlikas', { toolCall: { functionCalls: [{ id: 'c1', name: 'render_a2ui', args: { componentId: 'ActionPrompt', dataModel: { actionLabel: 'Kör' } } }] } })` publicerar `'a2ui:render'` och anropar `activeSdkSession.sendToolResponse`.
-4. `A2UI_TOOL_DECLARATIONS` har `behavior: 'NON_BLOCKING'` på samtliga verktyg.
-Samtliga tester, radgränser (<250 rader i `.ts`) och FSD-arkitekturkontroller passerar med exit 0.
+**Måldomän:** `scripts`
+**Målfiler:** `scripts/verify-architecture.js`
+**Mekanisk Acceptans:** `scripts/verify-architecture.js` innehåller en ny Grind 4 som skannar alla `.ts`- och `.js`-filer under `scripts/` (exklusive `scripts/__tests__/`) och:
+1. Underkänner alla skriptmoduler som överstiger 250 rader, med undantag för de två legacy-filerna under Strangler Fig-avveckling (`scripts/run-planera-live.ts` max 1065 rader och `scripts/bidiLiveRunner.ts` max 345 rader).
+2. Håller sig själv (`scripts/verify-architecture.js`) strikt under 250 rader.
+Samtliga skripttester, domäntester och `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Exekveringsordning i Fas 2 (Förhindra förtida loop-avslut):**
-   - Slutför ALLA tre `apply_patch`-anrop på `src/features/gemini_live_swarm/session/geminiLiveSession.ts` FÖRST, och applicera `apply_patch` på `src/features/gemini_live_swarm/session/liveBridgeHelper.ts` SIST, så att `isFas2Complete()` håller loopen öppen tills samtliga patchar är på plats.
-2. **Tre exakta patchar i `src/features/gemini_live_swarm/session/geminiLiveSession.ts` (< 250 rader):**
-   - **Patch A (subscribeToMicPiping):** Byt ut prenumerationskroppen mot:
-     ```ts
-     bindLiveSwarmBridge(
-       this.eventBus,
-       () => this.activeSdkSession,
-       () => this.isLiveConnected(),
-       () => { this.liveStatus = 'DISCONNECTED'; this.deactivateIntent(); }
-     );
-     ```
-   - **Patch B (handleAgentMessage):** Anropa `processLiveServerTranscripts(message, this.eventBus);` samt `if (message?.toolCall?.functionCalls?.length) { handleLiveToolCalls(message.toolCall.functionCalls, this.eventBus, (r) => this.sendToolResponse(r)); }`.
-   - **Patch C (sendToolResponse):** Anropa `if (this.activeSdkSession?.sendToolResponse) { this.activeSdkSession.sendToolResponse({ functionResponses }); } else if (this.activeSdkSession?.sendRealtimeInput) { this.activeSdkSession.sendRealtimeInput({ toolResponse: { functionResponses, behavior } }); }`.
-3. **Uppdatering av `src/features/gemini_live_swarm/session/liveBridgeHelper.ts` (< 130 rader):**
-   - Lägg till `behavior: 'NON_BLOCKING'` på både `render_a2ui` och `clear_a2ui` i `A2UI_TOOL_DECLARATIONS`.
-   - I `bindLiveSwarmBridge`: använd `const intent = (env.data as any)?.title || 'Att förlikas';` som `intent` i `ListeningCard` vid `'swarm.live.intent.activated'`.
-   - I `processLiveServerTranscripts(message, bus)`: läs `const text = message?.serverContent?.outputTranscription?.text || message?.serverContent?.inputTranscription?.text || message?.outputTranscription?.text || message?.inputTranscription?.text;`.
-4. **Strikt FSD-isolering:**
-   - Inga importer från `src/features/a2ui/` och inga tomma `catch {}`-block.
+1. **Lägg till Grind 4 i `scripts/verify-architecture.js` (håll filen < 250 rader):**
+   - Efter Grind 3 (runt rad 174), inför en kompakt kontroll (`let scriptSizeViolations = 0;`) som rekursivt skannar `SCRIPTS_DIR` (hoppar över `__tests__` och `node_modules`).
+   - Sätt takkartan: `const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1065, 'bidiLiveRunner.ts': 345 };` och `const maxLines = LEGACY_SCRIPT_CAPS[entry.name] || 250;`.
+   - Räkna radantalet via `content.split('\n').length`. Om `lineCount > maxLines`, logga tydligt fel och öka `scriptSizeViolations++`.
+   - Inkludera `scriptSizeViolations > 0` i slutvillkoret på rad 176 så att bygget avbryts med `process.exit(1)` vid brott.
+2. **Bevara övriga grindar:**
+   - Ändringen berör uteslutande `scripts/verify-architecture.js`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Hela röst- och gränssnittskedjan samverkar i skarpt läge**
-  Givet att `GeminiLiveSession` är instansierad i appen
-  När användaren aktiverar mikrofonen och talar med agenten
-  Så tänds `ListeningCard` automatiskt, talade repliker skrivs ut i samtalstråden och agenten kan visa `ActionPrompt` via `render_a2ui`
-  Och hela gränssnittet blir levande och multimodalt.
+**Scenario: ATT FÖLJA – Skriptlagret får samma modulära disciplin som FSD-domänerna**
+  Givet att `verify-architecture.js` körs vid varje verifiering
+  När nya skriptmoduler skapas under `scripts/` eller `scripts/lib/`
+  Så garanterar Grind 4 att ingen ny modul överstiger 250 rader
+  Och legacy-filerna låses vid sitt nuvarande tak.
 
-**Scenario: ATT VÄNDA OM – Avvisande av oanvända hjälpmoduler och blockerande verktyg**
-  Givet att `liveBridgeHelper.ts` tidigare exporterade bryggfunktioner som inte anropades av `GeminiLiveSession` och saknade `NON_BLOCKING`
-  När `subscribeToMicPiping`, `handleAgentMessage` och `sendToolResponse` kopplas direkt till bryggan med `NON_BLOCKING`-deklarationer
-  Så verifieras integrationskedjan ände-till-ände genom `GeminiLiveSession`
-  Utan att utöka filens radantal över 250 rader.
+**Scenario: ATT VÄNDA OM – Avvisande av fortsatt tillväxt i run-planera-live.ts**
+  Givet att `run-planera-live.ts` är under Strangler Fig-avveckling mot `src/features/path/`
+  När en framtida ändring försöker lägga till fler rader utöver taket
+  Så avvisar `verify-architecture.js` ändringen mekaniskt
+  Vilket tvingar fram utbrytning till `scripts/lib/` eller `src/features/path/`.
 
-**Scenario: ATT FÖRLIKAS – Grön verifiering och ren arkitektur**
-  Givet att källkod och tester är uppdaterade under `src/features/gemini_live_swarm/`
+**Scenario: ATT FÖRLIKAS – Grön arkitekturkontroll**
+  Givet att `scripts/verify-architecture.js` är uppdaterad
   När `pnpm verify` körs
-  Så passerar samtliga tester och arkitekturkontroller med exit 0.
+  Så passerar samtliga grindar och tester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag förstår att uppdraget handlar om att skapa en mer levande och responsiv upplevelse för användaren genom att koppla ihop röstkommunikation med A2UI-gränssnittet. Det gör att agenten kan visa visuella komponenter och transkriptioner exakt när de behövs. Låter det här som en bra tolkning av det mänskliga värdet vi vill uppnå?
+Det här uppdraget handlar om att skapa ordning och främja långsiktig närhet i systemet genom att sprida den modulära disciplinen till våra skriptfiler. Genom att införa en ny arkitekturgrind, ser vi till att kod inte växer okontrollerat, utan att vi bryter ut ny logik i mindre moduler samtidigt som vi håller legacy-skripten under godkänt tak. Hur ser ni på att vi säkrar upp detta arkitektoniska ramverk i det här skedet?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit slutförd. Arkitekturen håller sig strikt inom FSD-gränserna för `gemini_live_swarm`, med kontrollerade filstorlekar och tydliga, icke-blockerande kontraktsändringar redo för genomförande.
+Jag har granskat kontraktet för TCK-MAINT-047. Uppdraget att implementera Grind 4 i scripts/verify-architecture.js är tydligt, begränsat till en domän och uppfyller kraven på destruktiv sanering av legacy-kod. Alla systemiska invariat-stoppklossar är godkända.
 
 
 #### 0b Att förlikas: Vägval
@@ -81,30 +66,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Vi kan formulera tre ortogonala alternativ för denna lösning.
+För att lösa kontraktet TCK-MAINT-047 och implementera Grind 4 i `scripts/verify-architecture.js` har jag tagit fram följande tre ortogonala alternativ:
 
-Först, en direkt integration där `GeminiLiveSession` anropar `liveBridgeHelper` i sina metoder. Det är enkelt, men ökar kopplingen i sessionsklassen.
+Alternativ 1: Synkron filallokering och radräkning i minnet. Detta alternativ bygger på sekventiell skanning via `fs.readdirSync` och direkt `fs.readFileSync`. Det är den enklaste metoden som matchar den befintliga arkitekturen och håller kodbasen kompakt under 250 rader.
 
-Sedan, brygg-delegering via en dedicerad `LiveBridgeManager`, vilket håller `GeminiLiveSession` ren genom att samla alla event och verktyg på ett ställe.
+Alternativ 2: Asynkron parallell körning med `fs/promises`. Här utnyttjas asynkrona filoperationer och `Promise.all` för att hantera sökningen mer effektivt. Detta introducerar dock något högre komplexitet i kontrollflödet.
 
-Slutligen, en middleware-baserad pipeline för meddelandehantering där inkommande data bearbetas stegvis i en bestämd ordning.
+Alternativ 3: Exekvering av systemkommandon som `wc-l`. Genom `child_process.execSync` kan systemets inbyggda verktyg användas för att mäta radantalet. Detta minskar minnesallokeringen i Node.js för mycket stora filer.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Av de tre alternativen är alternativet med brygg-delegering via `bindLiveSwarmBridge` det tryggaste kontraktet. Genom att hålla `GeminiLiveSession` fokuserad på nätverkskontrakt och låta `liveBridgeHelper` hantera events och transformeringar, isolerar vi felkällor och möter kravet på att inte dölja undantag i tysta catch-block.
+Alternativ 1 är det mest resilienta och stabila för vår mekaniska miljö. Det håller oss strikt under radgränsen och minimerar externa beroenden i kontrollflödet. Vi slipper onödig komplexitet och säkerställer deterministiskt utfall över alla plattformar.
 
 
 #### 2d Att förlikas: Mättnad
-Jag bekräftar att brygg-delegering via `bindLiveSwarmBridge` är det vinnande kontraktet. Vi har uppnått full mognad i vår vägning, MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Det slutgiltiga byggkontraktet innebär att vi bevarar `GeminiLiveSession` och `liveBridgeHelper` i `gemini_live_swarm`-domänen för att integrera röststyrning och A2UI. Alla ändringar sker direkt i de befintliga modulerna utan behov av att utöka antalet filer.
+Vi har vägt spänningsfältet och analyserat det semantiska deltat. Alternativ 1 står stadigt som det vinnande kontraktet för vår arkitektoniska resiliens. Vi deklarerar härmed MÄTTNAD: JA.

@@ -173,8 +173,45 @@ if (docFiles.length > 0) {
   checkSiReferences(path.join(ROOT_DIR, '.agents'));
 }
 
-if (fsdViolations > 0 || leakViolations > 0 || siLinkViolations > 0) {
-  console.error(`\n💥 Arkitekturkontrollen underkändes (${fsdViolations} FSD-fel, ${leakViolations} läckage, ${siLinkViolations} SI-länkningsfel).`);
+// ============================================================================
+// GRIND 4: MODULÄRA RADGRÄNSER FÖR SCRIPTS/ (Max 250 rader)
+// ============================================================================
+console.log('📏 [Skriptstorlek] Skannar scripts/ efter radgränsbrott...');
+
+let scriptSizeViolations = 0;
+const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1065, 'bidiLiveRunner.ts': 345 };
+
+function checkScriptSize(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (entry.name !== '__tests__' && entry.name !== 'node_modules') {
+        checkScriptSize(full);
+      }
+    } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.js')) {
+      const content = fs.readFileSync(full, 'utf-8');
+      const lineCount = content.split('\n').length;
+      
+      if (entry.name === 'verify-architecture.js') {
+        if (lineCount >= 250) {
+          console.error(`❌ RADGRÄNSBROTT i verify-architecture.js: Filen får inte nå 250 rader! (har ${lineCount})`);
+          scriptSizeViolations++;
+        }
+      } else {
+        const maxLines = LEGACY_SCRIPT_CAPS[entry.name] || 250;
+        if (lineCount > maxLines) {
+          console.error(`❌ RADGRÄNSBROTT i ${entry.name}: Filen överstiger maxgränsen på ${maxLines} rader (har ${lineCount})`);
+          scriptSizeViolations++;
+        }
+      }
+    }
+  }
+}
+
+checkScriptSize(SCRIPTS_DIR);
+
+if (fsdViolations > 0 || leakViolations > 0 || siLinkViolations > 0 || scriptSizeViolations > 0) {
+  console.error(`\n💥 Arkitekturkontrollen underkändes (${fsdViolations} FSD-fel, ${leakViolations} läckage, ${siLinkViolations} SI-länkningsfel, ${scriptSizeViolations} radgränsbrott).`);
   process.exit(1);
 }
 
