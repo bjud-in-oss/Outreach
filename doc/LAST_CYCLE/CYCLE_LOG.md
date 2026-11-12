@@ -1,75 +1,69 @@
-# BYGGCYKEL LOGG: TCK-053
-**Starttid:** 2026-11-12T13:50:19.949Z
+# BYGGCYKEL LOGG: TCK-MAINT-049
+**Starttid:** 2026-11-12T13:55:12.628Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-053: Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri
+# TCK-MAINT-049: Slutför scripts/lib-utbrytning, skärp Steg 3a-läsning och lås taket på 1000 rader
 
-**Måldomän:** `gemini_live_swarm` (`src/features/gemini_live_swarm/`)
-**Målfiler:** `src/features/gemini_live_swarm/session/liveBridgeHelper.ts`, `src/features/gemini_live_swarm/session/sessionIntentAudio.ts`
-**Mekanisk Acceptans:** Ett transient test bevisar (Fail-First mot körtidsankare utan `vi.fn()`-spioner) att:
-1. När `new GeminiLiveSession('test-api-key', eventBus)` (med `activeSdkSession` och `liveStatus = 'STREAMING'`) samt `new SessionIntentManager(eventBus)` instansieras och `intentManager.processIncomingChunk(...)` tar emot en tal-chunk följt av tysta chunks efter >500 ms (`postRollMs`), emitteras `'swarm.live.stream.audio_end'` på `eventBus` och `activeSdkSession.sendRealtimeInput` anropas med `{ audioStreamEnd: true }`.
-2. När `session.handleAgentMessage('forlikas', { serverContent: { outputTranscription: { text: 'Svar' } } })` därefter anropas, emitteras `'telemetry:voice_latency'` på `eventBus` med `audioEndSent: true` och ett numeriskt `vadToFirstByteMs >= 0`.
-Samtliga tester, AST-kontroller (Gate 2c), radgränser (<250 rader i `.ts`) och FSD-arkitekturkontroller passerar med exit 0.
+**Måldomän:** `scripts`
+**Målfiler:** `scripts/run-planera-live.ts`, `scripts/verify-architecture.js`, `scripts/__tests__/scriptLibs.test.ts`
+**Mekanisk Acceptans:**
+1. De kvarlämnade dubblettdefinitionerna av `dumpCrashDiff` och `restoreScriptsBackup` i `scripts/run-planera-live.ts` är borttagna och filen håller sig strikt under 1000 rader.
+2. `scripts/run-planera-live.ts` importerar och anropar `buildRetryAnchor(testContent, currentSourceSummary, testLog)` i Fas 2:s självrättningsslinga.
+3. Punkt 1 i Steg 3a-prompten i `scripts/run-planera-live.ts` kräver explicit att modellen anropar `read_file` på samtliga befintliga filer listade under `**Målfiler:**` innan `save_code` anropas.
+4. `LEGACY_SCRIPT_CAPS['run-planera-live.ts']` i `scripts/verify-architecture.js` sänks från `1065` till `1000`.
+5. `scripts/__tests__/scriptLibs.test.ts` verifierar `getRequiredFiles` och `buildRetryAnchor`, och `pnpm verify` passerar med exit 0.
+
+---
+
+## Destruktiva Handlingssteg (Obligatorisk städning)
+- **Radera dubblettfunktioner i `scripts/run-planera-live.ts`:** Ta bort de lokala funktionsdefinitionerna `function dumpCrashDiff()` och `function restoreScriptsBackup()` (runt rad 45–75) via `apply_patch`, eftersom båda redan importeras från `./lib/shellAndBackup.js` på rad 18.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Exekveringsordning i Fas 2 (Förhindra förtida loop-avslut):**
-   - Applicera ALLA patchar på `src/features/gemini_live_swarm/session/liveBridgeHelper.ts` FÖRST, och applicera patcharna på `src/features/gemini_live_swarm/session/sessionIntentAudio.ts` SIST, så att `isFas2Complete()` inte stänger Action Loopen förrän hela bryggan är färdigpatchad.
-2. **Uppdatering av `src/features/gemini_live_swarm/session/liveBridgeHelper.ts` (< 170 rader):**
-   - Lägg till `const audioEndTimestamps = new WeakMap<SwarmEventBus, number>();` överst i filen.
-   - I `bindLiveSwarmBridge`: lägg till prenumeration på `'swarm.live.stream.audio_end'` som sätter `audioEndTimestamps.set(bus, Date.now());` och, om `isConnected()` är sant och `getSession()?.sendRealtimeInput` finns, anropar `getSession().sendRealtimeInput({ audioStreamEnd: true });`.
-   - I `processLiveServerTranscripts(message, bus)`: kontrollera om `audioEndTimestamps.has(bus)` och `Boolean(text || message?.serverContent?.modelTurn?.parts?.length)`. Beräkna i så fall `const vadToFirstByteMs = Math.max(0, Date.now() - audioEndTimestamps.get(bus)!);`, kör `audioEndTimestamps.delete(bus);` och emittera `bus.emit('telemetry:voice_latency', { vadToFirstByteMs, audioEndSent: true, timestamp: new Date().toISOString() });`.
-3. **Uppdatering & Gate 2c-städning av `src/features/gemini_live_swarm/session/sessionIntentAudio.ts` (< 250 rader):**
-   - Filen ligger på 248 rader (max 250). Håll varje ersättning kompakt på befintlig rad så att radantalet aldrig når 250.
-   - Kompaktera `emitAudioTalking` och `emitAudioThinking` till enradiga metoder (-4 rader).
-   - I `processIncomingChunk`: när `this.isVadStreaming` slår om till `false` efter `this.postRollMs`, lägg till `this.eventBus.publishLiveEvent('swarm.live.stream.audio_end', { streamId: \`mic-\${Date.now()}\`, postRollMs: this.postRollMs, timestamp: new Date().toISOString() });`.
-   - **Obligatorisk Gate 2c-städning (ersätt alla 7 tomma `catch`-block enradigt):**
-     * `} catch { /* media fallback */ }` -> `} catch (err) { console.warn('[Audio] mic', err); }`
-     * `} catch { /* sampling fallback */ }` -> `} catch (err) { console.warn('[Audio] pcm', err); }`
-     * `} catch { this.audioContext = new AudioCtx(); }` -> `} catch (err) { console.warn('[Audio] ctx', err); this.audioContext = new AudioCtx(); }`
-     * `try { this.audioProcessor.disconnect(); } catch {}` -> `try { this.audioProcessor.disconnect(); } catch (err) { console.warn('[Audio] disc', err); }`
-     * `try { this.mediaStream.getTracks().forEach((t) => t.stop()); } catch {}` -> `try { this.mediaStream.getTracks().forEach((t) => t.stop()); } catch (err) { console.warn('[Audio] stop', err); }`
-     * `try { this.audioContext.close(); } catch {}` -> `try { this.audioContext.close(); } catch (err) { console.warn('[Audio] close', err); }`
-     * `} catch {}` (i `freezeStateToWal`) -> `} catch (err) { console.warn('[WAL] freeze', err); }`
-4. **Exakta signaturer i Steg 3a-testet (NOLL GISSNINGAR):**
-   - Instansiera `const session = new GeminiLiveSession('test-api-key', eventBus);` och `const intentManager = new SessionIntentManager(eventBus);` (anropa ALDRIG `session.sessionIntentManager` eller `session.bindBridge()` — `GeminiLiveSession` binder bryggan automatiskt i sin konstruktor).
-   - Sätt `(session as any).activeSdkSession = mockSdkSession; (session as any).liveStatus = 'STREAMING';` så att `session.isLiveConnected()` är `true`.
-   - Inga importer från `src/features/a2ui/` och inga `vi.fn()`/`vi.spyOn()`.
+1. **Rensa dubbletter, koppla `buildRetryAnchor` och skärp Steg 3a i `scripts/run-planera-live.ts` (< 1000 rader):**
+   - Ändra rad 19 till `import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';`.
+   - Ta bort de lokala dubblettfunktionerna `dumpCrashDiff` och `restoreScriptsBackup` (runt rad 45–75).
+   - Uppdatera punkt 1 i `Steg 3a` (runt rad 398) till:
+     `1. EPISTEMISK LÄSNING: Anropa först 'read_file' på SAMTLIGA befintliga filer listade under **Målfiler:** i biljetten (samt 'list_files' vid behov) så att du ser deras exakta fält- och metodnamn. Gissa ALDRIG egenskaper, fältnamn eller props!`
+   - Ersätt konstruktionen av `retryAnchor` (runt rad 828) med `const retryAnchor = buildRetryAnchor(testContent, currentSourceSummary, testLog);`.
+2. **Sänk taket i `scripts/verify-architecture.js` (< 250 rader):**
+   - Ändra `const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1065, 'bidiLiveRunner.ts': 345 };` till `const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1000, 'bidiLiveRunner.ts': 345 };`.
+3. **Karakteriseringstest i `scripts/__tests__/scriptLibs.test.ts`:**
+   - Skapa `scripts/__tests__/scriptLibs.test.ts` som testar att `getRequiredFiles` läser `**Målfiler:**` och att `buildRetryAnchor` trunkerar utdata när den överstiger `maxChars`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Omedelbart röstsvar när användaren tystnar**
-  Givet att användaren talar i mikrofonen i ett pågående Gemini Live-samtal
-  När lokal VAD detekterar 500 ms tystnad efter talet
-  Så skickas `{ audioStreamEnd: true }` omedelbart till Live WebSocket och svarstiden mäts via `'telemetry:voice_latency'`
-  Så att modellen slipper vänta på serverns tystnads-timeout.
+**Scenario: ATT FÖLJA – Ren skriptkod och tvungen läsning av målfiler i Steg 3a**
+  Givet att `shellAndBackup.ts` och `ticketAndAnchor.ts` är utbrutna och Steg 3a skärps
+  När `run-planera-live.ts` rensas och `buildRetryAnchor` kopplas in
+  Så krymper skriptet under 1000 rader och framtida Steg 3a-tester läser alltid målfilerna innan testgenerering
+  Vilket eliminerar gissade fältnamn.
 
-**Scenario: ATT VÄNDA OM – Avvisande av tysta strömavslut och gissade privata egenskaper**
-  Givet att lokal VAD slutar skicka PCM-ramar
-  När `isVadStreaming` återgår till `false`
-  Så skickas `{ audioStreamEnd: true }` och samtliga `catch`-block propagerar fel under 250 rader
-  Och testet verifierar kedjan genom publika konstruktorer.
-
-**Scenario: ATT FÖRLIKAS – Mätbar prestanda och grön verifiering**
-  Givet att källkod och tester är uppdaterade under `src/features/gemini_live_swarm/`
+**Scenario: ATT VÄNDA OM – Avvisande av kvarlämnad dubblettkod och regresserande radtillväxt**
+  Givet att dubblettfunktionerna tas bort och `verify-architecture.js` låser taket vid 1000 rader
   När `pnpm verify` körs
-  Så passerar samtliga tester och radgränskontroller med exit 0.
+  Så avvisas framtida tillväxt mekaniskt.
+
+**Scenario: ATT FÖRLIKAS – Grön verifiering och redo för Vägmotorn**
+  Givet att tester och arkitekturgrindar exekveras
+  När `pnpm verify` körs
+  Så passerar samtliga kontroller med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår intentionen med TCK-053. Genom att skicka en explicit slutsignal för röstströmmen när användaren tystnar, kan vi minska väntetiden och mäta svarstiden mer exakt, vilket gör interaktionen mycket mer naturlig och responsiv. Är det en korrekt beskrivning av uppdraget?
+Uppdraget för TCK-MAINT-049 handlar om att främja ordning och stabilitet i våra skript genom att rensa dubblettkod, stärka våra säkerhetsspärrar i Steg 3a och säkerställa att alla moduler håller sig inom sina gränser. Det mänskliga värdet ligger i att vi eliminerar osäkerhet och gissningar, vilket ger en mer pålitlig och effektiv miljö för framtida utveckling.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Ja, det är en korrekt beskrivning av uppdraget. Genom att skicka den explicita slutsignalen och mäta latensen förbättrar vi röstsvarstiden avsevärt. Jag har auditerat kontraktet och bekräftar att alla säkerhetsgränser och arkitektoniska krav, inklusive noll mockar och strikt exekveringsordning, är uppfyllda.
+Jag har gått igenom kontraktet för TCK-MAINT-049. Det är korrekt avgränsat till skriptbiblioteken för att rensa dubbletter och skärpa säkerhetsspärrarna i Steg 3a. Alla destruktiva steg är tydligt definierade och jag är redo att påbörja rannsakningen och planeringen.
 
 
 #### 0b Att förlikas: Vägval
@@ -81,30 +75,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att lösa TCK-053:
+Här är tre ortogonala alternativ för att genomföra saneringen och uppgraderingen av skripten.
 
-Alternativ ett är den eventdrivna bryggarkitekturen där SwarmEventBus används som central nod för att synkronisera tidsstämplar och latensmätningar via en WeakMap.
+Alternativ 1 fokuserar på en direkt refaktorisering via `apply_patch` för att omedelbart ta bort dubblettfunktioner, uppdatera importen och justera prompterna och konstanterna i `run-planera-live.ts`.
 
-Alternativ två är en direkt sessionstjänst där vi injicerar sessionens livslängd direkt i SessionIntentManager för att styra strömavslutet utan externa händelseutskick.
+Alternativ 2 använder en fasindelning där du först validerar att funktionerna i `./lib/ticketAndAnchor.js` fungerar korrekt, för att sedan utföra den destruktiva saneringen och implementera `retryAnchor` i huvudskriptet.
 
-Alternativ tre skapar en intern observatörskedja genom en tillståndsproxy som känner av VAD-tystnaden och beräknar latensen oberoende av EventBusens globala flöden.
+Alternativ 3 bygger på att använda `pnpm verify` som en arkitektonisk grind för att bekräfta kodstorleksgränserna innan testerna i `scriptLibs.test.ts` implementeras fullt ut.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Event-driven arkitektur med SwarmEventBus och en WeakMap är det mest resilienta valet, då det bevarar FSD-isoleringen och minimerar risk för kopplingar som kan sänka systemet.
+Alternativ 2 är det mest resilienta valet eftersom det minskar risken för trasiga tillstånd genom att först validera biblioteksfunktionerna. Detta harmonierar bäst med våra krav på destruktiv sanering och kontroll av latenta haverier.
 
 
 #### 2d Att förlikas: Mättnad
-Det vinnande alternativet är händelsedriven arkitektur med SwarmEventBus och en WeakMap. Det bevarar FSD-isoleringen bäst och maximerar resiliensen genom att minimera riskabla kopplingar. MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Vi har låst det slutgiltiga byggkontraktet för TCK-053. Vi kommer nu att gå vidare och modifiera `liveBridgeHelper.ts` och `sessionIntentAudio.ts` för att implementera VAD-slutsignalen och röstlatens-telemetrin, följt av strikt TDD och resilienskontroller. Inga mänskliga beslut krävs i detta skede.
+Efter en noggrann avvägning av spänningsfältet mellan alternativen står det nu klart att vi väljer Alternativ 2. Kontraktet är låst och vi deklarerar MÄTTNAD: JA.

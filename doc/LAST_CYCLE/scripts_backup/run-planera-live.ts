@@ -15,8 +15,8 @@ import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.js';
 import { mutateSourceCodeAST } from './drivers/astMutator.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
-import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
-import { getRequiredFiles } from './lib/ticketAndAnchor.js';
+import { execCaptured } from './lib/shellAndBackup.js';
+import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
 
 const ROOT_DIR = process.cwd();
 

@@ -179,7 +179,7 @@ if (docFiles.length > 0) {
 console.log('📏 [Skriptstorlek] Skannar scripts/ efter radgränsbrott...');
 
 let scriptSizeViolations = 0;
-const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1065, 'bidiLiveRunner.ts': 345 };
+const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1000, 'bidiLiveRunner.ts': 345 };
 
 function checkScriptSize(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

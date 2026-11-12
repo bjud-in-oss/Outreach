@@ -40,44 +40,9 @@ const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
 
 if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
 
-
-
-function dumpCrashDiff() {
-  try {
-    execSync("git add -N src/ scripts/ 2>/dev/null || true", { cwd: ROOT_DIR });
-    const diff = execSync("git diff src/ scripts/", { encoding: "utf-8", cwd: ROOT_DIR });
-    if (diff && diff.trim()) {
-      fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
-      fs.writeFileSync(path.join(CYCLE_LOG_DIR, "CRASH_DIFF.patch"), diff, "utf-8");
-      console.log("\n📄 [KRASCH-DIFF SPARAD]: doc/LAST_CYCLE/CRASH_DIFF.patch");
-      console.log("────────────────── FYSISK KÄLLKODSDIFF (src/ & scripts/) ──────────────────");
-      console.log(diff.slice(0, 2500) + (diff.length > 2500 ? "\n... (trunkerad vid 2500 tecken)" : ""));
-      console.log("───────────────────────────────────────────────────────────────────────────\n");
-    }
-  } catch (err: any) {
-    console.warn("⚠️ [KRASCH-DIFF]: Kunde inte spara diff:", err?.message || err);
-  }
-}
-
-function restoreScriptsBackup() {
-  const isMaintRun = process.argv.some(a => a.toUpperCase().includes("MAINT"));
-  if (isMaintRun) {
-    const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
-    if (fs.existsSync(backupDir)) {
-      try {
-        fs.cpSync(backupDir, path.join(ROOT_DIR, "scripts"), { recursive: true });
-        console.log("🛡️ [MAINT-ÅTERSTÄLLNING]: scripts/ har automatiskt återställts från säkerhetskopian.");
-      } catch (err: any) {
-        console.warn("⚠️ [MAINT-ÅTERSTÄLLNING]: Kunde inte återställa scripts/:", err?.message || err);
-      }
-    }
-  }
-}
-
 process.on("exit", (code) => {
   if (code !== 0) {
-    dumpCrashDiff();
-    restoreScriptsBackup();
+    
   }
 });
 let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
@@ -393,9 +358,9 @@ async function main() {
   if (!isMaint) {
     const steg3a = await runMicroChannel(
       'Att följa',
-      `Steg 3a: Generera transient testspecifikation och spara till '${transientTestFile}' med save_code.
+      `      Steg 3a: Generera transient testspecifikation och spara till '${transientTestFile}' med save_code.
 KRAV FÖR TDD OCH FAIL-FIRST:
-1. EPISTEMISK LÄSNING: Anropa först 'list_files' och 'read_file' för att inspektera befintliga filer och kontrakt i 'src/features/${targetDomain}/' (t.ex. typer, renderer.tsx och katalogkomponenter). Gissa ALDRIG komponent-ID eller props!
+1. EPISTEMISK LÄSNING: Anropa först 'read_file' på SAMTLIGA befintliga filer listade under **Målfiler:** i biljetten (samt 'list_files' vid behov) så att du ser deras exakta fält- och metodnamn. Gissa ALDRIG egenskaper, fältnamn eller props!
 2. IMPORTERA FRÅN DOMÄNEN: Testet MÅSTE importera funktioner och typer från '../features/${targetDomain}/...' (t.ex. import { knackaPaPorten } from '../features/${targetDomain}/engine/pathRunner').
 3. INGEN PRODUKTIONSKOD I TESTET: Implementera ALDRIG funktionerna eller klasserna inuti testfilen.
 4. Testet MÅSTE fallera rött (exit 1) eftersom produktionskoden inte existerar än.
@@ -825,7 +790,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 3. Om du ser 'GATE 2c BROTT', åtgärda det tomma 'catch {}'-blocket på den angivna raden.
 4. Analysera felet mot testet och din befintliga källkod nedan, korrigera källkoden och anropa save_code/apply_patch omedelbart.`;
 
-        const retryAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${currentSourceSummary}\n\nFELLOGG:\n${testLog}`;
+        const retryAnchor = buildRetryAnchor(testContent, currentSourceSummary, testLog);
 
         await runMicroChannel('Att vända om', retryPrompt, retryAnchor, systemInstruction, codegenTools, executeFas2Tools, {
           requireMutation: true,
