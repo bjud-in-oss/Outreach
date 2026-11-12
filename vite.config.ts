@@ -19,9 +19,6 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,js}'],
     exclude: ['**/*.legacy.ts', '**/node_modules/**'],
     globals: true,
-    environmentMatchGlobs: [
-      ['src/features/a2ui/**', 'happy-dom'],
-      ['src/**/*.test.tsx', 'happy-dom']
-    ],
+    environment: 'happy-dom',
   },
 });

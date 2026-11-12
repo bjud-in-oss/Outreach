@@ -390,10 +390,11 @@ async function main() {
       'Att följa',
       `Steg 3a: Generera transient testspecifikation och spara till '${transientTestFile}' med save_code.
 KRAV FÖR TDD OCH FAIL-FIRST:
-1. IMPORTERA FRÅN DOMÄNEN: Testet MÅSTE importera funktioner och typer från '../features/${targetDomain}/...' (t.ex. import { knackaPaPorten } from '../features/${targetDomain}/engine/pathRunner').
-2. INGEN PRODUKTIONSKOD I TESTET: Implementera ALDRIG funktionerna eller klasserna inuti testfilen.
-3. Testet MÅSTE fallera rött (exit 1) eftersom produktionskoden inte existerar än.
-4. Anropa save_code i vända 1.`,
+1. EPISTEMISK LÄSNING: Anropa först 'list_files' och 'read_file' för att inspektera befintliga filer och kontrakt i 'src/features/${targetDomain}/' (t.ex. typer, renderer.tsx och katalogkomponenter). Gissa ALDRIG komponent-ID eller props!
+2. IMPORTERA FRÅN DOMÄNEN: Testet MÅSTE importera funktioner och typer från '../features/${targetDomain}/...' (t.ex. import { knackaPaPorten } from '../features/${targetDomain}/engine/pathRunner').
+3. INGEN PRODUKTIONSKOD I TESTET: Implementera ALDRIG funktionerna eller klasserna inuti testfilen.
+4. Testet MÅSTE fallera rött (exit 1) eftersom produktionskoden inte existerar än.
+5. Anropa save_code i vända 1.`,
       `${startAnchor}\nKONTRAKT:\n${steg2d}`,
       systemInstruction,
       testGenTools,
@@ -459,8 +460,13 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
       console.error('❌ GATE 3a UNDERKÄND: Transient-testet måste fallera med exit-kod 1 innan kod får skrivas.');
       process.exit(1);
     }
-    if (failFirstOutput.includes('TypeError:') || failFirstOutput.includes('ReferenceError:') || failFirstOutput.includes('Failed to resolve import') || failFirstOutput.includes('Cannot find package')) {
+    if (failFirstOutput.includes('TypeError:') || failFirstOutput.includes('ReferenceError:') || failFirstOutput.includes('Cannot find package')) {
       console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på körtidsfel eller trasiga importer!');
+      console.error(failFirstOutput.slice(0, 1000));
+      process.exit(1);
+    }
+    if (failFirstOutput.includes('Failed to resolve import') && !failFirstOutput.includes(`../features/${targetDomain}`)) {
+      console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på trasiga externa importer!');
       console.error(failFirstOutput.slice(0, 1000));
       process.exit(1);
     }
@@ -589,7 +595,15 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
   };
 
   const getMissingFiles = (): string[] => {
-    return getRequiredFiles().filter(f => !fs.existsSync(path.join(ROOT_DIR, f)));
+    return getRequiredFiles().filter(f => {
+      const fullPath = path.join(ROOT_DIR, f);
+      if (!fs.existsSync(fullPath)) return true;
+      try {
+        return fs.statSync(fullPath).size === 0;
+      } catch (e: any) {
+        return true;
+      }
+    });
   };
 
   const isFas2Complete = (): boolean => {
