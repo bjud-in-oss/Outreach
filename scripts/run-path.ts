@@ -1,13 +1,9 @@
 import { 
   skapaPathOrkestrerare, 
   skapaMockSessionAdapter,
-  OrchestratorConfig,
-  skapaAvsiktsport,
-  skapaProvningsport,
-  skapaKonstruktionsport,
-  skapaBesiktningsport,
-  skapaBidiLiveAdapter
+  OrchestratorConfig
 } from '../src/features/path';
+import { skapaNodePathPortar } from './lib/pathNodePorts.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'node:url';
@@ -60,36 +56,7 @@ export async function exekveraRunPath(options: {
     uppdrag: ticketContent
   };
 
-  // Portkontrakt som använder Vägmotorns riktiga portfabriker
-  const portar = {
-    avsikt: options.portar?.avsikt || skapaAvsiktsport({
-      prompter: async (fraga: string) => {
-        io.log(`   🚪 [PORT: AVSIKT] ${fraga}`);
-        return 'y';
-      },
-      beskrivning: `Verifiera intention för ${ticketId}`,
-    }),
-    provning: options.portar?.provning || skapaProvningsport({
-      testFilVag: 'transient_test.ts',
-      forvantatFel: 'Fail-First',
-      testExekverare: async () => ({
-        passerade: false,
-        exitKod: 1,
-        felmeddelande: 'Förväntat Fail-First fel'
-      })
-    }),
-    konstruktion: options.portar?.konstruktion || skapaKonstruktionsport({
-      matris: [],
-      inspekterare: async () => ({
-        existerar: true,
-        antalRader: 50,
-        exporteradIIndex: true
-      })
-    }),
-    besiktning: options.portar?.besiktning || skapaBesiktningsport({
-      inspekterare: async () => ({ godkand: true })
-    }),
-  };
+  const portar = skapaNodePathPortar({ ticketId, io, dryRun: isDryRun || !isLive });
 
   let adapter = options.adapter;
 

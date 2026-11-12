@@ -6,10 +6,7 @@ import { ContextUsageMetric } from '../telemetry/telemetrySchema.ts';
 export { REFLECTION_MODES };
 export type { ReflectionMode };
 
-export function formatMemoryIndicator(metric?: any): string {
-  if (!metric || typeof metric !== 'object') return '0 / 8192 tokens';
-  return `${metric.usedTokens ?? 0} / ${metric.maxTokens ?? 8192} tokens`;
-}
+export { formatMemoryIndicator } from '../../../shared/telemetry/memoryIndicator.ts';
 
 export function getMicButtonProps(isLiveActive: boolean, isMuted: boolean, isSTTActive: boolean, isDebounced: boolean) {
   if (isDebounced) return { title: 'Låst (debounce)', bgClass: 'bg-slate-700 text-slate-400 opacity-60 cursor-not-allowed' };

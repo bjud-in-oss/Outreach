@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-050** (VERIFIED): Flytta formatMemoryIndicator till shared, återkoppla MAINT-exit-skydd och koppla Node-portar till Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-050.md`
 - [x] **TCK-MAINT-049** (VERIFIED): Slutför scripts/lib-utbrytning, skärp Steg 3a-läsning och lås taket på 1000 rader -> Se `doc/.TICKETS/TCK-MAINT-049.md`
 - [x] **TCK-MAINT-048** (VERIFIED): Bryt ut skriptverktyg till scripts/lib/ och sänk Strangler Fig-taket till 800 rader -> Se `doc/.TICKETS/TCK-MAINT-048.md`
 - [x] **TCK-MAINT-047** (VERIFIED): Radgränsspärr och Strangler Fig-ratchet för scripts/ i verify-architecture.js -> Se `doc/.TICKETS/TCK-MAINT-047.md`

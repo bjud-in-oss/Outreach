@@ -1,69 +1,66 @@
-# BYGGCYKEL LOGG: TCK-MAINT-049
-**Starttid:** 2026-11-12T13:55:12.628Z
+# BYGGCYKEL LOGG: TCK-MAINT-050
+**Starttid:** 2026-11-12T15:04:02.416Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-049: Slutför scripts/lib-utbrytning, skärp Steg 3a-läsning och lås taket på 1000 rader
+# TCK-MAINT-050: Flytta formatMemoryIndicator till shared, återkoppla MAINT-exit-skydd och koppla Node-portar till Vägmotorn
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/run-planera-live.ts`, `scripts/verify-architecture.js`, `scripts/__tests__/scriptLibs.test.ts`
+**Målfiler:** `src/shared/telemetry/memoryIndicator.ts`, `src/features/gemini_live_swarm/ui/promptBarHelper.ts`, `scripts/samrad.ts`, `scripts/run-planera-live.ts`, `scripts/lib/pathNodePorts.ts`, `scripts/run-path.ts`
 **Mekanisk Acceptans:**
-1. De kvarlämnade dubblettdefinitionerna av `dumpCrashDiff` och `restoreScriptsBackup` i `scripts/run-planera-live.ts` är borttagna och filen håller sig strikt under 1000 rader.
-2. `scripts/run-planera-live.ts` importerar och anropar `buildRetryAnchor(testContent, currentSourceSummary, testLog)` i Fas 2:s självrättningsslinga.
-3. Punkt 1 i Steg 3a-prompten i `scripts/run-planera-live.ts` kräver explicit att modellen anropar `read_file` på samtliga befintliga filer listade under `**Målfiler:**` innan `save_code` anropas.
-4. `LEGACY_SCRIPT_CAPS['run-planera-live.ts']` i `scripts/verify-architecture.js` sänks från `1065` till `1000`.
-5. `scripts/__tests__/scriptLibs.test.ts` verifierar `getRequiredFiles` och `buildRetryAnchor`, och `pnpm verify` passerar med exit 0.
-
----
-
-## Destruktiva Handlingssteg (Obligatorisk städning)
-- **Radera dubblettfunktioner i `scripts/run-planera-live.ts`:** Ta bort de lokala funktionsdefinitionerna `function dumpCrashDiff()` och `function restoreScriptsBackup()` (runt rad 45–75) via `apply_patch`, eftersom båda redan importeras från `./lib/shellAndBackup.js` på rad 18.
+1. `src/shared/telemetry/memoryIndicator.ts` exporterar `formatMemoryIndicator(metric?)`, `promptBarHelper.ts` re-exporterar den för bakåtkompatibilitet och `scripts/samrad.ts` importerar den från `../src/shared/telemetry/memoryIndicator.ts` (noll direktimport från `gemini_live_swarm` i `scripts/`).
+2. `scripts/run-planera-live.ts` återkopplar `dumpCrashDiff()` och `restoreScriptsBackup()` i `process.on("exit", ...)` vid `code !== 0`, kör `npx vitest run src/features/${targetDomain}/__tests__/` i Fas 2:s valideringsloop när mappen innehåller testfiler, och hålls strikt under 1000 rader.
+3. `scripts/lib/pathNodePorts.ts` (< 250 rader) exporterar `skapaNodePathPortar(deps)` med FSD-radgränser (125 rader `.tsx`, 250 rader `.ts`) och AST-kontroll, och `scripts/run-path.ts` (< 250 rader) använder den.
+4. `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Rensa dubbletter, koppla `buildRetryAnchor` och skärp Steg 3a i `scripts/run-planera-live.ts` (< 1000 rader):**
-   - Ändra rad 19 till `import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';`.
-   - Ta bort de lokala dubblettfunktionerna `dumpCrashDiff` och `restoreScriptsBackup` (runt rad 45–75).
-   - Uppdatera punkt 1 i `Steg 3a` (runt rad 398) till:
-     `1. EPISTEMISK LÄSNING: Anropa först 'read_file' på SAMTLIGA befintliga filer listade under **Målfiler:** i biljetten (samt 'list_files' vid behov) så att du ser deras exakta fält- och metodnamn. Gissa ALDRIG egenskaper, fältnamn eller props!`
-   - Ersätt konstruktionen av `retryAnchor` (runt rad 828) med `const retryAnchor = buildRetryAnchor(testContent, currentSourceSummary, testLog);`.
-2. **Sänk taket i `scripts/verify-architecture.js` (< 250 rader):**
-   - Ändra `const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1065, 'bidiLiveRunner.ts': 345 };` till `const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1000, 'bidiLiveRunner.ts': 345 };`.
-3. **Karakteriseringstest i `scripts/__tests__/scriptLibs.test.ts`:**
-   - Skapa `scripts/__tests__/scriptLibs.test.ts` som testar att `getRequiredFiles` läser `**Målfiler:**` och att `buildRetryAnchor` trunkerar utdata när den överstiger `maxChars`.
+1. **Eliminera domänläckaget i `scripts/samrad.ts` via `src/shared/`:**
+   - Skapa `src/shared/telemetry/memoryIndicator.ts` (< 20 rader) med `export function formatMemoryIndicator(metric?: any): string { if (!metric || typeof metric !== 'object') return '0 / 8192 tokens'; return \`${metric.usedTokens ?? 0} / ${metric.maxTokens ?? 8192} tokens\`; }`.
+   - Ersätt funktionskroppen i `src/features/gemini_live_swarm/ui/promptBarHelper.ts` (rad 9–12) med `export { formatMemoryIndicator } from '../../../shared/telemetry/memoryIndicator.ts';`.
+   - Ändra rad 14 i `scripts/samrad.ts` till `import { formatMemoryIndicator } from '../src/shared/telemetry/memoryIndicator.ts';`.
+2. **Uppdatera `scripts/run-planera-live.ts` (< 1000 rader):**
+   - Ändra rad 18 till `import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';`.
+   - I `process.on("exit", (code) => { if (code !== 0) { dumpCrashDiff(); restoreScriptsBackup(); } });` (rad 43–47): återställ anropen.
+   - Direkt efter `execCaptured(\`npx vitest run ${transientTestFile}\`);` i Fas 2 (runt rad 735), lägg till kontroll att om `src/features/${targetDomain}/__tests__` existerar och innehåller filer körs `execCaptured(\`npx vitest run src/features/${targetDomain}/__tests__/\`);`.
+3. **Skapa `scripts/lib/pathNodePorts.ts` (< 250 rader) och koppla in i `scripts/run-path.ts` (< 250 rader):**
+   - Importera `fs`, `path`, `skapaAvsiktsport`, `skapaProvningsport`, `skapaKonstruktionsport`, `skapaBesiktningsport` från `'../../src/features/path/index.js'` och `execCaptured` från `'./shellAndBackup.js'`.
+   - Exportera `skapaNodePathPortar(deps: { ticketId: string; io: any; dryRun?: boolean; testFilVag?: string; matris?: any[]; rootDir?: string })`.
+   - Vid `dryRun !== false`: returnera säkra minnes-portar så att `scripts/__tests__/run-path.test.ts` passerar utan CLI-interaktion. Vid `dryRun === false`: kör skarpa kontroller inklusive FSD-radgränser (125 `.tsx` / 250 `.ts`) och `node scripts/drivers/ts.js --check-catch-blocks`.
+   - Uppdatera `scripts/run-path.ts` till `const portar = options.portar || skapaNodePathPortar({ ticketId, io, dryRun: isDryRun || !isLive });`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Ren skriptkod och tvungen läsning av målfiler i Steg 3a**
-  Givet att `shellAndBackup.ts` och `ticketAndAnchor.ts` är utbrutna och Steg 3a skärps
-  När `run-planera-live.ts` rensas och `buildRetryAnchor` kopplas in
-  Så krymper skriptet under 1000 rader och framtida Steg 3a-tester läser alltid målfilerna innan testgenerering
-  Vilket eliminerar gissade fältnamn.
+**Scenario: ATT FÖLJA – Ren shared-delning, tidig domänverifiering och skarpa Node-portar**
+  Givet att `formatMemoryIndicator` flyttas till `src/shared/telemetry/` och `pathNodePorts.ts` skapas
+  När `samrad.ts`, `run-planera-live.ts` och `run-path.ts` uppdateras
+  Så har hela `scripts/` noll otillåtna domänimporter, Fas 2 kör domäntester tidigt och Vägmotorn får skarpa CLI-portar
+  Utan att överskrida radgränserna.
 
-**Scenario: ATT VÄNDA OM – Avvisande av kvarlämnad dubblettkod och regresserande radtillväxt**
-  Givet att dubblettfunktionerna tas bort och `verify-architecture.js` låser taket vid 1000 rader
-  När `pnpm verify` körs
-  Så avvisas framtida tillväxt mekaniskt.
+**Scenario: ATT VÄNDA OM – Avvisande av tyst exit utan backup-återställning**
+  Givet att `process.on("exit")` i `run-planera-live.ts` tömdes i `TCK-MAINT-049`
+  När `dumpCrashDiff()` och `restoreScriptsBackup()` återkopplas
+  Så återställs `scripts/` automatiskt vid varje avbruten `MAINT`-körning.
 
-**Scenario: ATT FÖRLIKAS – Grön verifiering och redo för Vägmotorn**
-  Givet att tester och arkitekturgrindar exekveras
+**Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
+  Givet att samtliga skript och tester är uppdaterade
   När `pnpm verify` körs
-  Så passerar samtliga kontroller med exit 0.
+  Så passerar alla grindar och tester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Uppdraget för TCK-MAINT-049 handlar om att främja ordning och stabilitet i våra skript genom att rensa dubblettkod, stärka våra säkerhetsspärrar i Steg 3a och säkerställa att alla moduler håller sig inom sina gränser. Det mänskliga värdet ligger i att vi eliminerar osäkerhet och gissningar, vilket ger en mer pålitlig och effektiv miljö för framtida utveckling.
+Jag förstår uppdraget. Vi ska flytta `formatMemoryIndicator` till `src/shared` för att städa upp i våra skript, återställa skyddet så att vi inte förlorar backup-data vid krascher i `run-planera-live.ts`, och koppla in Node-portar via `pathNodePorts.ts` för en stabilare Vägmotor. Är vi överens om att detta är rätt steg för att förbättra systemets resiliens och struktur?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har gått igenom kontraktet för TCK-MAINT-049. Det är korrekt avgränsat till skriptbiblioteken för att rensa dubbletter och skärpa säkerhetsspärrarna i Steg 3a. Alla destruktiva steg är tydligt definierade och jag är redo att påbörja rannsakningen och planeringen.
+Kontraktsaudit genomförd. Samtliga ändringar i TCK-MAINT-050 följer FSD-principer, radgränser och säkrar noll läckage av domäner. Vi är redo att gå vidare.
 
 
 #### 0b Att förlikas: Vägval
@@ -75,18 +72,16 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för att genomföra saneringen och uppgraderingen av skripten.
+Alternativ ett innebär en direkt flytt och strikt kontrollstyrning genom top-down refaktorisering, där vi etablerar delad kod och portbryggan i isolerade moduler.
 
-Alternativ 1 fokuserar på en direkt refaktorisering via `apply_patch` för att omedelbart ta bort dubblettfunktioner, uppdatera importen och justera prompterna och konstanterna i `run-planera-live.ts`.
+Alternativ två fokuserar på gränssnittsemulering och fabriksmönster för Node-portarna, vilket gör koden lättare att mocka och testa i en torr miljö.
 
-Alternativ 2 använder en fasindelning där du först validerar att funktionerna i `./lib/ticketAndAnchor.js` fungerar korrekt, för att sedan utföra den destruktiva saneringen och implementera `retryAnchor` i huvudskriptet.
-
-Alternativ 3 bygger på att använda `pnpm verify` som en arkitektonisk grind för att bekräfta kodstorleksgränserna innan testerna i `scriptLibs.test.ts` implementeras fullt ut.
+Alternativ tre bygger på kontraktscentrerad verifiering och robust avbrottshantering genom att införa felhantering tidigt för att garantera miljöns resiliens.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 2 är det mest resilienta valet eftersom det minskar risken för trasiga tillstånd genom att först validera biblioteksfunktionerna. Detta harmonierar bäst med våra krav på destruktiv sanering och kontroll av latenta haverier.
+Alternativ tre är det som bäst säkerställer miljöns resiliens genom tidig felhantering och kontraktscentrerad verifiering. Detta harmonierar starkt med kravet på att absolut återkoppla skyddsmekanismer vid avbrutna körningar.
 
 
 #### 2d Att förlikas: Mättnad
-Efter en noggrann avvägning av spänningsfältet mellan alternativen står det nu klart att vi väljer Alternativ 2. Kontraktet är låst och vi deklarerar MÄTTNAD: JA.
+Jag fastställer härmed att Alternativ tre är det vinnande spåret. Det säkerställer bäst miljöns resiliens och harmoni med våra krav på skyddsmekanismer. MÄTTNAD: JA.
