@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-038** (VERIFIED): Montera händelsestyrd A2UIContainer i applikationsroten -> Se `doc/.TICKETS/TCK-MAINT-038.md`
 - [x] **TCK-MAINT-037** (VERIFIED): Global Happy-DOM och Fail-First-förankring i Vitest v5 -> Se `doc/.TICKETS/TCK-MAINT-037.md`
 - [x] **TCK-MAINT-036** (VERIFIED): Skydd mot 0-bytesfiler i Fas 2 och Precisionsspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-036.md`
 - [x] **TCK-MAINT-035** (VERIFIED): Global Startsanering, Scoped Happy-DOM och Dynamisk Konsolidering -> Se `doc/.TICKETS/TCK-MAINT-035.md`

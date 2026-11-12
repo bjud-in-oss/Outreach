@@ -1,67 +1,56 @@
-# BYGGCYKEL LOGG: TCK-050
-**Starttid:** 2026-11-12T08:00:05.179Z
+# BYGGCYKEL LOGG: TCK-MAINT-038
+**Starttid:** 2026-11-12T08:06:02.978Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-050: Händelsestyrd A2UI-brygga för Autonom Komponentstyrning
+# TCK-MAINT-038: Montera händelsestyrd A2UIContainer i applikationsroten
 
-**Måldomän:** `a2ui` (`src/features/a2ui/`)
-**Mekanisk Acceptans:** Ett transient TSX-test bevisar (Fail-First via @testing-library/react) att lyssnarkomponenten (`A2UIContainer`) förblir dold (return null) vid start, men automatiskt renderar ett `ListeningCard` när eventet `a2ui:render` publiceras på `SwarmEventBus` med `{ componentId: 'ListeningCard', dataModel: { intent: '...' } }`. Vid `a2ui:clear` ska komponenten återgå till dolt läge (null). Alla FSD- och arkitekturkontroller ska passera med exit code 0.
+**Måldomän:** Rotkomposition (`src/App.tsx`)
+**Mekanisk Acceptans:** `src/App.tsx` byter ut den statiska `RenderA2UI` mot `A2UIContainer` kopplad till `useSwarmContext().eventBus` inne i `SwarmProvider`, positionerad som ett svävande överlägg ovanför promptfältet i `AppShell`. Samtliga tester och FSD-arkitekturkontroller passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Dold som standard (Tomt-tillstånds-skydd i renderer.tsx):**
-   - I `src/features/a2ui/engine/renderer.tsx` MÅSTE `RenderA2UI` returnera `null` om `payload` eller `payload.componentId` saknas eller är en tom sträng.
-   - Bevara kompatibilitet så att `RenderA2UI` fungerar både som funktionsanrop `RenderA2UI(payload)` (för befintliga tester i `a2uiSchema.test.ts`) och som JSX-komponent `<RenderA2UI componentId={...} dataModel={...} />`.
-   - `FallbackComponent` ska enbart visas om `componentId` är en icke-tom sträng som inte finns i katalogen.
-2. **Händelselyssnare (A2UIContainer.tsx):**
-   - Skapa `A2UIContainer` i `src/features/a2ui/engine/A2UIContainer.tsx` med `save_code`. Den ska ta emot `bus: SwarmEventBus` som prop.
-   - Den ska prenumerera via `bus.subscribe('a2ui:render', (data) => ...)` och `bus.subscribe('a2ui:clear', () => ...)` och uppdatera state som skickas till `RenderA2UI`.
-   - Lyssnaren ska städa upp sina prenumerationer i `useEffect`-avregistreringen via returnerad unbind-funktion.
-3. **Exakt katalogkontrakt (Inga gissningar):**
-   - Befintlig `ListeningCard` i `src/features/a2ui/catalog/ListeningCard.tsx` matchar `componentId: 'ListeningCard'` och tar emot prop `intent?: string` (inte `prompt`).
-4. **Strikt FSD-isolering (SSOT):**
-   - `A2UIContainer` och dess test MÅSTE importera `SwarmEventBus` uteslutande från `src/shared/bus/swarmEventBus.ts` (t.ex. `../../../shared/bus/swarmEventBus` eller `@/shared/bus/swarmEventBus`).
-   - Det är strikt förbjudet att importera från `src/features/gemini_live_swarm/`.
-5. **Exportera komponenten:**
-   - `A2UIContainer` ska exporteras via `src/features/a2ui/index.ts`.
+1. **Rotkomposition i src/App.tsx:**
+   - Importera `useSwarmContext` från `./features/gemini_live_swarm/index.ts` och `A2UIContainer` från `./features/a2ui/index.ts`.
+   - Skapa en inre kompositionskomponent innanför `SwarmProvider` som hämtar `const { eventBus } = useSwarmContext();` och renderar `<AppShell />` samt `<A2UIContainer bus={eventBus} />`.
+2. **Visuell placering utan layoutkollision:**
+   - Eftersom `AppShell` upptar full vyhöjd (`h-screen w-screen overflow-hidden`), MÅSTE `<A2UIContainer bus={eventBus} />` omslutas av en fast positionerad behållare ovanför promptfältet (`className="fixed bottom-28 left-1/2 -translate-x-1/2 z-40 w-full max-w-2xl px-4"`) så att generativa kort syns tydligt utan att klippas bort.
+3. **Exponera bussen i webbläsaren för live-verifiering:**
+   - I `useEffect` i rotkompositionen ska `(window as any).__SWARM_BUS__ = eventBus;` sättas så att händelser kan verifieras direkt i webbläsarens utvecklarkonsol.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Agentens avsikt tar form på skärmen**
-  Givet att `A2UIContainer` är monterad med tillgång till `SwarmEventBus`
-  När händelsen `a2ui:render` publiceras med `{ componentId: 'ListeningCard', dataModel: { intent: 'Lyssnar på användaren' } }`
-  Så ska komponenten uppdatera sitt React-tillstånd och rendera `ListeningCard`
-  Och användaren möts av ett responsivt gränssnitt.
+**Scenario: ATT FÖLJA – A2UI-bryggan blir levande i huvudvyn**
+  Givet att applikationen laddas i webbläsaren under `SwarmProvider`
+  När en händelse `a2ui:render` publiceras på den delade händelsebussen
+  Så ska `A2UIContainer` fånga händelsen och rendera kortet ovanför promptfältet
+  Och vid `a2ui:clear` ska kortet försvinna mjukt.
 
-**Scenario: ATT VÄNDA OM – Avvisande av felaktiga varningar i viloläge**
-  Givet att ingen A2UI-händelse har tagits emot
-  När `A2UIContainer` eller `RenderA2UI` exekverar
-  Så ska komponenten förbli tyst och returnera null
-  Utan att visa gula varningsrutor om saknade komponenter.
+**Scenario: ATT VÄNDA OM – Ingen statisk eller död renderare i roten**
+  Givet att `A2UIContainer` nu äger renderingen av A2UI-nyttolaster
+  När `src/App.tsx` granskas
+  Så ska den gamla oanslutna `RenderA2UI`-taggen vara borttagen
+  Så att ingen dubblett eller tom rendering ligger kvar.
 
-**Scenario: ATT FÖRLIKAS – En stabil händelsebrygga**
-  Givet att implementationen fullbordas
+**Scenario: ATT FÖRLIKAS – Hela kedjan från buss till pixlar är sluten**
+  Givet att `src/App.tsx` är uppdaterad
   När `pnpm verify` körs
-  Så ska alla tester i testsviten passera grönt och arkitekturgranskaren godkänna FSD-gränserna
-  Och komponenten är redo att monteras i rotapplikationen.
+  Så ska samtliga 23 testsviter och FSD-arkitekturkontrollen passera med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår precis. Målet med TCK-050 är att bygga en stabil händelsebrygga så att agentens avsikt faktiskt visas visuellt för användaren, som med ListeningCard, när händelsen så kräver. På så sätt skapar vi ett mer responsivt och begripligt gränssnitt.
-
-Ska vi sätta igång med planeringssvepet för att förverkliga det här?
+Det låter som en fantastisk uppgradering! Genom att montera den händelsestyrda komponenten direkt i roten ser vi till att AI:n kan presentera levande kort exakt när behövs, snyggt positionerat utan att störa layouten. Är målet att skapa en mer sömlös och dynamisk interaktion för användaren?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit för TCK-050 slutförd. Arbetet begränsas strikt till domänen a2ui utan otillåtna importer, och systemiska invarianter i renderer.tsx är säkrade.
+Uppdraget för TCK-MAINT-038 är granskat och kontraktsauditen är godkänd. Vi kommer att byta ut RenderA2UI mot den händelsestyrda A2UIContainer i roten för en helt sömlös och dynamisk interaktion. Allt är redo för nästa steg.
 
 
 #### 0b Att förlikas: Vägval
@@ -73,28 +62,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Alternativ 1 innebär en direkt implementation via `useState` och `useEffect` i `A2UIContainer`, vilket håller komponenten enkel och fokuserad.
+Här är de tre ortogonala alternativen för att lösa monteringen av A2UIContainer:
 
-Alternativ 2 flyttar prenumerationslogiken till en separat custom hook, vilket separerar concerns och underlättar testning.
+Alternativ 1 är direkt komposition inuti källkodsfilen för App.tsx, där en underkomponent hämtar bussen och renderar layouten.
 
-Alternativ 3 använder en Higher-Order Component för att sprida A2UI-staten till komponenten, vilket ger en mer modulär återanvändbarhet.
+Alternativ 2 innebär att skapa en dedikerad A2UI-bryggkomponent som hanterar händelsebindningar separat.
+
+Slutligen innebär Alternativ 3 att använda en portalstrategi för visningslagret, där kortet renderas utanför den fasta behållaren.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 2 är det mest resilienta valet eftersom det separerar prenumerationslogiken och händelsehanteringen i en egen hook. Det skyddar komponenten från onödig komplexitet och gör den lättare att testa isolerat, vilket minimerar risken för haverier. Vi väljer Alternativ 2.
+Alternativ 1, direkt komposition, är mest resilient eftersom den håller felpropageringen inom en stängd ram och minskar komplexiteten. Den eliminerar risken för döda komponenter i FSD-gränserna och säkerställer att händelsebussen har direktkontakt med modulen.
 
 
 #### 2d Att förlikas: Mättnad
-Jag bekräftar att Alternativ 2 är det vinnande kontraktet tack vare sin resilienta struktur. Jag deklarerar härmed MÄTTNAD: JA för steg 2d.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Det slutgiltiga byggkontraktet för TCK-050 fastställs nu. Vi skapar `src/features/a2ui/engine/A2UIContainer.tsx` för händelselyssning, uppdaterar `src/features/a2ui/index.ts` med export, och exekverar verifiering via testet i `src/__tests__/transient_TCK-050.test.tsx`. Processen fortsätter nu.
+Jag bekräftar att Alternativ 1, direkt komposition, är det vinnande valet. Det uppfyller kraven bäst gällande resiliens, felpropagering och arkitektonisk renhet. MÄTTNAD: JA.

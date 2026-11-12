@@ -448,7 +448,8 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
         }
         testSaved = false;
         const recoveryStartAnchor = `${startAnchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
-        await runMicroChannel('Att vända om', `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.`, recoveryStartAnchor, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 5, onMutationCheck: () => testSaved });
+        const recoveryPrompt = `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.\n\nKONTRAKT OCH BAKGRUND:\n${startAnchor}`;
+        await runMicroChannel('Att vända om', recoveryPrompt, recoveryStartAnchor, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 5, onMutationCheck: () => testSaved });
       }
     }
 
