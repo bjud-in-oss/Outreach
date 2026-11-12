@@ -1,15 +1,137 @@
 diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
-index ee99279..ea87015 100644
+index 61f3caf..abfb3c4 100644
 --- a/scripts/run-planera-live.ts
 +++ b/scripts/run-planera-live.ts
-@@ -555,7 +555,9 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
-   const getRequiredFiles = (): string[] => {
-     if (isMaint) {
-       const promptFiles = ticketPrompt.match(/scripts\/[a-zA-Z0-9_\-./]+\.(?:ts|js)/g) || [];
--      return Array.from(new Set(promptFiles));
-+      const sharedFiles = ticketPrompt.match(/src\/shared\/[a-zA-Z0-9_\-./]+\.(?:ts|tsx)/g) || [];
-+      const rootFiles = ticketPrompt.match(/(?:vite\.config\.ts|package\.json|src\/App\.tsx)/g) || [];
-+      return Array.from(new Set([...promptFiles, ...sharedFiles, ...rootFiles]));
+@@ -458,8 +458,13 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
+       console.error('❌ GATE 3a UNDERKÄND: Transient-testet måste fallera med exit-kod 1 innan kod får skrivas.');
+       process.exit(1);
      }
-     const promptFiles = ticketPrompt.match(new RegExp(`src/features/${targetDomain}/[a-zA-Z0-9_/\\-]+\\.(ts|tsx)`, 'g')) || [];
-     return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
+-    if (failFirstOutput.includes('TypeError:') || failFirstOutput.includes('ReferenceError:')) {
+-      console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på körtidsfel (TypeError/ReferenceError) i testkoden!');
++    if (
++      failFirstOutput.includes('TypeError:') || 
++      failFirstOutput.includes('ReferenceError:') ||
++      failFirstOutput.includes('Failed to resolve import') ||
++      failFirstOutput.includes('Cannot find package')
++    ) {
++      console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på körtidsfel eller saknade moduler i testkoden!');
+       console.error(failFirstOutput.slice(0, 1000));
+       process.exit(1);
+     }
+diff --git a/src/__tests__/transient_TCK-050.test.tsx b/src/__tests__/transient_TCK-050.test.tsx
+new file mode 100644
+index 0000000..aed8f33
+--- /dev/null
++++ b/src/__tests__/transient_TCK-050.test.tsx
+@@ -0,0 +1,47 @@
++import { render, act } from '@testing-library/react';
++import { describe, it, expect, beforeEach } from 'vitest';
++import React from 'react';
++import { A2UIContainer } from '../features/a2ui/engine/A2UIContainer';
++import { SwarmEventBus } from '../features/gemini_live_swarm/bus/swarmEventBus';
++
++describe('A2UIContainer Transient Test', () => {
++  let eventBus: SwarmEventBus;
++
++  beforeEach(() => {
++    eventBus = new SwarmEventBus();
++  });
++
++  it('should be hidden by default and render ListeningCard on a2ui:render', () => {
++    const { container } = render(<A2UIContainer bus={eventBus} />);
++    
++    // 1. Dold som standard
++    expect(container.firstChild).toBeNull();
++
++    // 2. Simulera a2ui:render
++    act(() => {
++      eventBus.emit('a2ui:render', { componentId: 'ListeningCard' });
++    });
++
++    // Kontrollera att komponenten nu renderas
++    // Eftersom vi inte har katalogen än bör den väl falla tillbaka eller krascha, 
++    // men vi förväntar oss att den försöker rendera något annat än null.
++    expect(container.firstChild).not.toBeNull();
++  });
++
++  it('should clear state on a2ui:clear', () => {
++    const { container } = render(<A2UIContainer bus={eventBus} />);
++
++    act(() => {
++      eventBus.emit('a2ui:render', { componentId: 'ListeningCard' });
++    });
++
++    expect(container.firstChild).not.toBeNull();
++
++    act(() => {
++      eventBus.emit('a2ui:clear', {});
++    });
++
++    // Ska återgå till dold
++    expect(container.firstChild).toBeNull();
++  });
++});
+diff --git a/src/features/a2ui/engine/A2UIContainer.tsx b/src/features/a2ui/engine/A2UIContainer.tsx
+new file mode 100644
+index 0000000..134e538
+--- /dev/null
++++ b/src/features/a2ui/engine/A2UIContainer.tsx
+@@ -0,0 +1,32 @@
++import React, { useEffect, useState } from 'react';
++import { SwarmEventBus } from '../../gemini_live_swarm/bus/swarmEventBus';
++import { A2UIPayload } from '../model/types';
++import { RenderA2UI } from './renderer';
++
++interface A2UIContainerProps {
++  bus: SwarmEventBus;
++}
++
++export const A2UIContainer: React.FC<A2UIContainerProps> = ({ bus }) => {
++  const [payload, setPayload] = useState<A2UIPayload | null>(null);
++
++  useEffect(() => {
++    const handleRender = (data: A2UIPayload) => {
++      setPayload(data);
++    };
++
++    const handleClear = () => {
++      setPayload(null);
++    };
++
++    bus.on('a2ui:render', handleRender);
++    bus.on('a2ui:clear', handleClear);
++
++    return () => {
++      bus.off('a2ui:render', handleRender);
++      bus.off('a2ui:clear', handleClear);
++    };
++  }, [bus]);
++
++  return <>{RenderA2UI(payload)}</>;
++};
+diff --git a/src/features/a2ui/engine/renderer.tsx b/src/features/a2ui/engine/renderer.tsx
+index 62bec77..5bb8b1b 100644
+--- a/src/features/a2ui/engine/renderer.tsx
++++ b/src/features/a2ui/engine/renderer.tsx
+@@ -12,7 +12,11 @@ const FallbackComponent: React.FC<{ componentId: string }> = ({ componentId }) =
+   </div>
+ );
+ 
+-export const RenderA2UI = (payload: A2UIPayload) => {
++export const RenderA2UI = (payload?: A2UIPayload | null) => {
++  if (!payload || !payload.componentId) {
++    return null;
++  }
++
+   const { componentId, dataModel } = payload;
+ 
+   switch (componentId) {
+diff --git a/src/features/a2ui/index.ts b/src/features/a2ui/index.ts
+index 560e1df..27f41f0 100644
+--- a/src/features/a2ui/index.ts
++++ b/src/features/a2ui/index.ts
+@@ -3,3 +3,4 @@ export * from './model/types';
+ export * from './engine/renderer';
+ export * from './catalog/ListeningCard';
+ export * from './catalog/ActionPrompt';
++export * from './engine/A2UIContainer';

@@ -5,6 +5,7 @@
         "catalog/ActionPrompt.tsx",
         "catalog/ListeningCard.tsx",
         "contracts/a2uiSchema.ts",
+        "engine/A2UIContainer.tsx",
         "engine/renderer.tsx",
         "index.ts",
         "model/types.ts"

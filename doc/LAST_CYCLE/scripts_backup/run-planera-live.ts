@@ -804,7 +804,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     fs.mkdirSync(permanentTestDir, { recursive: true });
 
     const primaryModule = createdModules[0] || ticketId.toLowerCase();
-    const permanentTestPath = path.join(permanentTestDir, `${path.basename(primaryModule)}.test.ts`);
+    const permanentTestPath = path.join(permanentTestDir, `${path.basename(primaryModule)}.test.${testExt}`);
     fs.mkdirSync(path.dirname(permanentTestPath), { recursive: true });
 
     let transientTestContent = fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : '';

@@ -250,27 +250,28 @@ async function main() {
   const transientTestFullPath = path.join(ROOT_DIR, transientTestFile);
 
   ['ts', 'tsx'].forEach(ext => {
-    const oldPath = path.join(ROOT_DIR, 'src', '__tests__', `transient_${ticketId}.test.${ext}`);
-    if (fs.existsSync(oldPath)) {
-      console.log(`🧹 [STARTSANERING]: Tar bort transient testfil från tidigare cykel: transient_${ticketId}.test.${ext}`);
-      fs.unlinkSync(oldPath);
+    const globPattern = path.join(ROOT_DIR, 'src', '__tests__', `transient_*.test.${ext}`);
+    const files = execSync(`ls ${globPattern} 2>/dev/null || true`, { encoding: 'utf-8' }).split('\n').filter(Boolean);
+    for (const f of files) {
+      if (fs.existsSync(f)) {
+        console.log(`🧹 [STARTSANERING]: Tar bort transient testfil: ${path.basename(f)}`);
+        fs.unlinkSync(f);
+      }
     }
   });
 
-  if (!isMaint) {
-    try {
-      const gitStatus = execSync(`git status --porcelain src/features/${targetDomain}`, { encoding: 'utf-8', cwd: ROOT_DIR });
-      const untracked = gitStatus.split('\n').filter(l => l.startsWith('?? ')).map(l => l.substring(3).trim());
-      for (const f of untracked) {
-        const full = path.resolve(ROOT_DIR, f);
-        if (fs.existsSync(full)) {
-          console.log(`🧹 [STARTSANERING]: Tar bort okommittat utkast: ${f}`);
-          fs.unlinkSync(full);
-        }
+  try {
+    const gitStatus = execSync(`git status --porcelain src/`, { encoding: 'utf-8', cwd: ROOT_DIR });
+    const untracked = gitStatus.split('\n').filter(l => l.startsWith('?? ')).map(l => l.substring(3).trim());
+    for (const f of untracked) {
+      const full = path.resolve(ROOT_DIR, f);
+      if (fs.existsSync(full) && !fs.lstatSync(full).isDirectory()) {
+        console.log(`🧹 [STARTSANERING]: Tar bort ospårad fil i src/: ${f}`);
+        fs.unlinkSync(full);
       }
-    } catch (err: any) {
-      console.warn(`⚠️ [STARTSANERING]: Kunde inte rensa okommittat utkast: ${err?.message || err}`);
     }
+  } catch (err: any) {
+    console.warn(`⚠️ [STARTSANERING]: Kunde inte rensa ospårade filer: ${err?.message || err}`);
   }
 
   fs.writeFileSync(CYCLE_LOG_PATH, `# BYGGCYKEL LOGG: ${ticketId}\n**Starttid:** ${new Date().toISOString()}\n**Modell:** ${MODEL_NAME}\n\n---\n### INITIAL PROMPT\n\`\`\`\n${ticketPrompt}\n\`\`\`\n`, 'utf-8');
@@ -458,8 +459,8 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
       console.error('❌ GATE 3a UNDERKÄND: Transient-testet måste fallera med exit-kod 1 innan kod får skrivas.');
       process.exit(1);
     }
-    if (failFirstOutput.includes('TypeError:') || failFirstOutput.includes('ReferenceError:')) {
-      console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på körtidsfel (TypeError/ReferenceError) i testkoden!');
+    if (failFirstOutput.includes('TypeError:') || failFirstOutput.includes('ReferenceError:') || failFirstOutput.includes('Failed to resolve import') || failFirstOutput.includes('Cannot find package')) {
+      console.error('❌ GATE 3a UNDERKÄND: Testet kraschar på körtidsfel eller trasiga importer!');
       console.error(failFirstOutput.slice(0, 1000));
       process.exit(1);
     }
