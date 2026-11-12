@@ -12,23 +12,13 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
-import { BidiLiveSession } from './bidiLiveRunner.ts';
+import { BidiLiveSession } from './bidiLiveRunner.js';
 import { mutateSourceCodeAST } from './drivers/astMutator.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
+import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
+import { getRequiredFiles } from './lib/ticketAndAnchor.js';
 
 const ROOT_DIR = process.cwd();
-
-function execCaptured(cmd: string): string {
-  try {
-    const out = execSync(cmd, { encoding: 'utf-8', stdio: 'pipe', cwd: ROOT_DIR });
-    if (out) process.stdout.write(out);
-    return out;
-  } catch (err: any) {
-    const combined = [err?.stdout, err?.stderr].filter(Boolean).join('\n').trim() || err?.message || String(err);
-    if (combined) process.stderr.write(combined + '\n');
-    throw new Error(combined);
-  }
-}
 
 const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
 const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
