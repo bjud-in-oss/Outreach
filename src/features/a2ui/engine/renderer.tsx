@@ -12,7 +12,11 @@ const FallbackComponent: React.FC<{ componentId: string }> = ({ componentId }) =
   </div>
 );
 
-export const RenderA2UI = (payload: A2UIPayload) => {
+export const RenderA2UI = (payload?: A2UIPayload | null) => {
+  if (!payload || !payload.componentId) {
+    return null;
+  }
+
   const { componentId, dataModel } = payload;
 
   switch (componentId) {
