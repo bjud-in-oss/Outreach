@@ -1,66 +1,59 @@
-# BYGGCYKEL LOGG: TCK-MAINT-050
-**Starttid:** 2026-11-12T15:04:02.416Z
+# BYGGCYKEL LOGG: TCK-MAINT-051
+**Starttid:** 2026-11-12T15:12:41.705Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-050: Flytta formatMemoryIndicator till shared, återkoppla MAINT-exit-skydd och koppla Node-portar till Vägmotorn
+# TCK-MAINT-051: Modulär radgränsspärr (sizeGate.js) och undantagsfri rekursiv domänläckagekontroll för scripts/
 
 **Måldomän:** `scripts`
-**Målfiler:** `src/shared/telemetry/memoryIndicator.ts`, `src/features/gemini_live_swarm/ui/promptBarHelper.ts`, `scripts/samrad.ts`, `scripts/run-planera-live.ts`, `scripts/lib/pathNodePorts.ts`, `scripts/run-path.ts`
+**Målfiler:** `scripts/lib/sizeGate.js`, `scripts/verify-architecture.js`
 **Mekanisk Acceptans:**
-1. `src/shared/telemetry/memoryIndicator.ts` exporterar `formatMemoryIndicator(metric?)`, `promptBarHelper.ts` re-exporterar den för bakåtkompatibilitet och `scripts/samrad.ts` importerar den från `../src/shared/telemetry/memoryIndicator.ts` (noll direktimport från `gemini_live_swarm` i `scripts/`).
-2. `scripts/run-planera-live.ts` återkopplar `dumpCrashDiff()` och `restoreScriptsBackup()` i `process.on("exit", ...)` vid `code !== 0`, kör `npx vitest run src/features/${targetDomain}/__tests__/` i Fas 2:s valideringsloop när mappen innehåller testfiler, och hålls strikt under 1000 rader.
-3. `scripts/lib/pathNodePorts.ts` (< 250 rader) exporterar `skapaNodePathPortar(deps)` med FSD-radgränser (125 rader `.tsx`, 250 rader `.ts`) och AST-kontroll, och `scripts/run-path.ts` (< 250 rader) använder den.
-4. `pnpm verify` passerar med exit 0.
+1. `scripts/lib/sizeGate.js` (< 250 rader) exporterar `validateCodebaseLineLimits(rootDir)` som kontrollerar både `scripts/` (max 250 rader; ratchet `run-planera-live.ts`: 1000, `bidiLiveRunner.ts`: 345) och `src/features/` (max 125 rader för `.tsx`, max 250 rader för `.ts`; ratchet `geminiLiveSession.ts`: 260, `sessionIntentAudio.ts`: 300).
+2. Grind 2 i `scripts/verify-architecture.js` skannar rekursivt SAMTLIGA `.ts`- och `.js`-filer under `scripts/` (inklusive `scripts/lib/` och `scripts/drivers/`, exklusive `__tests__`) via TypeScript AST och avvisar utan undantag alla statiska/dynamiska importer av FSD-domäner utanför `'path'` och `'shared'`.
+3. `scripts/verify-architecture.js` hålls strikt under 210 rader, och `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Eliminera domänläckaget i `scripts/samrad.ts` via `src/shared/`:**
-   - Skapa `src/shared/telemetry/memoryIndicator.ts` (< 20 rader) med `export function formatMemoryIndicator(metric?: any): string { if (!metric || typeof metric !== 'object') return '0 / 8192 tokens'; return \`${metric.usedTokens ?? 0} / ${metric.maxTokens ?? 8192} tokens\`; }`.
-   - Ersätt funktionskroppen i `src/features/gemini_live_swarm/ui/promptBarHelper.ts` (rad 9–12) med `export { formatMemoryIndicator } from '../../../shared/telemetry/memoryIndicator.ts';`.
-   - Ändra rad 14 i `scripts/samrad.ts` till `import { formatMemoryIndicator } from '../src/shared/telemetry/memoryIndicator.ts';`.
-2. **Uppdatera `scripts/run-planera-live.ts` (< 1000 rader):**
-   - Ändra rad 18 till `import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';`.
-   - I `process.on("exit", (code) => { if (code !== 0) { dumpCrashDiff(); restoreScriptsBackup(); } });` (rad 43–47): återställ anropen.
-   - Direkt efter `execCaptured(\`npx vitest run ${transientTestFile}\`);` i Fas 2 (runt rad 735), lägg till kontroll att om `src/features/${targetDomain}/__tests__` existerar och innehåller filer körs `execCaptured(\`npx vitest run src/features/${targetDomain}/__tests__/\`);`.
-3. **Skapa `scripts/lib/pathNodePorts.ts` (< 250 rader) och koppla in i `scripts/run-path.ts` (< 250 rader):**
-   - Importera `fs`, `path`, `skapaAvsiktsport`, `skapaProvningsport`, `skapaKonstruktionsport`, `skapaBesiktningsport` från `'../../src/features/path/index.js'` och `execCaptured` från `'./shellAndBackup.js'`.
-   - Exportera `skapaNodePathPortar(deps: { ticketId: string; io: any; dryRun?: boolean; testFilVag?: string; matris?: any[]; rootDir?: string })`.
-   - Vid `dryRun !== false`: returnera säkra minnes-portar så att `scripts/__tests__/run-path.test.ts` passerar utan CLI-interaktion. Vid `dryRun === false`: kör skarpa kontroller inklusive FSD-radgränser (125 `.tsx` / 250 `.ts`) och `node scripts/drivers/ts.js --check-catch-blocks`.
-   - Uppdatera `scripts/run-path.ts` till `const portar = options.portar || skapaNodePathPortar({ ticketId, io, dryRun: isDryRun || !isLive });`.
+1. **Skapa `scripts/lib/sizeGate.js` (< 250 rader):**
+   - Exportera `validateCodebaseLineLimits(rootDir)` som returnerar antalet radgränsbrott (`number`) och skriver tydliga felmeddelanden (`❌ RADGRÄNSBROTT ...`).
+   - Hoppa över `__tests__`, `node_modules` och `.legacy.`-filer.
+   - Använd `LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1000, 'bidiLiveRunner.ts': 345 }` för `scripts/` och `LEGACY_FEATURE_CAPS = { 'geminiLiveSession.ts': 260, 'sessionIntentAudio.ts': 300 }` för `src/features/`.
+2. **Uppdatera Grind 2 & Grind 4 i `scripts/verify-architecture.js` (< 210 rader):**
+   - Importera `validateCodebaseLineLimits` från `'./lib/sizeGate.js'` och ersätt `checkScriptSize` (rad 177–211) med `const scriptSizeViolations = validateCodebaseLineLimits(ROOT_DIR);`.
+   - Uppdatera Grind 2 (rad 92–121) till att rekursivt gå igenom hela `SCRIPTS_DIR` (hoppa över `__tests__` och `node_modules`). Kontrollera både statiska `ImportDeclaration`/`ExportDeclaration` och dynamiska `import(...)` efter sökvägar som matchar `features/<domän>` (inkl. `@/features/<domän>`). Tillåt uteslutande `dom === 'path' || dom === 'shared'`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Ren shared-delning, tidig domänverifiering och skarpa Node-portar**
-  Givet att `formatMemoryIndicator` flyttas till `src/shared/telemetry/` och `pathNodePorts.ts` skapas
-  När `samrad.ts`, `run-planera-live.ts` och `run-path.ts` uppdateras
-  Så har hela `scripts/` noll otillåtna domänimporter, Fas 2 kör domäntester tidigt och Vägmotorn får skarpa CLI-portar
-  Utan att överskrida radgränserna.
+**Scenario: ATT FÖLJA – Undantagsfritt skydd mot domänläckage och radsvullnad**
+  Givet att `samrad.ts` nu importerar från `src/shared/` och `scripts/lib/` växer
+  När `pnpm verify` körs
+  Så skannar Grind 2 rekursivt varje skriptfil utan undantag och `sizeGate.js` kontrollerar radgränser i både `src/features/` och `scripts/`
+  Vilket garanterar strikt arkitekturdisciplin.
 
-**Scenario: ATT VÄNDA OM – Avvisande av tyst exit utan backup-återställning**
-  Givet att `process.on("exit")` i `run-planera-live.ts` tömdes i `TCK-MAINT-049`
-  När `dumpCrashDiff()` och `restoreScriptsBackup()` återkopplas
-  Så återställs `scripts/` automatiskt vid varje avbruten `MAINT`-körning.
+**Scenario: ATT VÄNDA OM – Avvisande av hårdkodade skriptlistor**
+  Givet att Grind 2 tidigare enbart granskade `run-planera-live.ts` och `run-tests.js`
+  När skanningen görs rekursiv över hela `SCRIPTS_DIR`
+  Så kan ingen ny fil i `scripts/lib/` smyga in otillåtna domänimporter.
 
 **Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att samtliga skript och tester är uppdaterade
+  Givet att `sizeGate.js` och `verify-architecture.js` är sparade
   När `pnpm verify` körs
-  Så passerar alla grindar och tester med exit 0.
+  Så passerar samtliga grindar och tester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår uppdraget. Vi ska flytta `formatMemoryIndicator` till `src/shared` för att städa upp i våra skript, återställa skyddet så att vi inte förlorar backup-data vid krascher i `run-planera-live.ts`, och koppla in Node-portar via `pathNodePorts.ts` för en stabilare Vägmotor. Är vi överens om att detta är rätt steg för att förbättra systemets resiliens och struktur?
+Jag förstår verkligen intentionen med det här uppdraget. Det handlar om att skapa en tryggare arkitektur och förhindra att kodbasen växer okontrollerat i våra hjälpskript. Hur ser din bild ut av hur dessa nya regler kommer att underlätta det framtida samarbetet i teamet?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. Samtliga ändringar i TCK-MAINT-050 följer FSD-principer, radgränser och säkrar noll läckage av domäner. Vi är redo att gå vidare.
+Jag har granskat kontraktet för TCK-MAINT-051. Det uppfyller systemreglerna för modulär expansion och destruktiv sanering. Vi kommer att införa `sizeGate.js` och förstärka arkitekturkontrollen rekursivt över `scripts/` för att garantera full isolering. Kontraktet är därmed godkänt.
 
 
 #### 0b Att förlikas: Vägval
@@ -72,16 +65,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Alternativ ett innebär en direkt flytt och strikt kontrollstyrning genom top-down refaktorisering, där vi etablerar delad kod och portbryggan i isolerade moduler.
+För att lösa TCK-MAINT-051 formulerar jag här tre ortogonala alternativ:
 
-Alternativ två fokuserar på gränssnittsemulering och fabriksmönster för Node-portarna, vilket gör koden lättare att mocka och testa i en torr miljö.
+Alternativ ett innebär att vi använder Node.js inbyggda `fs`- och `path`-moduler för rekursiv filgenomgång, där radgränser kontrolleras genom att läsa filer och räkna radbrytningar, samt att reguljära uttryck används för att avvisa otillåtna FSD-importer.
 
-Alternativ tre bygger på kontraktscentrerad verifiering och robust avbrottshantering genom att införa felhantering tidigt för att garantera miljöns resiliens.
+Alternativ två fokuserar på fullständig TypeScript AST-analys genom att använda `typescript`-paketet för att exakt identifiera importdeklarationer och dynamiska importsamt säkerställa arkitekturdisciplin på nodnivå.
+
+Slutligen innebär alternativ tre en uppdelad hantering där vi använder en anpassad AST-visitor för importkontroll och kombinerar detta med en optimerad bufferläsning i `sizeGate` för att upprätthålla prestanda och precision i hela repot.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ tre är det som bäst säkerställer miljöns resiliens genom tidig felhantering och kontraktscentrerad verifiering. Detta harmonierar starkt med kravet på att absolut återkoppla skyddsmekanismer vid avbrutna körningar.
+Vid en resiliensgranskning av alternativen ser jag att alternativ ett är sårbart för felaktigheter genom reguljära uttryck. Alternativ två är korrekt, men alternativ tre kombinerar AST-precision med effektiv bufferläsning, vilket ger bäst resiliens och prestanda.
 
 
 #### 2d Att förlikas: Mättnad
-Jag fastställer härmed att Alternativ tre är det vinnande spåret. Det säkerställer bäst miljöns resiliens och harmoni med våra krav på skyddsmekanismer. MÄTTNAD: JA.
+Efter att ha vägt samman perspektiven i spänningsfältet och mätt det semantiska deltat står det klart att alternativ tre är det vinnande kontraktet. Det kombinerar AST-precision med effektiv bufferläsning, vilket ger bäst resiliens och prestanda. MÄTTNAD: JA.

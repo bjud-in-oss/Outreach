@@ -15,7 +15,7 @@ import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.js';
 import { mutateSourceCodeAST } from './drivers/astMutator.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
-import { execCaptured } from './lib/shellAndBackup.js';
+import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
 import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
 
 const ROOT_DIR = process.cwd();
@@ -42,7 +42,8 @@ if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true
 
 process.on("exit", (code) => {
   if (code !== 0) {
-    
+    dumpCrashDiff();
+    restoreScriptsBackup();
   }
 });
 let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
@@ -733,6 +734,13 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
         execCaptured(`node scripts/drivers/ts.js --check-catch-blocks ${filesToScan}`);
 
         execCaptured(`npx vitest run ${transientTestFile}`);
+        
+        const domainTestsDir = path.join(ROOT_DIR, `src/features/${targetDomain}/__tests__`);
+        if (fs.existsSync(domainTestsDir)) {
+          const testFiles = fs.readdirSync(domainTestsDir).filter(f => f.endsWith(`.test.${testExt}`));
+          if (testFiles.length > 0) execCaptured(`npx vitest run ${domainTestsDir}`);
+        }
+
         testPassed = true;
       } catch (vitestErr: any) {
         const testLog = vitestErr.stdout?.toString() || vitestErr.stderr?.toString() || vitestErr.message;

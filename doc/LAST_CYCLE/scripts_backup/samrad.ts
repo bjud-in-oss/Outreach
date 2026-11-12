@@ -11,7 +11,7 @@ import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.ts';
-import { formatMemoryIndicator } from '../src/features/gemini_live_swarm/index.ts';
+import { formatMemoryIndicator } from '../src/shared/telemetry/memoryIndicator.ts';
 
 const ROOT_DIR = process.cwd();
 const MODEL_NAME = process.env.LIVE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-live';
