@@ -30,7 +30,8 @@ if (args.includes('--check-catch-blocks')) {
       const block = node.block;
       if (!block || block.statements.length === 0) {
         const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-        console.error(`❌ GATE 2c BROTT: Tomt catch-block i ${path.relative(ROOT_DIR, filePath)}:${line + 1}`);
+        const lineText = sourceFile.text.split('\n')[line]?.trim() || '';
+        console.error(`❌ GATE 2c BROTT: Tomt catch-block i ${path.relative(ROOT_DIR, filePath)}:${line + 1} -> ${lineText}`);
         catchViolations++;
       }
     }

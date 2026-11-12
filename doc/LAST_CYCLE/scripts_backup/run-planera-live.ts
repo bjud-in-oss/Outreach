@@ -452,7 +452,7 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
       gate3aAttempts++;
       try {
         console.log(`🔒 Verifierar Gate 3a (Försök ${gate3aAttempts}/3)...`);
-        execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
+        execCaptured(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`);
         gate3aPassed = true;
       } catch (err: any) {
         if (gate3aAttempts >= 3) {
@@ -640,7 +640,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
     if (!codeSaved) return false;
     const required = getRequiredFiles();
     const missing = getMissingFiles();
-    return missing.length === 0 && required.every(f => modifiedFiles.includes(f) || createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));
+    return missing.length === 0 && required.every(f => modifiedFiles.includes(f));
   };
 
   const getFas2FollowupPrompt = (): string => {
@@ -648,7 +648,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
     if (missing.length > 0) {
       return `⚠️ Följande källkodsfiler från kontraktet saknas fortfarande på disk:\n${missing.map(f => `- ${f}`).join('\n')}\nDu MÅSTE använda 'save_code' för att skapa och spara dessa filer innan bygget kan gå vidare!`;
     }
-    const untouched = getRequiredFiles().filter(f => !modifiedFiles.includes(f) && !createdModules.includes(f.replace(/\.(ts|tsx)$/, '')));
+    const untouched = getRequiredFiles().filter(f => !modifiedFiles.includes(f));
     if (untouched.length > 0) {
        return `⚠️ Följande källkodsfiler från kontraktet har inte ändrats:\n${untouched.map(f => `- ${f}`).join('\n')}\nDu MÅSTE använda 'apply_patch' eller 'save_code' för att uppdatera dessa filer!`;
     }

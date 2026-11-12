@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-043** (VERIFIED): Källkodskontext i Gate 2c, execCaptured och Efemär Handskakningsutjämning -> Se `doc/.TICKETS/TCK-MAINT-043.md`
 - [x] **TCK-MAINT-042** (VERIFIED): Handskakningssäker WS 1011-omsändning, Målfilskontroll, Gate 2c-kontext och execCaptured -> Se `doc/.TICKETS/TCK-MAINT-042.md`
 - [x] **TCK-MAINT-041** (VERIFIED): WS 1011-omsändning i BidiLiveSession och Universal Fas 2-filkontroll -> Se `doc/.TICKETS/TCK-MAINT-041.md`
 - [x] **TCK-MAINT-040** (VERIFIED): Härdad Fas 2-avslutning, In-Loop AST-Grind och Maint-Regression -> Se `doc/.TICKETS/TCK-MAINT-040.md`
