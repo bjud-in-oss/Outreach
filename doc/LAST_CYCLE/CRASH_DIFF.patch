@@ -1,212 +1,29 @@
-diff --git a/scripts/lib/pathNodePorts.ts b/scripts/lib/pathNodePorts.ts
-index 6a6abc7..151e89c 100644
---- a/scripts/lib/pathNodePorts.ts
-+++ b/scripts/lib/pathNodePorts.ts
-@@ -33,17 +33,35 @@ export function skapaNodePathPortar(deps: {
-   try {
-     console.log('Running sharp checks for pathNodePorts...');
-     execCaptured('node scripts/drivers/ts.js --check-catch-blocks');
--    // Här skulle man kunna lägga till FSD-radgränskontroll om det finns ett dedikerat skript för det, 
--    // eller lita på att AST-drivrutinen täcker det.
-   } catch (error) {
-     console.error('Skarpa kontroller misslyckades i pathNodePorts:', error);
-     throw error;
-   }
- 
-   return {
--    avsiktsport: skapaAvsiktsport({ io: deps.io }),
--    provningsport: skapaProvningsport({ io: deps.io }),
--    konstruktionsport: skapaKonstruktionsport({ io: deps.io }),
--    besiktningsport: skapaBesiktningsport({ io: deps.io }),
-+    avsikt: skapaAvsiktsport({ 
-+      prompter: async () => 'y', 
-+      beskrivning: `Verifiera intention för ${deps.ticketId}` 
-+    }),
-+    provning: skapaProvningsport({ 
-+      testFilVag: deps.testFilVag || 'transient_test.ts', 
-+      forvantatFel: 'Fail-First', 
-+      testExekverare: async () => ({ 
-+        passerade: false, 
-+        exitKod: 1, 
-+        felmeddelande: 'Förväntat Fail-First fel' 
-+      }) 
-+    }),
-+    konstruktion: skapaKonstruktionsport({ 
-+      matris: deps.matris || [], 
-+      inspekterare: async () => ({ 
-+        existerar: true, 
-+        antalRader: 50, 
-+        exporteradIIndex: true 
-+      }) 
-+    }),
-+    besiktning: skapaBesiktningsport({ 
-+      inspekterare: async () => ({ godkand: true }) 
-+    })
-   };
- }
-diff --git a/scripts/run-path.ts b/scripts/run-path.ts
-index 4ee0270..da22f2f 100644
---- a/scripts/run-path.ts
-+++ b/scripts/run-path.ts
-@@ -1,6 +1,7 @@
- import { 
-   skapaPathOrkestrerare, 
-   skapaMockSessionAdapter,
-+  skapaBidiLiveAdapter,
-   OrchestratorConfig
- } from '../src/features/path';
- import { skapaNodePathPortar } from './lib/pathNodePorts.js';
-diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
-index 72af503..c058718 100644
---- a/scripts/run-planera-live.ts
-+++ b/scripts/run-planera-live.ts
-@@ -1,25 +1,121 @@
-+/**
-+ * scripts/run-planera-live.ts
-+ * 
-+ * OUTREACH COORDINATION ENGINE (v10.5)
-+ * Helautonom orkestreringsmotor med Action Loop, testkonsolidering,
-+ * dokumentationssynk, och en interaktiv mänsklig beslutsgrind för systemunderhåll.
-+ */
+diff --git a/src/__tests__/transient_TCK-054.test.ts b/src/__tests__/transient_TCK-054.test.ts
+new file mode 100644
+index 0000000..17c87c0
+--- /dev/null
++++ b/src/__tests__/transient_TCK-054.test.ts
+@@ -0,0 +1,23 @@
++import { describe, it, expect } from 'vitest';
++import { skapaBidiLiveAdapter } from '../features/path/engine/bidiLiveAdapter';
++import { CompiledPrompt } from '../features/path/contracts/pathSchema';
 +
- import * as fs from 'fs';
- import * as path from 'path';
-+import * as readline from 'readline';
- import { execSync } from 'child_process';
- import { GoogleGenAI } from '@google/genai';
- import { BidiLiveSession } from './bidiLiveRunner.js';
--import { 
--  getFeatureIndexText, 
--  getInstalledDependencies, 
--  appendCycleLog, 
--  runMicroChannel,
--  executeInspection
--} from './lib/channelRunner.js';
--import { createFas2ToolExecutor, isFas2Complete, getFas2FollowupPrompt } from './lib/fas2Tooling.js';
--import { konsolideraTest, synkaDomanBarrel, uppdateraFeatureIndex, uppdateraBiljettstatus, hanteraTrepunktsbesiktning, genomforGitCommitPush, saneraSkordadLegacy } from './lib/fas3Consolidation.js';
-+import { mutateSourceCodeAST } from './drivers/astMutator.js';
-+import { applySourcePatch } from './drivers/patchMutator.js';
- import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
--import { buildRetryAnchor } from './lib/ticketAndAnchor.js';
-+import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
-+import { saneraSkordadLegacy } from './lib/fas3Consolidation.js';
- 
- const ROOT_DIR = process.cwd();
++describe('BidiLiveAdapter SDKfabrik (TCK-054)', () => {
++  it('ska kasta fel om API-nyckel saknas och ingen clientFactory finns', async () => {
++    const adapter = skapaBidiLiveAdapter({});
++    const prompt: CompiledPrompt = { userPrompt: 'Hej' };
 +
- const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
- const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
- const CRASH_DUMP_PATH = path.join(CYCLE_LOG_DIR, 'CRASH_DUMP.json');
- const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
-+const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
-+const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
-+const PKG_PATH = path.join(ROOT_DIR, 'package.json');
-+
-+const MODEL_NAME = process.env.LIVE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-live';
-+const API_KEY = process.env.GEMINI_API_KEY;
-+
-+if (!API_KEY) {
-+  console.error('❌ KRITISKT FEL: GEMINI_API_KEY saknas i miljövariablerna.');
-+  process.exit(1);
-+}
-+
-+const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
-+
-+if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
-+
-+process.on("exit", (code) => {
-+  if (code !== 0) {
-+    dumpCrashDiff();
-+    restoreScriptsBackup();
-+  }
-+});
-+let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
-+if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
-+
-+function getFeatureIndexText(): string {
-+  if (fs.existsSync(FEATURE_INDEX_PATH)) return fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8');
-+  return '';
-+}
-+
-+function getInstalledDependencies(): string {
-+  if (!fs.existsSync(PKG_PATH)) return '';
-+  try {
-+    const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
-+    const deps = Object.keys(pkg.dependencies || {});
-+    const devDeps = Object.keys(pkg.devDependencies || {});
-+    return `TILLGÄNGLIGA PAKET I PROJEKTET (Importera ALDRIG externa paket utanför denna lista! För övrigt, använd Node.js inbyggda API:er):\n${[...deps, ...devDeps].join(', ')}`;
-+  } catch {
-+    return '';
-+  }
-+}
-+
-+function appendCycleLog(header: string, content: string) {
-+  fs.appendFileSync(CYCLE_LOG_PATH, `\n\n#### ${header}\n${content.trim()}\n`, 'utf-8');
-+}
-+
-+interface ChannelOptions {
-+  requireMutation?: boolean;
-+  maxTurns?: number;
-+  onMutationCheck?: () => boolean;
-+  getFollowupPrompt?: () => string;
-+}
-+
-+async function runMicroChannel(
-+  kraft: 'Att följa' | 'Att vända om' | 'Att förlikas',
-+  stepInstruction: string,
-+  startAnchor: string,
-+  si: string,
-+  tools: any[] = [],
-+  executeTool?: (name: string, args: any) => string,
-+  options: ChannelOptions = {}
-+): Promise<string> {
-+  const runner = new BidiLiveSession({
-+    ai,
-+    model: MODEL_NAME,
-+    systemInstruction: `${si}\n\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\n\n${getInstalledDependencies()}\n\nDu agerar som kraften: ${kraft}.\nUppgift: ${stepInstruction}`,
-+    tools,
-+    executeTool,
++    await expect(adapter.skicka(prompt)).rejects.toThrow(
++      'API-nyckel saknas för Gemini Live SDK'
++    );
 +  });
 +
-+  try {
-+    let response = await runner.send(`STARTANKARE:\n${startAnchor}\n\nUPPDRAG:\n${stepInstruction}`);
-+    
-+    const maxTurns = options.maxTurns || 3;
-+    let turn = 1;
++  it('ska kasta fel om API-nyckel är tom sträng', async () => {
++    const adapter = skapaBidiLiveAdapter({ apiKey: '' });
++    const prompt: CompiledPrompt = { userPrompt: 'Hej' };
 +
-+    while (options.requireMutation && options.onMutationCheck && !options.onMutationCheck() && turn < maxTurns) {
-+      turn++;
-+      const followUp = options.getFollowupPrompt ? options.getFollowupPrompt() : `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`;
-+      console.log(`\n   🔁 [ACTION LOOP]: Krav ej uppfyllt ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
-+      response = await runner.send(followUp);
-+    }
-+
-+    runner.close();
-+    await new Promise((r) => setTimeout(r, 400));
-+    return response;
-+  } catch (err: any) {
-+    runner.close();
-+    await new Promise((r) => setTimeout(r, 400));
-+    throw err;
-+  }
-+}
- 
- async function main() {
-   const startTime = Date.now();
-@@ -574,6 +670,9 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
-         console.log(`\n🔍 [MAINT]: Kör arkitekturkontroll (Försök ${maintAttempts}/3)...`);
-         execCaptured('node scripts/verify-architecture.js');
- 
-+        console.log(`\n🔍 [MAINT]: Kör skript-kompileringsskydd (Försök ${maintAttempts}/3)...`);
-+        execCaptured('npx esbuild scripts/run-planera-live.ts scripts/run-path.ts --bundle --platform=node --packages=external --outdir=/tmp/outreach-script-check');
-+
-         console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/3)...`);
-         execCaptured(`npx vitest run scripts/__tests__/`);
- 
-@@ -790,6 +889,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
- 
-   console.log('\n🔍 Slutverifiering: Kör hela projektets arkitektur- och regressionskontroll...');
-   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
-+  if (!isMaint) saneraSkordadLegacy(ticketPath);
-   console.log('\n🎉 ALLA TESTER OCH ARKITEKTURKONTROLLER GRÖNA!');
-   try {
-     const benchData = {
++    await expect(adapter.skicka(prompt)).rejects.toThrow(
++      'API-nyckel saknas för Gemini Live SDK'
++    );
++  });
++});
