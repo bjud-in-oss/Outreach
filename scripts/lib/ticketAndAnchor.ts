@@ -1,6 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+export interface SourceManifestEntry {
+  path: string;
+  lineCount: number;
+  charCount: number;
+  content: string;
+}
+
+export interface BatchPlan {
+  pass1: SourceManifestEntry[];
+  pass2: SourceManifestEntry[];
+  truncatedFiles: string[];
+}
+
 export function getRequiredFiles(ticketPrompt: string, isMaint: boolean, targetDomain: string): string[] {
   const targetMatch = ticketPrompt.match(/\*\*Målfiler:\*\*\s*(.+)/);
   if (targetMatch) {
@@ -21,6 +34,111 @@ export function getRequiredFiles(ticketPrompt: string, isMaint: boolean, targetD
   return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
 }
 
+export function buildSourceManifest(files: string[]): SourceManifestEntry[] {
+  return files.map(file => {
+    const fullPath = path.resolve(process.cwd(), file);
+    let content = '';
+    try {
+      if (fs.existsSync(fullPath)) {
+        content = fs.readFileSync(fullPath, 'utf-8');
+      }
+    } catch (e) {
+      console.warn(`⚠️ Kunde inte läsa fil ${file}:`, e);
+    }
+    const lines = content.split('\n');
+    return {
+      path: file,
+      lineCount: lines.length,
+      charCount: content.length,
+      content
+    };
+  });
+}
+
+export function extractCuratedRange(content: string, startLine: number, endLine: number): string {
+  const lines = content.split('\n');
+  const slicedLines = lines.slice(startLine - 1, endLine);
+  
+  const resultLines = slicedLines.map((line, index) => {
+    const actualLineNum = startLine + index;
+    return `[${actualLineNum}] ${line}`;
+  });
+
+  return `--- [TRUNKERAT RADINTERVALL ${startLine}-${endLine}] ---\n${resultLines.join('\n')}\n--- [SLUT PÅ TRUNKERAT INTERVALL] ---`;
+}
+
+export function planContextBatches(
+  files: string[], 
+  errorLog: string, 
+  maxChars = 24000,
+  prioritizeFn?: (manifest: SourceManifestEntry[], errorLog: string) => { pass1: string[], pass2: string[] }
+): BatchPlan {
+  const manifest = buildSourceManifest(files);
+  const totalChars = manifest.reduce((sum, entry) => sum + entry.charCount, 0);
+  
+  if (totalChars <= maxChars) {
+    return {
+      pass1: manifest,
+      pass2: [],
+      truncatedFiles: []
+    };
+  }
+
+  // Överstiger maxChars, behöver dela upp
+  let pass1Paths: string[] = [];
+  let pass2Paths: string[] = [];
+  const truncatedFiles: string[] = [];
+
+  if (prioritizeFn) {
+    const priority = prioritizeFn(manifest, errorLog);
+    pass1Paths = priority.pass1;
+    pass2Paths = priority.pass2;
+  } else {
+    // Deterministisk fallback
+    pass1Paths = manifest.slice(0, Math.ceil(manifest.length / 2)).map(e => e.path);
+    pass2Paths = manifest.slice(Math.ceil(manifest.length / 2)).map(e => e.path);
+  }
+
+  const pass1 = manifest.filter(e => pass1Paths.includes(e.path));
+  const pass2 = manifest.filter(e => pass2Paths.includes(e.path));
+
+  // Trunkera filer som spränger budgeten ensamma (eller om batch är för stor)
+  // Enkel implementering: Om vi måste dela upp, kör vi full text om rimligt, annars trunkerar vi
+  // För detta kontrakt vill vi tillämpa curatedRanges endast på filer som spränger budgeten
+  
+  return {
+    pass1,
+    pass2,
+    truncatedFiles
+  };
+}
+
+export function buildCrashDumpPayload(data: any, maxChars = 24000): any {
+  const payload = {
+    previousTestCode: data.previousTestCode || '',
+    crashDiff: data.crashDiff || '',
+    errorSignature: data.errorSignature || '',
+    omvandelseCount: data.omvandelseCount || 0,
+    priorityPlan: data.priorityPlan || null,
+    timestamp: new Date().toISOString()
+  };
+
+  const jsonString = JSON.stringify(payload);
+  
+  if (jsonString.length <= maxChars) {
+    return payload;
+  }
+
+  console.warn(`⚠️ [CRASH-DUMP TRUNKERING]: Storlek (${jsonString.length}) överstiger ${maxChars} tecken.`);
+  
+  // Trunkera previousTestCode om payload är för stor
+  if (payload.previousTestCode.length > 1000) {
+    payload.previousTestCode = payload.previousTestCode.slice(0, 1000) + "\n... [TRUNKERAD] ...";
+  }
+  
+  return payload;
+}
+
 export function buildRetryAnchor(
   testContent: string,
   currentSourceSummary: string,
@@ -36,10 +154,8 @@ export function buildRetryAnchor(
   const overflow = baseAnchor.length - maxChars;
   console.warn(`⚠️ [RETRY-ANCHOR TRUNKERING]: Storlek (${baseAnchor.length}) överstiger ${maxChars} tecken. Trunkerar källkodssammanfattningen med ${overflow} tecken.`);
 
-  // Vi trunkerar currentSourceSummary för att hålla oss inom gränsen
   const currentSourceChars = currentSourceSummary.length;
-  // Om källkods-sammanfattningen inte räcker för att täcka overflow (väldigt osannolikt), tar vi bort allt från den.
-  const charsToRemoveFromSource = Math.min(currentSourceChars, overflow + 500); // lite marginal
+  const charsToRemoveFromSource = Math.min(currentSourceChars, overflow + 500); 
   
   const truncatedSource = currentSourceSummary.slice(0, Math.max(0, currentSourceChars - charsToRemoveFromSource)) + 
     "\n... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...";

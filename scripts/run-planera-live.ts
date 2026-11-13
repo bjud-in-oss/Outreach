@@ -117,6 +117,14 @@ async function main() {
 
   const isMaint = ticketId.startsWith('TCK-MAINT');
 
+  if (!process.argv.includes('--force') && !process.argv.includes('--omvandelse') && fs.existsSync(TICKETS_PATH)) {
+    const ticketsContent = fs.readFileSync(TICKETS_PATH, 'utf-8');
+    if (ticketsContent.includes(`[x] **${ticketId}** (VERIFIED)`)) {
+      console.log(`\n🎟️ [AVBRYT BRYGGA]: Biljetten ${ticketId} är redan verifierad. Avbryter bygget.`);
+      process.exit(0);
+    }
+  }
+
   console.log(`\n🚀 OUTREACH COORDINATION ENGINE v10.5 – STARTAR BYGG: ${ticketId}`);
   console.log(`📌 Aktiv Live-modell: ${MODEL_NAME}`);
 

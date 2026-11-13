@@ -1,61 +1,69 @@
-# BYGGCYKEL LOGG: TCK-MAINT-062
-**Starttid:** 2026-11-13T22:54:20.971Z
+# BYGGCYKEL LOGG: TCK-MAINT-063
+**Starttid:** 2026-11-13T23:15:04.980Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-062: Täta recoveryPrompt mot vi.fn() och aktivera saneraSkordadLegacy utan if-spärr
+# TCK-MAINT-063: AI-prioriterad tvådelad kontextuppdelning, noga urvald trunkering och VERIFIED-vakt
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/run-planera-live.ts`
+**Målfiler:** `scripts/lib/ticketAndAnchor.ts`, `scripts/run-planera-live.ts`, `scripts/__tests__/scriptLibs.test.ts`
 **Mekanisk Acceptans:**
-1. I `scripts/run-planera-live.ts` (strikt <= 980 rader) uppdateras `recoveryPrompt` (runt rad 404) till: `Gate 3a underkände testet!
-FELLOGG:
-${err.message || String(err)}
-Åtgärda och spara till '${transientTestFile}'. Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler (let anropad = false;) utan tautologier.
-
-KONTRAKT OCH BAKGRUND:
-${startAnchor}`
-2. Rad 868 i `scripts/run-planera-live.ts` ändras från `if (!isMaint) saneraSkordadLegacy(ticketPath);` till `saneraSkordadLegacy(ticketPath);` så att skördade filer alltid städas.
-3. `pnpm verify` passerar med exit 0.
+1. `scripts/lib/ticketAndAnchor.ts` (< 185 rader — filen har 46 rader i dag) exporterar:
+   - `buildSourceManifest(files)` som listar sökväg, radantal och teckenantal för varje källfil.
+   - `extractCuratedRange(content, startLine, endLine)` som extraherar ett noga utvalt radintervall med tydlig radnummermarkering när en enskild fil måste beskäras.
+   - `planContextBatches(files, errorLog, maxChars, prioritizeFn?)` som:
+     * Returnerar **1 samlad batch med 100 % orörd kod (noll trunkering)** när totala teckenantalet ryms inom `maxChars` (`24000`).
+     * När totalen överstiger `maxChars`: låter `prioritizeFn(manifest, errorLog)` (med deterministisk fallback) dela upp filerna i **Delkörning 1 (`pass1`)** och **Delkörning 2 (`pass2`)** samt tillämpa `curatedRanges` endast på filer som ensamma spränger budgeten.
+   - `buildCrashDumpPayload(data, maxChars = 24000)` som bevarar full `previousTestCode`, `crashDiff`, `errorSignature`, `omvandelseCount` och `priorityPlan` när storleken ryms inom `maxChars`, och enbart använder prioriterad beskärning om gränsen överskrids.
+2. `scripts/run-planera-live.ts` (strikt <= 995 rader — filen har 972 rader i dag):
+   - Stoppar körningen före Fas 0 om `ticketId` redan står som `[x] **${ticketId}** (VERIFIED)` i `doc/TICKETS.md` (om inte `--force` eller `--omvandelse` skickats med).
+   - Använder `planContextBatches` i Fas 2-självrättningen så att AI:n prioriterar upp källorna i två sekventiella delkörningar (`Delkörning 1/2` och `Delkörning 2/2`) när kontexten överstiger `24000` tecken, men kör allt i ett enda pass utan trunkering när det ryms under gränsen.
+   - Sparar rik kraschkontext via `buildCrashDumpPayload` och tillåter upp till **2** yttre omvändelser (`--omvandelse=1`, `--omvandelse=2`) med framstegsspärr (`currentSig !== prevErrorSignature`).
+3. `scripts/__tests__/scriptLibs.test.ts` (< 130 rader) verifierar med enhetstester att `planContextBatches` behåller allt otrungerat under `maxChars`, delar upp i två prioriterade körningar via AI-prioriteraren över `maxChars`, och att `extractCuratedRange` extraherar exakta radintervall.
+4. `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Kirurgisk patch i `scripts/run-planera-live.ts` (<= 980 rader):**
-   - Ändra definitionen av `recoveryPrompt` (rad 404) exakt enligt Mekanisk Acceptans.
-   - Ändra rad 868 från `if (!isMaint) saneraSkordadLegacy(ticketPath);` till `saneraSkordadLegacy(ticketPath);`.
-2. **Bevara alla andra funktioner orörda:** Låt JIT-verktygsanrop, `buildRetryAnchor` och Gate 3a-mekaniken i övrigt vara oförändrad.
+1. **Skydda radtaket i `scripts/run-planera-live.ts` (972 rader i dag, hårt tak 1000 rader i `sizeGate.js`):**
+   - Lägg all manifest-, urvals-, batch- och kraschdumpslogik i `scripts/lib/ticketAndAnchor.ts` (46 rader -> ~160 rader, max 250).
+   - Håll ändringen i `scripts/run-planera-live.ts` extremt kompakt (<= 20 nettorader, totalt <= 992 rader).
+2. **Noll blind trunkering under gränsen:**
+   - När `totalChars <= maxChars` får inga rader klippas bort och ingen extra AI-prioriteringsvända köras.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Gate 3a-recovery stoppar alibin direkt**
-  Givet att `recoveryPrompt` instruerar modellen att byta ut spioner mot tillståndsvariabler
-  När ett Gate 3a-fel inträffar
-  Så rättar modellen felet utan att byta ut ett alibi mot ett annat.
+**Scenario: ATT FÖLJA – AI-prioriterad uppdelning i två körningar när kontexten är stor**
+  Givet att ett bygge berör flera stora filer som tillsammans överstiger `24 000` tecken
+  När `planContextBatches` utvärderar källorna
+  Så låter systemet AI:n prioritera vilka källor som körs i Delkörning 1 respektive Delkörning 2 (med noga utvalda radintervall vid behov)
+  Vilket ger full skärpa i båda körningarna utan blind teckenkapning.
 
-**Scenario: ATT VÄNDA OM – Universell städning för alla biljettyper**
-  Givet att `saneraSkordadLegacy` anropas
-  När bygget är grönt
-  Så rensas legacy-kön oavsett om det är en funktionsbiljett eller `MAINT`.
+**Scenario: ATT VÄNDA OM – Noll trunkering under gränsen och framstegsspärr vid loop**
+  Givet att kontexten ryms inom `24 000` tecken eller att samma felsignatur upprepas
+  När villkoren prövas
+  Så bevaras all kod 100 % otrunkerad under gränsen, medan upprepade felsignaturer och redan `VERIFIED` biljetter stoppas omedelbart.
 
-**Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att uppdateringarna är på plats
+**Scenario: ATT FÖRLIKAS – Grön verifiering inom radgränserna**
+  Givet att `ticketAndAnchor.ts`, `run-planera-live.ts` och `scriptLibs.test.ts` är uppdaterade
   När `pnpm verify` körs
-  Så passerar kompilering och radgränser med exit 0.
+  Så passerar arkitekturgrindar, radgränser och hela testsviten med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Vi ska se till att testfasen blir ännu mer robust genom att täta systemet mot att använda mockade funktioner. Samtidigt aktiverar vi en universell städning så att gamla filer rensas effektivt oavsett vilken typ av biljett vi hanterar. Det skapar en renare och mer pålitlig utvecklingsmiljö.
+Syftet med detta underhåll är att göra agentens kontexthantering smart och skonsam. Det gynnar oss genom att helt slippa blind trunkering under gränsen och ge oss en prioriterad, tvådelad kontextmatning när materialet är stort. Detta skyddar den kritiska logiken och bibehåller kvaliteten i källkoden.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag ska nu granska kontraktet och filen `scripts/run-planera-live.ts` för att säkerställa att inga felaktiga beroenden finns.Kontraktet är auditerat och godkänt. Uppdraget stämmer väl överens med våra systemiska krav och kravet på destruktiv sanering utan if-spärrar. Jag är redo att verkställa förändringarna i `scripts/run-planera-live.ts`.
+Kontraktsaudit och premissvalidering genomförd för TCK-MAINT-063. 
+
+Samtliga målfiler och radgränser i `scripts`-domänen är identifierade, och säkerhetsmarginalerna för att undvika blind trunkering under gränsvärdet på 24 000 tecken är helt i linje med systemkraven. Vi är redo att inleda genomförandet.
 
 
 #### 0b Att förlikas: Vägval
@@ -67,16 +75,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Alternativ 1 innebär en direkt stringpatch för båda ändringarna via `apply_patch` där vi exakt matchar och ersätter de två förändringspunkterna.
+Följande tre ortogonala alternativ beskriver olika arkitektoniska tillvägagångssätt för att lösa uppdraget:
 
-Alternativ 2 innebär att filen läses in i minnet i sin helhet, där vi utför strängersättningarna och sedan skriver tillbaka filen med `save_code`.
+Alternativ ett är en tillståndslös manifest- och trunkeringsmodell. Den bygger rent på statisk längdberäkning för att deterministiskt dela upp kontexten i två batcher baserat på filstorlek utan intelligenta mönsteranalyser.
 
-Alternativ 3 bygger på att göra separata patchar för `recoveryPrompt` och städar bort `if-spärren` i två olika operationer.
+Alternativ två är en heuristikdriven prioriteringsmodell. Den låter modellen analysera filerna för att strategiskt välja ut vilka delar som ska ingå i den första respektive den andra körningen, vilket ger högre relevans vid komplexa debugg-scenarier.
+
+Alternativ tre är en iterativ kraschdump- och framstegsspärrsmodell. Den fokuserar på att bevara historisk kraschkontext men inför hårda låsningar för att förhindra eviga loopar och säkerställa att upprepade fel inte korrumperar nästa exekveringscykel.
 
 
 #### 2c Att vända om: Resiliensgranskning
-En resiliensgranskning av alternativen visar att Alternativ 1 är det säkraste spåret. Genom att använda en kirurgisk patch via `apply_patch` för båda förändringspunkterna, säkerställer vi att ändringarna sker atomärt och minimerar risken för fel utan att påverka omgivande kod. Det bygger in en tydlig stoppkloss om förutsättningarna i filen ändras.
+Resiliensgranskningen visar att alternativ ett fallerar på nödvändig felhantering då deterministisk delning riskerar att krossa kritiskt sammanhang. Alternativ två saknar den strikta framstegsspärr som krävs för systemisk invarians och loopskydd. Vi måste därför förlita oss på alternativ tre för att garantera kraschkontextens integritet och förhindra skadliga cykler genom de hårda låsen.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ 1 är fastställt som det vinnande kontraktet. Vi säkerställer atomära ändringar och bygger in nödvändig resiliens. MÄTTNAD: JA.
+Med tanke på analysen står det klart att det tredje alternativet är det enda som garanterar kraschkontextens integritet och förhindrar skadliga cykler. Jag slår därför fast att alternativ tre vinner, och därmed deklarerar jag MÄTTNAD: JA.

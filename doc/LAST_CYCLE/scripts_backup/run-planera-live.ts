@@ -401,7 +401,13 @@ KRAV FÖR EPISTEMISK ÖDMJUKHET (NOLL GISSNINGAR):
         }
         testSaved = false;
         const recoveryStartAnchor = `${startAnchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
-        const recoveryPrompt = `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}'.\n\nKONTRAKT OCH BAKGRUND:\n${startAnchor}`;
+        const recoveryPrompt = `Gate 3a underkände testet!
+FELLOGG:
+${err.message || String(err)}
+Åtgärda och spara till '${transientTestFile}'. Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler (let anropad = false;) utan tautologier.
+
+KONTRAKT OCH BAKGRUND:
+${startAnchor}`;
         await runMicroChannel('Att vända om', recoveryPrompt, recoveryStartAnchor, systemInstruction, testGenTools, executeTestGen, { requireMutation: true, maxTurns: 5, onMutationCheck: () => testSaved });
       }
     }
