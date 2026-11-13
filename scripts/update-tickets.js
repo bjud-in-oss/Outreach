@@ -37,7 +37,11 @@ for (const file of files) {
 
   if (existingTickets.has(idMatch)) {
     status = existingTickets.get(idMatch);
-    if (status === 'x') label = 'VERIFIED';
+    if (status === 'x') {
+      label = 'VERIFIED';
+    } else if (status === ' ') {
+      label = 'READY';
+    }
   } else if (idMatch.includes('MAINT')) {
      status = '[x]';
      label = 'VERIFIED';

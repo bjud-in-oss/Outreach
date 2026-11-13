@@ -1,61 +1,61 @@
-# BYGGCYKEL LOGG: TCK-062
-**Starttid:** 2026-11-13T23:42:06.318Z
+# BYGGCYKEL LOGG: TCK-MAINT-064
+**Starttid:** 2026-11-13T23:51:24.965Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-062: Konstruktiv kritik i webbmotorn (metaReflection.ts) med 3-vägs triagering, batch-kö och löpande rening
+# TCK-MAINT-064: 4-stegs självrannsakande omvändelse (TCK + MAINT) och 3-vägs triagering av konstruktiv kritik
 
-**Måldomän:** `path` (`src/features/path/`)
-**Målfiler:** `src/features/path/engine/metaReflection.ts`, `src/features/path/contracts/pathSchema.ts`, `src/features/path/engine/pathOrchestrator.ts`
-**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (förankrat i minnet mot injicerad `SessionAdapter` och tillståndsvariabler utan `vi.fn()`/`vi.spyOn()`) bevisar att:
-1. `genereraKonstruktivKritik(adapter, kontext)` i `src/features/path/engine/metaReflection.ts` (< 90 rader, 100 % browser-/VFS-kompatibel utan Node `fs`) returnerar ett validerat objekt enligt `MetaKritikResultatSchema` med `bedomning: 'STOR_SKILLNAD' | 'LITEM_BATCH' | 'AVVISAD_FELAKTIG'`, `kritikText`, `motivering` och valfri `forbattringAtgard`.
-2. När `skapaPathOrkestrerare` i `src/features/path/engine/pathOrchestrator.ts` (< 105 rader) kör en cykel med meta-reflektion aktiv:
-   - Vid `bedomning === 'STOR_SKILLNAD'`: anropas valfri `onKonstruktivKritik(kritik)` (pauspunkt för UI/användare) och orkestratorn kör **exakt 1 extra förbättringsiteration** med `forbattringAtgard` injicerad i `kontextMinne`.
-   - Vid `bedomning === 'LITEM_BATCH'`: läggs posten till i minnets batch-kö (`batchForbattringar`) utan extra iteration, och `rensaGenomfordaBatchPoster(ids)` rensar bort genomförda poster när en batch körts.
-   - Vid `bedomning === 'AVVISAD_FELAKTIG'`: körs **ingen** åtgärd, utan posten registreras i `avvisadeForslag` så att den inte upprepas.
-3. Även vid `STOR_SKILLNAD` körs aldrig mer än 1 extra meta-iteration per cykel, och befintliga tester i `src/features/path/__tests__/` förblir 100 % gröna.
+**Måldomän:** `scripts`
+**Målfiler:** `scripts/run-planera-live.ts`, `scripts/update-tickets.js`
+**Mekanisk Acceptans:**
+1. `scripts/run-planera-live.ts` bantas extremt (till under 880 rader) genom att rad 825 till 965 byts ut mot importerade anrop (`konsolideraTest`, `synkaDomanBarrel`, `uppdateraFeatureIndex`, `uppdateraBiljettstatus`, `hanteraTrepunktsbesiktning`, `genomforGitCommitPush`) från `./lib/fas3Consolidation.js`.
+2. I `scripts/run-planera-live.ts` aktiveras den yttre `--omvandelse`-loopen med **upp till 4 yttre försök** (`omvandelseCount < 4`) och framstegsspärr för **både** `TCK` och `TCK-MAINT`.
+   - För `MAINT` återställs `scripts/` från `doc/LAST_CYCLE/scripts_backup` före omstarten, och `CRASH_DUMP.json` skrivs med `buildCrashDumpPayload`.
+   - Före varje yttre omstart körs `runMicroChannel('Att vända om')` som besvarar *"Varför omvände sig inte den inre slingan under sina 3 försök?"*, sparar svaret i `CRASH_DUMP.json` och loggar det.
+3. Efter grön Fas 2 utvärderas konstruktiv kritik. Om `BEDOMNING: STOR_SKILLNAD` returneras körs 1 extra `--kritik-iter=1`-omstart. `LITEM_BATCH` och `AVVISAD_FELAKTIG` loggas i `doc/PROCESS_IMPROVEMENTS.md` men utlöser ingen omstart.
+4. `scripts/update-tickets.js` bevarar `READY`-status för obygda biljetter (skriver enbart `VERIFIED` om det stod så innan).
+5. `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Ren VFS-/webbläsarkompatibel `src/features/path/engine/metaReflection.ts` (< 90 rader):**
-   - Importera ALDRIG `node:fs`, `node:path` eller `child_process`.
-   - Exportera `genereraKonstruktivKritik` och `rensaGenomfordaBatchPoster`.
-2. **Zod SSOT i `src/features/path/contracts/pathSchema.ts` (< 170 rader):**
-   - Definiera `MetaKritikBedomningSchema = z.enum(['STOR_SKILLNAD', 'LITEM_BATCH', 'AVVISAD_FELAKTIG'])` och `MetaKritikResultatSchema` med `z.infer` i `pathSchema.ts` och re-exportera i `model/types.ts`.
-3. **Bevara bakåtkompatibilitet i `src/features/path/engine/pathOrchestrator.ts` (< 105 rader):**
-   - Gör `onKonstruktivKritik` och `aktiveraMetaKritik` valfria i `skapaPathOrkestrerare` så att `pathOrchestrator.test.ts` och `scripts/__tests__/run-path.test.ts` passerar oförändrat.
+1. **Kirurgisk bantning av `scripts/run-planera-live.ts` (MÅSTE BLI KORTARE ÄN INNAN):**
+   - Importera funktionerna från `'./lib/fas3Consolidation.js'` högst upp.
+   - Ersätt HELA kodblocket mellan `// FAS 3: SLUTKONSOLIDERING` (rad 825) och `main().catch` (rad 968) med enkla metodanrop. Lämna ingen gammal konsolideringslogik kvar.
+2. **Kritisk sållning:**
+   - Prompten för konstruktiv kritik i Fas 3 måste tvinga modellen att svara med `BEDOMNING: STOR_SKILLNAD`, `LITEM_BATCH` eller `AVVISAD_FELAKTIG`.
+   - Endast `STOR_SKILLNAD` får trigga `npx tsx scripts/run-planera-live.ts ${ticketId} --kritik-iter=1`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Webbversionen sållar och rensar konstruktiv kritik med omdöme**
-  Givet att Vägmotorn körs i webbläsaren utan CLI-skript
-  När en byggcykel utvärderas av `genereraKonstruktivKritik`
-  Så körs `STOR_SKILLNAD` direkt (1 iteration), `LITEM_BATCH` köas och rensas vid batch-körning, och `AVVISAD_FELAKTIG` stoppas med dokumenterad motivering.
+**Scenario: ATT FÖLJA – Både skript och kod självläker via självrannsakan**
+  Givet att den inre Fas 2-loopen misslyckas 3 gånger
+  När den yttre omvändelsen tar över (för upp till 4 varv)
+  Så analyserar motorn varför den inre slingan fastnade, vilket bryter Moment 22.
 
-**Scenario: ATT VÄNDA OM – Stopp för felaktiga förslag och evighetsloopar**
-  Givet att ett förslag bedöms som `AVVISAD_FELAKTIG` eller att 1 extra iteration redan genomförts
-  När orkestratorn prövar utfallet
-  Så utförs aldrig det felaktiga förslaget och cykeln avslutas deterministiskt.
+**Scenario: ATT VÄNDA OM – Stopp för skräpkritik och oändliga loopar**
+  Givet att felsignaturen upprepas i yttre loopen eller att kritiken är `LITEM_BATCH`
+  När spärren nås
+  Så avbryts loopandet direkt och småputs sparas i en kö för senare städning.
 
-**Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att `metaReflection.ts`, `pathSchema.ts`, `pathOrchestrator.ts` och tester är uppdaterade
+**Scenario: ATT FÖRLIKAS – Grön verifiering med bantat skript**
+  Givet att all redundans har brutits ut ur `run-planera-live.ts`
   När `pnpm verify` körs
-  Så passerar arkitekturgrindar och hela testsviten med exit 0.
+  Så passerar storleksgrinden med bred marginal.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag har förstått din intention med TCK-062. Målet är att ge webbmotorn förmågan att självständigt utvärdera och triagera kritisk feedback, vilket både förhindrar evighetsloopar och skapar en mjukare process genom batch-hantering för användaren. Jag sätter igång med att planera detta steg för steg.
+Det här uppdraget handlar om att bygga ett system som självläker genom djupt självrannsakande.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har genomfört kontraktsauditen för TCK-062. Uppdraget är strikt avgränsat till FSD-domänen `path` och omfattar tre filer. Jag har noterat de strikta radbegränsningarna och kravet på VFS-kompatibilitet för den nya reflektionsmodulen, samt vikten av att bibehålla bakåtkompatibilitet i den befintliga orkestratorn.
+Jag har genomfört kontraktsauditen för TCK-MAINT-064. Jag är redo att påbörja arbetet med att banta `run-planera-live.ts` och etablera den yttre omvändelseloppen enligt specifikationen.
 
 
 #### 0b Att förlikas: Vägval
@@ -67,24 +67,16 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Alternativ ett bygger på en tillståndsbaserad injicering i orkestrerarens kontextminne, där utvärderingen sparas och ageras på genom direkta funktionsanrop. Alternativ två introducerar en strikt observatörslogik isolerad inom domänspecifika tillstånd, utan att påverka orkestrerarens huvudflöde. Och alternativ tre modellerar en middleware-liknande sekvens för triageringen som interceptor inom ramen för nästa exekveringssteg.
+Alternativ ett är en modulär refaktorisering där vi helt bryter ut all konsolideringslogik till det nya biblioteket, och hanterar loopen för omvändelse internt i skriptet med isolerad tillståndshantering per försök.
+
+Alternativ två använder en rekursiv orkestreringsmodell i minnet för att köra looparna, där vi nollställer interna moduler för att undvika tillståndsläckage mellan körningarna.
+
+Alternativ tre bygger på en tillståndsmaskin där varje försök loggas som ett fullständigt tillståndssnabbfoto för maximal spårbarhet.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett ger bäst spårbarhet och direkt kontroll mot evighetsloopar, vilket gör det säkrast för att uppfylla kravet på max en extra iteration. Alternativ två och tre är mer frikopplade men riskerar att komplicera kontraktet i onödan givet våra begränsningar på filstorlek.
+Med fokus på resiliens och att förhindra tysta fel, ser jag Alternativ ett som det starkaste. Genom att bryta ut all konsolidering till `fas3Consolidation.js` och hålla tillståndet isolerat per försök, minimerar vi risken för tillståndsläckage mellan de yttre omvändelseförsöken. Det ger oss också en renare felpropagering.
 
 
 #### 2d Att förlikas: Mättnad
-Jag slår fast att Alternativ 1 vinner. Det ger bäst spårbarhet och direkt kontroll för att förhindra evighetsloopar, vilket är nödvändigt givet våra begränsningar på filstorlek. MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Byggkontraktet för TCK-062 är fastställt. Vi skapar `metaReflection.ts` och uppdaterar kontraktet i `pathSchema.ts` samt modellens `types.ts` för att bibehålla en sömlös integration med `pathOrchestrator.ts`. Samtliga moduler följer vår strikta radgräns och förblir 100 % VFS-kompatibla.
+Jag bekräftar härmed Alternativ ett som det vinnande kontraktet. Genom att isolera tillståndet och bryta ut konsolideringen uppnår vi den resiliens och felpropagering vi eftersträvar. MÄTTNAD: JA.

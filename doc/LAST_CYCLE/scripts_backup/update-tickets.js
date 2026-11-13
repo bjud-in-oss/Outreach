@@ -11,6 +11,18 @@ if (!fs.existsSync(TICKETS_DIR)) {
 
 const files = fs.readdirSync(TICKETS_DIR).filter(f => f.endsWith('.md') && f.startsWith('TCK-'));
 const tickets = [];
+let existingTickets = new Map();
+
+if (fs.existsSync(TICKETS_MD_PATH)) {
+  const content = fs.readFileSync(TICKETS_MD_PATH, 'utf-8');
+  const lines = content.split('\n');
+  for (const line of lines) {
+    const match = line.match(/- \[([ x])\] \*\*(TCK-[A-Za-z0-9-]+)\*\*/);
+    if (match) {
+      existingTickets.set(match[2], match[1]);
+    }
+  }
+}
 
 for (const file of files) {
   const content = fs.readFileSync(path.join(TICKETS_DIR, file), 'utf-8');
@@ -20,9 +32,20 @@ for (const file of files) {
   let title = titleMatch ? titleMatch[1] : idMatch;
   if (title.startsWith(`${idMatch}:`)) title = title.replace(`${idMatch}:`, '').trim();
 
+  let status = '[ ]';
+  let label = 'READY';
+
+  if (existingTickets.has(idMatch)) {
+    status = existingTickets.get(idMatch);
+    if (status === 'x') label = 'VERIFIED';
+  } else if (idMatch.includes('MAINT')) {
+     status = '[x]';
+     label = 'VERIFIED';
+  }
+
   tickets.push({
     id: idMatch,
-    line: `- [x] **${idMatch}** (VERIFIED): ${title} -> Se \`doc/.TICKETS/${file}\``
+    line: `- ${status} **${idMatch}** (${label}): ${title} -> Se \`doc/.TICKETS/${file}\``
   });
 }
 
