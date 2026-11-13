@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { getRequiredFiles, buildRetryAnchor } from '../lib/ticketAndAnchor';
+import { execFileSync } from 'child_process';
+import os from 'os';
+import path from 'path';
+import fs from 'fs';
 
 describe('scriptLibs', () => {
   describe('getRequiredFiles', () => {
