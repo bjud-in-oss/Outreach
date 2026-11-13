@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-056** (VERIFIED): Exempelskördning av envelope.legacy.ts till src/shared/__tests__/envelope.test.ts (ADR-030) -> Se `doc/.TICKETS/TCK-MAINT-056.md`
 - [x] **TCK-MAINT-055** (VERIFIED): Höj maxReconnectAttempts till 5 och lägg till slumpad jitter i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-055.md`
 - [x] **TCK-MAINT-054** (VERIFIED): Kompileringsskydd för scripts/*.ts, koppla saneraSkordadLegacy och laga pathNodePorts -> Se `doc/.TICKETS/TCK-MAINT-054.md`
 - [x] **TCK-MAINT-053** (VERIFIED): Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning -> Se `doc/.TICKETS/TCK-MAINT-053.md`
@@ -59,6 +60,9 @@
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
 - [x] **TCK-059** (VERIFIED): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
+- [x] **TCK-058** (VERIFIED): Exempelskördning av wal_logger.legacy.ts och WalEngine.getWalSummary (ADR-030) -> Se `doc/.TICKETS/TCK-058.md`
+- [x] **TCK-057** (VERIFIED): Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030) -> Se `doc/.TICKETS/TCK-057.md`
+- [x] **TCK-056** (VERIFIED): Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030) -> Se `doc/.TICKETS/TCK-056.md`
 - [x] **TCK-055** (VERIFIED): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
 - [x] **TCK-054** (VERIFIED): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
 - [x] **TCK-053** (VERIFIED): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`

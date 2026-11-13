@@ -1,65 +1,56 @@
-# BYGGCYKEL LOGG: TCK-059
-**Starttid:** 2026-11-13T21:42:14.015Z
+# BYGGCYKEL LOGG: TCK-056
+**Starttid:** 2026-11-13T21:47:38.323Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-059: Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter
+# TCK-056: Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030)
 
-**Måldomän:** `path` (`src/features/path/`)
-**Målfiler:** `src/features/path/contracts/pathSchema.ts`, `src/features/path/engine/bidiLiveAdapter.ts`
-**Mekanisk Acceptans:** Ett transient test bevisar (Fail-First mot körtidsankare utan `vi.fn()`/`vi.spyOn()`) att:
-1. `BidiLiveAdapterConfigSchema` i `src/features/path/contracts/pathSchema.ts` sätter `maxReconnectAttempts` till `5` som standard samt definierar `baseBackoffMs` (default `1000`) och `maxJitterMs` (default `1000`), med `BidiLiveAdapterConfig` härledd via `z.infer`.
-2. När `skapaBidiLiveAdapter({ apiKey: 'test-key', baseBackoffMs: 5, maxJitterMs: 5, sdkConstructor })` anropas och `receiveStream()` kastar ett transient WebSocket-fel (`kod: 1011` eller `1006`) de första 2 försöken men lyckas på försök 3, återansluter adaptern med exponentiell backoff + jitter, stänger samtliga 3 sessioner i `finally` (`closedSessions === 3`) och returnerar det strömmade svaret på försök 3.
-3. När samtliga `maxReconnectAttempts` förbrukas eller ett icke-transient fel (t.ex. `'API-nyckel saknas för Gemini Live SDK'`) uppstår, larmas `eventBus?.emit('error', err)` och felet kastas vidare.
-4. Samtliga befintliga tester i `src/features/path/__tests__/` (`bidiLiveAdapter.test.ts`, `tck-046.test.ts`, `tck-047.test.ts`) förblir 100 % gröna och alla filer hålls under 250 rader.
+**Måldomän:** `google_drive_sync` (`src/features/google_drive_sync/`)
+**Målfiler:** `src/features/google_drive_sync/model/driveWorkspaceHelper.ts`
+**Skördad Legacy:** `src/__tests__/drive_sync.legacy.ts`
+**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (konsoliderat till `src/features/google_drive_sync/__tests__/`) verifierar samtliga 3 scenarier från `src/__tests__/drive_sync.legacy.ts` (`GoogleDriveClient` token-initiering med `hasValidToken()`, `resolveMimeType('strategi.json')`, `getWorkspaceSubfolders()`) samt nya `createDefaultWorkspaceManifest()`, varefter Fas 3 raderar `src/__tests__/drive_sync.legacy.ts` och `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Zod SSOT i `src/features/path/contracts/pathSchema.ts` (< 150 rader):**
-   - Uppdatera `BidiLiveAdapterConfigSchema` till `maxReconnectAttempts: z.number().default(5), baseBackoffMs: z.number().default(1000), maxJitterMs: z.number().default(1000),`.
-   - Duplicera ALDRIG `BidiLiveAdapterConfig` manuellt i `model/types.ts` (den re-exporteras redan därifrån).
-2. **Resilient återanslutning i `src/features/path/engine/bidiLiveAdapter.ts` (< 170 rader):**
-   - Exportera rena hjälpfunktioner `computeBackoffDelayMs(attempt: number, baseBackoffMs = 1000, maxJitterMs = 1000): number` (`Math.pow(2, attempt + 1) * baseBackoffMs + (maxJitterMs > 0 ? Math.floor(Math.random() * maxJitterMs) : 0)`) och `isTransientLiveError(err: unknown): boolean` (matchar `/\b(1011|1006|503)\b|handskakning|handshake|ECONNRESET|ETIMEDOUT/i`).
-   - **Bevara `if (clientFactory)` 100 % oförändrad:** När `clientFactory` eller `explicitClientFactory` skickas in ska befintlig polyglott körning exekvera utan omsändningsloop så att `TCK-045`, `TCK-046` och `TCK-047` passerar oförändrat.
-   - **SDK-vägen (`else`):** Validera `apiKey` före loopen. Instansiera SDK-klienten säkert (stöd både `new SdkClass(...)` när `SdkClass.prototype` finns och anrop `SdkClass(...)` för rena fabriksfunktioner). Kör `for (let attempt = 0; attempt <= maxAttempts; attempt++)` där `maxAttempts = config.maxReconnectAttempts ?? 5`. Stäng `session` i `finally` på varje försök. Vid catch: om `attempt < maxAttempts && isTransientLiveError(err)`, vänta `computeBackoffDelayMs(attempt, config.baseBackoffMs ?? 1000, config.maxJitterMs ?? 1000)` ms och försök igen; annars anropa `eventBus?.emit('error', err)` och `throw err`.
-3. **Testdisciplin i Steg 3a (NOLL självmotsägelser eller kors-domänimporter):**
-   - Importera ALDRIG från `gemini_live_swarm` i testet – använd ett lokalt `eventBus`-objekt `{ emit: (_e: string, err: unknown) => emittedErrors.push(err) }`.
-   - Använd en riktig `class MockSdk { live = mockLive; constructor(_opts: any) {} }` för `sdkConstructor` (aldrig en arrow-funktion).
-   - För att verifiera att `close()` anropas på varje försök (`closedSessions === 3`), låt `connect()` returnera en ny session på alla 3 försöken och låt `receiveStream()` kasta WS 1011-felet på försök 1 och 2 (om `connect()` kastar innan session skapas är `closedSessions === 1`).
-   - Använd ALDRIG `vi.fn()` eller `vi.spyOn()`, och sätt `baseBackoffMs: 5, maxJitterMs: 5` i testet.
+1. **Skapa `src/features/google_drive_sync/model/driveWorkspaceHelper.ts` (< 40 rader):**
+   - Exportera `createDefaultWorkspaceManifest(rootName = 'Outreach_Workspace')` som returnerar `{ rootName, subfolders: ['Campaigns', 'Templates', 'Logs', 'Artifacts'] }`.
+   - Rör inte `driveClient.ts` (ligger på 238/250 rader).
+2. **Testdisciplin i Steg 3a (Fail-First + Skörd utan `vi.fn()`):**
+   - Läs `src/__tests__/drive_sync.legacy.ts` och `src/features/google_drive_sync/api/driveClient.ts` i Steg 3a.
+   - Importera `GoogleDriveClient` från `../features/google_drive_sync/api/driveClient` och `createDefaultWorkspaceManifest` från `../features/google_drive_sync/model/driveWorkspaceHelper`.
+   - Inga kors-domänimporter och inga `vi.fn()`/`vi.spyOn()`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Vägmotorn överlever transienta WS 1011-avbrott**
-  Givet att Vägmotorn körs mot Gemini Live SDK och möter tillfälliga WS 1011-avbrott
-  När `BidiLiveAdapter.skicka` hanterar anslutningen
-  Så återansluter adaptern upp till 5 gånger med exponentiell backoff och slumpad jitter, stänger avbrutna sessioner i `finally`
-  Och levererar svaret utan att avbryta byggkedjan.
+**Scenario: ATT FÖLJA – Drive-klientens kontrakt blir levande regressionsskydd**
+  Givet att `drive_sync.legacy.ts` innehåller 3 verifierade tester för `GoogleDriveClient`
+  När de skördas in i `src/features/google_drive_sync/__tests__/` tillsammans med `createDefaultWorkspaceManifest`
+  Så körs de i varje `pnpm verify` och `drive_sync.legacy.ts` städas bort i Fas 3.
 
-**Scenario: ATT VÄNDA OM – Avvisande av oändliga loopar och läckande sessioner**
-  Givet att ett permanent fel uppstår eller att alla återanslutningsförsök förbrukas
-  När `skicka` avbryter försöken
-  Så stängs varje påbörjad session i `finally`, felet skickas till `eventBus` och kastas vidare.
+**Scenario: ATT VÄNDA OM – Avvisande av tysta regressionsfel i Drive-synken**
+  Givet att `google_drive_sync` tidigare saknade aktiva enhetstester
+  När testerna blir aktiva i Vitest
+  Så fångas eventuella brott i MIME-typning eller mappstruktur direkt.
 
 **Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att `pathSchema.ts`, `bidiLiveAdapter.ts` och samtliga tester i `path` är uppdaterade
+  Givet att testerna passerar och legacy-filen är borttagen
   När `pnpm verify` körs
-  Så passerar samtliga tester och radgränskontroller med exit 0.
+  Så passerar hela sviten med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Vi ska stärka Vägmotorns motståndskraft genom att implementera exponentiell backoff och jitter i BidiLiveAdapter. Det innebär att systemet graciöst hanterar tillfälliga avbrott och återansluter automatiskt, vilket skyddar byggprocessen och säkrar en mer pålitlig interaktion. Är du redo att vi påbörjar planeringsfasen?
+Det här uppdraget handlar om att städa upp bland våra äldre tester och ge dem en permanent, pålitlig plats i vår nya struktur. Genom att flytta funktionerna från legacy-filen in till domänen för Google Drive säkerställer vi att koden testas ordentligt vid varje bygge, vilket gör systemet mer robust och tryggt att använda. Visst låter det som en bra plan att konsolidera detta?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har granskat kontraktet och omfattningen. Uppdraget är tydligt avgränsat till `path`-domänen, och samtliga systemiska invarianter och radgränser har verifierats för en trygg och resurssnål implementation. Vi är redo att gå vidare.
+Kontraktsauditen är utförd och godkänd. Uppdraget omfattar strikt en FSD-domän (`google_drive_sync`) och innefattar planerad destruktiv sanering av legacy-tester i Fas 3. Alla restriktioner och säkerhetsspärrar är förstådda.
 
 
 #### 0b Att förlikas: Vägval
@@ -71,21 +62,21 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-059 och förhindra tidigare haverier har vi tre ortogonala alternativ.
+Här är de tre ortogonala alternativen för att lösa uppdraget för TCK-056:
 
-Det första alternativet innebär en explicita iterativ `for`-loop direkt i SDK-vägen, där `session.close()` anropas i `finally`-blocket för varje försök.
+Alternativ 1: Direkt konsolidering och modulär separation. Vi skapar hjälpfilen, flyttar existerande logik till nya enhetstester i domänen och raderar legacy-filen direkt efteråt.
 
-Det andra alternativet bygger på en rekursiv asynkron funktion för varje försök, vilket ger en ren isolerad kontext och förhindrar sessionsläckage.
+Alternativ 2: Strukturerad steg-för-steg-migrering. Vi verifierar först manifestfunktionen, portar sedan testerna ett och ett och validerar att inga mockar krävs innan vi städar.
 
-Det tredje alternativet använder en generatordriven ansats som hanterar backoff-logiken internt och kontrollerar exekveringsflödet.
+Alternativ 3: Integrerad körtidsvalidering. Vi bygger hjälpfilen och kör de skördade testerna direkt mot Drive-klienten för att säkerställa full funktionalitet innan legacy-koden saneras.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Av de tre alternativen är den explicita iterativa `for`-loopen i SDK-vägen det mest robusta och transparenta valet. Den säkerställer att varje försök har en isolerad livscykel, och med `session.close()` i ett absolut `finally`-block förhindrar vi effektivt sessionsläckage, vilket var orsaken till det tidigare haveriet.
+Resiliensgranskningen visar att alternativ 3 har bäst resiliens eftersom det integrerar körtidsvalidering direkt, vilket säkerställer att klientkontraktet fungerar korrekt innan någon destruktiv sanering sker av legacy-koden. Detta minimerar risken för tysta regressionsfel vid migrering.
 
 
 #### 2d Att förlikas: Mättnad
-Det vinnande alternativet är den explicita iterativa for-loopen. Vi uppnår full resiliens och eliminerar sessionsläckage. Med detta deklarerar jag MÄTTNAD: JA.
+Resiliensgranskningen bekräftar att alternativ 3 är det mest hållbara spåret. Genom att integrera körtidsvalidering direkt minimerar vi risken för dolda fel. Jag deklarerar därmed MÄTTNAD: JA.
 
 
 #### 3a Att följa: Testspecifikation
@@ -97,4 +88,4 @@ Det vinnande alternativet är den explicita iterativa for-loopen. Vi uppnår ful
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Byggkontraktet är nu spikat! Vi fastställer uppdateringen av `BidiLiveAdapterConfigSchema` i `pathSchema.ts` och implementerar den robusta återanslutningslogiken i `bidiLiveAdapter.ts` för att möta kraven på exponentiell backoff och jitter utan minnesläckor eller oändliga loopar. STATUS: GODKÄND.
+Byggkontraktet är spikat och kristalliserat. Vi skapar `src/features/google_drive_sync/model/driveWorkspaceHelper.ts` för workspace-manifestet och flyttar över arvegodstesterna till en ny, isolerad svit under `__tests__/` för löpande regredieringsskydd. I slutet av processen fasas `drive_sync.legacy.ts` ut helt, och vi säkerställer att `driveClient.ts` förblir orörd och inom radgränsen.
