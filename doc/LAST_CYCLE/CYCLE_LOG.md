@@ -1,59 +1,54 @@
-# BYGGCYKEL LOGG: TCK-054
-**Starttid:** 2026-11-13T21:07:37.049Z
+# BYGGCYKEL LOGG: TCK-055
+**Starttid:** 2026-11-13T21:14:33.106Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-054: Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn
+# TCK-055: Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030)
 
-**Måldomän:** `path` (`src/features/path/`)
-**Målfiler:** `src/features/path/engine/bidiLiveAdapter.ts`
-**Mekanisk Acceptans:** Ett transient test bevisar (Fail-First mot körtidsankare utan `vi.fn()`/`vi.spyOn()`) att standardfabriken mot `@google/genai` fungerar när `clientFactory` utelämnas, samtidigt som samtliga befintliga tester i `src/features/path/__tests__/` (`bidiLiveAdapter.test.ts`, `tck-046.test.ts`, `tck-047.test.ts`) förblir 100 % gröna och `bidiLiveAdapter.ts` hålls under 130 rader.
+**Måldomän:** `gemini_live_swarm` (`src/features/gemini_live_swarm/`)
+**Målfiler:** `src/features/gemini_live_swarm/bus/swarmEventBus.ts`, `src/features/gemini_live_swarm/coordinator/swarmOrchestrator.ts`
+**Skördad Legacy:** `src/__tests__/swarm_telemetry.legacy.ts`, `src/__tests__/gemini_swarm.legacy.ts`
+**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (konsoliderat till `src/features/gemini_live_swarm/__tests__/`) verifierar samtliga 8 scenarier från `src/__tests__/swarm_telemetry.legacy.ts` och `src/__tests__/gemini_swarm.legacy.ts` (`SwarmEventBus` wildcard-prenumeration, `unsubscribe`, FIFO-ringbuffert, Zod `SwarmTelemetrySnapshotSchema`/`DevelopmentTicketSchema`, `RECONCILIATION_UNITS` samt `SwarmOrchestrator.getAllUnits()`/`createCampaignPlan()`), varefter Fas 3 raderar de skördade legacy-filerna och `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Två helt åtskilda grenar i `skapaBidiLiveAdapter` (`src/features/path/engine/bidiLiveAdapter.ts`, < 130 rader):**
-   - Behåll signaturen `skapaBidiLiveAdapter(config: Partial<BidiLiveAdapterConfig> & { clientFactory?: any; sdkConstructor?: any }, explicitClientFactory?: any): SessionAdapter`.
-   - **Gren A (`if (clientFactory)` — BEVARA 100 % OFÖRÄNDRAD):** När `clientFactory` finns, kör exakt befintlig polyglott klienthantering (`await client.connect()`, `client.send` / `client.sendPrompt`, `client.stream` / `client.receiveStream()`, `client.close()` i `finally`) utan att kräva `apiKey` och utan att anropa `sendClientContent`.
-   - **Gren B (`else` — NY `@google/genai` SDK-FABRIK):** När `clientFactory` INTE finns:
-     * Läs `const apiKey = config.apiKey !== undefined ? config.apiKey : (typeof process !== 'undefined' ? process.env?.GEMINI_API_KEY : undefined);`.
-     * Om `!apiKey`, kasta `new Error('API-nyckel saknas för Gemini Live SDK')`.
-     * Instansiera `const SdkClass = config.sdkConstructor || GoogleGenAI;` med `new SdkClass({ apiKey, apiVersion: 'v1alpha' })`.
-     * Anslut via `const session = await ai.live.connect({ model: config.model || 'gemini-3.8-live' })`, skicka `{ turns: [{ role: 'user', parts: [{ text: content }] }], turnComplete: true }` via `session.sendClientContent`, samla text från `serverContent.modelTurn.parts` (via async-iteration över `session` eller `session.receiveStream()`) och anropa `await session.close()` i `finally`.
-2. **Felpropagering & Gate 2c:**
-   - Fånga fel i `try/catch`, anropa `eventBus?.emit('error', err)` och kasta alltid om felet (`throw err`). Inga tomma `catch {}`-block.
+1. **Läs båda legacy-filerna innan testgenerering:**
+   - Läs `src/__tests__/swarm_telemetry.legacy.ts` och `src/__tests__/gemini_swarm.legacy.ts` i Steg 3a och översätt samtliga 8 assertions till standard Vitest `describe`/`it`/`expect` utan `vi.fn()`-spioner.
+2. **FSD-isolering och radgränser:**
+   - Importera uteslutande från `../bus/swarmEventBus`, `../coordinator/swarmOrchestrator`, `../agents/roleDefinitions`, `../telemetry/telemetrySchema` och `../../../shared/contracts/envelope`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Vägmotorn talar skarpt med Gemini Live SDK utan att bryta äldre portkontrakt**
-  Givet att `skapaBidiLiveAdapter` konfigureras med en API-nyckel utan `clientFactory`
-  När `adapter.skicka(compiledPrompt)` exekveras
-  Så ansluter SDK-grenen till `v1alpha` Live API, sänder prompten och returnerar det strömmade svaret
-  Samtidigt som `clientFactory`-grenen i `TCK-045`–`047` fungerar oförändrat.
+**Scenario: ATT FÖLJA – Historisk testkunskap blir levande regressionsskydd**
+  Givet att `swarm_telemetry.legacy.ts` och `gemini_swarm.legacy.ts` innehåller 8 verifierade kärnscenarier
+  När de skördas in i `src/features/gemini_live_swarm/__tests__/`
+  Så körs de automatiskt i varje Fas 2-validering och `pnpm verify`
+  Och legacy-filerna städas bort automatiskt i Fas 3.
 
-**Scenario: ATT VÄNDA OM – Avvisande av tom API-nyckel och läckande sockets**
-  Givet att `apiKey` saknas eller är tom sträng `''`
-  När `skicka` körs utan `clientFactory`
-  Så propageras `'API-nyckel saknas för Gemini Live SDK'` omedelbart utan att falla tillbaka på `.env`.
+**Scenario: ATT VÄNDA OM – Avvisande av passiv, okörd testkod**
+  Givet att `*.legacy.ts` exkluderas av Vitest
+  När scenarierna flyttas till aktiva Vitest-sviter
+  Så upptäcks eventuella brott i `SwarmEventBus` eller `SwarmOrchestrator` omedelbart.
 
-**Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att `bidiLiveAdapter.ts` och samtliga domäntester i `path` passerar
+**Scenario: ATT FÖRLIKAS – Renare testkatalog och grön verifiering**
+  Givet att de skördade testerna passerar och de två legacy-filerna är borttagna
   När `pnpm verify` körs
-  Så passerar samtliga tester och radgränskontroller med exit 0.
+  Så passerar hela sviten med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Syftet med det här uppdraget är att bygga in en säker och sömlös standardfabrik i Vägmotorn. Genom att låta oss ansluta direkt via det officiella SDK:t när ingen anpassad fabrik finns, gör vi systemet mer modulärt och lättillgängligt, samtidigt som vi bevarar alla tidigare kontrakt och stabilitet. Hur låter den här planen för dig?
+Vi vill säkra systemets framtid genom att väcka liv i historisk testkunskap. Genom att skörda de gamla testerna från `swarm_telemetry` och `gemini_swarm` och integrera dem i vår aktiva struktur, bygger vi ett starkare regressionsskydd och kan städa bort gammal testkod som inte längre används. Det skapar mer ordning och högre tillförlitlighet för hela systemet.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Det här ser ut som en solid och tydlig plan. Kontraktsaudit är slutförd och jag kan bekräfta att modulen förblir strikt isolerad och att uppdelningen i två grenar följer våra invarianter. Handlingsutrymmet är begränsat till den specifika domänen vilket minimerar risken för följdfel i systemet.
+Kontraktsaudit genomförd. Uppdraget omfattar exakt en FSD-domän: `gemini_live_swarm`. Destruktiv sanering av legacy-filerna i Fas 3 är konsekvent deklarerad. Vi rör oss framåt mot grön verifiering.
 
 
 #### 0b Att förlikas: Vägval
@@ -65,21 +60,21 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-De tre ortogonala alternativen för att lösa TCK-054 är följande:
+De tre ortogonala alternativen för att skörda och integrera legacy-testerna är:
 
-Alternativ 1: Användning av asynkron iteration direkt på `session.receiveStream()` för att samla in textdelar från `modelTurn.parts` under asynkron iteration.
+1. Enhetlig konsolidering i en enda ny testfil, vilket ger full överblick men skapar en större fil. 
 
-Alternativ 2: Sekventiell läsning i en `while`-loop genom att anropa `session.receive()` och granska inkommande meddelanden efter `serverContent` tills turnComplete flaggan detekteras.
+2. Domänspecifik uppdelning, där testerna för händelsebuss respektive orkestreringsmodellen isoleras i egna filer för tydligare felisolering.
 
-Alternativ 3: Event-baserad insamling genom att lyssna på specifika unit-events internt i sessionen för att bygga upp svaret utan att exponera eventbussen för andra domäner eller beroenden.
+3. Fabriksbaserad datainjicering, där man bygger modulära test-helpers eller fabriker för att testa Zod-scheman och datakontrakt oberoende av händelselogiken.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att Alternativ 1, asynkron iteration direkt på receiveStream, är mest resilient. Den följer SDK:ns naturliga strömningsmönster och möjliggör direkt felpropagering i varje steg. Alternativ 2 och 3 introducerar onödig komplexitet i tillståndshanteringen, vilket ökar risken för hängande sockets vid oväntade fel.
+Alternativ ett skapar en risk för en monolitisk testfil som döljer felkällor och försvårar underhåll. Alternativ två skyddar bäst genom att isolera logik och underlätta snabb felisolering mellan oberoende domäner. Alternativ tre kräver för mycket komplexitet för detta specifika uppdrag. Jag landar i att alternativ två är mest resilient för framtida uppdateringar.
 
 
 #### 2d Att förlikas: Mättnad
-Utvärderingen är fullständig. Alternativ 1 vinner vägvalet och bekräftas som vårt stabilaste kontrakt. Spänningsfältet har vägts och därmed deklareras MÄTTNAD: JA.
+Jag fastställer att alternativ två är det vinnande alternativet för detta uppdrag. Dess fokus på isolering och resiliens ger bäst förutsättningar för underhåll och felisolering. MÄTTNAD: JA.
 
 
 #### 3a Att följa: Testspecifikation
@@ -91,4 +86,4 @@ Utvärderingen är fullständig. Alternativ 1 vinner vägvalet och bekräftas so
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Det slutgiltiga byggkontraktet för TCK-054 fastställer att vi skapar ett nytt test, `src/features/path/__tests__/bidiLiveAdapter.test.ts`, som verifierar att standardfabriken fungerar. Vi kommer även att bevara källkoden i `src/features/path/engine/bidiLiveAdapter.ts` enligt de nya kraven, och säkerställa att alla exporter finns med i `src/features/path/index.ts`.
+Det slutgiltiga byggkontraktet innebär att vi skapar testfilen `src/features/gemini_live_swarm/__tests__/swarm_swarm.test.ts` som konsoliderar de åtta scenarierna, och att vi bevarar `index.ts` oförändrad då inga källkodsändringar krävs.
