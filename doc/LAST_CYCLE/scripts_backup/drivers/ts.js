@@ -203,6 +203,7 @@ if (args.includes('--check-alibi')) {
 
   inspectTestNode(sf);
 
+  if (hasTautologyAssertion) { console.error(`❌ GATE 3a BROTT i ${targetFile}: Tautologisk alibi-assertion (t.ex. expect(true).toBe(true)) är förbjuden!`); process.exit(1); }
   if (hasIllegalFsRead) {
     console.error(`❌ GATE 3a BROTT i ${targetFile}:`);
     console.error(`   Testet anropar fs.readFileSync! Tester ska testa funktionellt i minnet, inte läsa filer.`);
