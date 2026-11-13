@@ -668,6 +668,18 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
         codeSaved = false;
 
         const errLog = err.stdout?.toString() || err.stderr?.toString() || err.message;
+        
+        const filesToInclude = Array.from(new Set([...modifiedFiles, ...getRequiredFiles(), 'src/features/path/model/types.ts']));
+        let currentMaintSource = '';
+        for (const relPath of filesToInclude) {
+          const fullPath = path.resolve(ROOT_DIR, relPath);
+          if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+            currentMaintSource += `\n--- ${relPath} ---\n` + fs.readFileSync(fullPath, 'utf-8');
+          }
+        }
+
+        const maintRetryAnchor = buildRetryAnchor('', currentMaintSource, errLog);
+
         const maintRetryPrompt = `FAS 2 MAINT SJÄLVRÄTTNING (Försök ${maintAttempts}/3):
 De lokala skriptkontrollerna fallerade!
 FELLOGG:
@@ -677,12 +689,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
 1. Analysera felet ovan från 'verify-architecture.js' och 'vitest run scripts/__tests__/'.
 2. Korrigera källkoden under 'scripts/' via 'save_code' eller 'apply_patch'!`;
 
-        await runMicroChannel('Att vända om', maintRetryPrompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
-          requireMutation: true,
-          maxTurns: 3,
-          onMutationCheck: () => codeSaved,
-          getFollowupPrompt: getFas2FollowupPrompt
-        });
+        await runMicroChannel('Att vända om', maintRetryPrompt, maintRetryAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 5, onMutationCheck: isFas2Complete, getFollowupPrompt: getFas2FollowupPrompt });
       }
     }
   }

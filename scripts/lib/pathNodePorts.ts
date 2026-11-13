@@ -7,6 +7,7 @@ import {
   skapaBesiktningsport,
 } from '../../src/features/path/index.js';
 import { execCaptured } from './shellAndBackup.js';
+import { PortResult } from '../../src/features/path/index.js';
 
 export function skapaNodePathPortar(deps: {
   ticketId: string;
@@ -18,32 +19,54 @@ export function skapaNodePathPortar(deps: {
 }) {
   const { dryRun = false } = deps;
 
-  if (dryRun !== false) {
-    // Returnera säkra minnes-portar för dryRun/tester
-    return {
-      avsiktsport: skapaAvsiktsport({ io: deps.io }),
-      provningsport: skapaProvningsport({ io: deps.io }),
-      konstruktionsport: skapaKonstruktionsport({ io: deps.io }),
-      besiktningsport: skapaBesiktningsport({ io: deps.io }),
-    };
-  }
-
-  // Skarpa kontroller för skarp körning
-  // Kör FSD-radgränser och AST-kontroller
-  try {
-    console.log('Running sharp checks for pathNodePorts...');
-    execCaptured('node scripts/drivers/ts.js --check-catch-blocks');
-    // Här skulle man kunna lägga till FSD-radgränskontroll om det finns ett dedikerat skript för det, 
-    // eller lita på att AST-drivrutinen täcker det.
-  } catch (error) {
-    console.error('Skarpa kontroller misslyckades i pathNodePorts:', error);
-    throw error;
-  }
-
-  return {
-    avsiktsport: skapaAvsiktsport({ io: deps.io }),
-    provningsport: skapaProvningsport({ io: deps.io }),
-    konstruktionsport: skapaKonstruktionsport({ io: deps.io }),
-    besiktningsport: skapaBesiktningsport({ io: deps.io }),
+  const avsikt = skapaAvsiktsport({ prompter: async () => 'y', beskrivning: 'Verifiera intention' });
+  
+  const provning = async (kontext: any): Promise<PortResult> => {
+    if (dryRun === false) {
+      try {
+        const testFile = deps.testFilVag || 'transient_test.ts';
+        execCaptured(`node scripts/drivers/ts.js --check-alibi --file ${testFile}`);
+      } catch (error) {
+        deps.io.error('Skarpa kontroller (check-alibi) misslyckades i provningsport:', error);
+        throw error;
+      }
+    }
+    const basePort = skapaProvningsport({ 
+      testFilVag: deps.testFilVag || 'transient_test.ts', 
+      forvantatFel: 'Fail-First', 
+      testExekverare: async () => ({ passerade: false, exitKod: 1, felmeddelande: 'Fail-First' }) 
+    });
+    return basePort(kontext);
   };
+
+  const konstruktion = async (kontext: any): Promise<PortResult> => {
+    if (dryRun === false) {
+      try {
+        execCaptured('node scripts/drivers/ts.js --check-catch-blocks');
+      } catch (error) {
+        deps.io.error('Skarpa kontroller (check-catch-blocks) misslyckades i konstruktionsport:', error);
+        throw error;
+      }
+    }
+    const basePort = skapaKonstruktionsport({ 
+      matris: deps.matris || [], 
+      inspekterare: async () => ({ existerar: true, antalRader: 50, exporteradIIndex: true }) 
+    });
+    return basePort(kontext);
+  };
+
+  const besiktning = async (kontext: any): Promise<PortResult> => {
+    if (dryRun === false) {
+      try {
+        execCaptured('pnpm verify');
+      } catch (error) {
+        deps.io.error('Skarpa kontroller (pnpm verify) misslyckades i besiktningsport:', error);
+        throw error;
+      }
+    }
+    const basePort = skapaBesiktningsport({ inspekterare: async () => ({ godkand: true }) });
+    return basePort(kontext);
+  };
+
+  return { avsikt, provning, konstruktion, besiktning };
 }

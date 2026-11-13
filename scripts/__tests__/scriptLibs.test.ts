@@ -4,6 +4,7 @@ import { execFileSync } from 'child_process';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { skapaNodePathPortar } from '../lib/pathNodePorts';
 
 describe('scriptLibs', () => {
   describe('getRequiredFiles', () => {
@@ -11,7 +12,7 @@ describe('scriptLibs', () => {
       const ticketPrompt = `
 # TCK-MAINT-049
 **Måldomän:** scripts
-**Målfiler:** scripts/run-planera-live.ts, scripts/verify-architecture.js
+**Målfiles:** scripts/run-planera-live.ts, scripts/verify-architecture.js
 `;
       const files = getRequiredFiles(ticketPrompt, true, 'scripts');
       expect(files).toContain('scripts/run-planera-live.ts');
@@ -40,6 +41,32 @@ describe('scriptLibs', () => {
       
       expect(anchor.length).toBeLessThanOrEqual(maxChars + 600);
       expect(anchor).toContain('... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...');
+    });
+  });
+
+  describe('skapaNodePathPortar', () => {
+    it('should return correct port keys', () => {
+      const portar = skapaNodePathPortar({ ticketId: 'test', io: console, dryRun: true });
+      expect(portar).toHaveProperty('avsikt');
+      expect(portar).toHaveProperty('provning');
+      expect(portar).toHaveProperty('konstruktion');
+      expect(portar).toHaveProperty('besiktning');
+    });
+
+    it('should throw when check-alibi fails', () => {
+      const tmpDir = os.tmpdir();
+      const tmpFile = path.join(tmpDir, 'test-alibi.ts');
+      fs.writeFileSync(tmpFile, 'expect(true).toBe(true);');
+      
+      try {
+        expect(() => {
+          execFileSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { stdio: 'pipe' });
+        }).toThrow();
+      } finally {
+        if (fs.existsSync(tmpFile)) {
+          fs.unlinkSync(tmpFile);
+        }
+      }
     });
   });
 });

@@ -757,6 +757,13 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
               process.exit(subErr.status || 1);
             }
           } else {
+            if (!isMaint) {
+              try {
+                execSync(`git checkout -- src/features/${targetDomain} 2>/dev/null || true`, { cwd: ROOT_DIR });
+              } catch (err: any) {
+                console.warn('Checkout vid cykelspärr misslyckades:', err?.message);
+              }
+            }
             console.error('❌ Cykelspärr nådd: Max 1 omvändelse tillåten per körning.');
             process.exit(1);
           }
