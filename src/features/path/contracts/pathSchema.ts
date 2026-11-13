@@ -107,7 +107,9 @@ export const BidiLiveAdapterConfigSchema = z.object({
   model: z.string().default('gemini-3.8-live'),
   systemInstruction: z.string().optional(),
   modality: z.enum(['AUDIO', 'TEXT']).default('AUDIO'),
-  maxReconnectAttempts: z.number().default(3),
+  maxReconnectAttempts: z.number().default(5),
+  baseBackoffMs: z.number().default(1000),
+  maxJitterMs: z.number().default(1000),
   eventBus: z.custom<any>().optional(),
 });
 

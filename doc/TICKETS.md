@@ -58,6 +58,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-059** (VERIFIED): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
 - [x] **TCK-055** (VERIFIED): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
 - [x] **TCK-054** (VERIFIED): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
 - [x] **TCK-053** (VERIFIED): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`

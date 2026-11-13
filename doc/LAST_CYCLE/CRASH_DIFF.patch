@@ -1,29 +1,207 @@
-diff --git a/src/__tests__/transient_TCK-054.test.ts b/src/__tests__/transient_TCK-054.test.ts
+diff --git a/src/__tests__/transient_TCK-059.test.ts b/src/__tests__/transient_TCK-059.test.ts
 new file mode 100644
-index 0000000..17c87c0
+index 0000000..5c6398d
 --- /dev/null
-+++ b/src/__tests__/transient_TCK-054.test.ts
-@@ -0,0 +1,23 @@
++++ b/src/__tests__/transient_TCK-059.test.ts
+@@ -0,0 +1,73 @@
 +import { describe, it, expect } from 'vitest';
 +import { skapaBidiLiveAdapter } from '../features/path/engine/bidiLiveAdapter';
-+import { CompiledPrompt } from '../features/path/contracts/pathSchema';
 +
-+describe('BidiLiveAdapter SDKfabrik (TCK-054)', () => {
-+  it('ska kasta fel om API-nyckel saknas och ingen clientFactory finns', async () => {
-+    const adapter = skapaBidiLiveAdapter({});
-+    const prompt: CompiledPrompt = { userPrompt: 'Hej' };
++describe('BidiLiveAdapter Återanslutning (TCK-059)', () => {
++  it('ska återansluta med backoff och jitter vid transienta fel', async () => {
++    const emittedErrors: unknown[] = [];
++    let closedSessions = 0;
++    let attempts = 0;
 +
-+    await expect(adapter.skicka(prompt)).rejects.toThrow(
-+      'API-nyckel saknas för Gemini Live SDK'
-+    );
-+  });
++    const mockEventBus = {
++      emit: (type: string, err: unknown) => {
++        if (type === 'error') {
++          emittedErrors.push(err);
++        }
++      }
++    };
 +
-+  it('ska kasta fel om API-nyckel är tom sträng', async () => {
-+    const adapter = skapaBidiLiveAdapter({ apiKey: '' });
-+    const prompt: CompiledPrompt = { userPrompt: 'Hej' };
++    class MockSession {
++      constructor() {
++        attempts++;
++      }
++      async sendClientContent(_opts: any) {
++        // Försök 1 & 2 kastar fel i receiveStream, så vi behöver inte fejka här
++      }
++      async *receiveStream(): AsyncGenerator<any, void, unknown> {
++        if (attempts === 1) {
++          throw new Error('WebSocket error 1011: Transient Failure');
++        }
++        if (attempts === 2) {
++          throw new Error('WebSocket error 1006: Connection Lost');
++        }
++        // Försök 3 lyckas
++        yield {
++          serverContent: {
++            modelTurn: {
++              parts: [{ text: 'Lyckat svar på försök 3' }]
++            }
++          }
++        };
++      }
++      async close() {
++        closedSessions++;
++      }
++    }
 +
-+    await expect(adapter.skicka(prompt)).rejects.toThrow(
-+      'API-nyckel saknas för Gemini Live SDK'
-+    );
++    class MockLive {
++      async connect(_opts: any) {
++        return new MockSession();
++      }
++    }
++
++    class MockSdk {
++      live = new MockLive();
++    }
++
++    const adapter = skapaBidiLiveAdapter({
++      apiKey: 'test-key',
++      baseBackoffMs: 5,
++      maxJitterMs: 5,
++      eventBus: mockEventBus,
++      sdkConstructor: () => new MockSdk()
++    });
++
++    const resultat = await adapter.skicka({
++      userPrompt: 'Hej'
++    });
++
++    expect(resultat.svar).toBe('Lyckat svar på försök 3');
++    expect(attempts).toBe(3);
++    expect(closedSessions).toBe(3);
++    expect(emittedErrors.length).toBe(0);
 +  });
 +});
+diff --git a/src/features/path/contracts/pathSchema.ts b/src/features/path/contracts/pathSchema.ts
+index 2d53ef6..7a8f8ba 100644
+--- a/src/features/path/contracts/pathSchema.ts
++++ b/src/features/path/contracts/pathSchema.ts
+@@ -107,8 +107,11 @@ export const BidiLiveAdapterConfigSchema = z.object({
+   model: z.string().default('gemini-3.8-live'),
+   systemInstruction: z.string().optional(),
+   modality: z.enum(['AUDIO', 'TEXT']).default('AUDIO'),
+-  maxReconnectAttempts: z.number().default(3),
++  maxReconnectAttempts: z.number().default(5),
++  baseBackoffMs: z.number().default(1000),
++  maxJitterMs: z.number().default(1000),
+   eventBus: z.custom<any>().optional(),
++  sdkConstructor: z.custom<Function>().optional(),
+ });
+ 
+ export type BidiLiveAdapterConfig = z.infer<typeof BidiLiveAdapterConfigSchema>;
+diff --git a/src/features/path/engine/bidiLiveAdapter.ts b/src/features/path/engine/bidiLiveAdapter.ts
+index a1a67b8..f8138a0 100644
+--- a/src/features/path/engine/bidiLiveAdapter.ts
++++ b/src/features/path/engine/bidiLiveAdapter.ts
+@@ -2,6 +2,17 @@ import { BidiLiveAdapterConfig, SessionAdapter } from '../model/types';
+ import { CompiledPrompt } from '../contracts/pathSchema';
+ import { GoogleGenAI } from '@google/genai';
+ 
++export function computeBackoffDelayMs(attempt: number, baseBackoffMs = 1000, maxJitterMs = 1000): number {
++  return Math.pow(2, attempt + 1) * baseBackoffMs + (maxJitterMs > 0 ? Math.floor(Math.random() * maxJitterMs) : 0);
++}
++
++export function isTransientLiveError(err: unknown): boolean {
++  if (!err) return false;
++  const message = err instanceof Error ? err.message : String(err);
++  const code = (err as any).code;
++  return /\b(1011|1006|503)\b|handskakning|handshake|ECONNRESET|ETIMEDOUT/i.test(message) || (code && /\b(1011|1006|503)\b/i.test(String(code)));
++}
++
+ export function skapaBidiLiveAdapter(
+   config: Partial<BidiLiveAdapterConfig> & { clientFactory?: any; sdkConstructor?: any },
+   explicitClientFactory?: any
+@@ -9,6 +20,10 @@ export function skapaBidiLiveAdapter(
+   const eventBus = config.eventBus;
+   const clientFactory = config.clientFactory || explicitClientFactory;
+ 
++  const maxAttempts = config.maxReconnectAttempts ?? 5;
++  const baseBackoffMs = config.baseBackoffMs ?? 1000;
++  const maxJitterMs = config.maxJitterMs ?? 1000;
++
+   return {
+     async skicka(prompt: CompiledPrompt): Promise<{ svar: string; tokensAnvanda?: number }> {
+       let svar = '';
+@@ -60,43 +75,53 @@ export function skapaBidiLiveAdapter(
+           throw new Error('API-nyckel saknas för Gemini Live SDK');
+         }
+ 
+-        const SdkClass = config.sdkConstructor || GoogleGenAI;
+-        const ai = new SdkClass({ apiKey, apiVersion: 'v1alpha' });
++        const sdkFactory = config.sdkConstructor || (() => new GoogleGenAI({ apiKey, apiVersion: 'v1alpha' }));
++        const ai = sdkFactory({ apiKey, apiVersion: 'v1alpha' });
+         
+         const content = prompt.userPrompt || prompt.renderedContent || '';
++        let lastError: unknown;
+ 
+-        try {
+-          const session = await ai.live.connect({ model: config.model || 'gemini-3.8-live' });
++        for (let attempt = 0; attempt <= maxAttempts; attempt++) {
+           try {
+-            await session.sendClientContent({
+-              turns: [{ role: 'user', parts: [{ text: content }] }],
+-              turnComplete: true
+-            });
++            const session = await ai.live.connect({ model: config.model || 'gemini-3.8-live' });
++            try {
++              await session.sendClientContent({
++                turns: [{ role: 'user', parts: [{ text: content }] }],
++                turnComplete: true
++              });
+ 
+-            for await (const message of session.receiveStream()) {
+-              const serverContent = message.serverContent;
+-              if (serverContent && serverContent.modelTurn && serverContent.modelTurn.parts) {
+-                for (const part of serverContent.modelTurn.parts) {
+-                  if (part.text) {
+-                    svar +=part.text;
++              for await (const message of session.receiveStream()) {
++                const serverContent = message.serverContent;
++                if (serverContent && serverContent.modelTurn && serverContent.modelTurn.parts) {
++                  for (const part of serverContent.modelTurn.parts) {
++                    if (part.text) {
++                      svar +=part.text;
++                    }
+                   }
+                 }
+               }
++              return { svar, tokensAnvanda };
++            } finally {
++              await session.close();
+             }
+           } catch (err) {
+-            if (eventBus && typeof eventBus.emit === 'function') {
+-              eventBus.emit('error', err);
++            lastError = err;
++            if (isTransientLiveError(err) && attempt < maxAttempts) {
++              const delay = computeBackoffDelayMs(attempt, baseBackoffMs, maxJitterMs);
++              await new Promise(resolve => setTimeout(resolve, delay));
++            } else {
++              if (eventBus && typeof eventBus.emit === 'function') {
++                eventBus.emit('error', err);
++              }
++              throw err;
+             }
+-            throw err;
+-          } finally {
+-            await session.close();
+           }
+-        } catch (err) {
+-          if (eventBus && typeof eventBus.emit === 'function') {
+-            eventBus.emit('error', err);
+-          }
+-          throw err;
+         }
++
++        if (eventBus && typeof eventBus.emit === 'function') {
++          eventBus.emit('error', lastError);
++        }
++        throw lastError;
+       }
+ 
+       return { svar, tokensAnvanda };

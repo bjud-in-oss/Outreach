@@ -2,6 +2,18 @@ import { BidiLiveAdapterConfig, SessionAdapter } from '../model/types';
 import { CompiledPrompt } from '../contracts/pathSchema';
 import { GoogleGenAI } from '@google/genai';
 
+export function computeBackoffDelayMs(attempt: number, baseBackoffMs = 1000, maxJitterMs = 1000): number {
+  return Math.pow(2, attempt + 1) * baseBackoffMs + (maxJitterMs > 0 ? Math.floor(Math.random() * maxJitterMs) : 0);
+}
+
+export function isTransientLiveError(err: unknown): boolean {
+  if (!err) return false;
+  const errStr = String(err);
+  const code = (err as any).code;
+  if (code && [1011, 1006, 503].includes(Number(code))) return true;
+  return /\b(1011|1006|503)\b|handskakning|handshake|ECONNRESET|ETIMEDOUT/i.test(errStr);
+}
+
 export function skapaBidiLiveAdapter(
   config: Partial<BidiLiveAdapterConfig> & { clientFactory?: any; sdkConstructor?: any },
   explicitClientFactory?: any
@@ -64,10 +76,15 @@ export function skapaBidiLiveAdapter(
         const ai = new SdkClass({ apiKey, apiVersion: 'v1alpha' });
         
         const content = prompt.userPrompt || prompt.renderedContent || '';
+        const maxRetries = config.maxReconnectAttempts !== undefined ? config.maxReconnectAttempts : 5;
+        const maxAttempts = maxRetries + 1;
+        let attempts = 0;
 
-        try {
-          const session = await ai.live.connect({ model: config.model || 'gemini-3.8-live' });
+        while (attempts < maxAttempts) {
+          attempts++;
+          let session;
           try {
+            session = await ai.live.connect({ model: config.model || 'gemini-3.8-live' });
             await session.sendClientContent({
               turns: [{ role: 'user', parts: [{ text: content }] }],
               turnComplete: true
@@ -78,24 +95,26 @@ export function skapaBidiLiveAdapter(
               if (serverContent && serverContent.modelTurn && serverContent.modelTurn.parts) {
                 for (const part of serverContent.modelTurn.parts) {
                   if (part.text) {
-                    svar +=part.text;
+                    svar += part.text;
                   }
                 }
               }
             }
+            break;
           } catch (err) {
-            if (eventBus && typeof eventBus.emit === 'function') {
-              eventBus.emit('error', err);
+            if (attempts >= maxAttempts || !isTransientLiveError(err)) {
+              if (eventBus && typeof eventBus.emit === 'function') {
+                eventBus.emit('error', err);
+              }
+              throw err;
             }
-            throw err;
+            const delay = computeBackoffDelayMs(attempts - 1, config.baseBackoffMs, config.maxJitterMs);
+            await new Promise(resolve => setTimeout(resolve, delay));
           } finally {
-            await session.close();
+            if (session) {
+              await session.close();
+            }
           }
-        } catch (err) {
-          if (eventBus && typeof eventBus.emit === 'function') {
-            eventBus.emit('error', err);
-          }
-          throw err;
         }
       }
 
