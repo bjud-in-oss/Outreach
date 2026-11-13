@@ -346,7 +346,8 @@ KRAV FÖR TDD OCH FAIL-FIRST:
 3. INGEN PRODUKTIONSKOD I TESTET: Implementera ALDRIG funktionerna eller klasserna inuti testfilen.
 4. Testet MÅSTE fallera rött (exit 1) eftersom produktionskoden inte existerar än.
 5. Anropa save_code i vända 1.
-6. PUBLIK INGÅNGSPUNKT (INGA ISOLERADE HJÄLPFILS-ALIBIN): När en biljett skapar eller uppdaterar en hjälpmodul (t.ex. *Helper.ts) MÅSTE testet instansiera och anropa domänens publika ingångsklass/orkestrator (och verifiera beteendet genom den, inte enbart genom direkta anrop till hjälpfilen) så att inkopplingen mellan huvudklass och hjälpmodul bevisas ände-till-ände.`,
+6. PUBLIK INGÅNGSPUNKT (INGA ISOLERADE HJÄLPFILS-ALIBIN): När en biljett skapar eller uppdaterar en hjälpmodul (t.ex. *Helper.ts) MÅSTE testet instansiera och anropa domänens publika ingångsklass/orkestrator (och verifiera beteendet genom den, inte enbart genom direkta anrop till hjälpfilen) så att inkopplingen mellan huvudklass och hjälpmodul bevisas ände-till-ände.
+7. INGA SPIONER ELLER ALIBIN (GATE 3a): Använd ALDRIG vi.fn(), vi.spyOn(), jest.fn(), fs.readFileSync eller expect(true).toBe(true) i testet. Använd rena tillståndsvariabler (let anropad = false;) och minnesobjekt.`,
       `${startAnchor}\nKONTRAKT:\n${steg2d}`,
       systemInstruction,
       testGenTools,
