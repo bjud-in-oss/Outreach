@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-061** (VERIFIED): Förbjud vi.fn() och tautologier i Steg 3a-prompten och aktivera universell saneraSkordadLegacy -> Se `doc/.TICKETS/TCK-MAINT-061.md`
 - [x] **TCK-MAINT-060** (VERIFIED): Injicera källkodsankare (buildRetryAnchor) och full muteringskontroll i MAINT-självrättningen -> Se `doc/.TICKETS/TCK-MAINT-060.md`
 - [x] **TCK-MAINT-059** (VERIFIED): Koppla Gate 3a till pathNodePorts, slutför scriptLibs-tester, dubbelkrasch-checkout och radera envelope.legacy.ts -> Se `doc/.TICKETS/TCK-MAINT-059.md`
 - [x] **TCK-MAINT-058** (VERIFIED): Slutför tautologispärren i ts.js (med negativt test), radera envelope.legacy.ts och installera dubbelkrasch-checkout -> Se `doc/.TICKETS/TCK-MAINT-058.md`
@@ -63,7 +64,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
-- [x] **TCK-060** (VERIFIED): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
+- [x] **TCK-060** (VERIFIED): In-memory Gate 3a-tautologispärr, omvändelserollback och avveckling av sista legacy-filen -> Se `doc/.TICKETS/TCK-060.md`
 - [x] **TCK-059** (VERIFIED): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
 - [x] **TCK-058** (VERIFIED): Exempelskördning av wal_logger.legacy.ts och WalEngine.getWalSummary (ADR-030) -> Se `doc/.TICKETS/TCK-058.md`
 - [x] **TCK-057** (VERIFIED): Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030) -> Se `doc/.TICKETS/TCK-057.md`

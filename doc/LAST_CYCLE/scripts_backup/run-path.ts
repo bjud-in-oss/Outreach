@@ -1,7 +1,8 @@
 import { 
   skapaPathOrkestrerare, 
   skapaMockSessionAdapter,
-  OrchestratorConfig
+  OrchestratorConfig,
+  skapaBidiLiveAdapter
 } from '../src/features/path';
 import { skapaNodePathPortar } from './lib/pathNodePorts.js';
 import * as fs from 'fs';

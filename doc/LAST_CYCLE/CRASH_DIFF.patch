@@ -1,95 +1,101 @@
-diff --git a/scripts/lib/pathNodePorts.ts b/scripts/lib/pathNodePorts.ts
-index 6a6abc7..78396bd 100644
---- a/scripts/lib/pathNodePorts.ts
-+++ b/scripts/lib/pathNodePorts.ts
-@@ -1,10 +1,10 @@
- import fs from 'fs';
- import path from 'path';
- import {
--  skapaAvsiktsport,
--  skapaProvningsport,
--  skapaKonstruktionsport,
--  skapaBesiktningsport,
-+  skapaAvsikt,
-+  skapaProvning,
-+  skapaKonstruktion,
-+  skapaBesiktning,
- } from '../../src/features/path/index.js';
- import { execCaptured } from './shellAndBackup.js';
- 
-@@ -18,32 +18,38 @@ export function skapaNodePathPortar(deps: {
- }) {
-   const { dryRun = false } = deps;
- 
--  if (dryRun !== false) {
--    // Returnera säkra minnes-portar för dryRun/tester
--    return {
--      avsiktsport: skapaAvsiktsport({ io: deps.io }),
--      provningsport: skapaProvningsport({ io: deps.io }),
--      konstruktionsport: skapaKonstruktionsport({ io: deps.io }),
--      besiktningsport: skapaBesiktningsport({ io: deps.io }),
--    };
--  }
-+  const avsikt = skapaAvsikt({ io: deps.io });
-+  const provning = skapaProvning({ io: deps.io });
-+  const konstruktion = skapaKonstruktion({ io: deps.io });
-+  const besiktning = skapaBesiktning({ io: deps.io });
- 
--  // Skarpa kontroller för skarp körning
--  // Kör FSD-radgränser och AST-kontroller
--  try {
--    console.log('Running sharp checks for pathNodePorts...');
--    execCaptured('node scripts/drivers/ts.js --check-catch-blocks');
--    // Här skulle man kunna lägga till FSD-radgränskontroll om det finns ett dedikerat skript för det, 
--    // eller lita på att AST-drivrutinen täcker det.
--  } catch (error) {
--    console.error('Skarpa kontroller misslyckades i pathNodePorts:', error);
--    throw error;
-+  if (deps.dryRun !== false) {
-+    return { avsikt, provning, konstruktion, besiktning };
-   }
- 
-   return {
--    avsiktsport: skapaAvsiktsport({ io: deps.io }),
--    provningsport: skapaProvningsport({ io: deps.io }),
--    konstruktionsport: skapaKonstruktionsport({ io: deps.io }),
--    besiktningsport: skapaBesiktningsport({ io: deps.io }),
-+    avsikt,
-+    provning: {
-+      ...provning,
-+      kor: async (input: any) => {
-+        execCaptured(`node scripts/drivers/ts.js --check-alibi --file ${deps.testFilVag || 'transient_test.ts'}`);
-+        return provning.kor(input);
+diff --git a/src/__tests__/transient_TCK-060.test.ts b/src/__tests__/transient_TCK-060.test.ts
+new file mode 100644
+index 0000000..23ed769
+--- /dev/null
++++ b/src/__tests__/transient_TCK-060.test.ts
+@@ -0,0 +1,95 @@
++import { describe, it, expect, vi } from 'vitest';
++import { inspectTestAlibis } from '../features/path/engine/alibiInspector';
++import { skapaProvningsport } from '../features/path/engine/provningsport';
++import { exekveraRecept, PortNekadError } from '../features/path/engine/pathRunner';
++import { PathRecipe } from '../features/path/model/types';
++
++describe('TCK-060 Tautologi och Omvändelse', () => {
++  
++  describe('In-memory Alibi Inspektion', () => {
++    it('ska underkänna tautologiska assertions och alibin', () => {
++      const kodMedTautologi = "expect(true).toBe(true);";
++      const resultat = inspectTestAlibis(kodMedTautologi);
++      expect(resultat.godkand).toBe(false);
++      expect(resultat.felmeddelande).toBeDefined();
++    });
++
++    it('ska underkänna fs.readFileSync som alibi', () => {
++      const kodMedFs = "const x = require('fs').readFileSync('foo.txt');";
++      const resultat = inspectTestAlibis(kodMedFs);
++      expect(resultat.godkand).toBe(false);
++    });
++
++    it('ska underkänna vi.fn() utan körtidsankare', () => {
++      const kodMedSpy = "const mock = vi.fn();";
++      const resultat = inspectTestAlibis(kodMedSpy);
++      expect(resultat.godkand).toBe(false);
++    });
++  });
++
++  describe('Provningsport med testkod-validering', () => {
++    it('ska returnera omvandelseKrav vid testkod med alibi', async () => {
++      const alibiTestKod = "expect(false).toBe(false);";
++      const portFn = async () => ({ oppnad: false, omvandelseKrav: 'ÅTGÄRDA_TESTSYNTAX' } as any);
++      
++      const port = skapaProvningsport({
++        testFilVag: 'dummy.test.ts',
++        forvantatFel: 'Fail-First',
++        testExekverare: portFn,
++        testKod: alibiTestKod
++      });
++
++      const resultat = await port({});
++      expect(resultat.oppnad).toBe(false);
++      expect(resultat.omvandelseKrav).toBe('ÅTGÄRDA_TESTSYNTAX');
++    });
++  });
++
++  describe('exekveraRecept med Omvändelse och Retries', () => {
++    it('ska köra onOmvandelse och omförsöka vid PortNekadError', async () => {
++      let forsok = 0;
++      const onOmvandelse = vi.fn((_fel, _kontext, f) => {
++        forsok = f;
++      });
++
++      const trasigPort = async () => {
++        throw new PortNekadError('Port stängd', 'RETRY_ME');
++      };
++
++      const recept: PathRecipe = {
++        id: 'rec-1',
++        name: 'Retry Recept',
++        description: 'Testar omvändelse',
++        nodes: [{ id: 'p2', type: 'PORT', port: trasigPort }]
++      };
++
++      try {
++        await exekveraRecept(recept, {}, onOmvandelse, 1);
++      } catch (e) {
++        // Förväntas kasta efter retries om den fortsätter fela
 +      }
-+    },
-+    konstruktion: {
-+      ...konstruktion,
-+      kor: async (input: any) => {
-+        execCaptured('node scripts/drivers/ts.js --check-catch-blocks');
-+        return konstruktion.kor(input);
-+      }
-+    },
-+    besiktning: {
-+      ...besiktning,
-+      kor: async (input: any) => {
-+        const resultat = await besiktning.kor(input);
-+        execCaptured('pnpm verify');
-+        return resultat;
-+      }
-+    }
-   };
- }
-diff --git a/scripts/run-path.ts b/scripts/run-path.ts
-index 4ee0270..57350d6 100644
---- a/scripts/run-path.ts
-+++ b/scripts/run-path.ts
-@@ -1,7 +1,8 @@
- import { 
-   skapaPathOrkestrerare, 
-   skapaMockSessionAdapter,
--  OrchestratorConfig
-+  OrchestratorConfig,
-+  skapaBidiLiveAdapter
- } from '../src/features/path';
- import { skapaNodePathPortar } from './lib/pathNodePorts.js';
- import * as fs from 'fs';
++
++      expect(onOmvandelse).toHaveBeenCalled();
++      expect(forsok).toBe(1);
++    });
++
++    it('ska kasta PortNekadError när maxOmvandelseForsok överskrids', async () => {
++      const onOmvandelse = vi.fn();
++      const stangdPort = async () => {
++        throw new PortNekadError('Permanent stängd', 'STOP');
++      };
++
++      const recept: PathRecipe = {
++        id: 'rec-2',
++        name: 'Fail Recept',
++        description: 'Testar max retries',
++        nodes: [{ id: 'p3', type: 'PORT', port: stangdPort }]
++      };
++
++      await expect(exekveraRecept(recept, {}, onOmvandelse, 0))
++        .rejects.toThrow(PortNekadError);
++      
++      expect(onOmvandelse).not.toHaveBeenCalled();
++    });
++  });
++});

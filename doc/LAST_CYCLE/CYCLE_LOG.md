@@ -1,80 +1,55 @@
-# BYGGCYKEL LOGG: TCK-MAINT-059
-**Starttid:** 2026-11-13T22:27:37.465Z
+# BYGGCYKEL LOGG: TCK-MAINT-061
+**Starttid:** 2026-11-13T22:40:54.318Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-059: Koppla Gate 3a till pathNodePorts, slutför scriptLibs-tester, dubbelkrasch-checkout och radera envelope.legacy.ts
+# TCK-MAINT-061: Förbjud vi.fn() och tautologier i Steg 3a-prompten och aktivera universell saneraSkordadLegacy
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/lib/pathNodePorts.ts`, `scripts/run-path.ts`, `scripts/__tests__/scriptLibs.test.ts`, `scripts/run-planera-live.ts`, `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx`
-**Skördad Legacy:** `src/__tests__/envelope.legacy.ts`
+**Målfiler:** `scripts/run-planera-live.ts`
 **Mekanisk Acceptans:**
-1. `scripts/lib/pathNodePorts.ts` (< 120 rader) importerar `skapaAvsiktsport`, `skapaProvningsport`, `skapaKonstruktionsport`, `skapaBesiktningsport` från `'../../src/features/path/index.js'`, returnerar `{ avsikt, provning, konstruktion, besiktning }` som rena portfunktioner `(kontext) => Promise<PortResult>` (ALDRIG `.kor()`), och kör `node scripts/drivers/ts.js --check-alibi --file <testFilVag>` i `provning` (samt `--check-catch-blocks` i `konstruktion` och `pnpm verify` i `besiktning` när `deps.dryRun === false`).
-2. `scripts/run-path.ts` (< 130 rader) importerar `skapaBidiLiveAdapter` från `'../src/features/path'`.
-3. `scripts/__tests__/scriptLibs.test.ts` (< 95 rader) använder toppnivå-ESM-`import { skapaNodePathPortar } from '../lib/pathNodePorts';` (ALDRIG `require()`) och verifierar både portnycklarna (`avsikt`, `provning`, `konstruktion`, `besiktning`) och att `node scripts/drivers/ts.js --check-alibi` kastar vid `expect(true).toBe(true)`.
-4. `scripts/run-planera-live.ts` (<= 980 rader) kör `git checkout -- src/features/${targetDomain} 2>/dev/null || true` i `else`-grenen vid `attempts >= 3` innan `process.exit(1)`, samt anropar `saneraSkordadLegacy(ticketPath)` utan `if (!isMaint)`-spärr.
-5. `expect(true).toBe(true);` i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx` ersätts med ett skarpt körtidstest av `eventBus.clear()`, och `src/__tests__/envelope.legacy.ts` raderas i Fas 3.
-6. `pnpm verify` passerar med exit 0.
-
----
-
-## Destruktiva Handlingssteg (Obligatorisk städning)
-- **Slutför ADR-030-skörden:** Radera `src/__tests__/envelope.legacy.ts` (samtliga 3 scenarier körs redan i `src/shared/__tests__/envelope.test.ts`).
-- **Ta bort tautologi-alibi:** Ersätt `expect(true).toBe(true);` i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx` med ett skarpt `eventBus.clear()`-test.
-- **Ersätt felaktiga portnycklar i `scripts/lib/pathNodePorts.ts`:** Ta bort `{ avsiktsport, provningsport, konstruktionsport, besiktningsport }` och returnera `{ avsikt, provning, konstruktion, besiktning }`.
+1. `scripts/run-planera-live.ts` (strikt <= 980 rader) inkluderar en uttrycklig regel 7 i Steg 3a-instruktionen (runt rad 349) samt i `recoveryPrompt` (runt rad 403) som förbjuder `vi.fn()`, `vi.spyOn()`, `jest.fn()`, `fs.readFileSync` och `expect(true).toBe(true)` och instruerar modellen att använda vanliga tillståndsvariabler (`let anropad = false;`).
+2. Rad 867 i `scripts/run-planera-live.ts` ändras från `if (!isMaint) saneraSkordadLegacy(ticketPath);` till `saneraSkordadLegacy(ticketPath);` så att skördade legacy-filer städas för samtliga biljettyper.
+3. `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Exakta portfabriker och funktionssignaturer i `scripts/lib/pathNodePorts.ts` (< 120 rader):**
-   - Behåll importerna `skapaAvsiktsport`, `skapaProvningsport`, `skapaKonstruktionsport`, `skapaBesiktningsport` från `'../../src/features/path/index.js'` (döp ALDRIG om dem till `skapaAvsikt` etc.).
-   - Skapa basportarna med deras verkliga options-objekt:
-     * `const avsikt = skapaAvsiktsport({ prompter: async () => 'y', beskrivning: 'Verifiera intention' });`
-     * `const provning = skapaProvningsport({ testFilVag: deps.testFilVag || 'transient_test.ts', forvantatFel: 'Fail-First', testExekverare: async () => ({ passerade: false, exitKod: 1, felmeddelande: 'Fail-First' }) });`
-     * `const konstruktion = skapaKonstruktionsport({ matris: deps.matris || [], inspekterare: async () => ({ existerar: true, antalRader: 50, exporteradIIndex: true }) });`
-     * `const besiktning = skapaBesiktningsport({ inspekterare: async () => ({ godkand: true }) });`
-   - När `deps.dryRun !== false`: returnera `{ avsikt, provning, konstruktion, besiktning }`.
-   - När `deps.dryRun === false`: omslut `provning`, `konstruktion` och `besiktning` som asynkrona funktioner `async (kontext) => { execCaptured(...); return basPort(kontext); }` (anropa ALDRIG `.kor()`).
-   - Lägg till `skapaBidiLiveAdapter,` i importen från `'../src/features/path'` i `scripts/run-path.ts`.
-2. **ESM-import i `scripts/__tests__/scriptLibs.test.ts` (< 95 rader — FÖRBJUD `require`):**
-   - Lägg `import { skapaNodePathPortar } from '../lib/pathNodePorts';` högst upp i filen.
-   - Testa både `skapaNodePathPortar` (`dryRun: true` -> funktionerna `avsikt`, `provning`, `konstruktion`, `besiktning`) och att `execFileSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { stdio: 'pipe' })` kastar när filen i `os.tmpdir()` innehåller `expect(true).toBe(true);` (rensa i `finally`).
-3. **Ersätt `expect(true).toBe(true)` i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx`:**
-   - Byt ut `expect(true).toBe(true);` mot prenumeration på `'test.clear'`, `eventBus.clear()`, `eventBus.emit('test.clear', {})` och `expect(clearedCount).toBe(0)`.
-4. **Dubbelkrasch-checkout och universell `saneraSkordadLegacy` i `scripts/run-planera-live.ts` (<= 980 rader):**
-   - I `else`-grenen vid `attempts >= 3` (runt rad 752–755): lägg till `if (!isMaint) { try { execSync(\`git checkout -- src/features/${targetDomain} 2>/dev/null || true\`, { cwd: ROOT_DIR }); } catch (err: any) { console.warn('Checkout vid cykelspärr misslyckades:', err?.message); } }` direkt före `console.error('❌ Cykelspärr nådd: Max 1 omvändelse tillåten per körning.');`.
-   - Runt rad 853: ändra `if (!isMaint) saneraSkordadLegacy(ticketPath);` till `saneraSkordadLegacy(ticketPath);`.
+1. **Kirurgiska patchar i `scripts/run-planera-live.ts` (nu 965 rader, håll totalen <= 980 rader):**
+   - Lägg till `7. INGA SPIONER ELLER ALIBIN (GATE 3a): Använd ALDRIG vi.fn(), vi.spyOn(), jest.fn(), fs.readFileSync eller expect(true).toBe(true) i testet. Använd rena tillståndsvariabler (let anropad = false;) och minnesobjekt.` direkt efter punkt 6 i Steg 3a (runt rad 349).
+   - Uppdatera `recoveryPrompt` (runt rad 403) till att även ange: `Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler (let anropad = false;) utan tautologier.`.
+   - Ändra `if (!isMaint) saneraSkordadLegacy(ticketPath);` (rad 867) till `saneraSkordadLegacy(ticketPath);`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Gemensam Gate 3a-spärr och testade Node-portar i Vägmotorn**
-  Givet att `pathNodePorts.ts` använder rätt portfabriker och anropar `--check-alibi`
-  När `pnpm verify` körs
-  Så bevisar `scriptLibs.test.ts` (via ESM-import) att både tautologispärren och portnycklarna fungerar skarpt.
+**Scenario: ATT FÖLJA – Steg 3a genererar Gate 3a-rena tester direkt i vända 1**
+  Givet att Steg 3a-prompten tydligt förbjuder `vi.fn()` och tautologiska assertions
+  När ett funktionsbygge som `TCK-060` kör Steg 3a
+  Så genereras rena körtidstester med vanliga tillståndsvariabler utan att fastna i Gate 3a-loopen.
 
-**Scenario: ATT VÄNDA OM – Nollställning av kvarlämnad legacy och dubbelkrascher**
-  Givet att `envelope.legacy.ts` fortfarande låg kvar och dubbelkrascher lämnade ändringar i `src/features/`
-  När `saneraSkordadLegacy` körs universellt och `git checkout` läggs in vid `attempts >= 3`
-  Så töms `*.legacy.ts`-kön helt och arbetsområdet förblir rent.
+**Scenario: ATT VÄNDA OM – Universell städning av skördad legacy**
+  Givet att `saneraSkordadLegacy` tidigare hoppades över för `MAINT`-biljetter
+  När `if (!isMaint)`-spärren tas bort på rad 867
+  Så städas skördade `*.legacy.ts`-filer bort efter grön `pnpm verify` oavsett biljettyp.
 
 **Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att samtliga ändringar är applicerade
+  Givet att `scripts/run-planera-live.ts` är uppdaterad och under 980 rader
   När `pnpm verify` körs
-  Så passerar arkitekturgrindar, radgränser och hela testsviten med exit 0.
+  Så passerar kompilering, radgränser och tester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Uppdraget handlar om att stärka systemets integritet genom att koppla Gate 3a-kontrollen direkt till våra portar och rensa ut all kvarlämnad legacy, vilket skapar en stabilare och mer förutsägbar utvecklingsmiljö.
+Syftet med denna uppdatering är att stärka kvalitetssäkringen i våra utvecklingsflöden. Genom att förbjuda syntetiska spioner och garantera att all legacy-kod städas undan, ser vi till att våra tester förblir helt autentiska och att arbetsytan hålls ren. Detta skapar en mer pålitlig och resilient utvecklingsmiljö.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Uppdraget och dess systemiska invariabler är granskade och godkända; jag förbereder nu spärrmekanismerna och källkodens destruktiva sanering.
+Jag har granskat kontraktet för TCK-MAINT-061. Omfånget är tydligt begränsat till nödvändiga ändringar i `scripts/run-planera-live.ts` för att stärka kvalitetssäkringen och säkerställa renare testning. Jag godkänner detta uppdrag.
 
 
 #### 0b Att förlikas: Vägval
@@ -86,18 +61,14 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är tre ortogonala alternativ för lösningen:
+De tre ortogonala alternativen för lösning är som följer:
 
-Alternativ ett innebär att vi använder högre ordningsfunktioner för att wrappa portarna, vilket skapar en ren separation mellan dry-run och exekvering.
-
-Alternativ två bygger på att vi applicerar asynkrona middleware-funktioner direkt i portdefinitionen för att hantera grindkontrollerna.
-
-Slutsatsen för alternativ tre är att vi bäddar in de mekaniska kontrollerna direkt i closuren för varje port för maximal transparens och kontroll.
+Alternativ 1 innebär direkt patchning av alla tre förändringar i en enda atomisk operation. Alternativ 2 bygger på inkrementell modifiering där instruktionsuppdateringar separeras från den operativa logikförändringen. Alternativ 3 innebär fullständig blockersättning för att säkerställa att hela kontextuella block uppdateras korrekt.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att alternativ tre är det mest resilienta för uppdraget, eftersom inbäddade kontroller direkt i closuren minimerar abstraktionslager och säkerställer en strikt fail-fast mekanism.
+Granskning av alternativen visar att fullständig blockersättning, alternativ 3, är mest resilient då det garanterar kontextuell konsistens för de nya reglerna utan risk för partiella uppdateringar. Genom att uppdatera hela blocket säkras spårbarhet och minskad felkvot vid felpropagering.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ tre är fastställt som det vinnande kontraktet, då dess fail-fast mekanism och minimala abstraktionslager garanterar högsta resiliens. MÄTTNAD: JA.
+Jag bekräftar att alternativ 3, fullständig blockersättning, är det vinnande kontraktet. Denna strategi säkerställer arkitektonisk resiliens och absolut kontextuell konsistens. MÄTTNAD: JA.
