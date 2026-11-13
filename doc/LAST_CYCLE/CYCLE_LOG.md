@@ -1,61 +1,56 @@
-# BYGGCYKEL LOGG: TCK-MAINT-057
-**Starttid:** 2026-11-13T21:51:22.229Z
+# BYGGCYKEL LOGG: TCK-057
+**Starttid:** 2026-11-13T21:54:49.735Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-057: Avvisa tautologiska alibi-assertions i Gate 3a (ts.js) och ersätt placeholder i swarmEventBus.test.tsx
+# TCK-057: Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030)
 
-**Måldomän:** `scripts`
-**Målfiler:** `scripts/drivers/ts.js`, `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx`
-**Mekanisk Acceptans:**
-1. `scripts/drivers/ts.js` (< 240 rader) utökar `--check-alibi` (Gate 3a) med en AST-kontroll som stoppar triviala tautologi-assertions där `expect(<literal>).toBe(<identisk literal>)` eller `toEqual`/`toStrictEqual` jämför två identiska booleska, numeriska eller strängliteraler (t.ex. `expect(true).toBe(true)`).
-2. Placeholder-testet i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx` (< 140 rader) ersätts med ett verkligt körtidstest av `eventBus.clear()` utan `expect(true).toBe(true)`.
-3. `pnpm verify` passerar med exit 0.
+**Måldomän:** `mcp_bridge` (`src/features/mcp_bridge/`)
+**Målfiler:** `src/features/mcp_bridge/tools/mcpToolRegistryHelper.ts`
+**Skördad Legacy:** `src/__tests__/mcp_bridge.legacy.ts`
+**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (konsoliderat till `src/features/mcp_bridge/__tests__/`) verifierar samtliga 3 scenarier från `src/__tests__/mcp_bridge.legacy.ts` (`createStandardMcpServer()` `tools/list`, `McpServer.registerTool` + `tools/call`, samt JSON-RPC `-32601` för okänd metod) plus `summarizeRegisteredTools(server)`, varefter Fas 3 raderar `src/__tests__/mcp_bridge.legacy.ts` och `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **AST-kontroll mot tautologier i `scripts/drivers/ts.js` (< 240 rader):**
-   - Lägg till `let hasTautologyAssertion = false;` i `--check-alibi`-blocket.
-   - Inuti `if (ts.isCallExpression(node))`: kontrollera om `ts.isPropertyAccessExpression(node.expression)` har `.name.text` i `['toBe', 'toEqual', 'toStrictEqual']` och `ts.isCallExpression(node.expression.expression)` har anropsnamnet `'expect'`.
-   - Jämför första argumentet till `expect(...)` med första argumentet till matchern: om båda är `TrueKeyword`, båda `FalseKeyword`, eller båda `StringLiteral`/`NumericLiteral` med exakt samma `.text`, sätt `hasTautologyAssertion = true;`.
-   - Avbryt med `process.exit(1)` och tydligt `❌ GATE 3a BROTT`-meddelande om `hasTautologyAssertion` är sant.
-2. **Ersätt `expect(true).toBe(true)` i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx` (< 140 rader):**
-   - Byt ut `expect(true).toBe(true);` i testet `'should limit capacity strictly using FIFO ring buffer logic'` mot en verklig verifiering av `eventBus.clear()` (prenumerera på `'test.clear'`, anropa `eventBus.clear()`, emittera `'test.clear'` och verifiera att räknaren är `0`).
+1. **Skapa `src/features/mcp_bridge/tools/mcpToolRegistryHelper.ts` (< 40 rader):**
+   - Importera `McpServer` från `../server/mcpServer.ts`.
+   - Exportera `summarizeRegisteredTools(server: McpServer): { count: number; names: string[] }` som hämtar `server.getRegisteredTools()` och returnerar `{ count: tools.length, names: tools.map((t) => t.name) }`.
+2. **Testdisciplin i Steg 3a (Fail-First + Skörd utan `vi.fn()`):**
+   - Läs `src/__tests__/mcp_bridge.legacy.ts` och `src/features/mcp_bridge/server/mcpServer.ts` i Steg 3a.
+   - Importera `McpServer`, `createStandardMcpServer` och `summarizeRegisteredTools`.
+   - Inga kors-domänimporter och inga `vi.fn()`/`vi.spyOn()`.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Gate 3a garanterar verkliga körtidsassertions**
-  Givet att Gate 3a granskar nya och skördade testfiler via TypeScript AST
-  När ett test innehåller `expect(true).toBe(true)` eller identiska literaler
-  Så stoppar `ts.js` testet omedelbart innan källkod får skrivas
-  Vilket säkerställer att varje testfall utövar verklig produktionskod.
+**Scenario: ATT FÖLJA – MCP-bryggans JSON-RPC-kontrakt blir levande regressionsskydd**
+  Givet att `mcp_bridge.legacy.ts` innehåller 3 verifierade JSON-RPC 2.0-tester
+  När de skördas in i `src/features/mcp_bridge/__tests__/` tillsammans med `summarizeRegisteredTools`
+  Så körs de i varje `pnpm verify` och `mcp_bridge.legacy.ts` städas bort i Fas 3.
 
-**Scenario: ATT VÄNDA OM – Sanering av tom placeholder från TCK-055**
-  Givet att `swarmEventBus.test.tsx` innehöll en kvarlämnad `expect(true).toBe(true)`-rad
-  När den ersätts med ett skarpt `eventBus.clear()`-test
-  Så passerar hela testsviten den nya Gate 3a-spärren.
+**Scenario: ATT VÄNDA OM – Avvisande av trasig JSON-RPC-felhantering**
+  Givet att `mcp_bridge` tidigare saknade aktiva enhetstester
+  När `-32601` och `tools/call` testas i Vitest
+  Så garanteras att MCP-servern svarar deterministiskt.
 
 **Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att `scripts/drivers/ts.js` och `swarmEventBus.test.tsx` är uppdaterade
+  Givet att testerna passerar och legacy-filen är borttagen
   När `pnpm verify` körs
-  Så passerar kompilering, radgränser, AST-grindar och samtliga tester med exit 0.
+  Så passerar hela sviten med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår uppdraget precis. Syftet med TCK-MAINT-057 är att stärka vår kvalitetsgrind Gate 3a genom att stoppa tautologiska alibi-assertions, såsom `expect(true).toBe(true)`.
-
-Genom att ersätta platshållaren i `swarmEventBus.test.tsx` med ett riktigt körtidstest av `eventBus.clear()`, säkerställer vi genuint testutfall och systemisk resiliens. Är du redo att vi sätter igång med bygget?
+Det här uppdraget handlar om att städa upp och säkra repot genom att flytta gamla tester till rätt domän. Det ger oss ett mer stabilt och pålitligt system, där JSON-RPC-kontrakten fungerar som ett levande skydd mot framtida problem.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har granskat kontraktet och premisserna för TCK-MAINT-057 och kan bekräfta att alla invariater för Gate 3a hålls. Kontraktet är härmed auditerat och godkänt för exekvering.
+Avsiktsgrinden är bekräftad och vi har förstått den mänskliga nyttan i detta uppdrag. Kontraktsauditen för TCK-057 är nu godkänd och vi går vidare med full systemintegritet.
 
 
 #### 0b Att förlikas: Vägval
@@ -67,18 +62,30 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa kontraktet TCK-MAINT-057 och stärka grind 3a utan att introducera sidoberoenden, formulerar jag tre ortogonala alternativ.
+Här är tre ortogonala alternativ för att lösa TCK-057 och återskapa JSON-RPC-kontraktet:
 
-Alternativ ett är att bygga in en direkt AST-kontroll i nod-besökaren för expect-anrop i `ts.js` för att validera första argumentet mot matcherns textvärde och avbryta omedelbart. För testfilen prenumererar vi på ett test-event, anropar `eventBus.clear()` och emitterar för att verifiera nollställning.
+Alternativ 1: Direkt i-minnet-skördning och single-file helper. Vi flyttar de tre legacyscenarierna direkt till Vitest och skapar en ren funktion för verktygssummering i en enda fil under `tools`.
 
-Alternativ två använder en modulär hjälpfunktion i `ts.js` för att renodla AST-logiken mot tautologiska matchers och för testfilen kapslas verifieringen in i en sluten lambda per krav.
+Alternativ 2: Fabriksbaserad isolering och registry-verifiering. Vi bygger ett testupplägg där vi inspekterar serverns tillstånd före och efter registrering för att säkerställa exakt JSON-RPC-status för $-32601$.
 
-Alternativ tre implementerar en specifik nod-besökare för assert-uttryck som filtrerar bort tautologier före generella funktioner och för testfilen används rena variabler för tillståndsmätning utan mockar. Vilka avvägningar prioriterar vi?
+Alternativ 3: Dekopplad registerinspektion med Zod-kontraktsanpassning. Vi säkrar upp att utdatan från summeringen valideras strikt runtime innan testerna konsoliderar resultatet.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Vi prioriterar Alternativ ett för dess direkta och transparenta AST-kontroll i nodbesökaren. Det minimerar risken för dolda fel eller sidoberoenden, vilket ger störst resiliens mot protokollbrus och felaktiga tillstånd.
+Granskningen visar att Alternativ 1 är säkrast. Det minskar risken för buggar genom att hålla koden enkel, direkt och strikt inom domänens gränser, vilket ger ett mer resilient regressionsskydd utan onödig komplexitet.
 
 
 #### 2d Att förlikas: Mättnad
-Vi bekräftar att Alternativ ett är det bäst lämpade kontraktet. Vi deklarerar härmed MÄTTNAD: JA och låser det vinnande alternativet för fortsatt exekvering.
+Alternativ 1 är fastställt som det vinnande alternativet. Dess enkelhet och direkta ansats ger bäst förutsättningar för stabilitet och resiliens, vilket ger ett starkt regressionsskydd. MÄTTNAD: JA.
+
+
+#### 3a Att följa: Testspecifikation
+
+
+
+#### 3b Att följa: Källkod
+
+
+
+#### 3c Att förlikas: Slutgiltigt Byggkontrakt
+Kontraktet är spikat. Vi skapar `src/features/mcp_bridge/tools/mcpToolRegistryHelper.ts` och konsoliderar testet för att säkerställa att JSON-RPC-bryggan har levande regressionsskydd och att arvet från legacy-filen tas till vara på ett säkert och deterministiskt sätt utan syntetiska spioner.

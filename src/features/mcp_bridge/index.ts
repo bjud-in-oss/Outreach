@@ -21,3 +21,4 @@ export { WalToolsDefinitions, createWalToolHandlers } from './tools/walTools.ts'
 export { CodePatchToolsDefinitions, createCodePatchToolHandlers, ApplyCodePatchSchema } from './tools/codePatchTools.ts';
 export { McpSwarmBridge, getGlobalMcpSwarmBridge } from './orchestrator/mcpSwarmBridge.ts';
 export type { ToolExecutionResult, IncomingToolCall, BidiFunctionDeclaration, ToolRoutingResult } from './orchestrator/mcpSwarmBridge.ts';
+export * from './tools/mcpToolRegistryHelper';
