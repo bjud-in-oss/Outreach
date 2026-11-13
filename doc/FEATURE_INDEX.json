@@ -351,6 +351,7 @@
     "path": {
       "files": [
         "contracts/pathSchema.ts",
+        "engine/alibiInspector.ts",
         "engine/avsiktsport.ts",
         "engine/besiktningsport.ts",
         "engine/bidiLiveAdapter.ts",
@@ -389,6 +390,7 @@
         "bestamFasForSteg",
         "computeBackoffDelayMs",
         "exekveraRecept",
+        "inspectTestAlibis",
         "isTransientLiveError",
         "knackaPaPorten",
         "kompileraPrompt",

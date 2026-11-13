@@ -1,8 +1,20 @@
 import { ProvningsportOptions, Port, PortResult } from '../model/types';
 import { PortNekadError } from './pathRunner';
+import { inspectTestAlibis } from './alibiInspector';
 
 export function skapaProvningsport(options: ProvningsportOptions): Port {
   return async (kontext): Promise<PortResult> => {
+    if (options.testKod) {
+      const alibiResult = inspectTestAlibis(options.testKod);
+      if (!alibiResult.godkand) {
+        return {
+          oppnad: false,
+          orsak: alibiResult.felmeddelande,
+          omvandelseKrav: 'ÅTGÄRDA_TESTSYNTAX',
+        };
+      }
+    }
+
     const resultat = await options.testExekverare(options.testFilVag);
 
     if (resultat.passerade) {

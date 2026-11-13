@@ -22,6 +22,7 @@ export const ProvningsportOptionsSchema = z.object({
   testFilVag: z.string(),
   forvantatFel: z.string(),
   testExekverare: z.custom<Function>(),
+  testKod: z.string().optional(),
 });
 
 export const FilKravSchema = z.object({

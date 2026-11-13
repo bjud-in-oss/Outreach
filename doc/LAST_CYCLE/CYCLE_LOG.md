@@ -1,55 +1,67 @@
-# BYGGCYKEL LOGG: TCK-MAINT-061
-**Starttid:** 2026-11-13T22:40:54.318Z
+# BYGGCYKEL LOGG: TCK-060
+**Starttid:** 2026-11-13T22:43:52.502Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-061: Förbjud vi.fn() och tautologier i Steg 3a-prompten och aktivera universell saneraSkordadLegacy
+# TCK-060: In-memory Gate 3a-tautologispärr, omvändelserollback och avveckling av sista legacy-filen
 
-**Måldomän:** `scripts`
-**Målfiler:** `scripts/run-planera-live.ts`
-**Mekanisk Acceptans:**
-1. `scripts/run-planera-live.ts` (strikt <= 980 rader) inkluderar en uttrycklig regel 7 i Steg 3a-instruktionen (runt rad 349) samt i `recoveryPrompt` (runt rad 403) som förbjuder `vi.fn()`, `vi.spyOn()`, `jest.fn()`, `fs.readFileSync` och `expect(true).toBe(true)` och instruerar modellen att använda vanliga tillståndsvariabler (`let anropad = false;`).
-2. Rad 867 i `scripts/run-planera-live.ts` ändras från `if (!isMaint) saneraSkordadLegacy(ticketPath);` till `saneraSkordadLegacy(ticketPath);` så att skördade legacy-filer städas för samtliga biljettyper.
-3. `pnpm verify` passerar med exit 0.
+**Måldomän:** `path` (`src/features/path/`)
+**Målfiler:** `src/features/path/engine/alibiInspector.ts`, `src/features/path/contracts/pathSchema.ts`, `src/features/path/engine/provningsport.ts`, `src/features/path/engine/pathRunner.ts`
+**Skördad Legacy:** `src/__tests__/envelope.legacy.ts`
+**Mekanisk Acceptans:** Ett hermetiskt Vitest-test bevisar (Fail-First mot körtidsankare utan `vi.fn()`/`vi.spyOn()`) att:
+1. `inspectTestAlibis(testKod)` i `src/features/path/engine/alibiInspector.ts` (< 90 rader) fungerar helt i minnet (utan Node `fs`/`child_process`) och underkänner tautologiska assertions (`expect(true).toBe(true)`, `expect(false).toBe(false)`, identiska literaler), `fs.readFileSync`, rå källkodsmatchning (`'export function'`) samt `vi.fn()` utan körtidsankare.
+2. `skapaProvningsport` i `src/features/path/engine/provningsport.ts` (< 65 rader) validerar `options.testKod` via `inspectTestAlibis` innan `testExekverare` körs, och returnerar `{ oppnad: false, omvandelseKrav: 'ÅTGÄRDA_TESTSYNTAX' }` vid alibibrott.
+3. `exekveraRecept` i `src/features/path/engine/pathRunner.ts` (< 110 rader) stöder valfri `onOmvandelse(fel, kontext, forsok)` och `maxOmvandelseForsok` (default `1`) och kan fånga `PortNekadError` för att återställa tillståndet innan felet kastas vidare om försöken tar slut.
+4. `src/__tests__/envelope.legacy.ts` raderas i Fas 3 och `pnpm verify` passerar med exit 0.
+
+---
+
+## Destruktiva Handlingssteg (Obligatorisk städning)
+- **Sanera sista legacy-filen:** Radera `src/__tests__/envelope.legacy.ts` (då testerna redan existerar aktivt i `src/shared/__tests__/envelope.test.ts`).
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Kirurgiska patchar i `scripts/run-planera-live.ts` (nu 965 rader, håll totalen <= 980 rader):**
-   - Lägg till `7. INGA SPIONER ELLER ALIBIN (GATE 3a): Använd ALDRIG vi.fn(), vi.spyOn(), jest.fn(), fs.readFileSync eller expect(true).toBe(true) i testet. Använd rena tillståndsvariabler (let anropad = false;) och minnesobjekt.` direkt efter punkt 6 i Steg 3a (runt rad 349).
-   - Uppdatera `recoveryPrompt` (runt rad 403) till att även ange: `Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler (let anropad = false;) utan tautologier.`.
-   - Ändra `if (!isMaint) saneraSkordadLegacy(ticketPath);` (rad 867) till `saneraSkordadLegacy(ticketPath);`.
+1. **Ren webbläsar- och VFS-kompatibel `src/features/path/engine/alibiInspector.ts` (< 90 rader):**
+   - Importera ALDRIG `node:fs`, `node:path`, `child_process` eller `typescript` (så att Vägmotorn kan köras i webbläsarens VFS enligt ADR-026).
+   - Exportera `inspectTestAlibis(testKod: string): { godkand: boolean; felmeddelande?: string }`.
+2. **Utöka `ProvningsportOptionsSchema` i `src/features/path/contracts/pathSchema.ts` (< 150 rader):**
+   - Lägg till `testKod: z.string().optional()` i `ProvningsportOptionsSchema` (härled typer via `z.infer`, duplicera aldrig manuellt i `model/types.ts`).
+3. **Strikt Gate 3a-disciplin i testet (INGA `vi.fn()` eller kors-domänimporter):**
+   - Importera ALDRIG `vi` från `vitest` och ALDRIG från `gemini_live_swarm`. Använd vanliga tillståndsvariabler (`let omvandelseAnropad = 0;`).
+4. **Bevara bakåtkompatibilitet i `provningsport.ts` (< 65 rader) och `pathRunner.ts` (< 110 rader):**
+   - Befintliga tester (`provningsport.test.ts`, `pathRunner.test.ts`, `classicRecipe.test.ts`) måste förbli gröna utan att kräva nya obligatoriska argument.
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Steg 3a genererar Gate 3a-rena tester direkt i vända 1**
-  Givet att Steg 3a-prompten tydligt förbjuder `vi.fn()` och tautologiska assertions
-  När ett funktionsbygge som `TCK-060` kör Steg 3a
-  Så genereras rena körtidstester med vanliga tillståndsvariabler utan att fastna i Gate 3a-loopen.
+**Scenario: ATT FÖLJA – Vägmotorn upprätthåller Gate 3a och omvändelserollback även i webbläsarens VFS**
+  Givet att Vägmotorn körs i en serverlös webbläsarmiljö utan Node-skript
+  När ett test med `expect(true).toBe(true)` skickas till Provningsporten eller en port nekas
+  Så stoppar `inspectTestAlibis` alibit i minnet och `exekveraRecept` triggar återställning.
 
-**Scenario: ATT VÄNDA OM – Universell städning av skördad legacy**
-  Givet att `saneraSkordadLegacy` tidigare hoppades över för `MAINT`-biljetter
-  När `if (!isMaint)`-spärren tas bort på rad 867
-  Så städas skördade `*.legacy.ts`-filer bort efter grön `pnpm verify` oavsett biljettyp.
+**Scenario: ATT VÄNDA OM – Slutgiltig städning av legacy och oändliga loopar**
+  Givet att en port fortsätter att nekas efter `maxOmvandelseForsok` och att `envelope.legacy.ts` låg kvar
+  När gränsen nås i `exekveraRecept` och Fas 3 körs
+  Så kastas felet vidare, legacy-kön töms för alltid och arbetsområdet är rent.
 
 **Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att `scripts/run-planera-live.ts` är uppdaterad och under 980 rader
+  Givet att Vägmotorn och samtliga tester är uppdaterade
   När `pnpm verify` körs
-  Så passerar kompilering, radgränser och tester med exit 0.
+  Så passerar alla grindar och tester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Syftet med denna uppdatering är att stärka kvalitetssäkringen i våra utvecklingsflöden. Genom att förbjuda syntetiska spioner och garantera att all legacy-kod städas undan, ser vi till att våra tester förblir helt autentiska och att arbetsytan hålls ren. Detta skapar en mer pålitlig och resilient utvecklingsmiljö.
+Jag förstår intentionen med TCK-060 till fullo. Uppdraget handlar om att stärka Vägmotorns integritet genom att införa en helt minnesbaserad spärr mot falska eller triviala testmönster. Detta säkerställer hög kvalitet och driftssäkerhet i serverlösa webbläsarmiljöer, samtidigt som vi sanerar bort den sista legacykoden och förbättrar vår omvändelseloggik. Är det en korrekt uppfattning?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har granskat kontraktet för TCK-MAINT-061. Omfånget är tydligt begränsat till nödvändiga ändringar i `scripts/run-planera-live.ts` för att stärka kvalitetssäkringen och säkerställa renare testning. Jag godkänner detta uppdrag.
+Din uppfattning är helt korrekt. Vi stärker Vägmotorns integritet och säkerställer full VFS-kompatibilitet genom att stänga de sista hålen för alibi-mönster och slutföra saneringen av legacy-koden. Jag är redo att initiera Fas 1.
 
 
 #### 0b Att förlikas: Vägval
@@ -61,14 +73,24 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-De tre ortogonala alternativen för lösning är som följer:
-
-Alternativ 1 innebär direkt patchning av alla tre förändringar i en enda atomisk operation. Alternativ 2 bygger på inkrementell modifiering där instruktionsuppdateringar separeras från den operativa logikförändringen. Alternativ 3 innebär fullständig blockersättning för att säkerställa att hela kontextuella block uppdateras korrekt.
+För att lösa TCK-060 och upprätthålla Gate 3a i en webbläsarkompatibel miljö, ska jag formulera tre alternativa angreppssätt för lösningen.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Granskning av alternativen visar att fullständig blockersättning, alternativ 3, är mest resilient då det garanterar kontextuell konsistens för de nya reglerna utan risk för partiella uppdateringar. Genom att uppdatera hela blocket säkras spårbarhet och minskad felkvot vid felpropagering.
+Jag granskar alternativen och ser att den största risken är att förlita sig på för komplexa regex-mönster i `alibiInspector`, vilket kan leda till falska positiva resultat. Vi måste hålla mönstren strikta och förutsägbara för att garantera att inga alibin slipper igenom i VFS-miljön.
 
 
 #### 2d Att förlikas: Mättnad
-Jag bekräftar att alternativ 3, fullständig blockersättning, är det vinnande kontraktet. Denna strategi säkerställer arkitektonisk resiliens och absolut kontextuell konsistens. MÄTTNAD: JA.
+Efter noggrann avvägning av riskerna i spänningsfältet mellan komplexitet och säkerhet, slår jag fast att det vinnande kontraktet är att använda strikta, förutsägbara mönster och AST-analys istället för komplex regex. MÄTTNAD: JA.
+
+
+#### 3a Att följa: Testspecifikation
+
+
+
+#### 3b Att följa: Källkod
+
+
+
+#### 3c Att förlikas: Slutgiltigt Byggkontrakt
+Filer som ska skapas är alibiInspector under engine/, och de filer som ska bevaras och uppdateras är pathSchema.ts, provningsport.ts samt pathRunner.ts i sina respektive mappar.

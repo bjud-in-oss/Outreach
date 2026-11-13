@@ -25,9 +25,15 @@ export async function knackaPaPorten(port: any, kontext: PathContext): Promise<P
 
 export async function exekveraRecept(
   recipe: PathRecipe, 
-  kontext: PathContext = {}
+  kontext: PathContext = {},
+  options: { 
+    maxOmvandelseForsok?: number; 
+    onOmvandelse?: (fel: any, kontext: PathContext, forsok: number) => void;
+  } = {}
 ): Promise<{ success: boolean; sucess: boolean; slutfold: boolean }> {
-  const nodLista = (recipe as any)?.nodes || (recipe as any)?.noder || [];
+  const maxForsok = options.maxOmvandelseForsok ?? 1;
+  const nodLista = (recipe as any)?.nodes || (recipe as any)?.noder || (recipe as any)?.steg || [];
+  
   for (const node of nodLista) {
     const nodFas = bestamFasForSteg(node.id);
     const berikadKontext: PathContext = {
@@ -35,22 +41,40 @@ export async function exekveraRecept(
       aktuellFas: nodFas
     };
 
-    const rawType = (node.type || "").toUpperCase();
-    if (rawType === "STEP" || (!rawType && (node.execute || node.run))) {
-      const exec = node.execute || node.run;
-      if (typeof exec === "function") {
-        const result = await exec(berikadKontext);
-        if (!result || (!result.success && result.status !== 'success')) {
-          throw new Error(`Steg misslyckades: ${node.name || node.id || "Okänt steg"}`);
+    let forsok = 0;
+    let stegKlart = false;
+
+    while (!stegKlart) {
+      try {
+        const rawType = (node.type || "").toUpperCase();
+        if (rawType === "STEP" || (!rawType && (node.execute || node.run || node.exekvera))) {
+          const exec = node.execute || node.run || node.exekvera;
+          if (typeof exec === "function") {
+            const result = await exec(berikadKontext);
+            if (!result || (!result.success && result.status !== 'success')) {
+              throw new Error(`Steg misslyckades: ${node.name || node.id || "Okänt steg"}`);
+            }
+          }
+        } else if (rawType === "PORT" || (!rawType && node.port)) {
+          const portFn = node.port || node.run || node.oppna;
+          if (portFn) {
+            await knackaPaPorten(portFn, berikadKontext);
+          }
+        } else if (typeof node === "function") {
+          await knackaPaPorten(node, berikadKontext);
         }
+        stegKlart = true;
+      } catch (err: any) {
+        forsok++;
+        if (options.onOmvandelse) {
+          options.onOmvandelse(err, berikadKontext, forsok);
+        }
+
+        if (forsok >= maxForsok) {
+          throw err;
+        }
+        // Vid PortNekadError och återstående försök, loopa om
       }
-    } else if (rawType === "PORT" || (!rawType && node.port)) {
-      const portFn = node.port || node.run || node.oppna;
-      if (portFn) {
-        await knackaPaPorten(portFn, berikadKontext);
-      }
-    } else if (typeof node === "function") {
-      await knackaPaPorten(node, berikadKontext);
     }
   }
   return { success: true, sucess: true, slutfold: true };
