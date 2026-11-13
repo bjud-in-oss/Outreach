@@ -112,6 +112,8 @@ export const BidiLiveAdapterConfigSchema = z.object({
   baseBackoffMs: z.number().default(1000),
   maxJitterMs: z.number().default(1000),
   eventBus: z.custom<any>().optional(),
+  tools: z.array(z.any()).optional(),
+  executeTool: z.custom<Function>().optional(),
 });
 
 export type BidiLiveAdapterConfig = z.infer<typeof BidiLiveAdapterConfigSchema>;

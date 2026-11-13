@@ -66,37 +66,37 @@
 - [x] **TCK-MAINT-004** (VERIFIED): Explicit felhantering och resiliens i scripts/samrad.ts -> Se `doc/.TICKETS/TCK-MAINT-004.md`
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
-- [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
-- [x] **TCK-062** (VERIFIED): Konstruktiv kritik i webbmotorn (metaReflection.ts) med 3-vägs triagering, batch-kö och löpande rening -> Se `doc/.TICKETS/TCK-062.md`
-- [x] **TCK-061** (VERIFIED): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
-- [x] **TCK-060** (VERIFIED): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
-- [x] **TCK-059** (VERIFIED): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
-- [x] **TCK-058** (VERIFIED): Exempelskördning av wal_logger.legacy.ts och WalEngine.getWalSummary (ADR-030) -> Se `doc/.TICKETS/TCK-058.md`
-- [x] **TCK-057** (VERIFIED): Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030) -> Se `doc/.TICKETS/TCK-057.md`
-- [x] **TCK-056** (VERIFIED): Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030) -> Se `doc/.TICKETS/TCK-056.md`
-- [x] **TCK-055** (VERIFIED): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
-- [x] **TCK-054** (VERIFIED): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
-- [x] **TCK-053** (VERIFIED): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`
-- [x] **TCK-052** (VERIFIED): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
-- [x] **TCK-051** (VERIFIED): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
-- [x] **TCK-050** (VERIFIED): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
-- [x] **TCK-049** (VERIFIED): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
-- [x] **TCK-048** (VERIFIED): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
-- [x] **TCK-047** (VERIFIED): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
-- [x] **TCK-046** (VERIFIED): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
-- [x] **TCK-045** (VERIFIED): Bidi Live Multimodal SessionAdapter (Path Domain) -> Se `doc/.TICKETS/TCK-045.md`
-- [x] **TCK-044** (VERIFIED): Deterministisk Fasberikning av PathContext i PathRunner -> Se `doc/.TICKETS/TCK-044.md`
-- [x] **TCK-043** (VERIFIED): Den Integrerade Recept-Orkestreraren (Path Orchestrator) -> Se `doc/.TICKETS/TCK-043.md`
-- [x] **TCK-042** (VERIFIED): Fasspecifik Promptkompilator och Typlåsning (Path Domain) -> Se `doc/.TICKETS/TCK-042.md`
-- [x] **TCK-041** (VERIFIED): Promptkompilator och Körtidsadaptrar för Vägmotorn -> Se `doc/.TICKETS/TCK-041.md`
-- [x] **TCK-040** (VERIFIED): Det Klassiska Receptet (Classic 12-Step Recipe) -> Se `doc/.TICKETS/TCK-040.md`
-- [x] **TCK-039** (VERIFIED): Besiktningsporten och Recept-harmonisering -> Se `doc/.TICKETS/TCK-039.md`
-- [x] **TCK-038** (VERIFIED): Konstruktionsporten och Källkodsmatrisen (Construction Port) -> Se `doc/.TICKETS/TCK-038.md`
-- [x] **TCK-037** (VERIFIED): Prövningsporten och Prediktiv TDD (Testing Port) -> Se `doc/.TICKETS/TCK-037.md`
-- [x] **TCK-036** (VERIFIED): Receptkontraktet och Avsiktsporten med Dialogstöd -> Se `doc/.TICKETS/TCK-036.md`
-- [x] **TCK-035** (VERIFIED): Initiera Vägen och Typkontrakten (Path Engine) -> Se `doc/.TICKETS/TCK-035.md`
-- [x] **TCK-034** (VERIFIED): Visning av kontextminne -> Se `doc/.TICKETS/TCK-034.md`
-- [x] **TCK-027** (VERIFIED): Slutgiltig FSD-sanering av gemini_live_swarm (0 arkitekturfel) -> Se `doc/.TICKETS/TCK-027.md`
-- [x] **TCK-026** (VERIFIED): Frikoppla McpServer och Verktyg via Delade Kontrakt (FSD-sanering) -> Se `doc/.TICKETS/TCK-026.md`
-- [x] **TCK-025** (VERIFIED): Flytta SwarmEventBus till Shared-lagret (FSD-sanering) -> Se `doc/.TICKETS/TCK-025.md`
-- [x] **TCK-024** (VERIFIED): One-Shot Automation (pnpm bygg) & Autonomous MCP Tool Integration -> Se `doc/.TICKETS/TCK-024.md`
+- [ ] **TCK-TEST-001** (READY): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [ ] **TCK-062** (READY): Konstruktiv kritik i webbmotorn (metaReflection.ts) med 3-vägs triagering, batch-kö och löpande rening -> Se `doc/.TICKETS/TCK-062.md`
+- [x] **TCK-061** (VERIFIED) (READY): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
+- [ ] **TCK-060** (READY): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
+- [ ] **TCK-059** (READY): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
+- [ ] **TCK-058** (READY): Exempelskördning av wal_logger.legacy.ts och WalEngine.getWalSummary (ADR-030) -> Se `doc/.TICKETS/TCK-058.md`
+- [ ] **TCK-057** (READY): Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030) -> Se `doc/.TICKETS/TCK-057.md`
+- [ ] **TCK-056** (READY): Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030) -> Se `doc/.TICKETS/TCK-056.md`
+- [ ] **TCK-055** (READY): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
+- [ ] **TCK-054** (READY): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
+- [ ] **TCK-053** (READY): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`
+- [ ] **TCK-052** (READY): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
+- [ ] **TCK-051** (READY): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
+- [ ] **TCK-050** (READY): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
+- [ ] **TCK-049** (READY): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
+- [ ] **TCK-048** (READY): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
+- [ ] **TCK-047** (READY): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
+- [ ] **TCK-046** (READY): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
+- [ ] **TCK-045** (READY): Bidi Live Multimodal SessionAdapter (Path Domain) -> Se `doc/.TICKETS/TCK-045.md`
+- [ ] **TCK-044** (READY): Deterministisk Fasberikning av PathContext i PathRunner -> Se `doc/.TICKETS/TCK-044.md`
+- [ ] **TCK-043** (READY): Den Integrerade Recept-Orkestreraren (Path Orchestrator) -> Se `doc/.TICKETS/TCK-043.md`
+- [ ] **TCK-042** (READY): Fasspecifik Promptkompilator och Typlåsning (Path Domain) -> Se `doc/.TICKETS/TCK-042.md`
+- [ ] **TCK-041** (READY): Promptkompilator och Körtidsadaptrar för Vägmotorn -> Se `doc/.TICKETS/TCK-041.md`
+- [ ] **TCK-040** (READY): Det Klassiska Receptet (Classic 12-Step Recipe) -> Se `doc/.TICKETS/TCK-040.md`
+- [ ] **TCK-039** (READY): Besiktningsporten och Recept-harmonisering -> Se `doc/.TICKETS/TCK-039.md`
+- [ ] **TCK-038** (READY): Konstruktionsporten och Källkodsmatrisen (Construction Port) -> Se `doc/.TICKETS/TCK-038.md`
+- [ ] **TCK-037** (READY): Prövningsporten och Prediktiv TDD (Testing Port) -> Se `doc/.TICKETS/TCK-037.md`
+- [ ] **TCK-036** (READY): Receptkontraktet och Avsiktsporten med Dialogstöd -> Se `doc/.TICKETS/TCK-036.md`
+- [ ] **TCK-035** (READY): Initiera Vägen och Typkontrakten (Path Engine) -> Se `doc/.TICKETS/TCK-035.md`
+- [ ] **TCK-034** (READY): Visning av kontextminne -> Se `doc/.TICKETS/TCK-034.md`
+- [ ] **TCK-027** (READY): Slutgiltig FSD-sanering av gemini_live_swarm (0 arkitekturfel) -> Se `doc/.TICKETS/TCK-027.md`
+- [ ] **TCK-026** (READY): Frikoppla McpServer och Verktyg via Delade Kontrakt (FSD-sanering) -> Se `doc/.TICKETS/TCK-026.md`
+- [ ] **TCK-025** (READY): Flytta SwarmEventBus till Shared-lagret (FSD-sanering) -> Se `doc/.TICKETS/TCK-025.md`
+- [ ] **TCK-024** (READY): One-Shot Automation (pnpm bygg) & Autonomous MCP Tool Integration -> Se `doc/.TICKETS/TCK-024.md`

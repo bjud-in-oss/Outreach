@@ -84,13 +84,39 @@ export function skapaBidiLiveAdapter(
           attempts++;
           let session;
           try {
-            session = await ai.live.connect({ model: config.model || 'gemini-3.8-live' });
+            const connectOptions: { model: string; config?: { tools: any[] } } = { model: config.model || 'gemini-3.8-live' };
+            if (config.tools && config.tools.length > 0) {
+              connectOptions.config = { tools: config.tools };
+            }
+            session = await ai.live.connect(connectOptions);
             await session.sendClientContent({
               turns: [{ role: 'user', parts: [{ text: content }] }],
               turnComplete: true
             });
 
             for await (const message of session.receiveStream()) {
+              if (config.executeTool && message.toolCall && message.toolCall.functionCalls && message.toolCall.functionCalls.length > 0) {
+                const functionResponses: any[] = [];
+                for (const functionCall of message.toolCall.functionCalls) {
+                  try {
+                    const result = await config.executeTool(functionCall.name, functionCall.args);
+                    functionResponses.push({
+                      id: functionCall.id,
+                      name: functionCall.name,
+                      response: result
+                    });
+                  } catch (err: any) {
+                    functionResponses.push({
+                      id: functionCall.id,
+                      name: functionCall.name,
+                      response: { error: err.message || String(err) }
+                    });
+                  }
+                }
+                await session.sendToolResponse({ functionResponses });
+                continue;
+              }
+
               const serverContent = message.serverContent;
               if (serverContent && serverContent.modelTurn && serverContent.modelTurn.parts) {
                 for (const part of serverContent.modelTurn.parts) {
