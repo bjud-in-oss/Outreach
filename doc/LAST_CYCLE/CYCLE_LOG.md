@@ -1,56 +1,61 @@
-# BYGGCYKEL LOGG: TCK-056
-**Starttid:** 2026-11-13T21:47:38.323Z
+# BYGGCYKEL LOGG: TCK-MAINT-057
+**Starttid:** 2026-11-13T21:51:22.229Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-056: Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030)
+# TCK-MAINT-057: Avvisa tautologiska alibi-assertions i Gate 3a (ts.js) och ersätt placeholder i swarmEventBus.test.tsx
 
-**Måldomän:** `google_drive_sync` (`src/features/google_drive_sync/`)
-**Målfiler:** `src/features/google_drive_sync/model/driveWorkspaceHelper.ts`
-**Skördad Legacy:** `src/__tests__/drive_sync.legacy.ts`
-**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (konsoliderat till `src/features/google_drive_sync/__tests__/`) verifierar samtliga 3 scenarier från `src/__tests__/drive_sync.legacy.ts` (`GoogleDriveClient` token-initiering med `hasValidToken()`, `resolveMimeType('strategi.json')`, `getWorkspaceSubfolders()`) samt nya `createDefaultWorkspaceManifest()`, varefter Fas 3 raderar `src/__tests__/drive_sync.legacy.ts` och `pnpm verify` passerar med exit 0.
+**Måldomän:** `scripts`
+**Målfiler:** `scripts/drivers/ts.js`, `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx`
+**Mekanisk Acceptans:**
+1. `scripts/drivers/ts.js` (< 240 rader) utökar `--check-alibi` (Gate 3a) med en AST-kontroll som stoppar triviala tautologi-assertions där `expect(<literal>).toBe(<identisk literal>)` eller `toEqual`/`toStrictEqual` jämför två identiska booleska, numeriska eller strängliteraler (t.ex. `expect(true).toBe(true)`).
+2. Placeholder-testet i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx` (< 140 rader) ersätts med ett verkligt körtidstest av `eventBus.clear()` utan `expect(true).toBe(true)`.
+3. `pnpm verify` passerar med exit 0.
 
 ---
 
 ## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Skapa `src/features/google_drive_sync/model/driveWorkspaceHelper.ts` (< 40 rader):**
-   - Exportera `createDefaultWorkspaceManifest(rootName = 'Outreach_Workspace')` som returnerar `{ rootName, subfolders: ['Campaigns', 'Templates', 'Logs', 'Artifacts'] }`.
-   - Rör inte `driveClient.ts` (ligger på 238/250 rader).
-2. **Testdisciplin i Steg 3a (Fail-First + Skörd utan `vi.fn()`):**
-   - Läs `src/__tests__/drive_sync.legacy.ts` och `src/features/google_drive_sync/api/driveClient.ts` i Steg 3a.
-   - Importera `GoogleDriveClient` från `../features/google_drive_sync/api/driveClient` och `createDefaultWorkspaceManifest` från `../features/google_drive_sync/model/driveWorkspaceHelper`.
-   - Inga kors-domänimporter och inga `vi.fn()`/`vi.spyOn()`.
+1. **AST-kontroll mot tautologier i `scripts/drivers/ts.js` (< 240 rader):**
+   - Lägg till `let hasTautologyAssertion = false;` i `--check-alibi`-blocket.
+   - Inuti `if (ts.isCallExpression(node))`: kontrollera om `ts.isPropertyAccessExpression(node.expression)` har `.name.text` i `['toBe', 'toEqual', 'toStrictEqual']` och `ts.isCallExpression(node.expression.expression)` har anropsnamnet `'expect'`.
+   - Jämför första argumentet till `expect(...)` med första argumentet till matchern: om båda är `TrueKeyword`, båda `FalseKeyword`, eller båda `StringLiteral`/`NumericLiteral` med exakt samma `.text`, sätt `hasTautologyAssertion = true;`.
+   - Avbryt med `process.exit(1)` och tydligt `❌ GATE 3a BROTT`-meddelande om `hasTautologyAssertion` är sant.
+2. **Ersätt `expect(true).toBe(true)` i `src/features/gemini_live_swarm/__tests__/swarmEventBus.test.tsx` (< 140 rader):**
+   - Byt ut `expect(true).toBe(true);` i testet `'should limit capacity strictly using FIFO ring buffer logic'` mot en verklig verifiering av `eventBus.clear()` (prenumerera på `'test.clear'`, anropa `eventBus.clear()`, emittera `'test.clear'` och verifiera att räknaren är `0`).
 
 ---
 
 ## Scenariotriad (Den relationella och systemiska avsikten)
 
-**Scenario: ATT FÖLJA – Drive-klientens kontrakt blir levande regressionsskydd**
-  Givet att `drive_sync.legacy.ts` innehåller 3 verifierade tester för `GoogleDriveClient`
-  När de skördas in i `src/features/google_drive_sync/__tests__/` tillsammans med `createDefaultWorkspaceManifest`
-  Så körs de i varje `pnpm verify` och `drive_sync.legacy.ts` städas bort i Fas 3.
+**Scenario: ATT FÖLJA – Gate 3a garanterar verkliga körtidsassertions**
+  Givet att Gate 3a granskar nya och skördade testfiler via TypeScript AST
+  När ett test innehåller `expect(true).toBe(true)` eller identiska literaler
+  Så stoppar `ts.js` testet omedelbart innan källkod får skrivas
+  Vilket säkerställer att varje testfall utövar verklig produktionskod.
 
-**Scenario: ATT VÄNDA OM – Avvisande av tysta regressionsfel i Drive-synken**
-  Givet att `google_drive_sync` tidigare saknade aktiva enhetstester
-  När testerna blir aktiva i Vitest
-  Så fångas eventuella brott i MIME-typning eller mappstruktur direkt.
+**Scenario: ATT VÄNDA OM – Sanering av tom placeholder från TCK-055**
+  Givet att `swarmEventBus.test.tsx` innehöll en kvarlämnad `expect(true).toBe(true)`-rad
+  När den ersätts med ett skarpt `eventBus.clear()`-test
+  Så passerar hela testsviten den nya Gate 3a-spärren.
 
 **Scenario: ATT FÖRLIKAS – Grön verifiering i hela repot**
-  Givet att testerna passerar och legacy-filen är borttagen
+  Givet att `scripts/drivers/ts.js` och `swarmEventBus.test.tsx` är uppdaterade
   När `pnpm verify` körs
-  Så passerar hela sviten med exit 0.
+  Så passerar kompilering, radgränser, AST-grindar och samtliga tester med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Det här uppdraget handlar om att städa upp bland våra äldre tester och ge dem en permanent, pålitlig plats i vår nya struktur. Genom att flytta funktionerna från legacy-filen in till domänen för Google Drive säkerställer vi att koden testas ordentligt vid varje bygge, vilket gör systemet mer robust och tryggt att använda. Visst låter det som en bra plan att konsolidera detta?
+Jag förstår uppdraget precis. Syftet med TCK-MAINT-057 är att stärka vår kvalitetsgrind Gate 3a genom att stoppa tautologiska alibi-assertions, såsom `expect(true).toBe(true)`.
+
+Genom att ersätta platshållaren i `swarmEventBus.test.tsx` med ett riktigt körtidstest av `eventBus.clear()`, säkerställer vi genuint testutfall och systemisk resiliens. Är du redo att vi sätter igång med bygget?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsauditen är utförd och godkänd. Uppdraget omfattar strikt en FSD-domän (`google_drive_sync`) och innefattar planerad destruktiv sanering av legacy-tester i Fas 3. Alla restriktioner och säkerhetsspärrar är förstådda.
+Jag har granskat kontraktet och premisserna för TCK-MAINT-057 och kan bekräfta att alla invariater för Gate 3a hålls. Kontraktet är härmed auditerat och godkänt för exekvering.
 
 
 #### 0b Att förlikas: Vägval
@@ -62,30 +67,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Här är de tre ortogonala alternativen för att lösa uppdraget för TCK-056:
+För att lösa kontraktet TCK-MAINT-057 och stärka grind 3a utan att introducera sidoberoenden, formulerar jag tre ortogonala alternativ.
 
-Alternativ 1: Direkt konsolidering och modulär separation. Vi skapar hjälpfilen, flyttar existerande logik till nya enhetstester i domänen och raderar legacy-filen direkt efteråt.
+Alternativ ett är att bygga in en direkt AST-kontroll i nod-besökaren för expect-anrop i `ts.js` för att validera första argumentet mot matcherns textvärde och avbryta omedelbart. För testfilen prenumererar vi på ett test-event, anropar `eventBus.clear()` och emitterar för att verifiera nollställning.
 
-Alternativ 2: Strukturerad steg-för-steg-migrering. Vi verifierar först manifestfunktionen, portar sedan testerna ett och ett och validerar att inga mockar krävs innan vi städar.
+Alternativ två använder en modulär hjälpfunktion i `ts.js` för att renodla AST-logiken mot tautologiska matchers och för testfilen kapslas verifieringen in i en sluten lambda per krav.
 
-Alternativ 3: Integrerad körtidsvalidering. Vi bygger hjälpfilen och kör de skördade testerna direkt mot Drive-klienten för att säkerställa full funktionalitet innan legacy-koden saneras.
+Alternativ tre implementerar en specifik nod-besökare för assert-uttryck som filtrerar bort tautologier före generella funktioner och för testfilen används rena variabler för tillståndsmätning utan mockar. Vilka avvägningar prioriterar vi?
 
 
 #### 2c Att vända om: Resiliensgranskning
-Resiliensgranskningen visar att alternativ 3 har bäst resiliens eftersom det integrerar körtidsvalidering direkt, vilket säkerställer att klientkontraktet fungerar korrekt innan någon destruktiv sanering sker av legacy-koden. Detta minimerar risken för tysta regressionsfel vid migrering.
+Vi prioriterar Alternativ ett för dess direkta och transparenta AST-kontroll i nodbesökaren. Det minimerar risken för dolda fel eller sidoberoenden, vilket ger störst resiliens mot protokollbrus och felaktiga tillstånd.
 
 
 #### 2d Att förlikas: Mättnad
-Resiliensgranskningen bekräftar att alternativ 3 är det mest hållbara spåret. Genom att integrera körtidsvalidering direkt minimerar vi risken för dolda fel. Jag deklarerar därmed MÄTTNAD: JA.
-
-
-#### 3a Att följa: Testspecifikation
-
-
-
-#### 3b Att följa: Källkod
-
-
-
-#### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Byggkontraktet är spikat och kristalliserat. Vi skapar `src/features/google_drive_sync/model/driveWorkspaceHelper.ts` för workspace-manifestet och flyttar över arvegodstesterna till en ny, isolerad svit under `__tests__/` för löpande regredieringsskydd. I slutet av processen fasas `drive_sync.legacy.ts` ut helt, och vi säkerställer att `driveClient.ts` förblir orörd och inom radgränsen.
+Vi bekräftar att Alternativ ett är det bäst lämpade kontraktet. Vi deklarerar härmed MÄTTNAD: JA och låser det vinnande alternativet för fortsatt exekvering.

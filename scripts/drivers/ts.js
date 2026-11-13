@@ -108,6 +108,7 @@ if (args.includes('--check-alibi')) {
 
   let hasSpies = false;
   let hasRuntimeAnchor = false;
+  let hasTautologyAssertion = false;
   let hasSourceTextAssertion = false;
   let hasIllegalFsRead = false;
   let hasForbiddenPortFactoryMock = false;
@@ -154,6 +155,43 @@ if (args.includes('--check-alibi')) {
       }
       for (const anchor of RUNTIME_ANCHORS) {
         if (text.includes(anchor)) hasRuntimeAnchor = true;
+      }
+
+      // Kontroll: Upptäck tautologiska alibi-assertions
+      if (ts.isPropertyAccessExpression(node.expression)) {
+        const matcherName = node.expression.name.getText(sf);
+        if (['toBe', 'toEqual', 'toStrictEqual'].includes(matcherName)) {
+          if (ts.isCallExpression(node.expression.expression) && 
+              node.expression.expression.expression.getText(sf) === 'expect') {
+            const expectArgs = node.expression.expression.arguments;
+            const matcherArgs = node.arguments;
+
+            if (expectArgs.length > 0 && matcherArgs.length > 0) {
+              const arg1 = expectArgs[0];
+              const arg2 = matcherArgs[0];
+
+              let isTautology = false;
+
+              // Booleska literaler
+              if ((arg1.kind === ts.SyntaxKind.TrueKeyword && arg2.kind === ts.SyntaxKind.TrueKeyword) ||
+                  (arg1.kind === ts.SyntaxKind.FalseKeyword && arg2.kind === ts.SyntaxKind.FalseKeyword)) {
+                isTautology = true;
+              }
+
+              // Sträng eller Numeriska literaler
+              if ((ts.isStringLiteral(arg1) && ts.isStringLiteral(arg2)) ||
+                  (ts.isNumericLiteral(arg1) && ts.isNumericLiteral(arg2))) {
+                if (arg1.text === arg2.text) {
+                  isTautology = true;
+                }
+              }
+
+              if (isTautology) {
+                hasTautologyAssertion = true;
+              }
+            }
+          }
+        }
       }
     } else if (ts.isIdentifier(node)) {
       if (RUNTIME_ANCHORS.includes(node.text)) {

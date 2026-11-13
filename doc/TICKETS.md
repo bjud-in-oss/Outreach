@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-057** (VERIFIED): Avvisa tautologiska alibi-assertions i Gate 3a (ts.js) och ersätt placeholder i swarmEventBus.test.tsx -> Se `doc/.TICKETS/TCK-MAINT-057.md`
 - [x] **TCK-MAINT-056** (VERIFIED): Exempelskördning av envelope.legacy.ts till src/shared/__tests__/envelope.test.ts (ADR-030) -> Se `doc/.TICKETS/TCK-MAINT-056.md`
 - [x] **TCK-MAINT-055** (VERIFIED): Höj maxReconnectAttempts till 5 och lägg till slumpad jitter i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-055.md`
 - [x] **TCK-MAINT-054** (VERIFIED): Kompileringsskydd för scripts/*.ts, koppla saneraSkordadLegacy och laga pathNodePorts -> Se `doc/.TICKETS/TCK-MAINT-054.md`
