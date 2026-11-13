@@ -69,6 +69,17 @@ export class WalEngine {
   }
 
   /**
+   * Returnerar en sammanfattning av WAL-poster per status
+   */
+  public getWalSummary(): { total: number; pending: number; committed: number; failed: number } {
+    const total = this.entries.length;
+    const pending = this.entries.filter((e) => e.status === 'PENDING').length;
+    const committed = this.entries.filter((e) => e.status === 'COMMITTED').length;
+    const failed = this.entries.filter((e) => e.status === 'FAILED').length;
+    return { total, pending, committed, failed };
+  }
+
+  /**
    * Returnerar kopia av hela WAL-historiken (senaste först eller äldsta först)
    */
   public getWalHistory(): WalEntry[] {
