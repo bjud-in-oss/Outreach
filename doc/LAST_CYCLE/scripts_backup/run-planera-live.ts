@@ -13,10 +13,11 @@ import * as readline from 'readline';
 import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.js';
-import { mutateSourceCodeAST } from './drivers/astMutator.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
 import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
 import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
+import { getFeatureIndexText, getInstalledDependencies, appendCycleLog } from './lib/channelRunner.js';
+import { saneraSkordadLegacy } from './lib/fas3Consolidation.js';
 
 const ROOT_DIR = process.cwd();
 
@@ -48,27 +49,6 @@ process.on("exit", (code) => {
 });
 let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
 if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
-
-function getFeatureIndexText(): string {
-  if (fs.existsSync(FEATURE_INDEX_PATH)) return fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8');
-  return '';
-}
-
-function getInstalledDependencies(): string {
-  if (!fs.existsSync(PKG_PATH)) return '';
-  try {
-    const pkg = JSON.parse(fs.readFileSync(PKG_PATH, 'utf-8'));
-    const deps = Object.keys(pkg.dependencies || {});
-    const devDeps = Object.keys(pkg.devDependencies || {});
-    return `TILLGÄNGLIGA PAKET I PROJEKTET (Importera ALDRIG externa paket utanför denna lista! För övrigt, använd Node.js inbyggda API:er):\n${[...deps, ...devDeps].join(', ')}`;
-  } catch {
-    return '';
-  }
-}
-
-function appendCycleLog(header: string, content: string) {
-  fs.appendFileSync(CYCLE_LOG_PATH, `\n\n#### ${header}\n${content.trim()}\n`, 'utf-8');
-}
 
 interface ChannelOptions {
   requireMutation?: boolean;
@@ -675,6 +655,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
         console.log(`\n🧪 [MAINT]: Kör full regressionssvit (Försök ${maintAttempts}/3)...`);
         execCaptured('pnpm test');
+        execCaptured('npx esbuild scripts/run-planera-live.ts scripts/run-path.ts --bundle --platform=node --packages=external --outdir=/tmp/outreach-script-check');
 
         maintPassed = true;
         console.log('✅ [MAINT]: Lokala skriptkontroller godkända!');
@@ -868,36 +849,8 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
     console.warn(`⚠️ [FAS 3]: Kunde inte uppdatera TICKETS.md: ${err?.message || err}`);
   }
 
-  
-  if (isMaint) {
-    console.log("\n🔍 Verifierar underhållsleverans...");
-    const changedFiles = execSync("git diff --name-only", { encoding: "utf-8", cwd: ROOT_DIR }).split("\n").filter(Boolean);
-    const spec = fs.readFileSync(ticketPath, "utf-8");
-    const expectedFiles = (spec.match(/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+(?:ts|js|json|md))/g) || [])
-      .filter((v, i, a) => a.indexOf(v) === i && !v.includes("TCK-"));
-    const missing = expectedFiles.filter(f => !changedFiles.some(cf => cf.includes(path.basename(f))));
-    if (missing.length > 0) {
-      console.warn("⚠️ [LEVERANSVARNING]: Följande filer nämndes i specifikationen men ändrades inte:");
-      missing.forEach(f => console.warn(`   - ${f}`));
-    } else {
-      console.log("✅ Alla filer som nämndes i specifikationen har berörts.");
-    }
-  }
-
-  console.log('\n🔍 Slutverifiering: Kör hela projektets arkitektur- och regressionskontroll...');
   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
-  console.log('\n🎉 ALLA TESTER OCH ARKITEKTURKONTROLLER GRÖNA!');
-  try {
-    const benchData = {
-      ticket: ticketId,
-      durationMs: Date.now() - startTime,
-      timestamp: new Date().toISOString()
-    };
-    fs.writeFileSync(path.join(CYCLE_LOG_DIR, "BENCHMARK.json"), JSON.stringify(benchData, null, 2), "utf-8");
-    console.log("📊 [BENCHMARK]: doc/LAST_CYCLE/BENCHMARK.json sparad.");
-  } catch (err: any) {
-    console.warn("⚠️ [BENCHMARK]: Kunde inte spara benchmark:", err?.message || err);
-  }
+  if (!isMaint) saneraSkordadLegacy(ticketPath);
 
 
   // --- DEN MÄNSKLIGA BESLUTSGRINDEN FÖR SYSTEMÄNDRINGAR ---

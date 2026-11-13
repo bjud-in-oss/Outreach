@@ -10,7 +10,7 @@ export interface BidiRunnerConfig {
 
 export class BidiLiveSession {
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
+  private maxReconnectAttempts = 5;
 
   private session: any = null;
   private isClosed = false;
@@ -202,8 +202,8 @@ export class BidiLiveSession {
 
               if ((code === 1011 || code === 1006) && this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
-                const delay = Math.pow(2, this.reconnectAttempts) * 1000;
-                console.warn(`\n⚠️ [WS ${code} AVBROTT]: Återansluter automatiskt (försök ${this.reconnectAttempts}/${this.maxReconnectAttempts}) om ${delay}ms...`);
+                const delay = Math.pow(2, this.reconnectAttempts) * 1000 + Math.floor(Math.random() * 1000);
+                console.warn(`\n⚠️ [${code} AVBROTT]: Återansluter automatiskt (försök ${this.reconnectAttempts}/${this.maxReconnectAttempts}) om ${delay}ms...`);
 
                 this.reconnectTimer = setTimeout(async () => {
                   try {
@@ -257,7 +257,7 @@ export class BidiLiveSession {
         this.isClosed = true;
 
         if (attempt < this.maxReconnectAttempts && !this.isIntentionalClose) {
-          const delay = Math.pow(2, attempt + 1) * 1000;
+          const delay = Math.pow(2, attempt + 1) * 1000 + Math.floor(Math.random() * 1000);
           console.warn(`\n⚠️ [HANDSKAKNING AVBRÖTS]: ${err?.message || err}. Försöker igen (${attempt + 1}/${this.maxReconnectAttempts}) om ${delay}ms...`);
           await new Promise((r) => setTimeout(r, delay));
           continue;

@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-055** (VERIFIED): Höj maxReconnectAttempts till 5 och lägg till slumpad jitter i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-055.md`
 - [x] **TCK-MAINT-054** (VERIFIED): Kompileringsskydd för scripts/*.ts, koppla saneraSkordadLegacy och laga pathNodePorts -> Se `doc/.TICKETS/TCK-MAINT-054.md`
 - [x] **TCK-MAINT-053** (VERIFIED): Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning -> Se `doc/.TICKETS/TCK-MAINT-053.md`
 - [x] **TCK-MAINT-052** (VERIFIED): Banta run-planera-live.ts under 250 rader, laga pathNodePorts.ts och logga kvarvarande legacy-skörd -> Se `doc/.TICKETS/TCK-MAINT-052.md`
