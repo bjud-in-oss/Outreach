@@ -2,6 +2,7 @@
 
 ## AKTIVA TICKETS
 
+- [x] **TCK-MAINT-064** (VERIFIED): Laga update-tickets.js, 4-stegs självrannsakande omvändelse (TCK + MAINT) och 3-vägs triagering av konstruktiv kritik -> Se `doc/.TICKETS/TCK-MAINT-064.md`
 - [x] **TCK-MAINT-063** (VERIFIED): AI-prioriterad tvådelad kontextuppdelning, noga urvald trunkering och VERIFIED-vakt -> Se `doc/.TICKETS/TCK-MAINT-063.md`
 - [x] **TCK-MAINT-062** (VERIFIED): Täta recoveryPrompt mot vi.fn() och aktivera saneraSkordadLegacy utan if-spärr -> Se `doc/.TICKETS/TCK-MAINT-062.md`
 - [x] **TCK-MAINT-061** (VERIFIED): Förbjud vi.fn() och tautologier i Steg 3a-prompten och aktivera universell saneraSkordadLegacy -> Se `doc/.TICKETS/TCK-MAINT-061.md`
@@ -66,6 +67,7 @@
 - [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [x] **TCK-TEST-001** (VERIFIED): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-062** (VERIFIED): Konstruktiv kritik i webbmotorn (metaReflection.ts) med 3-vägs triagering, batch-kö och löpande rening -> Se `doc/.TICKETS/TCK-062.md`
 - [x] **TCK-061** (VERIFIED): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
 - [x] **TCK-060** (VERIFIED): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
 - [x] **TCK-059** (VERIFIED): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`

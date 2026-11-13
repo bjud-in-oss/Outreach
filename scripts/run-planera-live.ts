@@ -16,8 +16,8 @@ import { BidiLiveSession } from './bidiLiveRunner.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
 import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
 import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
-import { getFeatureIndexText, getInstalledDependencies, appendCycleLog } from './lib/channelRunner.js';
-import { saneraSkordadLegacy } from './lib/fas3Consolidation.js';
+import { getFeatureIndexText, getInstalledDependencies, appendCycleLog, hanteraKonstruktivKritik, sparaMetaOmvandelse } from './lib/channelRunner.js';
+import { konsolideraTest, uppdateraFeatureIndex, uppdateraBiljettstatus, hanteraTrepunktsbesiktning, genomforGitCommitPush, saneraSkordadLegacy } from './lib/fas3Consolidation.js';
 
 const ROOT_DIR = process.cwd();
 
