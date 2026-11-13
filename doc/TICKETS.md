@@ -2,101 +2,101 @@
 
 ## AKTIVA TICKETS
 
-- [x] **TCK-MAINT-064** (VERIFIED): Laga update-tickets.js, 4-stegs självrannsakande omvändelse (TCK + MAINT) och 3-vägs triagering av konstruktiv kritik -> Se `doc/.TICKETS/TCK-MAINT-064.md`
-- [x] **TCK-MAINT-063** (VERIFIED): AI-prioriterad tvådelad kontextuppdelning, noga urvald trunkering och VERIFIED-vakt -> Se `doc/.TICKETS/TCK-MAINT-063.md`
-- [x] **TCK-MAINT-062** (VERIFIED): Täta recoveryPrompt mot vi.fn() och aktivera saneraSkordadLegacy utan if-spärr -> Se `doc/.TICKETS/TCK-MAINT-062.md`
-- [x] **TCK-MAINT-061** (VERIFIED): Förbjud vi.fn() och tautologier i Steg 3a-prompten och aktivera universell saneraSkordadLegacy -> Se `doc/.TICKETS/TCK-MAINT-061.md`
-- [x] **TCK-MAINT-060** (VERIFIED): Injicera källkodsankare (buildRetryAnchor) och full muteringskontroll i MAINT-självrättningen -> Se `doc/.TICKETS/TCK-MAINT-060.md`
-- [x] **TCK-MAINT-059** (VERIFIED): Koppla Gate 3a till pathNodePorts, slutför scriptLibs-tester, dubbelkrasch-checkout och radera envelope.legacy.ts -> Se `doc/.TICKETS/TCK-MAINT-059.md`
-- [x] **TCK-MAINT-058** (VERIFIED): Slutför tautologispärren i ts.js (med negativt test), radera envelope.legacy.ts och installera dubbelkrasch-checkout -> Se `doc/.TICKETS/TCK-MAINT-058.md`
-- [x] **TCK-MAINT-057** (VERIFIED): Avvisa tautologiska alibi-assertions i Gate 3a (ts.js) och ersätt placeholder i swarmEventBus.test.tsx -> Se `doc/.TICKETS/TCK-MAINT-057.md`
-- [x] **TCK-MAINT-056** (VERIFIED): Exempelskördning av envelope.legacy.ts till src/shared/__tests__/envelope.test.ts (ADR-030) -> Se `doc/.TICKETS/TCK-MAINT-056.md`
-- [x] **TCK-MAINT-055** (VERIFIED): Höj maxReconnectAttempts till 5 och lägg till slumpad jitter i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-055.md`
-- [x] **TCK-MAINT-054** (VERIFIED): Kompileringsskydd för scripts/*.ts, koppla saneraSkordadLegacy och laga pathNodePorts -> Se `doc/.TICKETS/TCK-MAINT-054.md`
-- [x] **TCK-MAINT-053** (VERIFIED): Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning -> Se `doc/.TICKETS/TCK-MAINT-053.md`
-- [x] **TCK-MAINT-052** (VERIFIED): Banta run-planera-live.ts under 250 rader, laga pathNodePorts.ts och logga kvarvarande legacy-skörd -> Se `doc/.TICKETS/TCK-MAINT-052.md`
-- [x] **TCK-MAINT-051** (VERIFIED): Modulär radgränsspärr (sizeGate.js) och undantagsfri rekursiv domänläckagekontroll för scripts/ -> Se `doc/.TICKETS/TCK-MAINT-051.md`
-- [x] **TCK-MAINT-050** (VERIFIED): Flytta formatMemoryIndicator till shared, återkoppla MAINT-exit-skydd och koppla Node-portar till Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-050.md`
-- [x] **TCK-MAINT-049** (VERIFIED): Slutför scripts/lib-utbrytning, skärp Steg 3a-läsning och lås taket på 1000 rader -> Se `doc/.TICKETS/TCK-MAINT-049.md`
-- [x] **TCK-MAINT-048** (VERIFIED): Bryt ut skriptverktyg till scripts/lib/ och sänk Strangler Fig-taket till 800 rader -> Se `doc/.TICKETS/TCK-MAINT-048.md`
-- [x] **TCK-MAINT-047** (VERIFIED): Radgränsspärr och Strangler Fig-ratchet för scripts/ i verify-architecture.js -> Se `doc/.TICKETS/TCK-MAINT-047.md`
-- [x] **TCK-MAINT-046** (VERIFIED): Avgränsa självrättningskontext i Fas 2 till målfiler för att skydda 65K TPM -> Se `doc/.TICKETS/TCK-MAINT-046.md`
-- [x] **TCK-MAINT-045** (VERIFIED): Kräv publik ingångspunkt vid test av hjälpmoduler i Steg 3a -> Se `doc/.TICKETS/TCK-MAINT-045.md`
-- [x] **TCK-MAINT-044** (VERIFIED): Rekursiv Självrättningskontext och Sanering av Tysta Catch-block -> Se `doc/.TICKETS/TCK-MAINT-044.md`
-- [x] **TCK-MAINT-043** (VERIFIED): Källkodskontext i Gate 2c, execCaptured och Efemär Handskakningsutjämning -> Se `doc/.TICKETS/TCK-MAINT-043.md`
-- [x] **TCK-MAINT-042** (VERIFIED): Handskakningssäker WS 1011-omsändning, Målfilskontroll, Gate 2c-kontext och execCaptured -> Se `doc/.TICKETS/TCK-MAINT-042.md`
-- [x] **TCK-MAINT-041** (VERIFIED): WS 1011-omsändning i BidiLiveSession och Universal Fas 2-filkontroll -> Se `doc/.TICKETS/TCK-MAINT-041.md`
-- [x] **TCK-MAINT-040** (VERIFIED): Härdad Fas 2-avslutning, In-Loop AST-Grind och Maint-Regression -> Se `doc/.TICKETS/TCK-MAINT-040.md`
-- [x] **TCK-MAINT-039** (VERIFIED): Standardisera CloudEvent- och nyttolastleverans i SwarmEventBus -> Se `doc/.TICKETS/TCK-MAINT-039.md`
-- [x] **TCK-MAINT-038** (VERIFIED): Montera händelsestyrd A2UIContainer i applikationsroten -> Se `doc/.TICKETS/TCK-MAINT-038.md`
-- [x] **TCK-MAINT-037** (VERIFIED): Global Happy-DOM och Fail-First-förankring i Vitest v5 -> Se `doc/.TICKETS/TCK-MAINT-037.md`
-- [x] **TCK-MAINT-036** (VERIFIED): Skydd mot 0-bytesfiler i Fas 2 och Precisionsspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-036.md`
-- [x] **TCK-MAINT-035** (VERIFIED): Global Startsanering, Scoped Happy-DOM och Dynamisk Konsolidering -> Se `doc/.TICKETS/TCK-MAINT-035.md`
-- [x] **TCK-MAINT-034** (VERIFIED): TSX-stöd för Transienta Tester och Syntaxspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-034.md`
-- [x] **TCK-MAINT-033** (VERIFIED): Aktivera Tailwind i Vite, Harmonisera SwarmEventBus och Montera A2UI i App -> Se `doc/.TICKETS/TCK-MAINT-033.md`
-- [x] **TCK-MAINT-032** (VERIFIED): Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition -> Se `doc/.TICKETS/TCK-MAINT-032.md`
-- [x] **TCK-MAINT-031** (VERIFIED): Harmonisera ast-mutator.test.js med Vitest-standarden -> Se `doc/.TICKETS/TCK-MAINT-031.md`
-- [x] **TCK-MAINT-030** (VERIFIED): Lokal Fas 2-validering vid skriptunderhåll & Hermetisk testexekvering -> Se `doc/.TICKETS/TCK-MAINT-030.md`
-- [x] **TCK-MAINT-029** (VERIFIED): Fas 2-isolering, Barrel-skydd mot testfiler och typindexering -> Se `doc/.TICKETS/TCK-MAINT-029.md`
-- [x] **TCK-MAINT-028** (VERIFIED): Jidoka-härdning av Fas 2 (AST-exempel & Lokal Genchi Genbutsu) -> Se `doc/.TICKETS/TCK-MAINT-028.md`
-- [x] **TCK-MAINT-027** (VERIFIED): Skarp BidiLive-koppling och Dry-Run i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-027.md`
-- [x] **TCK-MAINT-026** (VERIFIED): Portintegration och Domänförankring i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-026.md`
-- [x] **TCK-MAINT-025** (VERIFIED): Dynamisk Modalietsväxling (BIDI_MODALITY) för BidiLiveSession -> Se `doc/.TICKETS/TCK-MAINT-025.md`
-- [x] **TCK-MAINT-024** (VERIFIED): Fallback-svar i run-path MockAdapter och Etablering av Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-024.md`
-- [x] **TCK-MAINT-023** (VERIFIED): Härda Action Loopens Filkrav och Etablera run-path Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-023.md`
-- [x] **TCK-MAINT-022** (VERIFIED): Implementera run-path.ts och dess integrationstest -> Se `doc/.TICKETS/TCK-MAINT-022.md`
-- [x] **TCK-MAINT-021** (VERIFIED): Territorievakt i Fas 0, Skriptgranskare i Verify och Förankring av run-path -> Se `doc/.TICKETS/TCK-MAINT-021.md`
-- [x] **TCK-MAINT-020** (VERIFIED): Mekaniskt Förankrat Körskript för Vägmotorn (run-path.ts) -> Se `doc/.TICKETS/TCK-MAINT-020.md`
-- [x] **TCK-MAINT-019** (VERIFIED): Etablera Parallellt Körskript run-path.ts och package.json-alias -> Se `doc/.TICKETS/TCK-MAINT-019.md`
-- [x] **TCK-MAINT-018** (VERIFIED): Fullborda Recept-Integration och Prefixmatchning i Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-018.md`
-- [x] **TCK-MAINT-017** (VERIFIED): Infrastruktur-rest och Zod-kontrakt för Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-017.md`
-- [x] **TCK-MAINT-016** (VERIFIED): Godkänn Fraktal Omvändelse i Makro och Meta -> Se `doc/.TICKETS/TCK-MAINT-016.md`
-- [x] **TCK-MAINT-015** (VERIFIED): Reparera och installera lyssnaren för Fas 2 -> Se `doc/.TICKETS/TCK-MAINT-015.md`
-- [x] **TCK-MAINT-014** (VERIFIED): Reparera catch-block och omvändelse-lyssnare -> Se `doc/.TICKETS/TCK-MAINT-014.md`
-- [x] **TCK-MAINT-013** (VERIFIED): Kasta fel vid misslyckad patch & JIT Väg 3 -> Se `doc/.TICKETS/TCK-MAINT-013.md`
-- [x] **TCK-MAINT-012** (VERIFIED): Hård avbrytning vid patch-fel och JIT-självrättning -> Se `doc/.TICKETS/TCK-MAINT-012.md`
-- [x] **TCK-MAINT-011** (VERIFIED): JIT för omvändelse i självrättningsprompten -> Se `doc/.TICKETS/TCK-MAINT-011.md`
-- [x] **TCK-MAINT-010** (VERIFIED): Skapa lyssnare för OMVÄNDELSE i Fas 2 -> Se `doc/.TICKETS/TCK-MAINT-010.md`
-- [x] **TCK-MAINT-009** (VERIFIED): Implementera ADR-013 Omvändelseslingan och JIT Process-Fail-Fast -> Se `doc/.TICKETS/TCK-MAINT-009.md`
-- [x] **TCK-MAINT-008a** (VERIFIED): Sanera tysta catch-block i run-planera-live.ts -> Se `doc/.TICKETS/TCK-MAINT-008a.md`
-- [x] **TCK-MAINT-008** (VERIFIED): Sanera tysta catch-block i run-planera-live.ts -> Se `doc/.TICKETS/TCK-MAINT-008.md`
-- [x] **TCK-MAINT-007** (VERIFIED): Skapa permanent test för formatMemoryIndicator -> Se `doc/.TICKETS/TCK-MAINT-007.md`
-- [x] **TCK-MAINT-006** (VERIFIED): Defensiv formatMemoryIndicator och konsolidering av TCK-034 -> Se `doc/.TICKETS/TCK-MAINT-006.md`
-- [x] **TCK-MAINT-005** (VERIFIED): Visa kontextminnesindikator i Mötesbryggans CLI -> Se `doc/.TICKETS/TCK-MAINT-005.md`
-- [x] **TCK-MAINT-004** (VERIFIED): Explicit felhantering och resiliens i scripts/samrad.ts -> Se `doc/.TICKETS/TCK-MAINT-004.md`
-- [x] **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
-- [x] **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
-- [ ] **TCK-TEST-001** (READY): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
-- [ ] **TCK-062** (READY): Konstruktiv kritik i webbmotorn (metaReflection.ts) med 3-vägs triagering, batch-kö och löpande rening -> Se `doc/.TICKETS/TCK-062.md`
-- [x] **TCK-061** (VERIFIED) (READY): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
-- [ ] **TCK-060** (READY): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
-- [ ] **TCK-059** (READY): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
-- [ ] **TCK-058** (READY): Exempelskördning av wal_logger.legacy.ts och WalEngine.getWalSummary (ADR-030) -> Se `doc/.TICKETS/TCK-058.md`
-- [ ] **TCK-057** (READY): Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030) -> Se `doc/.TICKETS/TCK-057.md`
-- [ ] **TCK-056** (READY): Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030) -> Se `doc/.TICKETS/TCK-056.md`
-- [ ] **TCK-055** (READY): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
-- [ ] **TCK-054** (READY): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
-- [ ] **TCK-053** (READY): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`
-- [ ] **TCK-052** (READY): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
-- [ ] **TCK-051** (READY): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
-- [ ] **TCK-050** (READY): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
-- [ ] **TCK-049** (READY): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
-- [ ] **TCK-048** (READY): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
-- [ ] **TCK-047** (READY): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
-- [ ] **TCK-046** (READY): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
-- [ ] **TCK-045** (READY): Bidi Live Multimodal SessionAdapter (Path Domain) -> Se `doc/.TICKETS/TCK-045.md`
-- [ ] **TCK-044** (READY): Deterministisk Fasberikning av PathContext i PathRunner -> Se `doc/.TICKETS/TCK-044.md`
-- [ ] **TCK-043** (READY): Den Integrerade Recept-Orkestreraren (Path Orchestrator) -> Se `doc/.TICKETS/TCK-043.md`
-- [ ] **TCK-042** (READY): Fasspecifik Promptkompilator och Typlåsning (Path Domain) -> Se `doc/.TICKETS/TCK-042.md`
-- [ ] **TCK-041** (READY): Promptkompilator och Körtidsadaptrar för Vägmotorn -> Se `doc/.TICKETS/TCK-041.md`
-- [ ] **TCK-040** (READY): Det Klassiska Receptet (Classic 12-Step Recipe) -> Se `doc/.TICKETS/TCK-040.md`
-- [ ] **TCK-039** (READY): Besiktningsporten och Recept-harmonisering -> Se `doc/.TICKETS/TCK-039.md`
-- [ ] **TCK-038** (READY): Konstruktionsporten och Källkodsmatrisen (Construction Port) -> Se `doc/.TICKETS/TCK-038.md`
-- [ ] **TCK-037** (READY): Prövningsporten och Prediktiv TDD (Testing Port) -> Se `doc/.TICKETS/TCK-037.md`
-- [ ] **TCK-036** (READY): Receptkontraktet och Avsiktsporten med Dialogstöd -> Se `doc/.TICKETS/TCK-036.md`
-- [ ] **TCK-035** (READY): Initiera Vägen och Typkontrakten (Path Engine) -> Se `doc/.TICKETS/TCK-035.md`
-- [ ] **TCK-034** (READY): Visning av kontextminne -> Se `doc/.TICKETS/TCK-034.md`
-- [ ] **TCK-027** (READY): Slutgiltig FSD-sanering av gemini_live_swarm (0 arkitekturfel) -> Se `doc/.TICKETS/TCK-027.md`
-- [ ] **TCK-026** (READY): Frikoppla McpServer och Verktyg via Delade Kontrakt (FSD-sanering) -> Se `doc/.TICKETS/TCK-026.md`
-- [ ] **TCK-025** (READY): Flytta SwarmEventBus till Shared-lagret (FSD-sanering) -> Se `doc/.TICKETS/TCK-025.md`
-- [ ] **TCK-024** (READY): One-Shot Automation (pnpm bygg) & Autonomous MCP Tool Integration -> Se `doc/.TICKETS/TCK-024.md`
+- x **TCK-MAINT-064** (VERIFIED): Laga update-tickets.js, 4-stegs självrannsakande omvändelse (TCK + MAINT) och 3-vägs triagering av konstruktiv kritik -> Se `doc/.TICKETS/TCK-MAINT-064.md`
+- x **TCK-MAINT-063** (VERIFIED): AI-prioriterad tvådelad kontextuppdelning, noga urvald trunkering och VERIFIED-vakt -> Se `doc/.TICKETS/TCK-MAINT-063.md`
+- x **TCK-MAINT-062** (VERIFIED): Täta recoveryPrompt mot vi.fn() och aktivera saneraSkordadLegacy utan if-spärr -> Se `doc/.TICKETS/TCK-MAINT-062.md`
+- x **TCK-MAINT-061** (VERIFIED): Förbjud vi.fn() och tautologier i Steg 3a-prompten och aktivera universell saneraSkordadLegacy -> Se `doc/.TICKETS/TCK-MAINT-061.md`
+- x **TCK-MAINT-060** (VERIFIED): Injicera källkodsankare (buildRetryAnchor) och full muteringskontroll i MAINT-självrättningen -> Se `doc/.TICKETS/TCK-MAINT-060.md`
+- x **TCK-MAINT-059** (VERIFIED): Koppla Gate 3a till pathNodePorts, slutför scriptLibs-tester, dubbelkrasch-checkout och radera envelope.legacy.ts -> Se `doc/.TICKETS/TCK-MAINT-059.md`
+- x **TCK-MAINT-058** (VERIFIED): Slutför tautologispärren i ts.js (med negativt test), radera envelope.legacy.ts och installera dubbelkrasch-checkout -> Se `doc/.TICKETS/TCK-MAINT-058.md`
+- x **TCK-MAINT-057** (VERIFIED): Avvisa tautologiska alibi-assertions i Gate 3a (ts.js) och ersätt placeholder i swarmEventBus.test.tsx -> Se `doc/.TICKETS/TCK-MAINT-057.md`
+- x **TCK-MAINT-056** (VERIFIED): Exempelskördning av envelope.legacy.ts till src/shared/__tests__/envelope.test.ts (ADR-030) -> Se `doc/.TICKETS/TCK-MAINT-056.md`
+- x **TCK-MAINT-055** (VERIFIED): Höj maxReconnectAttempts till 5 och lägg till slumpad jitter i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-055.md`
+- x **TCK-MAINT-054** (VERIFIED): Kompileringsskydd för scripts/*.ts, koppla saneraSkordadLegacy och laga pathNodePorts -> Se `doc/.TICKETS/TCK-MAINT-054.md`
+- x **TCK-MAINT-053** (VERIFIED): Slutkoppla scripts/lib i run-planera-live.ts (< 250 rader), laga pathNodePorts och inför automatisk legacy-skördstädning -> Se `doc/.TICKETS/TCK-MAINT-053.md`
+- x **TCK-MAINT-052** (VERIFIED): Banta run-planera-live.ts under 250 rader, laga pathNodePorts.ts och logga kvarvarande legacy-skörd -> Se `doc/.TICKETS/TCK-MAINT-052.md`
+- x **TCK-MAINT-051** (VERIFIED): Modulär radgränsspärr (sizeGate.js) och undantagsfri rekursiv domänläckagekontroll för scripts/ -> Se `doc/.TICKETS/TCK-MAINT-051.md`
+- x **TCK-MAINT-050** (VERIFIED): Flytta formatMemoryIndicator till shared, återkoppla MAINT-exit-skydd och koppla Node-portar till Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-050.md`
+- x **TCK-MAINT-049** (VERIFIED): Slutför scripts/lib-utbrytning, skärp Steg 3a-läsning och lås taket på 1000 rader -> Se `doc/.TICKETS/TCK-MAINT-049.md`
+- x **TCK-MAINT-048** (VERIFIED): Bryt ut skriptverktyg till scripts/lib/ och sänk Strangler Fig-taket till 800 rader -> Se `doc/.TICKETS/TCK-MAINT-048.md`
+- x **TCK-MAINT-047** (VERIFIED): Radgränsspärr och Strangler Fig-ratchet för scripts/ i verify-architecture.js -> Se `doc/.TICKETS/TCK-MAINT-047.md`
+- x **TCK-MAINT-046** (VERIFIED): Avgränsa självrättningskontext i Fas 2 till målfiler för att skydda 65K TPM -> Se `doc/.TICKETS/TCK-MAINT-046.md`
+- x **TCK-MAINT-045** (VERIFIED): Kräv publik ingångspunkt vid test av hjälpmoduler i Steg 3a -> Se `doc/.TICKETS/TCK-MAINT-045.md`
+- x **TCK-MAINT-044** (VERIFIED): Rekursiv Självrättningskontext och Sanering av Tysta Catch-block -> Se `doc/.TICKETS/TCK-MAINT-044.md`
+- x **TCK-MAINT-043** (VERIFIED): Källkodskontext i Gate 2c, execCaptured och Efemär Handskakningsutjämning -> Se `doc/.TICKETS/TCK-MAINT-043.md`
+- x **TCK-MAINT-042** (VERIFIED): Handskakningssäker WS 1011-omsändning, Målfilskontroll, Gate 2c-kontext och execCaptured -> Se `doc/.TICKETS/TCK-MAINT-042.md`
+- x **TCK-MAINT-041** (VERIFIED): WS 1011-omsändning i BidiLiveSession och Universal Fas 2-filkontroll -> Se `doc/.TICKETS/TCK-MAINT-041.md`
+- x **TCK-MAINT-040** (VERIFIED): Härdad Fas 2-avslutning, In-Loop AST-Grind och Maint-Regression -> Se `doc/.TICKETS/TCK-MAINT-040.md`
+- x **TCK-MAINT-039** (VERIFIED): Standardisera CloudEvent- och nyttolastleverans i SwarmEventBus -> Se `doc/.TICKETS/TCK-MAINT-039.md`
+- x **TCK-MAINT-038** (VERIFIED): Montera händelsestyrd A2UIContainer i applikationsroten -> Se `doc/.TICKETS/TCK-MAINT-038.md`
+- x **TCK-MAINT-037** (VERIFIED): Global Happy-DOM och Fail-First-förankring i Vitest v5 -> Se `doc/.TICKETS/TCK-MAINT-037.md`
+- x **TCK-MAINT-036** (VERIFIED): Skydd mot 0-bytesfiler i Fas 2 och Precisionsspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-036.md`
+- x **TCK-MAINT-035** (VERIFIED): Global Startsanering, Scoped Happy-DOM och Dynamisk Konsolidering -> Se `doc/.TICKETS/TCK-MAINT-035.md`
+- x **TCK-MAINT-034** (VERIFIED): TSX-stöd för Transienta Tester och Syntaxspärr i Fail-First -> Se `doc/.TICKETS/TCK-MAINT-034.md`
+- x **TCK-MAINT-033** (VERIFIED): Aktivera Tailwind i Vite, Harmonisera SwarmEventBus och Montera A2UI i App -> Se `doc/.TICKETS/TCK-MAINT-033.md`
+- x **TCK-MAINT-032** (VERIFIED): Expanderat Byggterritorium för Delad Infrastruktur och Rotkomposition -> Se `doc/.TICKETS/TCK-MAINT-032.md`
+- x **TCK-MAINT-031** (VERIFIED): Harmonisera ast-mutator.test.js med Vitest-standarden -> Se `doc/.TICKETS/TCK-MAINT-031.md`
+- x **TCK-MAINT-030** (VERIFIED): Lokal Fas 2-validering vid skriptunderhåll & Hermetisk testexekvering -> Se `doc/.TICKETS/TCK-MAINT-030.md`
+- x **TCK-MAINT-029** (VERIFIED): Fas 2-isolering, Barrel-skydd mot testfiler och typindexering -> Se `doc/.TICKETS/TCK-MAINT-029.md`
+- x **TCK-MAINT-028** (VERIFIED): Jidoka-härdning av Fas 2 (AST-exempel & Lokal Genchi Genbutsu) -> Se `doc/.TICKETS/TCK-MAINT-028.md`
+- x **TCK-MAINT-027** (VERIFIED): Skarp BidiLive-koppling och Dry-Run i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-027.md`
+- x **TCK-MAINT-026** (VERIFIED): Portintegration och Domänförankring i run-path.ts -> Se `doc/.TICKETS/TCK-MAINT-026.md`
+- x **TCK-MAINT-025** (VERIFIED): Dynamisk Modalietsväxling (BIDI_MODALITY) för BidiLiveSession -> Se `doc/.TICKETS/TCK-MAINT-025.md`
+- x **TCK-MAINT-024** (VERIFIED): Fallback-svar i run-path MockAdapter och Etablering av Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-024.md`
+- x **TCK-MAINT-023** (VERIFIED): Härda Action Loopens Filkrav och Etablera run-path Integrationstest -> Se `doc/.TICKETS/TCK-MAINT-023.md`
+- x **TCK-MAINT-022** (VERIFIED): Implementera run-path.ts och dess integrationstest -> Se `doc/.TICKETS/TCK-MAINT-022.md`
+- x **TCK-MAINT-021** (VERIFIED): Territorievakt i Fas 0, Skriptgranskare i Verify och Förankring av run-path -> Se `doc/.TICKETS/TCK-MAINT-021.md`
+- x **TCK-MAINT-020** (VERIFIED): Mekaniskt Förankrat Körskript för Vägmotorn (run-path.ts) -> Se `doc/.TICKETS/TCK-MAINT-020.md`
+- x **TCK-MAINT-019** (VERIFIED): Etablera Parallellt Körskript run-path.ts och package.json-alias -> Se `doc/.TICKETS/TCK-MAINT-019.md`
+- x **TCK-MAINT-018** (VERIFIED): Fullborda Recept-Integration och Prefixmatchning i Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-018.md`
+- x **TCK-MAINT-017** (VERIFIED): Infrastruktur-rest och Zod-kontrakt för Vägmotorn -> Se `doc/.TICKETS/TCK-MAINT-017.md`
+- x **TCK-MAINT-016** (VERIFIED): Godkänn Fraktal Omvändelse i Makro och Meta -> Se `doc/.TICKETS/TCK-MAINT-016.md`
+- x **TCK-MAINT-015** (VERIFIED): Reparera och installera lyssnaren för Fas 2 -> Se `doc/.TICKETS/TCK-MAINT-015.md`
+- x **TCK-MAINT-014** (VERIFIED): Reparera catch-block och omvändelse-lyssnare -> Se `doc/.TICKETS/TCK-MAINT-014.md`
+- x **TCK-MAINT-013** (VERIFIED): Kasta fel vid misslyckad patch & JIT Väg 3 -> Se `doc/.TICKETS/TCK-MAINT-013.md`
+- x **TCK-MAINT-012** (VERIFIED): Hård avbrytning vid patch-fel och JIT-självrättning -> Se `doc/.TICKETS/TCK-MAINT-012.md`
+- x **TCK-MAINT-011** (VERIFIED): JIT för omvändelse i självrättningsprompten -> Se `doc/.TICKETS/TCK-MAINT-011.md`
+- x **TCK-MAINT-010** (VERIFIED): Skapa lyssnare för OMVÄNDELSE i Fas 2 -> Se `doc/.TICKETS/TCK-MAINT-010.md`
+- x **TCK-MAINT-009** (VERIFIED): Implementera ADR-013 Omvändelseslingan och JIT Process-Fail-Fast -> Se `doc/.TICKETS/TCK-MAINT-009.md`
+- x **TCK-MAINT-008a** (VERIFIED): Sanera tysta catch-block i run-planera-live.ts -> Se `doc/.TICKETS/TCK-MAINT-008a.md`
+- x **TCK-MAINT-008** (VERIFIED): Sanera tysta catch-block i run-planera-live.ts -> Se `doc/.TICKETS/TCK-MAINT-008.md`
+- x **TCK-MAINT-007** (VERIFIED): Skapa permanent test för formatMemoryIndicator -> Se `doc/.TICKETS/TCK-MAINT-007.md`
+- x **TCK-MAINT-006** (VERIFIED): Defensiv formatMemoryIndicator och konsolidering av TCK-034 -> Se `doc/.TICKETS/TCK-MAINT-006.md`
+- x **TCK-MAINT-005** (VERIFIED): Visa kontextminnesindikator i Mötesbryggans CLI -> Se `doc/.TICKETS/TCK-MAINT-005.md`
+- x **TCK-MAINT-004** (VERIFIED): Explicit felhantering och resiliens i scripts/samrad.ts -> Se `doc/.TICKETS/TCK-MAINT-004.md`
+- x **TCK-MAINT-003** (VERIFIED): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
+- x **TCK-MAINT-002** (VERIFIED): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
+-   **TCK-TEST-001** (READY): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+-   **TCK-062** (READY): Konstruktiv kritik i webbmotorn (metaReflection.ts) med 3-vägs triagering, batch-kö och löpande rening -> Se `doc/.TICKETS/TCK-062.md`
+- x **TCK-061** (VERIFIED): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
+-   **TCK-060** (READY): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
+-   **TCK-059** (READY): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`
+-   **TCK-058** (READY): Exempelskördning av wal_logger.legacy.ts och WalEngine.getWalSummary (ADR-030) -> Se `doc/.TICKETS/TCK-058.md`
+-   **TCK-057** (READY): Exempelskördning av mcp_bridge.legacy.ts och verktygssammanfattning (ADR-030) -> Se `doc/.TICKETS/TCK-057.md`
+-   **TCK-056** (READY): Exempelskördning av drive_sync.legacy.ts och workspace-manifest (ADR-030) -> Se `doc/.TICKETS/TCK-056.md`
+-   **TCK-055** (READY): Exempelskördning av swarm_telemetry.legacy.ts och gemini_swarm.legacy.ts (ADR-030) -> Se `doc/.TICKETS/TCK-055.md`
+-   **TCK-054** (READY): Skarp Gemini Live SDK-fabrik i BidiLiveAdapter för Vägmotorn -> Se `doc/.TICKETS/TCK-054.md`
+-   **TCK-053** (READY): Explicit VAD-slutsignal (audioStreamEnd) och Mätbar Röstlatens-telemetri -> Se `doc/.TICKETS/TCK-053.md`
+-   **TCK-052** (READY): Slutkoppla liveBridgeHelper i GeminiLiveSession (Röst-A2UI & Live-transkript) -> Se `doc/.TICKETS/TCK-052.md`
+-   **TCK-051** (READY): Skarp Mikrofonströmning, Live-transkribering och Agentstyrd A2UI-brygga -> Se `doc/.TICKETS/TCK-051.md`
+-   **TCK-050** (READY): Händelsestyrd A2UI-brygga för Autonom Komponentstyrning -> Se `doc/.TICKETS/TCK-050.md`
+-   **TCK-049** (READY): Etablera FSD-domänen A2UI med Komponentkatalog och Renderare -> Se `doc/.TICKETS/TCK-049.md`
+-   **TCK-048** (READY): Kärnfull Relevans och Typberikning i Promptkompilatorn -> Se `doc/.TICKETS/TCK-048.md`
+-   **TCK-047** (READY): Resilient strömning och felhantering i BidiLiveAdapter -> Se `doc/.TICKETS/TCK-047.md`
+-   **TCK-046** (READY): Domänharmonisering, Polyglott Promptstöd och Portfas-spårning -> Se `doc/.TICKETS/TCK-046.md`
+-   **TCK-045** (READY): Bidi Live Multimodal SessionAdapter (Path Domain) -> Se `doc/.TICKETS/TCK-045.md`
+-   **TCK-044** (READY): Deterministisk Fasberikning av PathContext i PathRunner -> Se `doc/.TICKETS/TCK-044.md`
+-   **TCK-043** (READY): Den Integrerade Recept-Orkestreraren (Path Orchestrator) -> Se `doc/.TICKETS/TCK-043.md`
+-   **TCK-042** (READY): Fasspecifik Promptkompilator och Typlåsning (Path Domain) -> Se `doc/.TICKETS/TCK-042.md`
+-   **TCK-041** (READY): Promptkompilator och Körtidsadaptrar för Vägmotorn -> Se `doc/.TICKETS/TCK-041.md`
+-   **TCK-040** (READY): Det Klassiska Receptet (Classic 12-Step Recipe) -> Se `doc/.TICKETS/TCK-040.md`
+-   **TCK-039** (READY): Besiktningsporten och Recept-harmonisering -> Se `doc/.TICKETS/TCK-039.md`
+-   **TCK-038** (READY): Konstruktionsporten och Källkodsmatrisen (Construction Port) -> Se `doc/.TICKETS/TCK-038.md`
+-   **TCK-037** (READY): Prövningsporten och Prediktiv TDD (Testing Port) -> Se `doc/.TICKETS/TCK-037.md`
+-   **TCK-036** (READY): Receptkontraktet och Avsiktsporten med Dialogstöd -> Se `doc/.TICKETS/TCK-036.md`
+-   **TCK-035** (READY): Initiera Vägen och Typkontrakten (Path Engine) -> Se `doc/.TICKETS/TCK-035.md`
+-   **TCK-034** (READY): Visning av kontextminne -> Se `doc/.TICKETS/TCK-034.md`
+-   **TCK-027** (READY): Slutgiltig FSD-sanering av gemini_live_swarm (0 arkitekturfel) -> Se `doc/.TICKETS/TCK-027.md`
+-   **TCK-026** (READY): Frikoppla McpServer och Verktyg via Delade Kontrakt (FSD-sanering) -> Se `doc/.TICKETS/TCK-026.md`
+-   **TCK-025** (READY): Flytta SwarmEventBus till Shared-lagret (FSD-sanering) -> Se `doc/.TICKETS/TCK-025.md`
+-   **TCK-024** (READY): One-Shot Automation (pnpm bygg) & Autonomous MCP Tool Integration -> Se `doc/.TICKETS/TCK-024.md`

@@ -127,3 +127,15 @@ export const OrchestratorConfigSchema = z.object({
 });
 
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;
+
+export const MetaKritikBedomningSchema = z.enum(['STOR_SKILLNAD', 'LITEM_BATCH', 'AVVISAD_FELAKTIG']);
+export type MetaKritikBedomning = z.infer<typeof MetaKritikBedomningSchema>;
+
+export const MetaKritikResultatSchema = z.object({
+  bedomning: MetaKritikBedomningSchema,
+  kritikText: z.string(),
+  motivering: z.string(),
+  forbattringAtgard: z.string().optional(),
+});
+
+export type MetaKritikResultat = z.infer<typeof MetaKritikResultatSchema>;

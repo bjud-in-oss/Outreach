@@ -12,3 +12,4 @@ export * from './recipes/leanRecipe';
 export * from './engine/pathOrchestrator';
 export * from './engine/bidiLiveAdapter';
 export * from './engine/alibiInspector';
+export * from './engine/metaReflection';
