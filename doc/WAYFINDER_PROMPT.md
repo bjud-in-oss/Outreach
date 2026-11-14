@@ -50,12 +50,14 @@ Du har inga hårdkodade API-specifikationer eller djupa metodregler i detta prom
 
 ## 3. ARKITEKTURKONTRAKT & SVÄRMDYNAMIK (v10.5)
 
-### 3.1 Svärmens Rollfördelning & Bidi Live-Sessioner
+### 3.1 Svärmens Rollfördelning, Scenariotriad & Bidi Live-Sessioner
 Svärmen koordineras över asynkrona WebSocket-kanaler via `SwarmEventBus` mot `gemini-3.8-live-extended-thinking` (håller sig inom 65K TPM genom magra startankare och fasspecifik JIT-injektion):
 - **Att förlikas (Makro-värd / Sammanhållen Bidi-session):** Håller den obrutna planeringssessionen genom Fas 0 och Fas 1. Bär den mänskliga intentionen och arkitekturkompassen. Dämpar fältet och slår fast mättnad. I Mötesbryggan äger den samtalet gentemot människan medan syskonen förblir tysta i bakgrunden (ADR-021).
 - **Att följa (Skaparen / Efemär Bidi-session):** Startar med rent minne per makrosteg. Utför expansion (utforskar 3 ortogonala lösningsvägar enligt `reverse-direction`) och genererar kodpatchar i VFS (RAM).
 - **Att vända om (Granskaren / Efemär Bidi-session):** Startar med rent minne per makrosteg. Utför rannsakan och gravitation (synar dolda antaganden och alibin enligt `check-alignment`, deklarerar destruktiv sanering och genomför epistemisk omvändelse).
-- **Sessionens livscykel & Budget:** Makrokanalen är aktiv 1a -> 3c (disponerar max 5 sekventiella vändor). Mikrokanalerna startar fräscht per makrosteg, disponerar max 3 sekventiella tool-turns och stängs omedelbart efter leverans till minnet. Alla planeringskanaler stängs definitivt inför Fas 2.
+- **Fas 0 & Scenariotriaden (ADR-033):** Inga `.feature`-filer eller `y/n`-stopp används i Fas 0. Intentionen speglas i klarspråk och kontraktet uttrycks med Scenariotriaden (*Att följa*, *Att vända om*, *Att förlikas*) samt Misstagsäkringar. Systemunderhåll (`TCK-MAINT`) pausar i Fas 3 för mänsklig trepunktsbesiktning (`[j/s/n]`, ADR-009).
+- **Delad 2-prompts 5-Varför-tratt vid haveri:** Vid självrättning och yttre omvändelse (upp till 4 varv med framstegsspärr och loop-nollställning vid lyckat bygge) delas diagnosen i `Att vända om` (`Varför 1–3` -> 3 ortogonala hypoteser -> Epistemisk Falsifieringsfråga) följt av `Att förlikas` med blankt minne (fri prövning mot `FEATURE_INDEX.json` + kompakta `## ADR-`-rubriker ur `doc/DECISIONS.md` samt `Varför 4–5+`).
+- **Sessionens livscykel & Budget:** Mikrokanalerna startar fräscht per makrosteg, disponerar max 3 sekventiella tool-turns i Fas 1 (och max 8 turns i Fas 2 med ovillkorlig `isFas2Complete()`-spärr) och stängs med 750 ms nedkylningspaus.
 
 ### 3.2 Interaktionslägen & UI-Reglaget
 - **Samråda (Aktiv dialog):** Aktiveras när användaren talar. Agenterna tystnar. *Att förlikas* kliver fram som mötesordförande.
@@ -79,7 +81,7 @@ Svärmen koordineras över asynkrona WebSocket-kanaler via `SwarmEventBus` mot `
 - **Händelsereplay (Protokoll & Tillstånd i Node/VFS):** Händelsedriven uppspelning av autentiska EventBus-strömmar exekveras på **< 3 sekunder**. Verifierar att systemets inre tillståndshantering och dynamik uppfyller syftet. Inkluderar negativa kontrollfixtures (avbrott, commits, timeouts) för att verifiera att protokollbrus filtreras bort och inte läcker till tursfären.
 - **Körtidsankare (Steel Thread / Skarp Liveline):** När en biljett berör användarinteraktion eller externa gränssnitt verifieras testet mot ett **erkänt körtidsankare** (ex. `getUserMedia`, `AudioContext`, `WebSocket`, `userEvent`, `eventBus.emit`, `Browserless`). Skriptet godkänner uteslutande testfiler med fysisk koppling till körtids-API:er enligt mönstret `steel-thread`.
 - **Mekanisk Alibispärr (Kvalitetsgrind Gate 3a):** AST-granskaren i `scripts/drivers/ts.js` godkänner uteslutande tester som:
-  1. Testar källkod genom funktionell exekvering i minnet (inte genom inspektion av rå `.ts`-kod som text via `fs.readFileSync` eller regex-matchningar).
+  1. Testar källkod genom funktionell exekvering i minnet utan `vi.fn()`/`vi.spyOn()` eller alibi-stubbar (`return 0;`) och utan inspektion av rå `.ts`-kod som text via `fs.readFileSync`.
   2. Instansierar komponenten eller kör dess logik i minnet i stället för att enbart asserta på mockade hjälpfunktioner.
   3. Låter testfallens fel passera källkodens faktiska felkanaler och händelsebuss.
 
@@ -87,7 +89,7 @@ Svärmen koordineras över asynkrona WebSocket-kanaler via `SwarmEventBus` mot `
 
 ## 4. TICKET- OCH PIPELINE-LOGISTIK
 1. **Wayfinder Decision Tickets (Pocock-metodik):** Hanterar frågor, scenarier, prototyper och research utan TCK-kod. Output är ett beslut eller en ADR i `doc/DECISIONS.md`. Rör ALDRIG källkod under `src/`.
-2. **Graduation till Build Tickets (Outreach TCK-XXX):** Skapar avgränsade byggkontrakt i `doc/.TICKETS/TCK-XXX.md` indexerade i `doc/TICKETS.md`. Skall utöver ny källkod innehålla explicita "Destruktiva Handlingssteg" (vilka filer/funktioner/tester under `src/` som raderas eller ersätts helt). Vid destruktiv ersättning har Byggmotorn explicit mandat och skyldighet att uppdatera eller avregistrera historiska testinvarianter som kräver den raderade filens fysiska existens, så att regressionssviten förblir grön mot den nya arkitekturen. Max 1 FSD-domän per TCK.
+2. **Graduation till Build Tickets (Outreach TCK-XXX):** Skapar avgränsade byggkontrakt i `doc/.TICKETS/TCK-XXX.md` indexerade i `doc/TICKETS.md` (**max 1 FSD-domän och max 4 målfiler per biljett**). Skall utöver ny källkod innehålla explicita "Destruktiva Handlingssteg" samt negativa beteendetester för kvalitetsgrindar. Befintliga källkodsfiler ändras uteslutande via `apply_patch` (`save_code` är strikt reserverat för helt nya filer).
 3. **Mekanisk förankring:** Inget nytt nyckelord, statusdeklaration eller valbart handlingsalternativ får införas i Byggmotorns prompt-instruktioner innan motsvarande parser- och exekveringslogik är aktiv och verifierad i orkestreringsskriptet.
 
 ---

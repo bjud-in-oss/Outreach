@@ -67,15 +67,15 @@ Startar med ett renat kontextminne som enbart innehåller källkoden, det spikad
 1. **Mekanisk Fail-First & Alibikontroll (Gate 3a):** 
    - AST-skannern verifierar att den aktiva testfilen innehåller minst ett erkänt Körtidsankare och uppfyller kvalitetsgrinden (noll alibi-mönster).
    - Testet körs via terminalskriptet mot repots befintliga kod och MÅSTE fallera rött (exit 1) innan källkodsändringar under `src/features/` låses upp.
-2. **Källkodsändringar under `src/features/[aktuell_domän]/`:** Implementera källkoden och exekvera Destruktiva Handlingssteg (inklusive uppdatering av historiska tester vars komponenter sanerats). Ändringar i befintlig kod sker uteslutande via `apply_patch` (som kastar ett hårt fel vid `SEARCH_BLOCK_NOT_FOUND` enligt ADR-022) eller `save_code`.
-3. **De tre handlingsvägarna & Omvändelse (ADR-013 / ADR-020):**
+2. **Källkodsändringar (Max 4 målfiler per biljett):** Implementera källkoden och exekvera Destruktiva Handlingssteg. Befintliga filer får **uteslutande** ändras med `apply_patch` (`SEARCH_BLOCK_NOT_FOUND` enligt ADR-022); `save_code` är strikt reserverat för helt nya filer och kontrolleras före skrivning mot syntaxfel (`ES2022`), duplicerade exporter och radgränser.
+3. **De tre handlingsvägarna & Delad 2-prompts 5-Varför-tratt (ADR-013 / ADR-020):** Vid självrättning och yttre omvändelse (upp till 4 varv med framstegsspärr och loop-nollställning vid lyckat bygge) körs först `Att vända om` (`Varför 1–3` -> 3 ortogonala hypoteser -> Epistemisk Falsifieringsfråga) och därefter `Att förlikas` med blankt minne (`Varför 4–5+` och repo-återanvändning mot `FEATURE_INDEX.json` + `DECISIONS.md`).
    - *Väg 1:* Lokal reparation i befintlig fil.
    - *Väg 2:* Modulär expansion av nya hjälpfiler.
    - *Väg 3 (Omvändelse):* Modellen deklarerar `STATUS: HAVERERAT_KONTRAKT` vid teknisk omöjlighet, `STATUS: FRIVILLIG_OMVÄNDELSE` vid upptäckt skuld, eller `STATUS: FÖRLIKANDE_OMVÄNDELSE` om uppdraget kräver manipulation eller kränker systemets etiska kompass. Vid omvändelse saneras källkod automatiskt (`git checkout`) och tillståndet loggas i `CRASH_DUMP.json`.
 4. **Resiliens- och AST-kontroll (Gate 2c):** Källkoden valideras via AST-skannern i `scripts/drivers/ts.js`. Förekomst av tomma eller tysta catch-block utan felpropagering till EventBus eller UI underkänner bygget omedelbart.
 5. **Mekanisk Domänkontroll:** Skriptet verifierar via git-status att max 1 FSD-domän under `src/features/` har modifierats.
 6. **Grönt Testutfall:** Kör transient-testet igen – det måste nu bli 100 % grönt.
-7. **Slutverifiering:** Kör `pnpm verify`. Vid godkänt kvitto konsolideras testet till regressionssviten och ticketen stängs i `doc/TICKETS.md`.
+7. **Slutverifiering & Trepunktsbesiktning:** Kör `pnpm verify`. Vid `TCK-MAINT` pausar motorn för mänsklig trepunktsbesiktning (`[j/s/n]`, ADR-009) före commit/push. Vid godkänt kvitto konsolideras testet och ticketen stängs i `doc/TICKETS.md`.
 
 ### 3.4 Fas 3: Reflektion & Teater (Program & Process med Auto-MAINT)
 Körs automatiskt efter grön regressionssvit. Minnet rensas från källkod och laddas enbart med körningens telemetri, git-diff-statistik och `CYCLE_LOG.md`.
@@ -96,9 +96,9 @@ Körs automatiskt efter grön regressionssvit. Minnet rensas från källkod och 
   2. **Shared-lagret (`src/shared/`):** För gemensamma primitives, universella kontrakt och delade baskomponenter.
   3. **Överliggande komposition (`src/widgets/` eller `src/pages/`):** När två domäners UI vävs samman i en vy importeras båda av det överliggande lagret – aldrig korsvis av varandra.
   4. **Biljettklyvning (`decomposing-tickets`):** Om koden i två FSD-domäner måste ändras fysiskt klyvs uppdraget mekaniskt i två sekventiella byggbiljetter.
-- **Fil- och radgränser under `src/`:** För att motverka monoliter och tvinga fram modulär expansion (Väg 2 via skillen `modular-expansion`) kontrolleras källkodsfilernas längd mekaniskt:
+- **Fil- och radgränser under `src/` och `scripts/`:** För att motverka monoliter och tvinga fram modulär expansion (Väg 2 via skillen `modular-expansion`) kontrolleras källkodsfilernas längd mekaniskt i `sizeGate.js`:
   * UI-komponenter (`.tsx`): Strikt max 125 rader.
-  * Logik och kontrakt (`.ts`): Strikt max 250 rader.
+  * Logik, kontrakt och orkestreringsskript (`.ts`/`.js` i både `src/features/` och `scripts/`): Strikt max 250 rader (utöver legacy-kapslade `bidiLiveRunner.ts` 345 och `sessionIntentAudio.ts` 300).
 - **Zod & Typesafety:** Alla externa datagränssnitt, API-payloads och tillståndskontrakt ska valideras runtime via Zod-scheman.
 - **Fail Fast:** Systemet kraschar kontrollerat vid brutna kontrakt hellre än att passivt ackumulera felaktigt tillstånd eller död källkod.
 - **Mekanisk förankring av körtidskontrakt:** Säkerställ att varje kognitivt val, statusdeklaration eller nytt nyckelord som erbjuds modellen i dess instruktioner redan har en aktiv, färdigbyggd parser- och exekveringslogik i orkestreringsskriptet. Bygg, testa och verifiera alltid den mekaniska mottagaren i källkoden innan motsvarande handlingsalternativ exponeras för agenterna.
