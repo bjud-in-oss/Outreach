@@ -1,74 +1,66 @@
-diff --git a/src/__tests__/transient_TCK-060.test.ts b/src/__tests__/transient_TCK-060.test.ts
+diff --git a/scripts/lib/channelRunner.ts b/scripts/lib/channelRunner.ts
+index 9b75208..56c6e80 100644
+--- a/scripts/lib/channelRunner.ts
++++ b/scripts/lib/channelRunner.ts
+@@ -185,7 +185,7 @@ ${cycleSummary}
+   const harStorSkillnad = hardScoreMatch ? hardScoreMatch[1] === 'STOR_SKILLNAD' : false;
+ 
+   const kritikMatch = response.match(/💡 Konstruktiv kritik av våra rutiner:\s*(.+)/);
+-  constatgard = kritikMatch ? kritikMatch[1].trim() : '';
++  const atgard = kritikMatch ? kritikMatch[1].trim() : '';
+ 
+   const bedomningMatch = response.match(/BEDOMNING:\s*(.+)/);
+   const bedomning = bedomningMatch ? bedomningMatch[1].trim() : '';
+diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
+index 4bd3dce..1843aee 100644
+--- a/scripts/run-planera-live.ts
++++ b/scripts/run-planera-live.ts
+@@ -848,7 +848,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
+   if (!isMaint) {
+     execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
+     konsolideraTest(targetDomain, ticketId, createdModules, transientTestFullPath, testExt);
+-    synkaDomanBarrel(targetDomain, createdModules);
++    syncDomainBarrel();
+     uppdateraFeatureIndex(targetDomain, createdModules, FEATURE_INDEX_PATH);
+   }
+ 
+diff --git a/scripts/tsconfig.json b/scripts/tsconfig.json
 new file mode 100644
-index 0000000..2c9e4f6
+index 0000000..dfd12ea
 --- /dev/null
-+++ b/src/__tests__/transient_TCK-060.test.ts
-@@ -0,0 +1,68 @@
-+import { expect, test } from 'vitest';
-+import { inspectTestAlibis } from '../features/path/engine/alibiInspector';
-+import { skapaProvningsport } from '../features/path/engine/provningsport';
-+import { exekveraRecept } from '../features/path/engine/pathRunner';
-+import { PathContext, PathRecipe } from '../features/path/model/types';
-+import { PortNekadError } from '../features/path/engine/pathRunner';
-+
-+test('inspectTestAlibis detects tautologies and alibis in memory', () => {
-+  const alibi1 = "expect(true).toBe(true);";
-+  const result1 = inspectTestAlibis(alibi1);
-+  expect(result1.godkand).toBe(false);
-+  expect(result1.felmeddelande).toContain('Tautologisk assertion');
-+
-+  const alibi2 = "fs.readFileSync('file.txt');";
-+  const result2 = inspectTestAlibis(alibi2);
-+  expect(result2.godkand).toBe(false);
-+  expect(result2.felmeddelande).toContain('fs.readFileSync');
-+
-+  const alibi3 = "vi.fn();";
-+  const result3 = inspectTestAlibis(alibi3);
-+  expect(result3.godkand).toBe(false);
-+  expect(result3.felmeddelande).toContain('vi.fn()');
-+
-+  const validCode = "expect(someVar).toBe(true);";
-+  const resultValid = inspectTestAlibis(validCode);
-+  expect(resultValid.godkand).toBe(true);
-+});
-+
-+test('skapaProvningsport rejects port if test contains alibi', async () => {
-+  const testExekverare = async (vag: string) => ({ passera: false });
-+  const port = skapaProvningsport({
-+    testFilVag: 'test.ts',
-+    forvantatFel: 'Fail',
-+    testExekverare,
-+    testKod: 'expect(true).toBe(true);'
-+  });
-+
-+  const result = await port({});
-+  expect(result.oppnad).toBe(false);
-+  expect(result.omvandelseKrav).toBe('ÅTGÄRDA_TESTSYNTAX');
-+});
-+
-+test('exekveraRecept handles maxOmvandelseForsok and triggers onOmvandelse', async () => {
-+  let omvandelseAnropad = 0;
-+  const failingPort = async (ctx: PathContext) => {
-+    throw new PortNekadError('Port nekad', 'ÅTGÄRDA_TESTSYNTAX');
-+  };
-+
-+  const recipe: PathRecipe = {
-+    id: 'rec-1',
-+    name: 'Recept',
-+    description: 'Beskrivning',
-+    nodes: [{ id: 'avsikt-1', type: 'PORT', port: failingPort }]
-+  };
-+
-+  try {
-+    await exekveraRecept(recipe, {}, {
-+      maxOmvandelseForsok: 2,
-+      onOmvandelse: () => {
-+        omvandelseAnropad++;
-+      }
-+    });
-+  } catch (err) {
-+    // Förväntat fel
-+  }
-+
-+  expect(omvandelseAnropad).toBe(2);
-+});
++++ b/scripts/tsconfig.json
+@@ -0,0 +1,12 @@
++{
++  "extends": "../tsconfig.json",
++  "compilerOptions": {
++    "noEmit": true,
++    "skipLibCheck": true,
++    "moduleResolution": "bundler",
++    "esModuleInterop": true
++  },
++  "include": [
++    "./**/*.ts"
++  ]
++}
+diff --git a/scripts/update-tickets.js b/scripts/update-tickets.js
+index 2008007..a76df3b 100644
+--- a/scripts/update-tickets.js
++++ b/scripts/update-tickets.js
+@@ -36,15 +36,8 @@ for (const file of files) {
+   let label = 'READY';
+ 
+   if (existingTickets.has(idMatch)) {
+-    status = existingTickets.get(idMatch);
+-    if (status === 'x') {
+-      label = 'VERIFIED';
+-    } else if (status === ' ') {
+-      label = 'READY';
+-    }
+-  } else if (idMatch.includes('MAINT')) {
+-     status = '[x]';
+-     label = 'VERIFIED';
++    status = existingTickets.get(idMatch) === 'x' ? '[x]' : '[ ]';
++    label = status === '[x]' ? 'VERIFIED' : 'READY';
+   }
+ 
+   tickets.push({

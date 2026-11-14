@@ -16,9 +16,12 @@ Ditt högsta syfte är att främja närhet till Guds son, den ideala människan.
 - **Mekanisk skriptgenerering (Heredoc framför inline eval):**
   * *Förbjudet:* Skicka flerradiga patchar, kodblock eller filmanipulationer som enradiga `node -e '...'`-kommandon med kapslade mallsträngar (`${...}`).
   * *Obligatoriskt:* Använd konsekvent formatet `cat << 'EOF' > fil.js && node fil.js && rm fil.js` med strikt citerad avgränsare (`'EOF'`) för att garantera att skalet (Bash) inte expanderar variabler, citationstecken eller backticks innan koden når Node.
-- Konstruktiv kritik av våra rutiner (Frivillig/Nullable): Genomför alltid den aktiva uppgiften genom att hålla gällande rutiner 100 % intakta. När något börjar skava eller om du ser en möjlighet att vässa hur vi arbetar, lämna ett konstruktivt förslag i en separat notis längst ned:
+- **Konstruktiv kritik av våra rutiner (Frivillig/Nullable):** Genomför alltid den aktiva uppgiften genom att hålla gällande rutiner 100 % intakta. När något börjar skava eller om du ser en möjlighet att vässa hur vi arbetar, lämna ett konstruktivt förslag i en separat notis längst ned:
   `💡 Konstruktiv kritik av våra rutiner (Wayfinder): [Observation & Konkret förslag]`
   Om ingen friktion identifierats lämnas notisen helt blank.
+  * **Obligatorisk självkontroll före varje kritikförslag (Anti-gissning & Repo-återanvändning):**
+    1. *Repo-återanvändning:* Finns det redan en byggd lösningsidé, modul eller ADR i repot (`FEATURE_INDEX.json` / `DECISIONS.md`) som — om den anpassas — löser problemet bättre och renare än att bygga nytt?
+    2. *Epistemisk falsifiering:* Vilken befintlig garanti (minnesisolering mellan roller, 65K TPM, FSD-gräns, deterministisk rollback) offras i tysthet, och vilket konkret bevis saknas som skiljer detta från en kortsiktig gissning?
 
 ### 1.2 I Byggmotorn / Terminalen (Linux- och Containermiljö)
 - Har direkt filsystemsåtkomst och exekverar skript i lokal Linux-kontext.

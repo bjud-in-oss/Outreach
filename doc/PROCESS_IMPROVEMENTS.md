@@ -7,6 +7,8 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 ## 1. Aktiva Processregler & Erfarenhetsbank
 *Här listas regler som upptäckts under byggcykler och som laddas JIT under Fas 0 och Fas 1.*
 
+- **[2026-11-14] Två-prompters 5-Varför-tratt med 3 ortogonala hypoteser vid rotpunkten:** Vid självrättning i Fas 2 och yttre omvändelse delas 5-Varför-tratten vid förgreningspunkten över **två fristående efemära sessioner** (max 2 diagnos-sessioner): (1) `Att vända om` zoomar ut mot FSD-/kontraktsintegritet och Väg 2 (`modular-expansion`), spårar enbart de inledande mekaniska faktafrågorna (**normalt `Varför 1–3`**, eller `Varför 1–2` vid tidig tvetydighet), fäller ut **3 ortogonala felhypoteser** utan rangordning, ställer den **Epistemiska Falsifieringsfrågan** och bedömer hur många djupfrågor utöver de två sista (`minst 2`, dvs. `Varför 4–5+`) som återstår; (2) `Att förlikas` startar med blankt minne, väljer fritt egna prövningsfrågor för att testa hypoteserna och anpassning av befintliga repoidéer (`FEATURE_INDEX.json` / `DECISIONS.md`), slutför de återstående `Varför 4–5+`-leden på det vinnande spåret, loggar domen i `CYCLE_LOG.md` (`sparaMetaOmvandelse`) och injicerar `EGENTLIGT_FEL` i `buildRetryAnchor`.
+
 - **[2026-10-31] Bryt Moment 22 vid infrastrukturfel:** Ändra aldrig orkestreringsskript (`scripts/run-planera-live.ts`) eller drivrutiner via autonoma patch-biljetter om motorns egna verktyg fallerar. Tillämpa deterministisk Git Hard-Reset till senast kända stabila commit.
 - **[2026-11-01] Mekanisk förankring:** Introducera aldrig nya statuskoder eller promptval för modellen utan att den mottagande parser- och exekveringslogiken redan är implementerad i skripten.
 - **[2026-11-09] Enhetlig typlåsning och SSOT mellan Zod och model/types.ts:**
@@ -57,3 +59,16 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 ## [2026-11-09] Erfarenheter från TCK-041 till TCK-045 (Vägmotorns Exekveringsmiljö)
 - **Observation 1 (Över-restriktiv strängmatchning i tillståndsmaskinen):** `bestamFasForSteg` i `pathRunner.ts` förlitade sig ursprungligen på `startsWith('provning')` etc. Detta orsakade att renodlade port-noder (t.ex. `p2` eller `port-provning`) föll tillbaka till default-fasen 'avsikt', vilket i sin tur riskerar att ge `promptCompiler` fel `PathPhase`-instruktion när Bidi Live-adaptern ansluts.
   *Åtgärd:* Vid nästa domänjustering i `src/features/path/` ska matchningslogiken breddas till `stegId.includes('provning') || stegId === 'p2'` för att garantera deterministisk fasspårning.
+
+---
+
+## 2. Köade Batch-förbättringar
+- [PRIO: HOG] **[2026-11-14] Aktivera ofiltrerad tsc-kontroll (`TCK-MAINT-070`):** Ta bort `grep "^scripts/"`-filtret i `run-planera-live.ts` så snart `TCK-064` harmoniserat `src/features/path/`.
+
+---
+
+## 3. Avvisade & Vederlagda Förslag
+
+---
+
+## 4. Papperskorg (Makulerade & Inaktuella Beslut)

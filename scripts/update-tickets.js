@@ -36,15 +36,8 @@ for (const file of files) {
   let label = 'READY';
 
   if (existingTickets.has(idMatch)) {
-    status = existingTickets.get(idMatch);
-    if (status === 'x') {
-      label = 'VERIFIED';
-    } else if (status === ' ') {
-      label = 'READY';
-    }
-  } else if (idMatch.includes('MAINT')) {
-     status = '[x]';
-     label = 'VERIFIED';
+    status = existingTickets.get(idMatch) === 'x' ? '[x]' : '[ ]';
+    label = status === '[x]' ? 'VERIFIED' : 'READY';
   }
 
   tickets.push({

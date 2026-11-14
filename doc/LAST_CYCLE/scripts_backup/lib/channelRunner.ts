@@ -80,33 +80,149 @@ export async function runMicroChannel(
   }
 }
 
-export const inspectionTools = [
-  {
-    name: 'read_file',
-    behavior: 'NON_BLOCKING',
-    description: 'Läser fil i repot (stora filer trunkeras).',
-    parameters: { type: 'OBJECT', properties: { file_path: { type: 'STRING' } }, required: ['file_path'] },
-  },
-  {
-    name: 'list_files',
-    behavior: 'NON_BLOCKING',
-    description: 'Listar innehållet i en katalog.',
-    parameters: { type: 'OBJECT', properties: { directory_path: { type: 'STRING' } }, required: ['directory_path'] },
-  }
-];
+export async function sparaMetaOmvandelse(
+  ai: any,
+  modelName: string,
+  ticketId: string,
+  errLog: string,
+  si: string
+): Promise<string> {
+  const instruction = `Analysera varför den inre slingan i Fas 2 inte omvände sig framgångsrikt under sina 3 försök trots självrättningsinstruktioner. Vilken konstruktiv kritik eller arkitektonisk justering behöver genomföras?`;
+  const startAnchor = `BILJETT: ${ticketId}\nFELLOGG:\n${errLog}`;
+  
+  return await runMicroChannel(
+    ai,
+    modelName,
+    'Att vända om',
+    instruction,
+    startAnchor,
+    si,
+    [],
+    undefined,
+    { maxTurns: 1 }
+  );
+}
 
-export function executeInspection(name: string, args: any): string {
-  if (name === 'read_file') {
-    const full = path.resolve(ROOT_DIR, args.file_path);
-    if (!fs.existsSync(full)) return `Filen ${args.file_path} finns inte.`;
-    return fs.readFileSync(full, 'utf-8');
+export function omprioriteraBatchForbattringar(improvementsPath: string): void {
+  if (!fs.existsSync(improvementsPath)) return;
+  const content = fs.readFileSync(improvementsPath, 'utf-8');
+  const lines = content.split('\n');
+  
+  const headerIdx = lines.findIndex(l => l.trim() === '## 2. Köade Batch-förbättringar');
+  if (headerIdx === -1) return;
+
+  const nextHeaderIdx = lines.findIndex((l, i) => i > headerIdx && l.startsWith('## '));
+  const improvementsSection = lines.slice(headerIdx + 1, nextHeaderIdx === -1 ? lines.length : nextHeaderIdx);
+  
+  const items = improvementsSection
+    .map(l => l.trim())
+    .filter(l => l.startsWith('- ') || l.startsWith('* '))
+    .map(l => l.replace(/^[-*]\s+/, ''));
+    
+  const uniqueItems = Array.from(new Set(items));
+
+  const weightMap: Record<string, number> = {
+    '[PRIO: HOG]': 3,
+    '[PRIO: MEDEL]': 2,
+    '[PRIO: LAG]': 1
+  };
+
+  const getWeight = (item: string) => {
+    for (const key in weightMap) {
+      if (item.includes(key)) return weightMap[key];
+    }
+    return 0;
+  };
+
+  uniqueItems.sort((a, b) => getWeight(b) - getWeight(a));
+
+  const newContentLines = lines.slice(0, headerIdx + 1);
+  uniqueItems.forEach(item => newContentLines.push(`- ${item}`));
+  if (nextHeaderIdx !== -1) {
+    newContentLines.push(...lines.slice(nextHeaderIdx));
   }
-  if (name === 'list_files') {
-    const rel = args.directory_path || '.';
-    const full = path.resolve(ROOT_DIR, rel);
-    if (!fs.existsSync(full)) return `Katalogen ${rel} finns inte.`;
-    const entries = fs.readdirSync(full, { withFileTypes: true });
-    return entries.map(e => `${e.isDirectory() ? '[DIR]' : '[FIL]'} ${e.name}`).join('\n');
+
+  fs.writeFileSync(improvementsPath, newContentLines.join('\n'), 'utf-8');
+}
+
+export async function hanteraKonstruktivKritik(
+  ai: any,
+  modelName: string,
+  ticketId: string,
+  cycleSummary: string,
+  si: string,
+  improvementsPath: string
+): Promise<{ harStorSkillnad: boolean; atgard: string }> {
+  const prompt = `Utvärdera följande cykelsammanfattning och generera konstruktiv kritik eller systemförbättringar för Outreach Engine.
+Om ingen verklig systemfriktion finns: svara enbart "INGEN_KRITIK".
+Vid verklig friktion: Generera exakt följande format:
+💡 Konstruktiv kritik av våra rutiner: [Observation & Konkret förslag]
+BEDOMNING: STOR_SKILLNAD | LITEM_BATCH | AVVISAD_FELAKTIG
+PRIORITET: HOG | MEDEL | LAG
+MOTIVERING: ...
+
+Cykel-sammanfattning:
+${cycleSummary}
+`;
+
+  const response = await runMicroChannel(
+    ai,
+    modelName,
+    'Att förlikas',
+    prompt,
+    `BILJETT: ${ticketId}`,
+    si,
+    [],
+    undefined,
+    { maxTurns: 1 }
+  );
+
+  if (response.includes('INGEN_KRITIK')) {
+    return { harStorSkillnad: false, atgard: 'INGEN_KRITIK' };
   }
-  return 'Okänt verktyg';
+
+  const hardScoreMatch = response.match(/BEDOMNING:\s*(STOR_SKILLNAD|LITEM_BATCH|AVVISAD_FELAKTIG)/);
+  const harStorSkillnad = hardScoreMatch ? hardScoreMatch[1] === 'STOR_SKILLNAD' : false;
+
+  const kritikMatch = response.match(/💡 Konstruktiv kritik av våra rutiner:\s*(.+)/);
+  constatgard = kritikMatch ? kritikMatch[1].trim() : '';
+
+  const bedomningMatch = response.match(/BEDOMNING:\s*(.+)/);
+  const bedomning = bedomningMatch ? bedomningMatch[1].trim() : '';
+
+  if (bedomning === 'LITEM_BATCH' && atgard && fs.existsSync(improvementsPath)) {
+    let improvContent = fs.readFileSync(improvementsPath, 'utf-8');
+    const prioMatch = response.match(/PRIORITET:\s*(HOG|MEDEL|LAG)/);
+    const prio = prioMatch ? `[PRIO: ${prioMatch[1]}] ` : '';
+    const newEntry = `- ${prio}${atgard}`;
+    
+    if (!improvContent.includes(atgard)) {
+       const headerIdx = improvContent.indexOf('## 2. Köade Batch-förbättringar');
+       if (headerIdx !== -1) {
+         const nextHeaderIdx = improvContent.indexOf('## ', headerIdx + 3);
+         const before = improvContent.slice(0, headerIdx + 30);
+         const after = nextHeaderIdx !== -1 ? improvContent.slice(nextHeaderIdx) : '';
+         improvContent = `${before}\n${newEntry}\n${after}`;
+       } else {
+         improvContent += `\n## 2. Köade Batch-förbättringar\n${newEntry}\n`;
+       }
+       fs.writeFileSync(improvementsPath, improvContent, 'utf-8');
+       omprioriteraBatchForbattringar(improvementsPath);
+    }
+  } else if (bedomning === 'AVVISAD_FELAKTIG' && atgard) {
+     let improvContent = fs.existsSync(improvementsPath) ? fs.readFileSync(improvementsPath, 'utf-8') : '';
+     const newEntry = `- [AVVISAD] ${atgard}`;
+     const headerIdx = improvContent.indexOf('## 3. Avvisade & Vederlagda Förslag');
+     if (headerIdx !== -1) {
+        const nextHeaderIdx = improvContent.indexOf('## ', headerIdx + 3);
+        const before = improvContent.slice(0, headerIdx + 35);
+        const after = nextHeaderIdx !== -1 ? improvContent.slice(nextHeaderIdx) : '';
+        improvContent = `${before}\n${newEntry}\n${after}`;
+     } else {
+        improvContent += `\n## 3. Avvisade & Vederlagda Förslag\n${newEntry}\n`;
+     }
+     fs.writeFileSync(improvementsPath, improvContent, 'utf-8');
+  }
+
+  return { harStorSkillnad, atgard };
 }
