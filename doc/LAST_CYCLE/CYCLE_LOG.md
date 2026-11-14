@@ -1,31 +1,31 @@
-# BYGGCYKEL LOGG: TCK-MAINT-071
-**Starttid:** 2026-11-14T20:48:53.973Z
+# BYGGCYKEL LOGG: TCK-MAINT-072
+**Starttid:** 2026-11-14T20:52:45.826Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-071: Bryt ut fas1Sweep.ts, fas2Loop.ts & fas2Recovery.ts och koppla in contextBatcher.ts + diagnostiseraRotOrsak
+# TCK-MAINT-072: Slutför Strangler Fig — banta run-planera-live.ts under 250 rader, full scripts/ + src/features/ skanning i sizeGate.js och negativt beteendetest
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/lib/fas1Sweep.ts`, `scripts/lib/fas2Loop.ts`, `scripts/lib/fas2Recovery.ts`, `scripts/run-planera-live.ts`
-**Förutsättning:** `TCK-MAINT-066`–`069` måste vara `VERIFIED`.
+**Målfiler:** `scripts/run-planera-live.ts`, `scripts/lib/sizeGate.js`, `scripts/lib/fas2Tooling.ts`, `scripts/__tests__/scriptLibs.test.ts`
+**Förutsättning:** `TCK-MAINT-071` måste vara `VERIFIED`.
 **Mekanisk Acceptans:**
-1. Ny modul `scripts/lib/fas1Sweep.ts` (< 230 rader) tar över `runMicroChannel`, Fas 0 (`1a`, `0a`, `0b`) och Fas 1 (`1b`–`3c`) från `run-planera-live.ts`, och använder `getCompactTicketWindow` + `validateTicketScope` vid startankaret.
-2. Ny modul `scripts/lib/fas2Recovery.ts` (< 220 rader) tar över `MAINT`-valideringsloopen (`maintValidation.ts`) samt Fas 2-självrättningen och den yttre omvändelseloopen (upp till 4 varv), och kopplar in `diagnostiseraRotOrsak` (`./channelRunner.js`), `selectRelevantRetryFiles` (`./ticketAndAnchor.js`) samt `planContextBatches` (`pass1`/`pass2` vid > 24 000 tecken) och `buildCrashDumpPayload` (`./contextBatcher.js`).
-3. Ny modul `scripts/lib/fas2Loop.ts` (< 220 rader) tar över Gate 3a / Fail-First och Fas 2-kodgenereringen, återanvänder befintliga `codegenTools` och `createFas2ToolExecutor` ur `./fas2Tooling.js` (tar bort den 155-raders duplicerade koden i `run-planera-live.ts`) kör med `maxTurns: 8` samt ovillkorlig `if (!isFas2Complete())`-spärr efter Fas 2 och självrättning (för både `TCK` och `MAINT`), och delegerar felhantering till `fas2Recovery.ts` (som nollställer omvändelseräknaren till `0` när ett bygge lyckats, inklusive före `--kritik-iter=1`).
-4. `scripts/run-planera-live.ts` importerar `synkaDomanBarrel` från `./lib/fas3Consolidation.js` (lagar `ReferenceError` på rad 846) och `hanteraKonstruktivKritik` från `./lib/critiqueTriage.js`, anropar `dumpCrashDiff()` i `main().catch` och delegerar Fas 0–2 till `fas1Sweep.ts` och `fas2Loop.ts`.
+1. `scripts/run-planera-live.ts` (**strikt < 250 rader**) agerar renodlad tunn CLI-orkestrerare (argumentparsning, `VERIFIED`-vakt, startsanering och anrop till `fas1Sweep`, `fas2Loop` och `fas3Consolidation`).
+2. `scripts/lib/sizeGate.js` (< 95 rader) tar bort 1000-radersundantaget för `run-planera-live.ts` i `LEGACY_SCRIPT_CAPS` och `getLineLimitForFile` så att **250 rader** gäller som standardtak, och låter `validateCodebaseLineLimits(rootDir)` skanna **både `scripts/` och `src/features/`** (exklusive `__tests__`, `node_modules` och `.legacy.`).
+3. `scripts/lib/fas2Tooling.ts` (< 220 rader) avvisar `save_code` om målfilen redan existerar på disk (`if (fs.existsSync(full)) throw new Error(...)`) så att `apply_patch` alltid krävs för befintliga filer.
+4. `scripts/__tests__/scriptLibs.test.ts` (< 195 rader) lägger till ett **negativt beteendetest** i `os.tmpdir()` som skapar en 260-raders `.ts`-fil under en temporär `scripts/`-katalog och bevisar att `validateCodebaseLineLimits(tmpDir)` returnerar `1`.
 5. `pnpm verify` passerar med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår intentionen med TCK-MAINT-071. Vi bryter ut mer komplex logik från den stora filen till isolerade moduler. Mänsklig nytta blir att systemet blir mer stabilt och lättare att underhålla för utvecklarna. På vilket sätt vill du att vi prioriterar just felhanteringen i detta skede?
+Jag förstår verkligen intentionen med det här uppdraget. Genom att slutföra Strangler Fig-mönstret för `run-planera-live.ts` och strama åt storleksgränserna i `sizeGate.js` säkrar vi en mer modulär och lättunderhållen kodbas. Det ger stabilitet och främjar en hållbar utvecklingsmiljö för hela teamet.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsauditen för TCK-MAINT-071 är nu genomförd och godkänd. Uppdelningen i tre distinkta moduler respekterar FSD-gränser och säkerställer att komplexitet hålls isolerad enligt våra radbegränsningar för modulär expansion. Vi är redo att initiera planeringssvepet.
+Kontraktsaudit för TCK-MAINT-072 är genomförd. Eftersom uppdraget innebär direkta ändringar i `scripts/`-katalogen, som enligt reglerna ska vara oföränderliga för källkodsagenten, kommer kontraktet att hanteras som systemunderhåll under strikt isolerad kontroll enligt mekaniska invarianti. Inga andra domäner påverkas.
 
 
 #### 0b Att förlikas: Vägval
@@ -37,18 +37,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa TCK-MAINT-071 och strukturera om orkestreringslogiken i `scripts`, formulerar jag följande tre ortogonala alternativ:
+Detta är de tre alternativen för att slutföra Strangler Fig och uppfylla kraven i kontraktet:
 
-Alternativ 1 fokuserar på direkt, funktionell extraktion där vi flyttar dagens proceduriska kod till de nya modulerna `fas1Sweep.ts`, `fas2Loop.ts` och `fas2Recovery.ts` och behåller en tydlig delegering.
+Alternativ ett innebär direkt refaktorisering av run-planera-live.ts genom att bryta ut konfigurationslogik och uppdatera storlekskontroller i sizeGate.js och fas2Tooling.ts sekventiellt före testning.
 
-Alternativ 2 bygger på en tillståndsdriven modell där kontrollen skickas mellan modulerna genom att explicit paketera kontext och statusövergångar utan att behålla ett delat tillstånd.
+Alternativ två är en inkrementell utfasning där vi skapar nya hjälpmoduler i scripts/lib/ för att stödja den modulära expansionen och strikt följa storleksbegränsningarna.
 
-Alternativ 3 behandlar faserna som middleware-block, vilket innebär att de monteras som en kedjebaserad pipeline där varje exekveringssteg injiceras med nödvändiga verktyg och dataförsörjning.
+Alternativ tre fokuserar på testdriven utveckling där vi börjar med att implementera det negativa beteendetestet och sedan anpassar existerande logik mekaniskt för att garantera att AST-granskaren godkänner bygget.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ 1 har bäst resiliens och felhantering. Det separerar ansvarsområden tydligt, minskar risken för felaktigt tillstånd, och säkerställer att fel propageras korrekt till nästa modul utan att förlora kontext.
+Alternativ ett och två medför risker för att vi bryter rådande körtidskontrakt innan säkerhetsgrinden är på plats. Alternativ tre är mest resilient eftersom det börjar med det negativa beteendetestet, vilket Fail-First-regeln kräver, för att garantera att AST-granskaren godkänner bygget.
 
 
 #### 2d Att förlikas: Mättnad
-Jag bekräftar att Alternativ 1 är vårt vinnande kontrakt. Det ger den bästa balansen av resiliens och tydlig ansvarsfördelning. MÄTTNAD: JA.
+Med utgångspunkt i er analys och Fail-First-regeln står det klart att alternativ tre är det vunna kontraktet. Det säkrar resiliens och uppnår fullständig överensstämmelse med arkitektoniska gränser. MÄTTNAD: JA.
