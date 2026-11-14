@@ -44,13 +44,6 @@ describe('TCK-055 Transient Regression Suite', () => {
 
       expect(count).toBe(1);
     });
-
-    it('should limit capacity strictly using FIFO ring buffer logic', () => {
-      // Note: The SwarmEventBus implementation provided does not explicitly enforce a max size
-      // or export a getHistory method based on the provided deltas. 
-      // We will assert on current behavior or skip if functionality is missing in target.
-      expect(true).toBe(true);
-    });
   });
 
   describe('Zod Schema Validation Tests', () => {

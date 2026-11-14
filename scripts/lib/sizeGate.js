@@ -54,5 +54,31 @@ export function getNearLimitWarnings(rootDir, targetFiles) {
 }
 
 export function validateCodebaseLineLimits(rootDir) {
-  return 0;
+  let violations = 0;
+  const srcDir = path.join(rootDir, 'src');
+  
+  if (!fs.existsSync(srcDir)) return 0;
+
+  function scanDir(dir) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules' && entry.name !== '.git') {
+          scanDir(fullPath);
+        }
+      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {
+        const relPath = path.relative(rootDir, fullPath);
+        const lineCount = countLines(fullPath);
+        const limit = getLineLimitForFile(relPath);
+        if (lineCount > limit) {
+          console.error(`❌ Radgräns överskriden i ${relPath}: ${lineCount} / ${limit} rader`);
+          violations++;
+        }
+      }
+    }
+  }
+
+  scanDir(srcDir);
+  return violations;
 }

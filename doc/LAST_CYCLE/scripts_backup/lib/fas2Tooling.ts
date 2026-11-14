@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import ts from 'typescript';
 import { applySourcePatch } from '../drivers/patchMutator.js';
 import { executeInspection } from './channelRunner.js';
+import { getLineLimitForFile, countLines } from './sizeGate.js';
 
 const ROOT_DIR = process.cwd();
 
@@ -78,6 +80,21 @@ export function createFas2ToolExecutor(
         }
       }
 
+      // Syntax och radgränskontroll
+      const transpileResult = ts.transpileModule(args.code, {
+        compilerOptions: { target: ts.ScriptTarget.ES2022 }
+      });
+      if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
+         const diag = transpileResult.diagnostics[0];
+         throw new Error(`Syntaxfel i ny kod: ${diag.messageText}`);
+      }
+
+      const newLines = args.code.split('\n').length;
+      const limit = getLineLimitForFile(rel);
+      if (newLines > limit) {
+         throw new Error(`RADGRÄNSBROTT för ${rel}: Den nya koden har ${newLines} rader men gränsen är strikt satt till maximalt ${limit} rader.`);
+      }
+
       fs.mkdirSync(path.dirname(full), { recursive: true });
       fs.writeFileSync(full, args.code, 'utf-8');
       codeSaved.value = true;
@@ -101,6 +118,22 @@ export function createFas2ToolExecutor(
       if (patchedContent === existingContent) {
         throw new Error("SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte. Bygget kraschas mekaniskt för att undvika tomma tillstånd.");
       }
+
+      // Syntax och radgränskontroll
+      const transpileResult = ts.transpileModule(patchedContent, {
+        compilerOptions: { target: ts.ScriptTarget.ES2022 }
+      });
+      if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
+         const diag = transpileResult.diagnostics[0];
+         throw new Error(`Syntaxfel i patchad kod: ${diag.messageText}`);
+      }
+
+      const newLines = patchedContent.split('\n').length;
+      const limit = getLineLimitForFile(rel);
+      if (newLines > limit) {
+         throw new Error(`RADGRÄNSBROTT för ${rel}: Den patchade koden skulle få ${newLines} rader men gränsen är strikt satt till maximalt ${limit} rader.`);
+      }
+
       fs.writeFileSync(full, patchedContent, 'utf-8');
       codeSaved.value = true;
       if (!modifiedFiles.includes(rel)) modifiedFiles.push(rel);

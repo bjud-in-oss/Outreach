@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { skapaNodePathPortar } from '../lib/pathNodePorts';
+import { omprioriteraBatchForbattringar } from '../lib/critiqueTriage';
 
 describe('scriptLibs', () => {
   describe('getRequiredFiles', () => {
