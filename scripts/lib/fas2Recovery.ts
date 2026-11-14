@@ -90,7 +90,7 @@ export async function hanteraFas2TestFel(
     state.innerAttempts = 0;
     state.reversals++;
     if (state.reversals > MAX_OUTER_REVERSALS) {
-      const payload = buildCrashDumpPayload(targetDomain, state.reversals, errorLog, modifiedFiles);
+      const payload = buildCrashDumpPayload({ targetDomain, reversals: state.reversals, errorLog, modifiedFiles });
       fs.writeFileSync(path.join(process.cwd(), 'doc', 'LAST_CYCLE', 'CRASH_DUMP.json'), JSON.stringify(payload, null, 2), 'utf-8');
       throw new Error(`❌ Yttre omvändelsegräns (4) överskriden: ${sig}`);
     }
@@ -98,7 +98,18 @@ export async function hanteraFas2TestFel(
     const batch = planContextBatches(relevant, errorLog, 20000);
     const diag = await diagnostiseraRotOrsak(ai, modelName, targetDomain, errorLog, batch.pass1.map((p) => p.content).join('\n'), systemInstruction);
     const anchor = buildRetryAnchor(fs.existsSync(transientTestFile) ? fs.readFileSync(transientTestFile, 'utf-8') : '', batch.pass1.map((p) => `--- ${p.path} ---\n${p.content}`).join('\n'), `${errorLog}\n\nDIAGNOS:\n${diag}`);
-    await runMicroChannel(ai, modelName, 'Att vända om', 'Åtgärda källkoden utifrån 5-Varför-diagnosen med apply_patch.', anchor, systemInstruction, codegenTools, executeFas2Tools, { maxTurns: 6 });
+    let outerMutated = false;
+    const outerTools = (name: string, args: any): string => {
+      const res = executeFas2Tools(name, args);
+      if (name === 'apply_patch' || name === 'save_code') outerMutated = true;
+      return res;
+    };
+    await runMicroChannel(ai, modelName, 'Att vända om', 'Åtgärda källkoden utifrån 5-Varför-diagnosen med apply_patch.', anchor, systemInstruction, codegenTools, outerTools, {
+      requireMutation: true,
+      maxTurns: 6,
+      onMutationCheck: () => outerMutated,
+      getFollowupPrompt: () => 'Du har inspekterat koden. Applicera nu ändringen med apply_patch omedelbart!'
+    });
     return state;
   }
 
@@ -108,6 +119,17 @@ export async function hanteraFas2TestFel(
     .map((f) => `--- ${f} ---\n${fs.readFileSync(path.resolve(process.cwd(), f), 'utf-8')}`)
     .join('\n\n');
   const anchor = buildRetryAnchor(fs.existsSync(transientTestFile) ? fs.readFileSync(transientTestFile, 'utf-8') : '', srcSummary, errorLog);
-  await runMicroChannel(ai, modelName, 'Att vända om', `Laga testfelet (inre försök ${state.innerAttempts}/${MAX_INNER_ATTEMPTS}) med apply_patch.\n${startAnchor.slice(0, 2000)}`, anchor, systemInstruction, codegenTools, executeFas2Tools, { maxTurns: 5 });
+  let innerMutated = false;
+  const innerTools = (name: string, args: any): string => {
+    const res = executeFas2Tools(name, args);
+    if (name === 'apply_patch' || name === 'save_code') innerMutated = true;
+    return res;
+  };
+  await runMicroChannel(ai, modelName, 'Att vända om', `Laga testfelet (inre försök ${state.innerAttempts}/${MAX_INNER_ATTEMPTS}) med apply_patch.\n${startAnchor.slice(0, 2000)}`, anchor, systemInstruction, codegenTools, innerTools, {
+    requireMutation: true,
+    maxTurns: 5,
+    onMutationCheck: () => innerMutated,
+    getFollowupPrompt: () => 'Du har läst filen. Applicera nu ändringen med apply_patch omedelbart!'
+  });
   return state;
 }

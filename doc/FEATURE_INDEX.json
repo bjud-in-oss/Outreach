@@ -380,6 +380,7 @@
         "LeanReceptOptionsSchema",
         "MetaKritikBedomningSchema",
         "MetaKritikResultatSchema",
+        "OrchestratorConfig",
         "OrchestratorConfigSchema",
         "PathContextSchema",
         "PathPhase",

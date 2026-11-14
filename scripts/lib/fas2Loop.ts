@@ -128,6 +128,7 @@ export async function korFas2Loop(
         syncDomainBarrel();
         execCaptured(`node scripts/drivers/ts.js --check-catch-blocks --domain ${targetDomain}`);
         execCaptured(`npx vitest run ${transientTestFile}`);
+        execCaptured(`npx vitest run src/features/${targetDomain}/__tests__/`);
         state.reversals = 0;
         green = true;
       } catch (err: any) {

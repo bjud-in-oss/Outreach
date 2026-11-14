@@ -77,15 +77,6 @@ export const PromptCompileInputSchema = z.object({
     innehåll: z.string(),
     kalltidsStamplar: z.string().optional(),
   })).optional(),
-  konstextMinne: z.array(z.object({
-    typ: z.string(),
-    innehåll: z.string(),
-    kalltidsStamplar: z.string().optional(),
-  })).optional(),
-  doman: z.string().optional(),
-  malDoman: z.string().optional(),
-  stegId: z.string().optional(),
-  ticketId: z.string().optional(),
 });
 
 export const CompiledPromptSchema = z.object({
@@ -96,6 +87,7 @@ export const CompiledPromptSchema = z.object({
   renderedContent: z.string().optional(),
   systemInstruction: z.string().optional(),
   userPrompt: z.string().optional(),
+  systemPrompt: z.string().optional(),
   beraknadeTokensUngefar: z.number().optional(),
 });
 
@@ -108,7 +100,7 @@ export const BidiLiveAdapterConfigSchema = z.object({
   model: z.string().default('gemini-3.8-live'),
   systemInstruction: z.string().optional(),
   modality: z.enum(['AUDIO', 'TEXT']).default('AUDIO'),
-  maxReconnectAttempts: z.number().default(5),
+  maxReconnectAttempts: z.number().default(6),
   baseBackoffMs: z.number().default(1000),
   maxJitterMs: z.number().default(1000),
   eventBus: z.custom<any>().optional(),
@@ -123,7 +115,9 @@ export const OrchestratorConfigSchema = z.object({
   ticketId: z.string(),
   malDoman: z.string(),
   uppdrag: z.string(),
-  kontextMinne: z.record(z.any()).optional(),
+  kontextMinne: z.record(z.string(), z.unknown()).optional(),
+  uppdragsTyp: z.enum(['TCK', 'MAINT']).default('TCK'),
+  maxYttreOmvandelseForsok: z.number().min(1).max(4).default(4),
 });
 
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;

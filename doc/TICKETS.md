@@ -2,7 +2,7 @@
 
 ## AKTIVA TICKETS
 
-- [x] **TCK-MAINT-081** (VERIFIED) (READY): Samla samtliga matchande felrader ur hela loggen i extractErrorSignature och verifiera med enhetstest -> Se `doc/.TICKETS/TCK-MAINT-081.md`
+- [x] **TCK-MAINT-081** (VERIFIED): Samla samtliga matchande felrader ur hela loggen i extractErrorSignature och verifiera med enhetstest -> Se `doc/.TICKETS/TCK-MAINT-081.md`
 - [ ] **TCK-MAINT-080** (READY): Full s-städning i fas3Consolidation.ts och AST await- + anti-stubb-spärr i verify-architecture.js -> Se `doc/.TICKETS/TCK-MAINT-080.md`
 - [x] **TCK-MAINT-079** (VERIFIED): Koppla extractErrorSignature, asynkron diagnostiseraRotOrsak, ADR-019 Fail-First-generering & recovery-loopar i fas2Recovery.ts och fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-079.md`
 - [x] **TCK-MAINT-078** (VERIFIED): Samla extractErrorSignature(log) som SSOT, skärp validateTicketScope till max 2 befintliga målfiler och återställ 2-sessioners diagnostiseraRotOrsak -> Se `doc/.TICKETS/TCK-MAINT-078.md`
@@ -87,7 +87,7 @@
 - [ ] **TCK-067** (READY): Delad 2-prompts 5-Varför-tratt i outerReconciliation.ts och MAINT-besiktning i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-067.md`
 - [ ] **TCK-066** (READY): Koppla 1-stegs kritikiteration och avvisade-historik i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-066.md`
 - [ ] **TCK-065** (READY): Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-065.md`
-- [ ] **TCK-064** (READY): Harmonisera Zod-scheman och re-exporterade typer i src/features/path/ (Del 1/2) -> Se `doc/.TICKETS/TCK-064.md`
+- [x] **TCK-064** (VERIFIED) (READY): Harmonisera Zod-scheman och re-exporterade typer i src/features/path/ (Del 1/2) -> Se `doc/.TICKETS/TCK-064.md`
 - [ ] **TCK-063** (READY): 6:e WS-retry (60s) i bidiLiveAdapter.ts och AST/omfångs-spärrar i konstruktionsport.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-063.md`
 - [ ] **TCK-062** (READY): Enhetlig Wayfinder-kritik och 3-vägs triagering med papperskorg i metaReflection.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-062.md`
 - [ ] **TCK-061** (READY): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`

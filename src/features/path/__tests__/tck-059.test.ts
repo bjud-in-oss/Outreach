@@ -6,7 +6,7 @@ import { skapaBidiLiveAdapter } from '../engine/bidiLiveAdapter';
 describe('TCK-059 Exponentiell backoff och slumpad jitter i BidiLiveAdapter', () => {
   it('skall ha korrekta standardvärden i BidiLiveAdapterConfigSchema', () => {
     const config = BidiLiveAdapterConfigSchema.parse({});
-    expect(config.maxReconnectAttempts).toBe(5);
+    expect(config.maxReconnectAttempts).toBe(6);
     expect(config.baseBackoffMs).toBe(1000);
     expect(config.maxJitterMs).toBe(1000);
   });

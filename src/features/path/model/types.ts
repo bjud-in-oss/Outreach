@@ -28,11 +28,13 @@ export interface StepResult {
 export interface StepNode extends BaseNode {
   type: 'STEP';
   execute: (kontext: PathContext) => Promise<StepResult>;
+  run?: (kontext: PathContext) => Promise<StepResult>;
 }
 
 export interface PortNode extends BaseNode {
   type: 'PORT';
   port: Port;
+  run?: Port;
 }
 
 export type PathNode = StepNode | PortNode;
@@ -91,7 +93,7 @@ export interface BesiktningsportOptions {
   inspekterare: BesiktningsInspekterare;
 }
 
-export type { PathPhase, PromptCompileInput, CompiledPrompt, BidiLiveAdapterConfig } from '../contracts/pathSchema';
+export type { PathPhase, PromptCompileInput, CompiledPrompt, BidiLiveAdapterConfig, OrchestratorConfig } from '../contracts/pathSchema';
 
 export interface SessionAdapter {
   skicka: (prompt: CompiledPrompt) => Promise<{ svar: string; tokensAnvanda?: number }>;
