@@ -1,66 +1,203 @@
+diff --git a/scripts/__tests__/scriptLibs.test.ts b/scripts/__tests__/scriptLibs.test.ts
+index 3c87a23..46c830d 100644
+--- a/scripts/__tests__/scriptLibs.test.ts
++++ b/scripts/__tests__/scriptLibs.test.ts
+@@ -57,12 +57,16 @@ describe('scriptLibs', () => {
+     it('should throw when check-alibi fails', () => {
+       const tmpDir = os.tmpdir();
+       const tmpFile = path.join(tmpDir, 'test-alibi.ts');
+-      fs.writeFileSync(tmpFile, 'expect(true).toBe(true);');
++      fs.writeFileSync(tmpFile, `
++        import { vi, expect, it } from 'vitest';
++        it('bad alibi', () => {
++          const spy = vi.fn();
++        });
++      `);
+       
+       try {
+-        expect(() => {
+-          execFileSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { stdio: 'pipe' });
+-        }).toThrow();
++        const result = require('child_process').spawnSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { encoding: 'utf-8' });
++        expect(result.status).toBe(1);
+       } finally {
+         if (fs.existsSync(tmpFile)) {
+           fs.unlinkSync(tmpFile);
 diff --git a/scripts/lib/channelRunner.ts b/scripts/lib/channelRunner.ts
-index 9b75208..56c6e80 100644
+index 8d27574..bfa5422 100644
 --- a/scripts/lib/channelRunner.ts
 +++ b/scripts/lib/channelRunner.ts
-@@ -185,7 +185,7 @@ ${cycleSummary}
-   const harStorSkillnad = hardScoreMatch ? hardScoreMatch[1] === 'STOR_SKILLNAD' : false;
+@@ -5,7 +5,6 @@ import { BidiLiveSession } from '../bidiLiveRunner.js';
+ const ROOT_DIR = process.cwd();
+ const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
+ const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
+-const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
+ const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
+ const PKG_PATH = path.join(ROOT_DIR, 'package.json');
  
-   const kritikMatch = response.match(/💡 Konstruktiv kritik av våra rutiner:\s*(.+)/);
--  constatgard = kritikMatch ? kritikMatch[1].trim() : '';
-+  const atgard = kritikMatch ? kritikMatch[1].trim() : '';
- 
-   const bedomningMatch = response.match(/BEDOMNING:\s*(.+)/);
-   const bedomning = bedomningMatch ? bedomningMatch[1].trim() : '';
-diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
-index 4bd3dce..1843aee 100644
---- a/scripts/run-planera-live.ts
-+++ b/scripts/run-planera-live.ts
-@@ -848,7 +848,7 @@ VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
-   if (!isMaint) {
-     execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
-     konsolideraTest(targetDomain, ticketId, createdModules, transientTestFullPath, testExt);
--    synkaDomanBarrel(targetDomain, createdModules);
-+    syncDomainBarrel();
-     uppdateraFeatureIndex(targetDomain, createdModules, FEATURE_INDEX_PATH);
+@@ -80,149 +79,44 @@ export async function runMicroChannel(
    }
+ }
  
-diff --git a/scripts/tsconfig.json b/scripts/tsconfig.json
-new file mode 100644
-index 0000000..dfd12ea
---- /dev/null
-+++ b/scripts/tsconfig.json
-@@ -0,0 +1,12 @@
-+{
-+  "extends": "../tsconfig.json",
-+  "compilerOptions": {
-+    "noEmit": true,
-+    "skipLibCheck": true,
-+    "moduleResolution": "bundler",
-+    "esModuleInterop": true
-+  },
-+  "include": [
-+    "./**/*.ts"
-+  ]
-+}
-diff --git a/scripts/update-tickets.js b/scripts/update-tickets.js
-index 2008007..a76df3b 100644
---- a/scripts/update-tickets.js
-+++ b/scripts/update-tickets.js
-@@ -36,15 +36,8 @@ for (const file of files) {
-   let label = 'READY';
+-export async function sparaMetaOmvandelse(
++export async function diagnostiseraRotOrsak(
+   ai: any,
+   modelName: string,
+-  ticketId: string,
+-  errLog: string,
++  contextTitle: string,
++  errorLog: string,
++  sourceContext: string,
+   si: string
+ ): Promise<string> {
+-  const instruction = `Analysera varför den inre slingan i Fas 2 inte omvände sig framgångsrikt under sina 3 försök trots självrättningsinstruktioner. Vilken konstruktiv kritik eller arkitektonisk justering behöver genomföras?`;
+-  const startAnchor = `BILJETT: ${ticketId}\nFELLOGG:\n${errLog}`;
++  const instr1 = `Zoom ut mot FSD-/kontraktsintegritet och modulär expansion (Väg 2). Spåra de inledande mekaniska faktafrågorna (Varför 1–3). Öppna 3 ortogonala felhypoteser utan rangordning. Ställ den Epistemiska Falsifieringsfrågan. Ange återstående frågedjup (minst 2, dvs. Varför 4–5+), strippad från slutsatser.`;
++  const startAnchor1 = `KONTEXT: ${contextTitle}\nFELLOGG:\n${errorLog}\nKÄLLKODSKONTEXT:\n${sourceContext}`;
+   
+-  return await runMicroChannel(
++  const resp1 = await runMicroChannel(
+     ai,
+     modelName,
+     'Att vända om',
+-    instruction,
+-    startAnchor,
++    instr1,
++    startAnchor1,
+     si,
+     [],
+     undefined,
+     { maxTurns: 1 }
+   );
+-}
+-
+-export function omprioriteraBatchForbattringar(improvementsPath: string): void {
+-  if (!fs.existsSync(improvementsPath)) return;
+-  const content = fs.readFileSync(improvementsPath, 'utf-8');
+-  const lines = content.split('\n');
+-  
+-  const headerIdx = lines.findIndex(l => l.trim() === '## 2. Köade Batch-förbättringar');
+-  if (headerIdx === -1) return;
+-
+-  const nextHeaderIdx = lines.findIndex((l, i) => i > headerIdx && l.startsWith('## '));
+-  const improvementsSection = lines.slice(headerIdx + 1, nextHeaderIdx === -1 ? lines.length : nextHeaderIdx);
+-  
+-  const items = improvementsSection
+-    .map(l => l.trim())
+-    .filter(l => l.startsWith('- ') || l.startsWith('* '))
+-    .map(l => l.replace(/^[-*]\s+/, ''));
+-    
+-  const uniqueItems = Array.from(new Set(items));
+-
+-  const weightMap: Record<string, number> = {
+-    '[PRIO: HOG]': 3,
+-    '[PRIO: MEDEL]': 2,
+-    '[PRIO: LAG]': 1
+-  };
  
-   if (existingTickets.has(idMatch)) {
--    status = existingTickets.get(idMatch);
--    if (status === 'x') {
--      label = 'VERIFIED';
--    } else if (status === ' ') {
--      label = 'READY';
+-  const getWeight = (item: string) => {
+-    for (const key in weightMap) {
+-      if (item.includes(key)) return weightMap[key];
 -    }
--  } else if (idMatch.includes('MAINT')) {
--     status = '[x]';
--     label = 'VERIFIED';
-+    status = existingTickets.get(idMatch) === 'x' ? '[x]' : '[ ]';
-+    label = status === '[x]' ? 'VERIFIED' : 'READY';
-   }
+-    return 0;
+-  };
+-
+-  uniqueItems.sort((a, b) => getWeight(b) - getWeight(a));
+-
+-  const newContentLines = lines.slice(0, headerIdx + 1);
+-  uniqueItems.forEach(item => newContentLines.push(`- ${item}`));
+-  if (nextHeaderIdx !== -1) {
+-    newContentLines.push(...lines.slice(nextHeaderIdx));
+-  }
++  const instr2 = `Väg hypoteserna mot fellogg, källkod, FEATURE_INDEX.json och DECISIONS.md. Välj fritt egna prövningsfrågor för att testa anpassning av befintliga repoidéer (HYPOTES D: REPO-ÅTERANVÄNDNING), slutför Varför 4–5+, logga domen till CYCLE_LOG.md och lås EGENTLIGT_FEL.`;
++  const startAnchor2 = `STARTANKARE:\n${startAnchor1}\n\nANALYS FRÅN VÄNDA OM:\n${resp1}`;
  
-   tickets.push({
+-  fs.writeFileSync(improvementsPath, newContentLines.join('\n'), 'utf-8');
+-}
+-
+-export async function hanteraKonstruktivKritik(
+-  ai: any,
+-  modelName: string,
+-  ticketId: string,
+-  cycleSummary: string,
+-  si: string,
+-  improvementsPath: string
+-): Promise<{ harStorSkillnad: boolean; atgard: string }> {
+-  const prompt = `Utvärdera följande cykelsammanfattning och generera konstruktiv kritik eller systemförbättringar för Outreach Engine.
+-Om ingen verklig systemfriktion finns: svara enbart "INGEN_KRITIK".
+-Vid verklig friktion: Generera exakt följande format:
+-💡 Konstruktiv kritik av våra rutiner: [Observation & Konkret förslag]
+-BEDOMNING: STOR_SKILLNAD | LITEM_BATCH | AVVISAD_FELAKTIG
+-PRIORITET: HOG | MEDEL | LAG
+-MOTIVERING: ...
+-
+-Cykel-sammanfattning:
+-${cycleSummary}
+-`;
+-
+-  const response = await runMicroChannel(
++  const resp2 = await runMicroChannel(
+     ai,
+     modelName,
+     'Att förlikas',
+-    prompt,
+-    `BILJETT: ${ticketId}`,
++    instr2,
++    startAnchor2,
+     si,
+     [],
+     undefined,
+     { maxTurns: 1 }
+   );
+ 
+-  if (response.includes('INGEN_KRITIK')) {
+-    return { harStorSkillnad: false, atgard: 'INGEN_KRITIK' };
+-  }
+-
+-  const hardScoreMatch = response.match(/BEDOMNING:\s*(STOR_SKILLNAD|LITEM_BATCH|AVVISAD_FELAKTIG)/);
+-  const harStorSkillnad = hardScoreMatch ? hardScoreMatch[1] === 'STOR_SKILLNAD' : false;
+-
+-  const kritikMatch = response.match(/💡 Konstruktiv kritik av våra rutiner:\s*(.+)/);
+-  constatgard = kritikMatch ? kritikMatch[1].trim() : '';
+-
+-  const bedomningMatch = response.match(/BEDOMNING:\s*(.+)/);
+-  const bedomning = bedomningMatch ? bedomningMatch[1].trim() : '';
+-
+-  if (bedomning === 'LITEM_BATCH' && atgard && fs.existsSync(improvementsPath)) {
+-    let improvContent = fs.readFileSync(improvementsPath, 'utf-8');
+-    const prioMatch = response.match(/PRIORITET:\s*(HOG|MEDEL|LAG)/);
+-    const prio = prioMatch ? `[PRIO: ${prioMatch[1]}] ` : '';
+-    const newEntry = `- ${prio}${atgard}`;
+-    
+-    if (!improvContent.includes(atgard)) {
+-       const headerIdx = improvContent.indexOf('## 2. Köade Batch-förbättringar');
+-       if (headerIdx !== -1) {
+-         const nextHeaderIdx = improvContent.indexOf('## ', headerIdx + 3);
+-         const before = improvContent.slice(0, headerIdx + 30);
+-         const after = nextHeaderIdx !== -1 ? improvContent.slice(nextHeaderIdx) : '';
+-         improvContent = `${before}\n${newEntry}\n${after}`;
+-       } else {
+-         improvContent += `\n## 2. Köade Batch-förbättringar\n${newEntry}\n`;
+-       }
+-       fs.writeFileSync(improvementsPath, improvContent, 'utf-8');
+-       omprioriteraBatchForbattringar(improvementsPath);
+-    }
+-  } else if (bedomning === 'AVVISAD_FELAKTIG' && atgard) {
+-     let improvContent = fs.existsSync(improvementsPath) ? fs.readFileSync(improvementsPath, 'utf-8') : '';
+-     const newEntry = `- [AVVISAD] ${atgard}`;
+-     const headerIdx = improvContent.indexOf('## 3. Avvisade & Vederlagda Förslag');
+-     if (headerIdx !== -1) {
+-        const nextHeaderIdx = improvContent.indexOf('## ', headerIdx + 3);
+-        const before = improvContent.slice(0, headerIdx + 35);
+-        const after = nextHeaderIdx !== -1 ? improvContent.slice(nextHeaderIdx) : '';
+-        improvContent = `${before}\n${newEntry}\n${after}`;
+-     } else {
+-        improvContent += `\n## 3. Avvisade & Vederlagda Förslag\n${newEntry}\n`;
+-     }
+-     fs.writeFileSync(improvementsPath, improvContent, 'utf-8');
+-  }
+-
+-  return { harStorSkillnad, atgard };
++  appendCycleLog('Rotorsaksdiagnos & Egentligt Fel', resp2);
++  return resp2;
+ }

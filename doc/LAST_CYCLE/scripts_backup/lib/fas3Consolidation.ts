@@ -111,6 +111,7 @@ export async function hanteraTrepunktsbesiktning(
 ) {
   console.log('\n🛡️ [SANDBOX]: Systemförändring (MAINT) detekterad. Genererar besiktningsrapport...');
     
+  execSync('git add -N src/ scripts/ 2>/dev/null || true', { cwd: ROOT_DIR });
   const diff = execSync('git diff --stat', { encoding: 'utf-8', cwd: ROOT_DIR });
   const diffContent = execSync('git diff', { encoding: 'utf-8', cwd: ROOT_DIR });
   
