@@ -1,14 +1,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { BidiLiveSession } from '../bidiLiveRunner.js';
-import { getFeatureIndexText, getInstalledDependencies, appendCycleLog } from './channelRunner.js';
+import { 
+  getFeatureIndexText, 
+  getInstalledDependencies, 
+  appendCycleLog, 
+  runMicroChannel as baseRunMicroChannel 
+} from './channelRunner.js';
 
-interface ChannelOptions {
-  requireMutation?: boolean;
-  maxTurns?: number;
-  onMutationCheck?: () => boolean;
-  getFollowupPrompt?: () => string;
-}
+export { baseRunMicroChannel as runMicroChannel };
 
 export async function runMicroChannel(
   ai: any,
@@ -43,11 +43,11 @@ export async function runMicroChannel(
     }
 
     runner.close();
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 750));
     return response;
   } catch (err: any) {
     runner.close();
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 750));
     throw err;
   }
 }

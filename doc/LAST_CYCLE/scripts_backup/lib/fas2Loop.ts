@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { runMicroChannel } from './fas1Sweep.js';
-import { getRequiredFiles, execCaptured } from './ticketAndAnchor.js';
+import { execCaptured } from './ticketAndAnchor.js';
+import { hanteraFas2TestFel, RecoveryState } from './fas2Recovery.js';
 
 export async function korFas2Loop(
   ai: any,
@@ -74,12 +75,19 @@ ${startAnchor}`;
 
   console.log('\n⚡ Exekverar kodändringar via Bidi Live WebSocket...');
   
-  const fas2Response = await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, startAnchor, systemInstruction, codegenTools, executeFas2Tools, {
+  // Vi kör loopen och låter agenten uppdatera
+  await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, startAnchor, systemInstruction, codegenTools, executeFas2Tools, {
     requireMutation: true,
     maxTurns: 8,
     onMutationCheck: isFas2Complete,
     getFollowupPrompt: getFas2FollowupPrompt
   });
 
-  return fas2Response;
+  if (!isFas2Complete()) {
+    console.error('❌ FAS 2 MISSLYCKADES: Samtliga målfiler uppdaterades inte.');
+    process.exit(1);
+  }
+
+  console.log('🎉 Fas 2 slutförd och validerad.');
+  return 'STATUS: GODKÄND';
 }

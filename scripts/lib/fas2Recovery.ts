@@ -1,19 +1,18 @@
 import { execSync } from 'child_process';
-import { writeFileSync } from 'fs';
+import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { diagnostiseraRotOrsak } from './channelRunner.js';
 import { selectRelevantRetryFiles } from './ticketAndAnchor.js';
 import { planContextBatches, buildCrashDumpPayload } from './contextBatcher.js';
-import { CrashDumpPayload, RecoveryState } from './fas2Tooling.js';
+import { CrashDumpPayload } from './fas2Tooling.js';
 
-// --- Constants ---
+export interface RecoveryState {
+  innerAttempts: number;
+  reversals: number;
+}
+
 const MAX_OUTER_REVERSALS = 4;
 const MAX_INNER_ATTEMPTS = 3;
 
-/**
- * Utför maintenace validering via maintValidation.ts
- * Inkluderar framstegsspärr, kompakt ADR-loggning och feldiagnostik.
- */
 export async function korMaintValidering(ticketId: string): Promise<boolean> {
   let attempts = 0;
 
@@ -22,14 +21,11 @@ export async function korMaintValidering(ticketId: string): Promise<boolean> {
     console.log(`[Validation] Försök ${attempts}/4 för biljett ${ticketId}`);
 
     try {
-      // Kör maintValidation via tsx
       execSync(`npx tsx scripts/lib/maintValidation.ts --ticket ${ticketId}`, { stdio: 'inherit' });
       console.log(`[Validation] Lyckades vid försök ${attempts}`);
       return true;
     } catch (error: any) {
-      console.error(`[Validation] Misslyckades vid försök ${attempts}:`, error.message);
-      
-      // Diagnostisera rotorsak (simulerad logik för detta scope)
+      console.error(`[Validation] Misslyckades vid försök ${attempts}:', error.message);
       diagnostiseraRotOrsak(error);
 
       if (attempts >= 4) {
@@ -41,9 +37,6 @@ export async function korMaintValidering(ticketId: string): Promise<boolean> {
   return false;
 }
 
-/**
- * Hanterar fel under fas 2 testkörningar (Vitest + AST Gate 2c)
- */
 export async function hanteraFas2TestFel(
   error: any, 
   state: RecoveryState, 
@@ -67,17 +60,14 @@ export async function hanteraFas2TestFel(
       throw new Error(`Kritisk fel under Fas 2 återhämtning: ${error.message}`);
     }
 
-    // Utför yttre omvändelse: selectRelevantRetryFiles och planContextBatches
     selectRelevantRetryFiles(contextData.changedFiles);
     planContextBatches('pass1');
   }
 
-  // Försök köra om testerna
   try {
     console.log(`[Fas2Recovery] Kör om testerna...`);
     execSync(`npx vitest run ${contextData.testFile}`, { stdio: 'inherit' });
     
-    // Nollställ omvändelse vid lyckad körning
     console.log(`[Fas2Recovery] Test lyckades. Nollställer yttre omvändelser.`);
     state.reversals = 0;
     state.innerAttempts = 0;
@@ -89,35 +79,18 @@ export async function hanteraFas2TestFel(
   return state;
 }
 
-// --- Hjälpfunktioner ---
-
 function diagnostiseraRotOrsak(error: any): void {
   console.log(`[Diagnostics] Analyserar fel...`);
-  // Läs och logga ADR-rubriker ur DECISIONS.md för kontext
   try {
-    const decisions = readFileSync(join(process.cwd(), 'doc', 'DECISIONS.md'), 'utf-8');
-    const adrMatches = decisions.match(/^## ADR-.*$/gm);
-    if (adrMatches) {
-      console.log(`[Diagnostics] Relevanta ADRs:`, adrMatches.join(', '));
+    const decisionsPath = join(process.cwd(), 'doc', 'DECISIONS.md');
+    if (existsSync(decisionsPath)) {
+      const decisions = readFileSync(decisionsPath, 'utf-8');
+      const adrMatches = decisions.match(/^## ADR-.*$/gm);
+      if (adrMatches) {
+        console.log(`[Diagnostics] Relevanta ADRs:`, adrMatches.join(', '));
+      }
     }
   } catch (fsError) {
     console.warn(`[Diagnostics] Kunde inte läsa doc/DECISIONS.md`);
   }
-}
-
-function buildCrashDumpPayload(failedFile: string, error: any): CrashDumpPayload {
-  return {
-    failedFile,
-    error: error.message || String(error),
-    astMetrics: {}, // Kan utökas vid behov
-    timestamp: new Date().toISOString()
-  };
-}
-
-function selectRelevantRetryFiles(changedFiles: string[]): void {
-  console.log(`[Recovery] Väljer relevanta filer för retry:`, changedFiles);
-}
-
-function planContextBatches(pass: 'pass1' | 'pass2'): void {
-  console.log(`[Recovery] Planerar batch kontext: ${pass}`);
 }

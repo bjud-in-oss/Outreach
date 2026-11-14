@@ -1,19 +1,10 @@
 import { execSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { join } from 'path';
-
-// --- Types ---
-export interface RecoveryState {
-  reversals: number;
-  innerAttempts: number;
-}
-
-export interface CrashDumpPayload {
-  failedFile: string;
-  error: string;
-  astMetrics: any;
-  timestamp: string;
-}
+import { diagnostiseraRotOrsak } from './channelRunner.js';
+import { selectRelevantRetryFiles } from './ticketAndAnchor.js';
+import { planContextBatches, buildCrashDumpPayload } from './contextBatcher.js';
+import { CrashDumpPayload, RecoveryState } from './fas2Tooling.js';
 
 // --- Constants ---
 const MAX_OUTER_REVERSALS = 4;

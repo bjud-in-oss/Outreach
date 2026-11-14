@@ -16,7 +16,7 @@ import { BidiLiveSession } from './bidiLiveRunner.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
 import { execCaptured, dumpCrashDiff, restoreScriptsBackup, createVerifiedScriptsBackup } from './lib/shellAndBackup.js';
 import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
-import { getFeatureIndexText, getInstalledDependencies, appendCycleLog, hanteraKonstruktivKritik, sparaMetaOmvandelse } from './lib/channelRunner.js';
+import { getFeatureIndexText, getInstalledDependencies, appendCycleLog, hanteraKonstruktivKritik, sparaMetaOmvandelse, diagnostiseraRotOrsak } from './lib/channelRunner.js';
 import { konsolideraTest, uppdateraFeatureIndex, uppdateraBiljettstatus, hanteraTrepunktsbesiktning, genomforGitCommitPush, saneraSkordadLegacy } from './lib/fas3Consolidation.js';
 
 const ROOT_DIR = process.cwd();
@@ -670,8 +670,14 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
         
         const relevantLines = errLog.split('\n').filter(line => 
           line.includes('❌') || 
+          line.includes('✘') || 
+          line.includes('[ERROR]') || 
           line.includes('FAIL') || 
           line.includes('Error:') || 
+          line.includes('Transform failed') || 
+          line.includes('SyntaxError') || 
+          line.includes('TypeError') || 
+          line.includes('AssertionError') || 
           line.includes('error TS') || 
           line.includes('RADGRÄNSBROTT')
         );
@@ -685,21 +691,10 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
         console.warn(`\n⚠️ [MAINT SJÄLVRÄTTNING]: Kontrollerna fallerade i försök ${maintAttempts}/4.`);
 
-        if (maintAttempts < 4) {
-           console.log(`🔄 [MAINT-OMVÄNDELSE]: Kör Metanoia och försöker åtgärda källkod (Försök ${maintAttempts}/4)...`);
-           try {
-             const metaDiag = await sparaMetaOmvandelse(ai, MODEL_NAME, ticketId, errLog, systemInstruction);
-             console.log(`\n🧠 [META-DIAGNOS]:\n${metaDiag}`);
-           } catch(metaErr) {
-             console.warn("⚠️ Kunde inte generera Meta-omvändelse:", metaErr);
-           }
-        }
-
         if (maintAttempts >= 4) {
           console.error('❌ [MAINT]: Maximalt antal självrättningsförsök uppnått för skriptunderhåll.');
           process.exit(1);
         }
-        codeSaved = false;
 
         const filesToInclude = getRequiredFiles();
         let currentMaintSource = '';
@@ -709,6 +704,16 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
             currentMaintSource += `\n--- ${relPath} ---\n` + fs.readFileSync(fullPath, 'utf-8');
           }
         }
+
+        let metaDiag = '';
+        console.log(`🔄 [MAINT-OMVÄNDELSE]: Kör 2-stegs 5-Varför-diagnos (Försök ${maintAttempts}/4)...`);
+        try {
+          metaDiag = await diagnostiseraRotOrsak(ai, MODEL_NAME, ticketId, errLog, currentMaintSource, systemInstruction);
+          console.log(`\n🧠 [META-DIAGNOS]:\n${metaDiag}`);
+        } catch(metaErr) {
+          console.warn("⚠️ Kunde inte generera Meta-omvändelse:", metaErr);
+        }
+        codeSaved = false;
 
         const maintRetryAnchor = buildRetryAnchor('', currentMaintSource, errLog);
 

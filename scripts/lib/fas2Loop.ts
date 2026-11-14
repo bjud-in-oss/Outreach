@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { runMicroChannel } from './fas1Sweep.js';
-import { execCaptured } from './ticketAndAnchor.js';
+import { execCaptured } from './shellAndBackup.js';
 import { hanteraFas2TestFel, RecoveryState } from './fas2Recovery.js';
 
 export async function korFas2Loop(
