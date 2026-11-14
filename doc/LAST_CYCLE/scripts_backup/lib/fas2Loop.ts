@@ -24,8 +24,40 @@ export async function korFas2Loop(
   syncDomainBarrel: () => void,
   modifiedFiles: string[]
 ): Promise<string> {
+  const existingTargetFiles = getRequiredFiles(startAnchor, isMaint, targetDomain)
+    .filter((f) => fs.existsSync(path.resolve(process.cwd(), f)));
+  let prepackedTargets = '';
+  if (existingTargetFiles.length > 0) {
+    const batchPlan = planContextBatches(existingTargetFiles, '', 24000);
+    const packedPass1 = batchPlan.pass1
+      .map((entry) => `\n--- ${entry.path} (${entry.lineCount} rader) ---\n${entry.content}`)
+      .join('\n');
+    const pass2Notice = batchPlan.pass2.length > 0
+      ? `\n\n⚠️ Följande målfiler rymdes inte i första 24K-fönstret och måste läsas med 'read_file' före 'apply_patch': ${batchPlan.pass2.map((e) => e.path).join(', ')}`
+      : '';
+    prepackedTargets = `\n\nBEFINTLIGA MÅLFILER (FÖRBEREDDA FÖR KIRURGISK apply_patch):\n${packedPass1}${pass2Notice}`;
+  }
+  const enrichedFas2Anchor = `${startAnchor}${prepackedTargets}`;
+
+  const executeTestOnlyTools = (name: string, args: any): string => {
+    if ((name === 'save_code' || name === 'apply_patch') && args?.file_path !== transientTestFile) {
+      throw new Error(`ADR-019 SPÄRR: Endast '${transientTestFile}' får skrivas före Fail-First.`);
+    }
+    return executeFas2Tools(name, args);
+  };
 
   if (!isMaint) {
+    if (!fs.existsSync(transientTestFullPath)) {
+      console.log(`📝 Skapar transient testfil: ${transientTestFile}...`);
+      const initTestPrompt = `Skapa ett hermetiskt Vitest-test (utan vi.fn()/vi.spyOn()) och spara till '${transientTestFile}' med 'save_code'. Importera från '../features/${targetDomain}/...'.`;
+      await runMicroChannel(ai, modelName, 'Att följa', initTestPrompt, enrichedFas2Anchor, systemInstruction, codegenTools, executeTestOnlyTools, {
+        requireMutation: true,
+        maxTurns: 5,
+        onMutationCheck: () => fs.existsSync(transientTestFullPath),
+        getFollowupPrompt: () => `Spara testet till '${transientTestFile}' med 'save_code' nu.`
+      });
+    }
+
     let gate3aPassed = false;
     let gate3aAttempts = 0;
     while (!gate3aPassed && gate3aAttempts < 3) {
@@ -39,17 +71,13 @@ export async function korFas2Loop(
           console.error('❌ Gate 3a underkändes 3 gånger i rad.');
           process.exit(1);
         }
-        
-        const recoveryStartAnchor = `${startAnchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
-        const recoveryPrompt = `Gate 3a underkände testet!
-FELLOGG:
-${err.message || String(err)}
-Åtgärda och spara till '${transientTestFile}' (Skrivning ENDAST till testfilen tillåts). Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler utan tautologier.
-
-KONTRAKT OCH BAKGRUND:
-${startAnchor}`;
-        
-        await runMicroChannel(ai, modelName, 'Att följa', recoveryPrompt, recoveryStartAnchor, systemInstruction, [codegenTools[0]], executeFas2Tools, { requireMutation: true, maxTurns: 5 });
+        const recoveryStartAnchor = `${enrichedFas2Anchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
+        const recoveryPrompt = `Gate 3a underkände testet!\nFELLOGG:\n${err.message || String(err)}\nÅtgärda och spara till '${transientTestFile}' utan vi.fn()/vi.spyOn() eller tautologier.`;
+        await runMicroChannel(ai, modelName, 'Att vända om', recoveryPrompt, recoveryStartAnchor, systemInstruction, codegenTools, executeTestOnlyTools, {
+          requireMutation: true,
+          maxTurns: 5,
+          onMutationCheck: () => fs.existsSync(transientTestFullPath)
+        });
       }
     }
 
@@ -76,22 +104,6 @@ ${startAnchor}`;
   }
 
   console.log('\n⚡ Exekverar kodändringar via Bidi Live WebSocket...');
-
-  const existingTargetFiles = getRequiredFiles(startAnchor, isMaint, targetDomain)
-    .filter((f) => fs.existsSync(path.resolve(process.cwd(), f)));
-  let prepackedTargets = '';
-  if (existingTargetFiles.length > 0) {
-    const batchPlan = planContextBatches(existingTargetFiles, '', 24000);
-    const packedPass1 = batchPlan.pass1
-      .map((entry) => `\n--- ${entry.path} (${entry.lineCount} rader) ---\n${entry.content}`)
-      .join('\n');
-    const pass2Notice = batchPlan.pass2.length > 0
-      ? `\n\n⚠️ Följande målfiler rymdes inte i första 24K-fönstret och måste läsas med 'read_file' före 'apply_patch': ${batchPlan.pass2.map((e) => e.path).join(', ')}`
-      : '';
-    prepackedTargets = `\n\nBEFINTLIGA MÅLFILER (FÖRBEREDDA FÖR KIRURGISK apply_patch):\n${packedPass1}${pass2Notice}`;
-  }
-  const enrichedFas2Anchor = `${startAnchor}${prepackedTargets}`;
-
   await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, enrichedFas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
     requireMutation: true,
     maxTurns: 8,
@@ -102,6 +114,26 @@ ${startAnchor}`;
   if (!isFas2Complete()) {
     console.error('❌ FAS 2 MISSLYCKADES: Samtliga målfiler uppdaterades inte.');
     process.exit(1);
+  }
+
+  if (isMaint) {
+    const idMatch = startAnchor.match(/BILJETT:\s*(TCK-[A-Z0-9-]+)/);
+    const tckPath = idMatch ? path.join(process.cwd(), 'doc', '.TICKETS', `${idMatch[1]}.md`) : '';
+    await korMaintValidering(ai, modelName, tckPath, systemInstruction, codegenTools, executeFas2Tools, isFas2Complete);
+  } else {
+    const state: RecoveryState = { innerAttempts: 0, reversals: 0 };
+    let green = false;
+    while (!green) {
+      try {
+        syncDomainBarrel();
+        execCaptured(`node scripts/drivers/ts.js --check-catch-blocks --domain ${targetDomain}`);
+        execCaptured(`npx vitest run ${transientTestFile}`);
+        state.reversals = 0;
+        green = true;
+      } catch (err: any) {
+        await hanteraFas2TestFel(ai, modelName, targetDomain, startAnchor, systemInstruction, codegenTools, executeFas2Tools, transientTestFile, modifiedFiles, state, err?.message || String(err));
+      }
+    }
   }
 
   console.log('🎉 Fas 2 slutförd och validerad.');
