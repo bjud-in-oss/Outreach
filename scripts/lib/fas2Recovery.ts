@@ -1,9 +1,9 @@
 import { execSync } from 'child_process';
 import { readFileSync, existsSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { selectRelevantRetryFiles } from './ticketAndAnchor.js';
+import { selectRelevantRetryFiles, extractErrorSignature } from './ticketAndAnchor.js';
 import { planContextBatches, buildCrashDumpPayload } from './contextBatcher.js';
-import { CrashDumpPayload } from './fas2Tooling.js';
+import { diagnostiseraRotOrsak } from './channelRunner.js';
 
 export interface RecoveryState {
   innerAttempts: number;
@@ -13,8 +13,9 @@ export interface RecoveryState {
 const MAX_OUTER_REVERSALS = 4;
 const MAX_INNER_ATTEMPTS = 3;
 
-export async function korMaintValidering(ticketId: string): Promise<boolean> {
+export async function korMaintValidering(ticketId: string, errorLog: string = ''): Promise<boolean> {
   let attempts = 0;
+  let lastSignature = '';
 
   while (attempts < 4) {
     attempts++;
@@ -26,7 +27,15 @@ export async function korMaintValidering(ticketId: string): Promise<boolean> {
       return true;
     } catch (error: any) {
       console.error(`[Validation] Misslyckades vid försök ${attempts}:`, error.message);
-      diagnostiseraRotOrsak(error);
+      
+      const currentSignature = extractErrorSignature(error.message);
+      if (attempts > 1 && currentSignature && currentSignature === lastSignature) {
+         console.warn(`[Validation] Samma fel upprepas. Avbryter för att förhindra oändlig loop.`);
+         throw error;
+      }
+      lastSignature = currentSignature;
+
+      await diagnostiseraRotOrsak(error, errorLog);
 
       if (attempts >= 4) {
         console.error(`[Validation] Maximalt antal försök uppnåddes. Avbryter.`);

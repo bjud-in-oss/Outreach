@@ -39,11 +39,30 @@ export function getCompactTicketWindow(ticketsMdContent: string, recentVerifiedL
   return windowOutput;
 }
 
+export function extractErrorSignature(log: string, maxLines = 15): string {
+  const lines = log.split('\n');
+  const relevantLines = lines.slice(-maxLines);
+  const signatureRegex = /Error|FAIL|Transform failed|SyntaxError|TypeError|AssertionError|error TS|RADGRÄNSBROTT|✘|\[ERROR\]|❌|File:/;
+  
+  for (const line of relevantLines) {
+    if (signatureRegex.test(line)) {
+      return line.trim();
+    }
+  }
+  return relevantLines.length > 0 ? relevantLines[relevantLines.length - 1].trim() : 'Unknown error signature';
+}
+
 export function validateTicketScope(ticketPrompt: string, isMaint: boolean, targetDomain: string): { valid: boolean; reason?: string } {
   const required = getRequiredFiles(ticketPrompt, isMaint, targetDomain);
   if (required.length > 4) {
     return { valid: false, reason: `För många målfiler angivna (${required.length}). Maximalt 4 målfiler tillåtna per biljett. Vänligen klyv biljetten.` };
   }
+  
+  const existingFiles = required.filter(f => fs.existsSync(path.resolve(process.cwd(), f)));
+  if (existingFiles.length > 2) {
+    return { valid: false, reason: `För många befintliga målfiler på disk (${existingFiles.length}). Maximalt 2 befintliga målfiler får ändras per biljett. Vänligen klyv biljetten.` };
+  }
+  
   return { valid: true };
 }
 
