@@ -659,31 +659,53 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
     console.log('\n🛡️ [MAINT-VALIDERING]: Exekverar lokala kontroller för skriptdomänen...');
     let maintPassed = false;
     let maintAttempts = 0;
-    while (!maintPassed && maintAttempts < 3) {
+    let prevErrorSignature = '';
+    while (!maintPassed && maintAttempts < 4) {
       maintAttempts++;
       try {
-        console.log(`\n🔍 [MAINT]: Kör arkitekturkontroll (Försök ${maintAttempts}/3)...`);
+        console.log(`\n🔍 [MAINT]: Kör arkitekturkontroll (Försök ${maintAttempts}/4)...`);
         execCaptured('node scripts/verify-architecture.js');
 
-        console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/3)...`);
+        console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/4)...`);
         execCaptured(`npx vitest run scripts/__tests__/`);
 
-        console.log(`\n🧪 [MAINT]: Kör full regressionssvit (Försök ${maintAttempts}/3)...`);
+        console.log(`\n🧪 [MAINT]: Kör full regressionssvit (Försök ${maintAttempts}/4)...`);
         execCaptured('pnpm test');
         execCaptured('npx esbuild scripts/run-planera-live.ts scripts/run-path.ts --bundle --platform=node --packages=external --outdir=/tmp/outreach-script-check');
+        
+        console.log(`\n🔍 [MAINT]: Kör typkontroll för signaturfel (Försök ${maintAttempts}/4)...`);
+        execCaptured('npx tsc --noEmit scripts/run-planera-live.ts scripts/run-path.ts');
 
         maintPassed = true;
         console.log('✅ [MAINT]: Lokala skriptkontroller godkända!');
       } catch (err: any) {
-        console.warn(`\n⚠️ [MAINT SJÄLVRÄTTNING]: Kontrollerna fallerade i försök ${maintAttempts}/3.`);
-        if (maintAttempts >= 3) {
+        const errLog = err.stdout?.toString() || err.stderr?.toString() || err.message;
+        const currentSig = errLog.slice(-500);
+
+        if (currentSig === prevErrorSignature && maintAttempts > 1) {
+           console.error('❌ [MAINT]: Ingeniörsmässigt framsteg uteblev – avbryter loop i förtid.');
+           process.exit(1);
+        }
+        prevErrorSignature = currentSig;
+
+        console.warn(`\n⚠️ [MAINT SJÄLVRÄTTNING]: Kontrollerna fallerade i försök ${maintAttempts}/4.`);
+
+        if (maintAttempts < 4) {
+           console.log(`🔄 [MAINT-OMVÄNDELSE]: Kör Metanoia och försöker åtgärda källkod (Försök ${maintAttempts}/4)...`);
+           try {
+             const metaDiag = await sparaMetaOmvandelse(ai, MODEL_NAME, ticketId, errLog, systemInstruction);
+             console.log(`\n🧠 [META-DIAGNOS]:\n${metaDiag}`);
+           } catch(metaErr) {
+             console.warn("⚠️ Kunde inte generera Meta-omvändelse:", metaErr);
+           }
+        }
+
+        if (maintAttempts >= 4) {
           console.error('❌ [MAINT]: Maximalt antal självrättningsförsök uppnått för skriptunderhåll.');
           process.exit(1);
         }
         codeSaved = false;
 
-        const errLog = err.stdout?.toString() || err.stderr?.toString() || err.message;
-        
         const filesToInclude = Array.from(new Set([...modifiedFiles, ...getRequiredFiles(), 'src/features/path/model/types.ts']));
         let currentMaintSource = '';
         for (const relPath of filesToInclude) {
@@ -695,13 +717,13 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
 
         const maintRetryAnchor = buildRetryAnchor('', currentMaintSource, errLog);
 
-        const maintRetryPrompt = `FAS 2 MAINT SJÄLVRÄTTNING (Försök ${maintAttempts}/3):
+        const maintRetryPrompt = `FAS 2 MAINT SJÄLVRÄTTNING (Försök ${maintAttempts}/4):
 De lokala skriptkontrollerna fallerade!
 FELLOGG:
 ${errLog}
 
 VIKTIGA REGLER FÖR SJÄLVRÄTTNING:
-1. Analysera felet ovan från 'verify-architecture.js' och 'vitest run scripts/__tests__/'.
+1. Analysera felet ovan från 'verify-architecture.js', 'tsc' och 'vitest run scripts/__tests__/'.
 2. Korrigera källkoden under 'scripts/' via 'save_code' eller 'apply_patch'!`;
 
         await runMicroChannel('Att vända om', maintRetryPrompt, maintRetryAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 5, onMutationCheck: isFas2Complete, getFollowupPrompt: getFas2FollowupPrompt });
