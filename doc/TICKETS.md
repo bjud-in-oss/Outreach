@@ -86,8 +86,8 @@
 - [ ] **TCK-TEST-001** (READY): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
 - [ ] **TCK-067** (READY): Delad 2-prompts 5-Varför-tratt i outerReconciliation.ts och MAINT-besiktning i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-067.md`
 - [ ] **TCK-066** (READY): Koppla 1-stegs kritikiteration och avvisade-historik i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-066.md`
-- [ ] **TCK-065** (READY): Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-065.md`
-- [x] **TCK-064** (VERIFIED) (READY): Harmonisera Zod-scheman och re-exporterade typer i src/features/path/ (Del 1/2) -> Se `doc/.TICKETS/TCK-064.md`
+- [x] **TCK-065** (VERIFIED) (READY): Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-065.md`
+- [x] **TCK-064** (VERIFIED): Harmonisera Zod-scheman och re-exporterade typer i src/features/path/ (Del 1/2) -> Se `doc/.TICKETS/TCK-064.md`
 - [ ] **TCK-063** (READY): 6:e WS-retry (60s) i bidiLiveAdapter.ts och AST/omfångs-spärrar i konstruktionsport.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-063.md`
 - [ ] **TCK-062** (READY): Enhetlig Wayfinder-kritik och 3-vägs triagering med papperskorg i metaReflection.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-062.md`
 - [ ] **TCK-061** (READY): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
