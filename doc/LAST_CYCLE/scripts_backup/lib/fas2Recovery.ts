@@ -103,3 +103,4 @@ function diagnostiseraRotOrsak(error: any): void {
     console.warn(`[Diagnostics] Kunde inte läsa doc/DECISIONS.md`);
   }
 }
+*/

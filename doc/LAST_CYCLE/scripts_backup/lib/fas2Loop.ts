@@ -44,12 +44,12 @@ export async function korFas2Loop(
         const recoveryPrompt = `Gate 3a underkände testet!
 FELLOGG:
 ${err.message || String(err)}
-Åtgärda och spara till '${transientTestFile}'. Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler utan tautologier.
+Åtgärda och spara till '${transientTestFile}' (Skrivning ENDAST till testfilen tillåts). Ta bort all import av 'vi' och ersätt varje vi.fn()/vi.spyOn() med vanliga variabler utan tautologier.
 
 KONTRAKT OCH BAKGRUND:
 ${startAnchor}`;
         
-        await runMicroChannel(ai, modelName, 'Att vända om', recoveryPrompt, recoveryStartAnchor, systemInstruction, codegenTools, executeFas2Tools, { requireMutation: true, maxTurns: 5 });
+        await runMicroChannel(ai, modelName, 'Att följa', recoveryPrompt, recoveryStartAnchor, systemInstruction, [codegenTools[0]], executeFas2Tools, { requireMutation: true, maxTurns: 5 });
       }
     }
 

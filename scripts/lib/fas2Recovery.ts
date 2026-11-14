@@ -63,14 +63,14 @@ export async function hanteraFas2TestFel(
     if (state.reversals > MAX_OUTER_REVERSALS) {
       console.error(`[Fas2Recovery] Yttre omvändelsegräns överskriden. Kritisk krasch.`);
       
-      const crashDump = buildCrashDumpPayload(contextData.failedFile, error);
+      const crashDump = buildCrashDumpPayload({ failedFile: contextData.failedFile, error });
       writeFileSync(join(process.cwd(), 'CRASH_DUMP.json'), JSON.stringify(crashDump, null, 2));
       
       throw new Error(`Kritisk fel under Fas 2 återhämtning: ${error.message}`);
     }
 
     selectRelevantRetryFiles(contextData.changedFiles);
-    planContextBatches('pass1');
+    planContextBatches(contextData.changedFiles, error.message);
   }
 
   try {

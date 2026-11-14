@@ -16,6 +16,7 @@ export async function korFas2Loop(
   systemInstruction: string,
   codegenTools: any[],
   executeFas2Tools: (name: string, args: any) => string,
+  executeTestOnlyTools: (name: string, args: any) => string,
   fas2Prompt: string,
   isFas2Complete: () => boolean,
   getFas2FollowupPrompt: () => string,
@@ -25,7 +26,33 @@ export async function korFas2Loop(
   modifiedFiles: string[]
 ): Promise<string> {
 
+  const existingTargetFiles = getRequiredFiles(startAnchor, isMaint, targetDomain)
+    .filter((f) => fs.existsSync(path.resolve(process.cwd(), f)));
+  let prepackedTargets = '';
+  if (existingTargetFiles.length > 0) {
+    const batchPlan = planContextBatches(existingTargetFiles, '', 24000);
+    const packedPass1 = batchPlan.pass1
+      .map((entry) => `\n--- ${entry.path} (${entry.lineCount} rader) ---\n${entry.content}`)
+      .join('\n');
+    const pass2Notice = batchPlan.pass2.length > 0
+      ? `\n\n⚠️ Följande målfiler rymdes inte i första 24K-fönstret och måste läsas med 'read_file' före 'apply_patch': ${batchPlan.pass2.map((e) => e.path).join(', ')}`
+      : '';
+    prepackedTargets = `\n\nBEFINTLIGA MÅLFILER (FÖRBEREDDA FÖR KIRURGISK apply_patch):\n${packedPass1}${pass2Notice}`;
+  }
+  const enrichedFas2Anchor = `${startAnchor}${prepackedTargets}`;
+
   if (!isMaint) {
+    if (!fs.existsSync(transientTestFullPath)) {
+      console.log(`📝 Transient test saknas. Skapar initialt test...`);
+      const initTestPrompt = `Skapa det initiala transient-testet för domänen ${targetDomain}. Spara till '${transientTestFile}' med 'save_code'. Använd relativa importer till 'src/features/${targetDomain}/...'.`;
+      await runMicroChannel(ai, modelName, 'Att följa', initTestPrompt, enrichedFas2Anchor, systemInstruction, [codegenTools[0]], executeTestOnlyTools, {
+        requireMutation: true,
+        maxTurns: 5,
+        onMutationCheck: () => fs.existsSync(transientTestFullPath),
+        getFollowupPrompt: () => `Spara testet till ${transientTestFile} med relativa importer.`
+      });
+    }
+
     let gate3aPassed = false;
     let gate3aAttempts = 0;
     while (!gate3aPassed && gate3aAttempts < 3) {
@@ -40,7 +67,7 @@ export async function korFas2Loop(
           process.exit(1);
         }
         
-        const recoveryStartAnchor = `${startAnchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
+        const recoveryStartAnchor = `${enrichedFas2Anchor}\n\nBEFINTLIGT TEST:\n${fs.existsSync(transientTestFullPath) ? fs.readFileSync(transientTestFullPath, 'utf-8') : ''}`;
         const recoveryPrompt = `Gate 3a underkände testet!
 FELLOGG:
 ${err.message || String(err)}
@@ -49,7 +76,7 @@ ${err.message || String(err)}
 KONTRAKT OCH BAKGRUND:
 ${startAnchor}`;
         
-        await runMicroChannel(ai, modelName, 'Att följa', recoveryPrompt, recoveryStartAnchor, systemInstruction, [codegenTools[0]], executeFas2Tools, { requireMutation: true, maxTurns: 5 });
+        await runMicroChannel(ai, modelName, 'Att följa', recoveryPrompt, recoveryStartAnchor, systemInstruction, [codegenTools[0]], executeTestOnlyTools, { requireMutation: true, maxTurns: 5, onMutationCheck: () => fs.existsSync(transientTestFullPath) });
       }
     }
 

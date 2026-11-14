@@ -1,5 +1,5 @@
 # BYGGCYKEL LOGG: TCK-MAINT-079
-**Starttid:** 2026-11-14T23:14:46.202Z
+**Starttid:** 2026-11-14T23:24:16.526Z
 **Modell:** gemini-3.8-live
 
 ---
@@ -12,21 +12,22 @@
 **Förutsättning:** `TCK-MAINT-078` måste vara `VERIFIED`.
 **Mekanisk Acceptans:**
 1. `scripts/lib/fas2Recovery.ts` (< 215 rader) tar bort sin lokala stubb `diagnostiseraRotOrsak`, importerar i stället `extractErrorSignature` från `./ticketAndAnchor.js` och den asynkrona `diagnostiseraRotOrsak` från `./channelRunner.js`, läser automatiskt in eventuella externa felande filer som nämns i felloggen, anropar `planContextBatches(files, errorLog)` & `buildCrashDumpPayload(data)` från `./contextBatcher.js` med korrekta argumentsignaturer samt nollställer omvändelseräknaren till `0` vid lyckat bygge.
-2. `scripts/lib/fas2Loop.ts` (< 195 rader):
-   - När `!isMaint`: kör först en `Att följa`-mikrokanal med verktyg låsta till **enbart `transientTestFile`** (avvisar skrivning till `src/features/` enligt `ADR-019`) så att `transientTestFile` faktiskt existerar på disk med relativa importer `../features/${targetDomain}/...` **innan** Gate 3a (`ts.js --check-alibi`) och röd Fail-First (`npx vitest run ${transientTestFile}`) verifieras.
-   - Behåller `planContextBatches`-förpackningen av befintliga målfiler (max `24 000` tecken), `maxTurns: 8` och ovillkorlig `isFas2Complete()`-spärr.
-   - Kopplar in `korMaintValidering` (när `isMaint`) samt den 3-försöks Vitest + Gate 2c + `hanteraFas2TestFel`-återhämtningsloopen (när `!isMaint`) efter källkodsändringarna.
+2. `scripts/lib/fas2Loop.ts` (< 215 rader):
+   - Bygger `enrichedFas2Anchor` (med befintliga målfiler förpackade via `planContextBatches`, max `24 000` tecken) **högst upp** i `korFas2Loop` så att både testgenereringen och källkodsexekveringen har befintliga typer/scheman i startankaret.
+   - När `!isMaint`: om `transientTestFullPath` inte existerar på disk, kör först en `Att följa`-mikrokanal med ett verktygswrapper `executeTestOnlyTools` som **enbart tillåter skrivning (`save_code`/`apply_patch`) till `transientTestFile`** (avvisar alla andra skrivningar enligt `ADR-019`), med `maxTurns: 5` och **`onMutationCheck: () => fs.existsSync(transientTestFullPath)`** (samt `getFollowupPrompt` som uppmanar till omedelbar `save_code` av `transientTestFile` med relativa importer `../features/${targetDomain}/...`).
+   - Kör därefter Gate 3a (`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, där återhämtningsloopen också använder `executeTestOnlyTools` och `onMutationCheck`) följt av röd Fail-First (`npx vitest run ${transientTestFile}`).
+   - Kör därefter källkodsändringarna (`maxTurns: 8`, `onMutationCheck: isFas2Complete`) samt (efter källkodsändringarna) den 3-försöks Vitest + Gate 2c + `hanteraFas2TestFel`-återhämtningsloopen (när `!isMaint`) eller `korMaintValidering` (när `isMaint`).
 3. `pnpm verify` passerar med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag har förstått din avsikt med TCK-MAINT-079. Uppdraget handlar om att stärka systemets resiliens och felhantering genom att koppla samman rätt diagnostikverktyg och säkerställa att testerna genereras och körs enligt våra rutiner. Det i sin tur bygger en tryggare utvecklingsmiljö. Är du redo för att vi går vidare?
+Det här underhållet handlar om att stärka systemets förmåga att hantera fel och återhämta sig. Genom att koppla på mer avancerad feldiagnostik och tvinga fram tester först, vill vi skapa en mycket mer robust utvecklingsmiljö som skyddar mot krascher och sparar tid för dig. Hur ser du på den förändringen?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. Måldomänen scripts isoleras, och vi uppfyller kraven för destruktiv sanering.
+Kontraktsaudit för TCK-MAINT-079 är genomförd. Vi säkerställer att fas2Loop och fas2Recovery ansluter korrekt till de nya diagnostikfunktionerna och strikt följer ADR-019 för Fail-First-generering för att bevara systemresiliensen.
 
 
 #### 0b Att förlikas: Vägval
@@ -38,18 +39,26 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Vi har tre ortogonala alternativ för att lösa detta.
+För att lösa kontraktet TCK-MAINT-079 och de förändringar som krävs i `fas2Recovery.ts` och `fas2Loop.ts`, formulerar jag tre ortogonala alternativ att överväga.
 
-Det första alternativet är direkt integration och procedurell återhämtning: vi integrerar feldiagnostiken direkt i modulerna och kör testgenereringen sekventiellt i loopen.
+Alternativ 1: Centraliserad orkestrering i loopen och direkt anropsstruktur. I detta alternativ ersätter `fas2Recovery.ts` lokala funktioner med de asynkrona importerade versionerna och hanterar batch-planering och crash-dump direkt vid aktivering. `korFas2Loop` i `fas2Loop.ts` innehåller all livscykelhantering sekventiellt linjärt.
 
-Det andra alternativet fokuserar på delegerad diagnostik och fabriksbaserad testgenerering: vi flyttar analysen till externa tjänster och använder en specifik modul för att säkerställa att testfilen är korrekt etablerad innan testcykeln startar.
+Alternativ 2: Modulär uppdelning och delegering av ansvarsområden. Här bryts loiken i `korFas2Loop` ned i specifika del-rutiner för testgenerering, kodändringar och recovery, vilket håller huvudfunktionen renare. `fas2Recovery.ts` agerar som en ren gränssnittsbrygga till externa tjänster.
 
-Det tredje alternativet är ett händelsestyrt system och isolerade återhämtningskrokar, där felaktiga tillstånd hanteras asynkront och orkestrerar cykelns respons.
+Alternativ 3: Händelsestyrd feedbackloop och asynkrona återhämtningsmekanismer. `fas2Recovery.ts` planerar batchas och hanterar felrapporter via interna händelser, vilket frikopplar själva återhämtningen från den linjära exekveringen i `fas2Loop.ts`.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativen har olika riskprofiler för resiliens. Det första alternativet är för tätt kopplat och riskerar dominoeffekter. Det tredje alternativet är händelsestyrt, vilket är bra men kan komplicera loopen i onödan. Det andra alternativet erbjuder bäst isolering och direkt stöd för ADR-019, vilket stärker resiliensen mot latenta fel.
+För att säkra maximal resiliens och minimera kognitiv belastning, utvärderas alternativen utifrån deras förmåga att hantera latenta haverier och strikt följa ADR-019.
+
+Alternativ 1 ger en rak överblick av livscykeln, men riskerar att leda till en monolitisk loop med stor risk för tillståndsfel om felsökningsstegen inte är strikt isolerade.
+
+Alternativ 2 stärker moduluppdelningen och delegerar ansvarsområdena vilket underlättar testning av isolerade funktioner, vilket är direkt i linje med mekanisk alibispärr.
+
+Alternativ 3 erbjuder en flexibel händelsestyrd arkitektur, men ökar komplexiteten i att spåra det deterministiska tillståndet exakt över tid.
+
+Vägt spänningsfältet ser jag att Alternativ 2 ger bäst förutsättningar för att möta kraven på resiliens och modulär utökning.
 
 
 #### 2d Att förlikas: Mättnad
-Vi slår fast att det andra alternativet är det vinnande valet, då det ger bäst isolering och stödjer ADR-019 för starkare resiliens. MÄTTNAD: JA.
+Spänningsfältet är vägt. Alternativ 2 vinner eftersom det maximerar moduluppdelningen och underlättar testning i linje med våra kvalitetsgrindar. MÄTTNAD: JA.
