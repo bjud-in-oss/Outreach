@@ -71,4 +71,25 @@ describe('scriptLibs', () => {
       expect(anchor).toContain('--- [TRUNKERAT RADINTERVALL');
     });
   });
+
+  describe('validateCodebaseLineLimits', () => {
+    it('should return 1 when a 260-raders file violates the limit', () => {
+      const tmpDir = os.tmpdir();
+      const testFeatureDir = path.join(tmpDir, 'scripts');
+      fs.mkdirSync(testFeatureDir, { recursive: true });
+      
+      const file260 = path.join(testFeatureDir, 'violation.ts');
+      const content = Array(260).fill('console.log("test");').join('\n');
+      fs.writeFileSync(file260, content, 'utf8');
+
+      try {
+        const { validateCodebaseLineLimits } = require('../lib/sizeGate.js');
+        const violations = validateCodebaseLineLimits(tmpDir);
+        expect(violations).toBe(1);
+      } finally {
+        if (fs.existsSync(file260)) fs.unlinkSync(file260);
+        if (fs.existsSync(testFeatureDir)) fs.rmdirSync(testFeatureDir);
+      }
+    });
+  });
 });

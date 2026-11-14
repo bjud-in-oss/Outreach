@@ -495,7 +495,7 @@ ${startAnchor}`;
       // 🛑 SKYDD MOT KODAMPUTATION: Tillåt inte att en stor befintlig fil ersätts med en stubbe
       if (fs.existsSync(full)) {
         const existingContent = fs.readFileSync(full, 'utf-8');
-        if (existingContent.length > 500 && args.code.length < existingContent.length * 0.4) {
+        if (!isMaint && existingContent.length > 500 && args.code.length < existingContent.length * 0.4) {
           throw new Error(`AVVISAD TRUNKERING: '${rel}' har ${existingContent.length} tecken men din nya kod har bara ${args.code.length} tecken. Använd verktyget 'apply_patch' för att lägga till din funktion i filen utan att radera befintlig kod!`);
         }
       }
@@ -608,7 +608,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
   const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
   const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
     requireMutation: true,
-    maxTurns: 5,
+    maxTurns: 8,
     onMutationCheck: isFas2Complete,
     getFollowupPrompt: getFas2FollowupPrompt
   });
@@ -646,8 +646,8 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
   }
 
   // 🛑 FAIL-FAST: Avbryt omedelbart om Fas 2 förbrukade sina vändor utan att spara eller patcha kod
-  if (!codeSaved && !isMaint) {
-    console.error('\n❌ FAS 2 MISSLYCKADES: Inga källkodsändringar utfördes under de tillåtna vändorna.');
+  if (!isFas2Complete()) {
+    console.error('\n❌ FAS 2 MISSLYCKADES: Samtliga målfiler i kontraktet uppdaterades inte.');
     process.exit(1);
   }
 
