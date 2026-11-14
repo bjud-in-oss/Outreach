@@ -56,10 +56,10 @@ export function getNearLimitWarnings(rootDir, targetFiles) {
 export function validateCodebaseLineLimits(rootDir) {
   let violations = 0;
   const srcDir = path.join(rootDir, 'src');
-  
-  if (!fs.existsSync(srcDir)) return 0;
+  const scriptsDir = path.join(rootDir, 'scripts');
 
   function scanDir(dir) {
+    if (!fs.existsSync(dir)) return;
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
@@ -67,7 +67,7 @@ export function validateCodebaseLineLimits(rootDir) {
         if (entry.name !== 'node_modules' && entry.name !== '.git') {
           scanDir(fullPath);
         }
-      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx'))) {
+      } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.js'))) {
         const relPath = path.relative(rootDir, fullPath);
         const lineCount = countLines(fullPath);
         const limit = getLineLimitForFile(relPath);
@@ -80,5 +80,6 @@ export function validateCodebaseLineLimits(rootDir) {
   }
 
   scanDir(srcDir);
+  scanDir(scriptsDir);
   return violations;
 }

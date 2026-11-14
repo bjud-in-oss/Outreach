@@ -2,8 +2,8 @@
 
 ## AKTIVA TICKETS
 
-- [ ] **TCK-MAINT-074** (READY): Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak över scripts/ + src/features/ och AST-spärrar -> Se `doc/.TICKETS/TCK-MAINT-074.md`
-- [x] **TCK-MAINT-073** (VERIFIED) (READY): Slutför fas1Sweep.ts (återanvänd runMicroChannel 750ms + Steg 3a–3c), skapa fas2Recovery.ts och aktivera isFas2Complete-spärr i fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-073.md`
+- [x] **TCK-MAINT-074** (VERIFIED) (READY): Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak över scripts/ + src/features/ och AST-spärrar -> Se `doc/.TICKETS/TCK-MAINT-074.md`
+- [x] **TCK-MAINT-073** (VERIFIED): Slutför fas1Sweep.ts (återanvänd runMicroChannel 750ms + Steg 3a–3c), skapa fas2Recovery.ts och aktivera isFas2Complete-spärr i fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-073.md`
 - [x] **TCK-MAINT-072** (VERIFIED): Slutför Strangler Fig — banta run-planera-live.ts under 250 rader, full scripts/ + src/features/ skanning i sizeGate.js och negativt beteendetest -> Se `doc/.TICKETS/TCK-MAINT-072.md`
 - [x] **TCK-MAINT-071** (VERIFIED): Bryt ut fas1Sweep.ts, fas2Loop.ts & fas2Recovery.ts och koppla in contextBatcher.ts + diagnostiseraRotOrsak -> Se `doc/.TICKETS/TCK-MAINT-071.md`
 - [ ] **TCK-MAINT-070** (READY): Aktivera ofiltrerad tsc-kontroll (efter TCK-064), synka critiqueTriage-rubriker, full s-städning och AST anti-stubb-spärr -> Se `doc/.TICKETS/TCK-MAINT-070.md`
