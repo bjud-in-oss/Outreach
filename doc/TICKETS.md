@@ -5,7 +5,7 @@
 - [ ] **TCK-MAINT-072** (READY): Slutför Strangler Fig — banta run-planera-live.ts under 250 rader, full scripts/ + src/features/ skanning i sizeGate.js och negativt beteendetest -> Se `doc/.TICKETS/TCK-MAINT-072.md`
 - [ ] **TCK-MAINT-071** (READY): Bryt ut fas1Sweep.ts, fas2Loop.ts & fas2Recovery.ts och koppla in contextBatcher.ts + diagnostiseraRotOrsak -> Se `doc/.TICKETS/TCK-MAINT-071.md`
 - [ ] **TCK-MAINT-070** (READY): Aktivera ofiltrerad tsc-kontroll (efter TCK-064), synka critiqueTriage-rubriker, full s-städning och AST anti-stubb-spärr -> Se `doc/.TICKETS/TCK-MAINT-070.md`
-- [x] **TCK-MAINT-069** (VERIFIED) (READY): Delad 2-prompts 5-Varför-tratt, huvud/svans-felutdrag i shellAndBackup, modulär contextBatcher.ts och repospecifik ticketAndAnchor.ts -> Se `doc/.TICKETS/TCK-MAINT-069.md`
+- [x] **TCK-MAINT-069** (VERIFIED) (READY): Delad 2-prompts 5-Varför-tratt, huvud/svans-felutdrag, re-export av contextBatcher.ts och strikt isFas2Complete-spärr -> Se `doc/.TICKETS/TCK-MAINT-069.md`
 - [x] **TCK-MAINT-068** (VERIFIED): Modulär critiqueTriage.ts med auto-initierad Papperskorg, fullständig s-städning och återställd radgränsvakt i sizeGate.js -> Se `doc/.TICKETS/TCK-MAINT-068.md`
 - [x] **TCK-MAINT-067** (VERIFIED): 6:e WS-retry (60s inom 345 rader), 750ms sessionspaus och pre-write syntax-/radspärr -> Se `doc/.TICKETS/TCK-MAINT-067.md`
 - [x] **TCK-MAINT-066** (VERIFIED): Delegerad maintValidation.ts (färsk barnprocess), smart extractCuratedRange-trunkering i buildRetryAnchor och verifierad backup -> Se `doc/.TICKETS/TCK-MAINT-066.md`
