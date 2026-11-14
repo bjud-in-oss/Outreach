@@ -1,32 +1,30 @@
-# BYGGCYKEL LOGG: TCK-MAINT-066
-**Starttid:** 2026-11-14T11:43:33.890Z
+# BYGGCYKEL LOGG: TCK-MAINT-067
+**Starttid:** 2026-11-14T12:00:43.712Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-066: Delegerad maintValidation.ts (färsk barnprocess), smart extractCuratedRange-trunkering i buildRetryAnchor och verifierad backup
+# TCK-MAINT-067: 6:e WS-retry (60s inom 345 rader), 750ms sessionspaus och pre-write syntax-/radspärr
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/lib/maintValidation.ts`, `scripts/lib/ticketAndAnchor.ts`, `scripts/lib/shellAndBackup.ts`, `scripts/run-planera-live.ts`
+**Målfiler:** `scripts/bidiLiveRunner.ts`, `scripts/lib/channelRunner.ts`, `scripts/lib/sizeGate.js`, `scripts/lib/fas2Tooling.ts`
 **Mekanisk Acceptans:**
-1. Ny modul `scripts/lib/maintValidation.ts` (< 110 rader) bryter ut `MAINT`-valideringen (`verify-architecture.js`, `vitest run scripts/__tests__/`, `pnpm test`, `esbuild` och `tsc -p scripts/tsconfig.json --noEmit`) så att den alltid exekveras som en **färsk barnprocess** efter Fas 2 (aldrig stale kod i V8-minnet) och är så kompakt att den aldrig trunkeras vid självrättning.
-2. `scripts/lib/ticketAndAnchor.ts` (< 195 rader) uppgraderar `buildRetryAnchor` till att använda befintliga `extractCuratedRange(content, startLine, endLine)` runt de felrader som nämns i `testLog` (samt filens nedersta 160 rader om inga specifika radnummer matchar) i stället för blind `.slice(0, ...)` som amputerar slutet av stora filer.
-3. `scripts/lib/shellAndBackup.ts` (< 115 rader):
-   - Exporterar `createVerifiedScriptsBackup()`: rensar ospårade filer (`git reset HEAD -- src/ scripts/ 2>/dev/null || true && git clean -fd src/ scripts/`) och validerar `verify-architecture.js` + `esbuild` *innan* `scripts/` kopieras till `doc/LAST_CYCLE/scripts_backup/`.
-   - Utökar `restoreScriptsBackup()` med `git reset HEAD` + `git clean -fd src/ scripts/` och kapar `execCaptured`-terminalutdata till max 25 rader (full logg i `doc/LAST_CYCLE/LAST_ERROR.log`).
-4. `scripts/run-planera-live.ts` (< 910 rader) anropar `createVerifiedScriptsBackup()`, delegerar `MAINT`-valideringen till `npx tsx scripts/lib/maintValidation.ts`, begränsar `MAINT`-självrättningens `filesToInclude` till `getRequiredFiles()` och filtrerar `currentSig` ur faktiska `❌`/`FAIL`/`Error:`/`error TS`/`RADGRÄNSBROTT`-rader.
+1. `scripts/bidiLiveRunner.ts` (**strikt <= 345 rader**) utökar återanslutningslogiken vid WebSocket `1011`/`1006`/`503` från 5 till **6 försök** via ett kompakt 1-radigt fördröjningsuttryck (`const delay = (this.reconnectAttempts === this.maxReconnectAttempts ? 60000 : Math.pow(2, this.reconnectAttempts) * 1000) + Math.floor(Math.random() * 1000);`).
+2. `scripts/lib/channelRunner.ts` (< 120 rader) behåller separata efemära mikrokanaler men ökar nedkylningspausen efter `runner.close()` till `750 ms`.
+3. `scripts/lib/sizeGate.js` (< 95 rader) exporterar `getLineLimitForFile(relPath)` och `getNearLimitWarnings(rootDir, targetFiles)` (varnar vid > 180 rader för 250-radersfiler, > 90 rader för `.tsx`).
+4. `scripts/lib/fas2Tooling.ts` (< 220 rader) kör syntaxspärr (`ts.transpileModule` med `target: ts.ScriptTarget.ES2022`) och radgränsspärr (`getLineLimitForFile`) **före `fs.writeFileSync`** i både `save_code` och `apply_patch`.
 5. `pnpm verify` passerar med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag ser att vi ska tackla TCK-MAINT-066. Det är ett viktigt steg för att göra våra underhållsrutiner och säkerhetskopior ännu mer pålitliga genom att köra valideringar isolerat och undvika dataförlust vid återskapning. Vad ser du som den största vinsten med den här förändringen för vårt arbete?
+Det här handlar om att stärka systemets stabilitet och motståndskraft. Genom att utöka antalet återanslutningsförsök för WebSockets och införa en nedkylningspaus, säkerställer vi att efemära mikrokanaler inte avbryts i förtid. Samtidigt bygger vi in en säkerhetsspärr för syntax och radgränser precis innan filskrivning. Är det rätt uppfattat att syftet är att förhindra att korrupt kod sprids i systemet?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Den största vinsten är att vi helt eliminerar risken för stale-kod i minnet under våra MAINT-valideringar. Genom att köra dem som en färsk barnprocess kan vi lita på att testerna reflekterar den absoluta verkligheten i källkoden. Kontraktet ser balanserat ut och följer våra radgränser precis. STATUS: GODKÄND för nästa steg.
+Ja, det är helt rätt uppfattat. Genom att införa dessa grindar förhindrar vi att trasig eller för stor kod når systemet och skapar instabilitet. Kontraktet är granskat och godkänt för vidare bearbetning.
 
 
 #### 0b Att förlikas: Vägval
@@ -38,18 +36,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Vi ser tre distinkta vägar att uppfylla kontraktet för TCK-MAINT-066 genom processisolering och smart trunkering.
+För att lösa kontraktet TCK-MAINT-067 föreslår jag följande tre ortogonala alternativ.
 
-Alternativ ett fokuserar på strikt processisolering där maintValidation.ts agerar oberoende barnprocess via exekvering och använder exakta radnummer för felmatchning.
+Det första alternativet är en direkt kontraktsenlig implementering, där vi uppdaterar återanslutningslogiken för WebSocket i bidiLiveRunner.ts och ökar nedkylningspausen i channelRunner.ts direkt i filerna.
 
-Alternativ två bygger upp en modulär sekvens i shellAndBackup.ts med hård verifiering av repots tillstånd och arkitektur innan backup utförs.
+Det andra alternativet fokuserar på en modulär helper-abstraktion, där vi flyttar spärrlogiken för radgränser och syntaxkontroller till en dedikerad helper-fil för att hålla huvudkällkodens storlek och komplexitet nere.
 
-Alternativ tre använder avancerad parsning av testloggen för att dynamiskt extrahera kuraterade områden och begränsar felpropageringen till specifika signaturer.
+Det tredje alternativet innefattar en centraliserad valideringsmodul som hanterar både radgräns- och syntaxkontroller, vilken sedan anropas från både fas2Tooling och channelRunner för att säkerställa konsekventa kontroller.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ ett ger bäst isolering mot stale state, men kräver robust felhantering för att inte misslyckas tyst. Alternativ två skyddar integriteten i källkoden men kräver en varsam hantering av ospårade filer. Alternativ tre säkerställer dataåtergivning utan amputation, vilket är kritiskt för logganalys.
+Vid resiliensgranskningen av alternativen visar det sig att det tredje alternativet är mest robust, då den centraliserade valideringsmodulen minskar risken för divergerande kontroller och säkerställer att samma regler tillämpas konsekvent oberoende av anropspunkt, vilket stärker resiliensen mot framtida regelförändringar.
 
 
 #### 2d Att förlikas: Mättnad
-Jag väger alternativen och ser att alternativ tre väger tyngst. Genom att säkerställa dataåtergivning utan amputation skyddar vi logganalysens integritet. MÄTTNAD: JA.
+Jag bekräftar att det tredje alternativet vinner. Genom den centraliserade valideringsmodulen bygger vi en långsiktigt robust arkitektur. MÄTTNAD: JA.

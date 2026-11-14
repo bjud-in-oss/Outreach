@@ -2,11 +2,13 @@
 
 ## AKTIVA TICKETS
 
+- [ ] **TCK-MAINT-072** (READY): Slutför Strangler Fig — banta run-planera-live.ts under 250 rader och ta bort 1000-radersundantaget i sizeGate.js -> Se `doc/.TICKETS/TCK-MAINT-072.md`
+- [ ] **TCK-MAINT-071** (READY): Bryt ut fas1Sweep.ts, fas2Loop.ts & fas2Recovery.ts och återanvänd fas2Tooling.ts -> Se `doc/.TICKETS/TCK-MAINT-071.md`
 - [ ] **TCK-MAINT-070** (READY): Aktivera ofiltrerad tsc-kontroll över gränssnittet scripts/ <-> src/features/path/ (efter TCK-064) -> Se `doc/.TICKETS/TCK-MAINT-070.md`
 - [ ] **TCK-MAINT-069** (READY): Delad 2-prompts 5-Varför-tratt (Varför 1–3 -> 3 hypoteser -> fri prövning & Varför 4–5+), Repo-återanvändning och AST await-spärr -> Se `doc/.TICKETS/TCK-MAINT-069.md`
 - [ ] **TCK-MAINT-068** (READY): Modulär critiqueTriage.ts med auto-initierad Papperskorg och fullständig s-diff/städning i fas3Consolidation.ts -> Se `doc/.TICKETS/TCK-MAINT-068.md`
-- [ ] **TCK-MAINT-067** (READY): 6:e WS-retry (60s inom 345 rader), 750ms sessionspaus och pre-write syntax-/radspärr -> Se `doc/.TICKETS/TCK-MAINT-067.md`
-- [x] **TCK-MAINT-066** (VERIFIED) (READY): Delegerad maintValidation.ts (färsk barnprocess), smart extractCuratedRange-trunkering i buildRetryAnchor och verifierad backup -> Se `doc/.TICKETS/TCK-MAINT-066.md`
+- [x] **TCK-MAINT-067** (VERIFIED) (READY): 6:e WS-retry (60s inom 345 rader), 750ms sessionspaus och pre-write syntax-/radspärr -> Se `doc/.TICKETS/TCK-MAINT-067.md`
+- [x] **TCK-MAINT-066** (VERIFIED): Delegerad maintValidation.ts (färsk barnprocess), smart extractCuratedRange-trunkering i buildRetryAnchor och verifierad backup -> Se `doc/.TICKETS/TCK-MAINT-066.md`
 - [ ] **TCK-MAINT-065** (READY): Laga Fas 3-anropen, aktivera 4-stegs självrannsakande omvändelse (TCK + MAINT) och enhetlig Wayfinder-kritik -> Se `doc/.TICKETS/TCK-MAINT-065.md`
 - [ ] **TCK-MAINT-064** (READY): 4-stegs självrannsakande omvändelse (TCK + MAINT) och 3-vägs triagering av konstruktiv kritik -> Se `doc/.TICKETS/TCK-MAINT-064.md`
 - [ ] **TCK-MAINT-063** (READY): AI-prioriterad tvådelad kontextuppdelning, noga urvald trunkering och VERIFIED-vakt -> Se `doc/.TICKETS/TCK-MAINT-063.md`

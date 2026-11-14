@@ -14,7 +14,7 @@ import { execSync } from 'child_process';
 import { GoogleGenAI } from '@google/genai';
 import { BidiLiveSession } from './bidiLiveRunner.js';
 import { applySourcePatch } from './drivers/patchMutator.js';
-import { execCaptured, dumpCrashDiff, restoreScriptsBackup } from './lib/shellAndBackup.js';
+import { execCaptured, dumpCrashDiff, restoreScriptsBackup, createVerifiedScriptsBackup } from './lib/shellAndBackup.js';
 import { getRequiredFiles, buildRetryAnchor } from './lib/ticketAndAnchor.js';
 import { getFeatureIndexText, getInstalledDependencies, appendCycleLog, hanteraKonstruktivKritik, sparaMetaOmvandelse } from './lib/channelRunner.js';
 import { konsolideraTest, uppdateraFeatureIndex, uppdateraBiljettstatus, hanteraTrepunktsbesiktning, genomforGitCommitPush, saneraSkordadLegacy } from './lib/fas3Consolidation.js';
@@ -101,14 +101,10 @@ async function main() {
   const startTime = Date.now();
   const isMaintRun = process.argv.some(a => a.toUpperCase().includes("MAINT"));
   if (isMaintRun) {
-    const backupDir = path.join(CYCLE_LOG_DIR, "scripts_backup");
     try {
-      fs.rmSync(backupDir, { recursive: true, force: true });
-      fs.mkdirSync(backupDir, { recursive: true });
-      fs.cpSync(path.join(ROOT_DIR, "scripts"), backupDir, { recursive: true });
-      console.log("🛡️ [MAINT-SÄKERHETSNÄT]: Säkerhetskopia av scripts/ skapad i doc/LAST_CYCLE/scripts_backup/\n");
+      createVerifiedScriptsBackup();
     } catch (e: any) {
-      console.warn("⚠️ [MAINT-SÄKERHETSNÄT]: Kunde inte skapa säkerhetskopia av scripts/:", e.message);
+      process.exit(1);
     }
   }
   const ticketArg = process.argv[2];
@@ -656,31 +652,30 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
   }
 
   if (isMaint) {
-    console.log('\n🛡️ [MAINT-VALIDERING]: Exekverar lokala kontroller för skriptdomänen...');
+    console.log('\n🛡️ [MAINT-VALIDERING]: Exekverar lokala kontroller i separat barnprocess...');
     let maintPassed = false;
     let maintAttempts = 0;
     let prevErrorSignature = '';
+    
     while (!maintPassed && maintAttempts < 4) {
       maintAttempts++;
       try {
-        console.log(`\n🔍 [MAINT]: Kör arkitekturkontroll (Försök ${maintAttempts}/4)...`);
-        execCaptured('node scripts/verify-architecture.js');
-
-        console.log(`\n🧪 [MAINT]: Kör skripttester (Försök ${maintAttempts}/4)...`);
-        execCaptured(`npx vitest run scripts/__tests__/`);
-
-        console.log(`\n🧪 [MAINT]: Kör full regressionssvit (Försök ${maintAttempts}/4)...`);
-        execCaptured('pnpm test');
-        execCaptured('npx esbuild scripts/run-planera-live.ts scripts/run-path.ts --bundle --platform=node --packages=external --outdir=/tmp/outreach-script-check');
-        
-        console.log(`\n🔍 [MAINT]: Kör typkontroll för signaturfel (Försök ${maintAttempts}/4)...`);
-        execCaptured('npx tsc -p scripts/tsconfig.json --noEmit 2>&1 | grep "^scripts/" && exit 1 || true');
+        console.log(`\n🔍 [MAINT]: Kör maintValidation.ts (Försök ${maintAttempts}/4)...`);
+        execCaptured('npx tsx scripts/lib/maintValidation.ts');
 
         maintPassed = true;
         console.log('✅ [MAINT]: Lokala skriptkontroller godkända!');
       } catch (err: any) {
-        const errLog = err.stdout?.toString() || err.stderr?.toString() || err.message;
-        const currentSig = errLog.slice(-500);
+        const errLog = err.message || String(err);
+        
+        const relevantLines = errLog.split('\n').filter(line => 
+          line.includes('❌') || 
+          line.includes('FAIL') || 
+          line.includes('Error:') || 
+          line.includes('error TS') || 
+          line.includes('RADGRÄNSBROTT')
+        );
+        const currentSig = relevantLines.slice(-10).join('\n');
 
         if (currentSig === prevErrorSignature && maintAttempts > 1) {
            console.error('❌ [MAINT]: Ingeniörsmässigt framsteg uteblev – avbryter loop i förtid.');
@@ -706,7 +701,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
         }
         codeSaved = false;
 
-        const filesToInclude = Array.from(new Set([...modifiedFiles, ...getRequiredFiles(), 'src/features/path/model/types.ts']));
+        const filesToInclude = getRequiredFiles();
         let currentMaintSource = '';
         for (const relPath of filesToInclude) {
           const fullPath = path.resolve(ROOT_DIR, relPath);

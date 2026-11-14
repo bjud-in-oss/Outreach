@@ -145,22 +145,34 @@ export function buildRetryAnchor(
   testLog: string,
   maxChars = 24000
 ): string {
-  const baseAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${currentSourceSummary}\n\nFELLOGG:\n${testLog}`;
+  let truncatedSource = currentSourceSummary;
+  const lineMatch = testLog.match(/:(\d+):(\d+)/) || testLog.match(/line (\d+)/i);
   
-  if (baseAnchor.length <= maxChars) {
-    return baseAnchor;
+  if (lineMatch) {
+    const errorLine = parseInt(lineMatch[1], 10);
+    const lines = currentSourceSummary.split('\n');
+    const startLine = Math.max(1, errorLine - 80);
+    const endLine = Math.min(lines.length, errorLine + 80);
+    truncatedSource = extractCuratedRange(currentSourceSummary, startLine, endLine);
+  } else {
+    const lines = currentSourceSummary.split('\n');
+    if (lines.length > 160) {
+      const startLine = lines.length - 160;
+      truncatedSource = extractCuratedRange(currentSourceSummary, startLine, lines.length);
+    }
   }
 
-  const overflow = baseAnchor.length - maxChars;
-  console.warn(`⚠️ [RETRY-ANCHOR TRUNKERING]: Storlek (${baseAnchor.length}) överstiger ${maxChars} tecken. Trunkerar källkodssammanfattningen med ${overflow} tecken.`);
-
-  const currentSourceChars = currentSourceSummary.length;
-  const charsToRemoveFromSource = Math.min(currentSourceChars, overflow + 500); 
-  
-  const truncatedSource = currentSourceSummary.slice(0, Math.max(0, currentSourceChars - charsToRemoveFromSource)) + 
-    "\n... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...";
-
   const newAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${truncatedSource}\n\nFELLOGG:\n${testLog}`;
+  if (newAnchor.length <= maxChars) return newAnchor;
+
+  console.warn(`⚠️ [RETRY-ANCHOR TRUNKERING]: Storlek (${newAnchor.length}) överstiger ${maxChars} tecken.`);
   
-  return newAnchor;
+  const suffix = "\n... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...";
+  const allowLength = maxChars - suffix.length;
+  
+  if (allowLength < 100) {
+    return newAnchor.slice(0, maxChars > suffix.length ? maxChars - suffix.length : 0) + suffix;
+  }
+  
+  return newAnchor.slice(0, allowLength) + suffix;
 }

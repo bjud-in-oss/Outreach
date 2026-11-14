@@ -10,7 +10,7 @@ export interface BidiRunnerConfig {
 
 export class BidiLiveSession {
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private maxReconnectAttempts = 6;
 
   private session: any = null;
   private isClosed = false;
@@ -200,9 +200,9 @@ export class BidiLiveSession {
                 return;
               }
 
-              if ((code === 1011 || code === 1006) && this.reconnectAttempts < this.maxReconnectAttempts) {
+              if ((code === 1011 || code === 1006 || code === 503) && this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
-                const delay = Math.pow(2, this.reconnectAttempts) * 1000 + Math.floor(Math.random() * 1000);
+                const delay = (this.reconnectAttempts === this.maxReconnectAttempts ? 60000 : Math.pow(2, this.reconnectAttempts) * 1000) + Math.floor(Math.random() * 1000);
                 console.warn(`\n⚠️ [${code} AVBROTT]: Återansluter automatiskt (försök ${this.reconnectAttempts}/${this.maxReconnectAttempts}) om ${delay}ms...`);
 
                 this.reconnectTimer = setTimeout(async () => {

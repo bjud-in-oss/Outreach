@@ -71,11 +71,11 @@ export async function runMicroChannel(
     }
 
     runner.close();
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 750));
     return response;
   } catch (err: any) {
     runner.close();
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 750));
     throw err;
   }
 }
