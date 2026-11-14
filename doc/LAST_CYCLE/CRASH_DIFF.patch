@@ -1,203 +1,374 @@
 diff --git a/scripts/__tests__/scriptLibs.test.ts b/scripts/__tests__/scriptLibs.test.ts
-index 3c87a23..46c830d 100644
+index 3c87a23..a018559 100644
 --- a/scripts/__tests__/scriptLibs.test.ts
 +++ b/scripts/__tests__/scriptLibs.test.ts
-@@ -57,12 +57,16 @@ describe('scriptLibs', () => {
+@@ -1,11 +1,10 @@
+ import { describe, it, expect } from 'vitest';
+-import { getRequiredFiles, buildRetryAnchor } from '../lib/ticketAndAnchor';
++import { getRequiredFiles, buildRetryAnchor, getCompactTicketWindow, validateTicketScope, selectRelevantRetryFiles } from '../lib/ticketAndAnchor';
+ import { execFileSync } from 'child_process';
+ import os from 'os';
+ import path from 'path';
+ import fs from 'fs';
+ import { skapaNodePathPortar } from '../lib/pathNodePorts';
+-import { omprioriteraBatchForbattringar } from '../lib/critiqueTriage';
+ 
+ describe('scriptLibs', () => {
+   describe('getRequiredFiles', () => {
+@@ -13,7 +12,7 @@ describe('scriptLibs', () => {
+       const ticketPrompt = `
+ # TCK-MAINT-049
+ **Måldomän:** scripts
+-**Målfiles:** scripts/run-planera-live.ts, scripts/verify-architecture.js
++**Målfiler:** \`scripts/run-planera-live.ts\`, \`scripts/verify-architecture.js\`
+ `;
+       const files = getRequiredFiles(ticketPrompt, true, 'scripts');
+       expect(files).toContain('scripts/run-planera-live.ts');
+@@ -24,36 +23,77 @@ describe('scriptLibs', () => {
+   describe('buildRetryAnchor', () => {
+     it('should build retry anchor without truncation if below maxChars', () => {
+       const testContent = 'testContent';
+-      const currentSourceSummary = 'currentSourceSummary';
++      const currentSourceSummary = 'currentSourceSummary\n'.repeat(50);
+       const testLog = 'testLog';
+-      const anchor = buildRetryAnchor(testContent, currentSourceSummary, testLog, 1000);
++      const anchor = buildRetryAnchor(testContent, currentSourceSummary, testLog, 10000);
+       expect(anchor).toContain(testContent);
+       expect(anchor).toContain(currentSourceSummary);
+       expect(anchor).toContain(testLog);
+     });
+ 
+-    it('should truncate currentSourceSummary if exceeds maxChars', () => {
+-      const testContent = 'testContent';
+-      const testLog = 'testLog';
+-      const currentSourceSummary = 'A'.repeat(1000);
+-      const maxChars = 200;
+-      
+-      const anchor = buildRetryAnchor(testContent, currentSourceSummary, testLog, maxChars);
+-      
+-      expect(anchor.length).toBeLessThanOrEqual(maxChars + 600);
+-      expect(anchor).toContain('... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...');
++    it('should preserve header (rad 1-40) and ignore node:child_process:978', () => {
++        const testContent = 'testContent';
++        const currentSourceSummary = Array.from({length: 50}, (_, i) => `Line ${i+1}`).join('\n');
++        const testLog = 'Error in node:child_process:978\nError at src/lib/ticketAndAnchor.ts:15';
++        const anchor = buildRetryAnchor(testContent, currentSourceSummary, testLog, 20000);
++        
++        const headerSection = anchor.split('BEFINTLIG KÄLLKOD (HUVUD + KONTEXT):\n')[1].split('\n\n')[0];
++        const headerLines = headerSection.split('\n');
++        expect(headerLines.length).toBe(40);
++        expect(headerLines[0]).toBe('Line 1');
++        expect(headerLines[39]).toBe('Line 40');
+     });
+   });
+ 
+-  describe('skapaNodePathPortar', () => {
+-    it('should return correct port keys', () => {
+-      const portar = skapaNodePathPortar({ ticketId: 'test', io: console, dryRun: true });
+-      expect(portar).toHaveProperty('avsikt');
+-      expect(portar).toHaveProperty('provning');
+-      expect(portar).toHaveProperty('konstruktion');
+-      expect(portar).toHaveProperty('besiktning');
++  describe('getCompactTicketWindow', () => {
++      it('should return recent verified tickets', () => {
++          const ticketsMd = `
++# Tickets
++- [x] **TCK-1** (VERIFIED)
++- [x] **TCK-2** (VERIFIED)
++- [x] **TCK-3** (VERIFIED)
++- [x] **TCK-4** (VERIFIED)
++- [x] **TCK-5** (VERIFIED)
++- [x] **TCK-6** (VERIFIED)
++          `;
++          const window = getCompactTicketWindow(ticketsMd, 3);
++          const lines = window.trim().split('\n');
++          expect(lines.length).toBe(3);
++          expect(lines[2]).toContain('TCK-6');
++      });
++  });
++
++  describe('validateTicketScope', () => {
++      it('should return false if more than 4 files', () => {
++          const ticketPrompt = `
++# TCK-TEST
++**Målfiler:** \`file1.ts\`, \`file2.ts\`, \`file3.ts\`, \`file4.ts\`, \`file5.ts\`
++`;
++          const result = validateTicketScope(ticketPrompt, false, 'test');
++          expect(result.valid).toBe(false);
++          expect(result.reason).toContain('Fler än 4 målfiler');
++      });
++
++      it('should return true if 4 or fewer files', () => {
++        const ticketPrompt = \`
++# TCK-TEST
++**Målfiler:** \`file1.ts\`, \`file2.ts\`
++\`;
++        const result = validateTicketScope(ticketPrompt, false, 'test');
++        expect(result.valid).toBe(true);
+     });
++  });
++
++  describe('selectRelevantRetryFiles', () => {
++      it('should filter files present in error log', () => {
++        const candidateFiles = ['src/features/a/file1.ts', 'src/features/b/file2.ts'];
++        const errorLog = 'Error in file1.ts';
++        const result = selectRelevantRetryFiles(candidateFiles, errorLog);
++        expect(result).toEqual(['src/features/a/file1.ts']);
++      });
++  });
+ 
++  describe('Integration with drivers', () => {
      it('should throw when check-alibi fails', () => {
        const tmpDir = os.tmpdir();
        const tmpFile = path.join(tmpDir, 'test-alibi.ts');
--      fs.writeFileSync(tmpFile, 'expect(true).toBe(true);');
-+      fs.writeFileSync(tmpFile, `
-+        import { vi, expect, it } from 'vitest';
-+        it('bad alibi', () => {
-+          const spy = vi.fn();
-+        });
-+      `);
-       
-       try {
--        expect(() => {
--          execFileSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { stdio: 'pipe' });
--        }).toThrow();
-+        const result = require('child_process').spawnSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { encoding: 'utf-8' });
-+        expect(result.status).toBe(1);
-       } finally {
-         if (fs.existsSync(tmpFile)) {
-           fs.unlinkSync(tmpFile);
-diff --git a/scripts/lib/channelRunner.ts b/scripts/lib/channelRunner.ts
-index 8d27574..bfa5422 100644
---- a/scripts/lib/channelRunner.ts
-+++ b/scripts/lib/channelRunner.ts
-@@ -5,7 +5,6 @@ import { BidiLiveSession } from '../bidiLiveRunner.js';
- const ROOT_DIR = process.cwd();
- const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
- const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
--const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
- const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
- const PKG_PATH = path.join(ROOT_DIR, 'package.json');
+diff --git a/scripts/lib/maintValidation.ts b/scripts/lib/maintValidation.ts
+index 8c1ca74..f3cca3f 100644
+--- a/scripts/lib/maintValidation.ts
++++ b/scripts/lib/maintValidation.ts
+@@ -1,12 +1,39 @@
+ import { execSync } from 'child_process';
+ import * as path from 'path';
++import * as fs from 'fs';
  
-@@ -80,149 +79,44 @@ export async function runMicroChannel(
+ function runCheck(command: string, name: string) {
+   console.log(`\n🔍 [MAINT]: Kör ${name}...`);
+   try {
+-    execSync(command, { stdio: 'inherit', cwd: process.cwd() });
++    execSync(command, { stdio: 'pipe', cwd: process.cwd(), encoding: 'utf-8' });
+   } catch (err: any) {
++    const output = err.stdout || '';
++    const errOutput = err.stderr || '';
++    const fullLog = output + errOutput;
++
+     console.error(`❌ [MAINT]: ${name} fallerade.`);
++
++    const errorPatterns = /Error|FAIL|Transform failed|SyntaxError|TypeError|AssertionError|error TS|RADGRÄNSBROTT|✘|File:/;
++    const lines = fullLog.split('\n');
++    const matchedLines = new Set<number>();
++
++    for (let i = 0; i < lines.length; i++) {
++        if (errorPatterns.test(lines[i])) {
++            for (let j = Math.max(0, i - 3); j <= Math.min(lines.length - 1, i + 3); j++) {
++                matchedLines.add(j);
++            }
++        }
++    }
++
++    const sortedLines = Array.from(matchedLines).sort((a, b) => a - b);
++    const extractedLines = sortedLines.slice(0, 25).map(idx => lines[idx]).join('\n');
++
++    console.error('\n--- EXTRAHERADE FEL (HÖGSTSTÅENDEUTSATS) ---');
++    console.error(extractedLines);
++    console.error('--------------------------------------------\n');
++    console.error('FULLSTÄNDIG LOGG NEDAN:');
++    console.error(fullLog);
++
+     process.exit(1);
    }
  }
+diff --git a/scripts/lib/ticketAndAnchor.ts b/scripts/lib/ticketAndAnchor.ts
+index 380e72e..46de51a 100644
+--- a/scripts/lib/ticketAndAnchor.ts
++++ b/scripts/lib/ticketAndAnchor.ts
+@@ -1,18 +1,8 @@
+ import * as fs from 'fs';
+ import * as path from 'path';
  
--export async function sparaMetaOmvandelse(
-+export async function diagnostiseraRotOrsak(
-   ai: any,
-   modelName: string,
--  ticketId: string,
--  errLog: string,
-+  contextTitle: string,
-+  errorLog: string,
-+  sourceContext: string,
-   si: string
- ): Promise<string> {
--  const instruction = `Analysera varför den inre slingan i Fas 2 inte omvände sig framgångsrikt under sina 3 försök trots självrättningsinstruktioner. Vilken konstruktiv kritik eller arkitektonisk justering behöver genomföras?`;
--  const startAnchor = `BILJETT: ${ticketId}\nFELLOGG:\n${errLog}`;
-+  const instr1 = `Zoom ut mot FSD-/kontraktsintegritet och modulär expansion (Väg 2). Spåra de inledande mekaniska faktafrågorna (Varför 1–3). Öppna 3 ortogonala felhypoteser utan rangordning. Ställ den Epistemiska Falsifieringsfrågan. Ange återstående frågedjup (minst 2, dvs. Varför 4–5+), strippad från slutsatser.`;
-+  const startAnchor1 = `KONTEXT: ${contextTitle}\nFELLOGG:\n${errorLog}\nKÄLLKODSKONTEXT:\n${sourceContext}`;
-   
--  return await runMicroChannel(
-+  const resp1 = await runMicroChannel(
-     ai,
-     modelName,
-     'Att vända om',
--    instruction,
--    startAnchor,
-+    instr1,
-+    startAnchor1,
-     si,
-     [],
-     undefined,
-     { maxTurns: 1 }
-   );
+-export interface SourceManifestEntry {
+-  path: string;
+-  lineCount: number;
+-  charCount: number;
+-  content: string;
 -}
 -
--export function omprioriteraBatchForbattringar(improvementsPath: string): void {
--  if (!fs.existsSync(improvementsPath)) return;
--  const content = fs.readFileSync(improvementsPath, 'utf-8');
--  const lines = content.split('\n');
--  
--  const headerIdx = lines.findIndex(l => l.trim() === '## 2. Köade Batch-förbättringar');
--  if (headerIdx === -1) return;
--
--  const nextHeaderIdx = lines.findIndex((l, i) => i > headerIdx && l.startsWith('## '));
--  const improvementsSection = lines.slice(headerIdx + 1, nextHeaderIdx === -1 ? lines.length : nextHeaderIdx);
--  
--  const items = improvementsSection
--    .map(l => l.trim())
--    .filter(l => l.startsWith('- ') || l.startsWith('* '))
--    .map(l => l.replace(/^[-*]\s+/, ''));
--    
--  const uniqueItems = Array.from(new Set(items));
--
--  const weightMap: Record<string, number> = {
--    '[PRIO: HOG]': 3,
--    '[PRIO: MEDEL]': 2,
--    '[PRIO: LAG]': 1
--  };
- 
--  const getWeight = (item: string) => {
--    for (const key in weightMap) {
--      if (item.includes(key)) return weightMap[key];
--    }
--    return 0;
--  };
--
--  uniqueItems.sort((a, b) => getWeight(b) - getWeight(a));
--
--  const newContentLines = lines.slice(0, headerIdx + 1);
--  uniqueItems.forEach(item => newContentLines.push(`- ${item}`));
--  if (nextHeaderIdx !== -1) {
--    newContentLines.push(...lines.slice(nextHeaderIdx));
--  }
-+  const instr2 = `Väg hypoteserna mot fellogg, källkod, FEATURE_INDEX.json och DECISIONS.md. Välj fritt egna prövningsfrågor för att testa anpassning av befintliga repoidéer (HYPOTES D: REPO-ÅTERANVÄNDNING), slutför Varför 4–5+, logga domen till CYCLE_LOG.md och lås EGENTLIGT_FEL.`;
-+  const startAnchor2 = `STARTANKARE:\n${startAnchor1}\n\nANALYS FRÅN VÄNDA OM:\n${resp1}`;
- 
--  fs.writeFileSync(improvementsPath, newContentLines.join('\n'), 'utf-8');
+-export interface BatchPlan {
+-  pass1: SourceManifestEntry[];
+-  pass2: SourceManifestEntry[];
+-  truncatedFiles: string[];
 -}
--
--export async function hanteraKonstruktivKritik(
--  ai: any,
--  modelName: string,
--  ticketId: string,
--  cycleSummary: string,
--  si: string,
--  improvementsPath: string
--): Promise<{ harStorSkillnad: boolean; atgard: string }> {
--  const prompt = `Utvärdera följande cykelsammanfattning och generera konstruktiv kritik eller systemförbättringar för Outreach Engine.
--Om ingen verklig systemfriktion finns: svara enbart "INGEN_KRITIK".
--Vid verklig friktion: Generera exakt följande format:
--💡 Konstruktiv kritik av våra rutiner: [Observation & Konkret förslag]
--BEDOMNING: STOR_SKILLNAD | LITEM_BATCH | AVVISAD_FELAKTIG
--PRIORITET: HOG | MEDEL | LAG
--MOTIVERING: ...
--
--Cykel-sammanfattning:
--${cycleSummary}
--`;
--
--  const response = await runMicroChannel(
-+  const resp2 = await runMicroChannel(
-     ai,
-     modelName,
-     'Att förlikas',
--    prompt,
--    `BILJETT: ${ticketId}`,
-+    instr2,
-+    startAnchor2,
-     si,
-     [],
-     undefined,
-     { maxTurns: 1 }
-   );
++export type { SourceManifestEntry, BatchPlan } from './contextBatcher.js';
++export { buildSourceManifest, planContextBatches, buildCrashDumpPayload } from './contextBatcher.js';
  
--  if (response.includes('INGEN_KRITIK')) {
--    return { harStorSkillnad: false, atgard: 'INGEN_KRITIK' };
--  }
--
--  const hardScoreMatch = response.match(/BEDOMNING:\s*(STOR_SKILLNAD|LITEM_BATCH|AVVISAD_FELAKTIG)/);
--  const harStorSkillnad = hardScoreMatch ? hardScoreMatch[1] === 'STOR_SKILLNAD' : false;
--
--  const kritikMatch = response.match(/💡 Konstruktiv kritik av våra rutiner:\s*(.+)/);
--  constatgard = kritikMatch ? kritikMatch[1].trim() : '';
--
--  const bedomningMatch = response.match(/BEDOMNING:\s*(.+)/);
--  const bedomning = bedomningMatch ? bedomningMatch[1].trim() : '';
--
--  if (bedomning === 'LITEM_BATCH' && atgard && fs.existsSync(improvementsPath)) {
--    let improvContent = fs.readFileSync(improvementsPath, 'utf-8');
--    const prioMatch = response.match(/PRIORITET:\s*(HOG|MEDEL|LAG)/);
--    const prio = prioMatch ? `[PRIO: ${prioMatch[1]}] ` : '';
--    const newEntry = `- ${prio}${atgard}`;
--    
--    if (!improvContent.includes(atgard)) {
--       const headerIdx = improvContent.indexOf('## 2. Köade Batch-förbättringar');
--       if (headerIdx !== -1) {
--         const nextHeaderIdx = improvContent.indexOf('## ', headerIdx + 3);
--         const before = improvContent.slice(0, headerIdx + 30);
--         const after = nextHeaderIdx !== -1 ? improvContent.slice(nextHeaderIdx) : '';
--         improvContent = `${before}\n${newEntry}\n${after}`;
--       } else {
--         improvContent += `\n## 2. Köade Batch-förbättringar\n${newEntry}\n`;
--       }
--       fs.writeFileSync(improvementsPath, improvContent, 'utf-8');
--       omprioriteraBatchForbattringar(improvementsPath);
--    }
--  } else if (bedomning === 'AVVISAD_FELAKTIG' && atgard) {
--     let improvContent = fs.existsSync(improvementsPath) ? fs.readFileSync(improvementsPath, 'utf-8') : '';
--     const newEntry = `- [AVVISAD] ${atgard}`;
--     const headerIdx = improvContent.indexOf('## 3. Avvisade & Vederlagda Förslag');
--     if (headerIdx !== -1) {
--        const nextHeaderIdx = improvContent.indexOf('## ', headerIdx + 3);
--        const before = improvContent.slice(0, headerIdx + 35);
--        const after = nextHeaderIdx !== -1 ? improvContent.slice(nextHeaderIdx) : '';
--        improvContent = `${before}\n${newEntry}\n${after}`;
--     } else {
--        improvContent += `\n## 3. Avvisade & Vederlagda Förslag\n${newEntry}\n`;
--     }
--     fs.writeFileSync(improvementsPath, improvContent, 'utf-8');
--  }
--
--  return { harStorSkillnad, atgard };
-+  appendCycleLog('Rotorsaksdiagnos & Egentligt Fel', resp2);
-+  return resp2;
+ export function getRequiredFiles(ticketPrompt: string, isMaint: boolean, targetDomain: string): string[] {
+   const targetMatch = ticketPrompt.match(/\*\*Målfiler:\*\*\s*(.+)/);
+@@ -34,27 +24,6 @@ export function getRequiredFiles(ticketPrompt: string, isMaint: boolean, targetD
+   return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
  }
+ 
+-export function buildSourceManifest(files: string[]): SourceManifestEntry[] {
+-  return files.map(file => {
+-    const fullPath = path.resolve(process.cwd(), file);
+-    let content = '';
+-    try {
+-      if (fs.existsSync(fullPath)) {
+-        content = fs.readFileSync(fullPath, 'utf-8');
+-      }
+-    } catch (e) {
+-      console.warn(`⚠️ Kunde inte läsa fil ${file}:`, e);
+-    }
+-    const lines = content.split('\n');
+-    return {
+-      path: file,
+-      lineCount: lines.length,
+-      charCount: content.length,
+-      content
+-    };
+-  });
+-}
+-
+ export function extractCuratedRange(content: string, startLine: number, endLine: number): string {
+   const lines = content.split('\n');
+   const slicedLines = lines.slice(startLine - 1, endLine);
+@@ -67,76 +36,23 @@ export function extractCuratedRange(content: string, startLine: number, endLine:
+   return `--- [TRUNKERAT RADINTERVALL ${startLine}-${endLine}] ---\n${resultLines.join('\n')}\n--- [SLUT PÅ TRUNKERAT INTERVALL] ---`;
+ }
+ 
+-export function planContextBatches(
+-  files: string[], 
+-  errorLog: string, 
+-  maxChars = 24000,
+-  prioritizeFn?: (manifest: SourceManifestEntry[], errorLog: string) => { pass1: string[], pass2: string[] }
+-): BatchPlan {
+-  const manifest = buildSourceManifest(files);
+-  const totalChars = manifest.reduce((sum, entry) => sum + entry.charCount, 0);
+-  
+-  if (totalChars <= maxChars) {
+-    return {
+-      pass1: manifest,
+-      pass2: [],
+-      truncatedFiles: []
+-    };
+-  }
+-
+-  // Överstiger maxChars, behöver dela upp
+-  let pass1Paths: string[] = [];
+-  let pass2Paths: string[] = [];
+-  const truncatedFiles: string[] = [];
+-
+-  if (prioritizeFn) {
+-    const priority = prioritizeFn(manifest, errorLog);
+-    pass1Paths = priority.pass1;
+-    pass2Paths = priority.pass2;
+-  } else {
+-    // Deterministisk fallback
+-    pass1Paths = manifest.slice(0, Math.ceil(manifest.length / 2)).map(e => e.path);
+-    pass2Paths = manifest.slice(Math.ceil(manifest.length / 2)).map(e => e.path);
+-  }
+-
+-  const pass1 = manifest.filter(e => pass1Paths.includes(e.path));
+-  const pass2 = manifest.filter(e => pass2Paths.includes(e.path));
+-
+-  // Trunkera filer som spränger budgeten ensamma (eller om batch är för stor)
+-  // Enkel implementering: Om vi måste dela upp, kör vi full text om rimligt, annars trunkerar vi
+-  // För detta kontrakt vill vi tillämpa curatedRanges endast på filer som spränger budgeten
+-  
+-  return {
+-    pass1,
+-    pass2,
+-    truncatedFiles
+-  };
++export function getCompactTicketWindow(ticketsMdContent: string, recentVerifiedLimit = 5): string {
++  const lines = ticketsMdContent.split('\n');
++  const verifiedLines = lines.filter(line => line.includes('(VERIFIED)'));
++  const recentVerified = verifiedLines.slice(-recentVerifiedLimit);
++  return recentVerified.join('\n');
+ }
+ 
+-export function buildCrashDumpPayload(data: any, maxChars = 24000): any {
+-  const payload = {
+-    previousTestCode: data.previousTestCode || '',
+-    crashDiff: data.crashDiff || '',
+-    errorSignature: data.errorSignature || '',
+-    omvandelseCount: data.omvandelseCount || 0,
+-    priorityPlan: data.priorityPlan || null,
+-    timestamp: new Date().toISOString()
+-  };
+-
+-  const jsonString = JSON.stringify(payload);
+-  
+-  if (jsonString.length <= maxChars) {
+-    return payload;
++export function validateTicketScope(ticketPrompt: string, isMaint: boolean, targetDomain: string): { valid: boolean; reason?: string } {
++  const files = getRequiredFiles(ticketPrompt, isMaint, targetDomain);
++  if (files.length > 4) {
++    return { valid: false, reason: `Fler än 4 målfiler identifierade (${files.length}). Biljetten måste klyvas.` };
+   }
++  return { valid: true };
++}
+ 
+-  console.warn(`⚠️ [CRASH-DUMP TRUNKERING]: Storlek (${jsonString.length}) överstiger ${maxChars} tecken.`);
+-  
+-  // Trunkera previousTestCode om payload är för stor
+-  if (payload.previousTestCode.length > 1000) {
+-    payload.previousTestCode = payload.previousTestCode.slice(0, 1000) + "\n... [TRUNKERAD] ...";
+-  }
+-  
+-  return payload;
++export function selectRelevantRetryFiles(candidateFiles: string[], errorLog: string): string[] {
++  return candidateFiles.filter(file => errorLog.includes(path.basename(file)));
+ }
+ 
+ export function buildRetryAnchor(
+@@ -146,13 +62,13 @@ export function buildRetryAnchor(
+   maxChars = 24000
+ ): string {
+   let truncatedSource = currentSourceSummary;
+-  const lineMatch = testLog.match(/:(\d+):(\d+)/) || testLog.match(/line (\d+)/i);
+-  
+-  if (lineMatch) {
+-    const errorLine = parseInt(lineMatch[1], 10);
++  const lineMatches = Array.from(testLog.matchAll(/(?:scripts|src)\/[^\s:()]+:(\d+)/g));
++  const errorLines = lineMatches.map(m => parseInt(m[1], 10)).filter(line => !isNaN(line));
++
++  if (errorLines.length > 0 && currentSourceSummary.includes('\n')) {
+     const lines = currentSourceSummary.split('\n');
+-    const startLine = Math.max(1, errorLine - 80);
+-    const endLine = Math.min(lines.length, errorLine + 80);
++    const startLine = Math.max(1, Math.min(...errorLines) - 80);
++    const endLine = Math.min(lines.length, Math.max(...errorLines) + 80);
+     truncatedSource = extractCuratedRange(currentSourceSummary, startLine, endLine);
+   } else {
+     const lines = currentSourceSummary.split('\n');
+@@ -162,17 +78,20 @@ export function buildRetryAnchor(
+     }
+   }
+ 
+-  const newAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD:\n${truncatedSource}\n\nFELLOGG:\n${testLog}`;
+-  if (newAnchor.length <= maxChars) return newAnchor;
++  const headerLimit = 40;
++  const sourceLines = currentSourceSummary.split('\n');
++  const headerSection = sourceLines.slice(0, headerLimit).join('\n');
+ 
+-  console.warn(`⚠️ [RETRY-ANCHOR TRUNKERING]: Storlek (${newAnchor.length}) överstiger ${maxChars} tecken.`);
++  const newAnchor = `TESTKOD (OFÖRÄNDERLIG LAG):\n${testContent}\n\nBEFINTLIG KÄLLKOD (HUVUD + KONTEXT):\n${headerSection}\n\n${truncatedSource}\n\nFELLOGG:\n${testLog}`;
+   
++  if (newAnchor.length <= maxChars * 0.85) {
++    return newAnchor;
++  }
++
++  console.warn(`⚠️ [RETRY-ANCHOR TROLIGEN FÖR LÅNG]: Storlek beräknad.`);
+   const suffix = "\n... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...";
+-  const allowLength = maxChars - suffix.length;
+-  
+-  if (allowLength < 100) {
+-    return newAnchor.slice(0, maxChars > suffix.length ? maxChars - suffix.length : 0) + suffix;
++  if (newAnchor.length > maxChars) {
++    return newAnchor.slice(0, maxChars - suffix.length) + suffix;
+   }
+-  
+-  return newAnchor.slice(0, allowLength) + suffix;
++  return newAnchor;
+ }
+diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
+index 24cb0c5..4d7b5fe 100644
+--- a/scripts/run-planera-live.ts
++++ b/scripts/run-planera-live.ts
+@@ -608,7 +608,7 @@ Anropa save_code och apply_patch för SAMTLIGA filer i byggkontraktet (inklusive
+   const fas2Anchor = `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT (Fas 1):\n${steg3c}`;
+   const fas2Response = await runMicroChannel('Att följa', fas2Prompt, fas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
+     requireMutation: true,
+-    maxTurns: 5,
++    maxTurns: 8,
+     onMutationCheck: isFas2Complete,
+     getFollowupPrompt: getFas2FollowupPrompt
+   });

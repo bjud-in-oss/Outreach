@@ -18,8 +18,10 @@ export function execCaptured(cmd: string): string {
     
     let logOutput = combined;
     const lines = combined.split('\n');
-    if (lines.length > 25) {
-       logOutput = lines.slice(-25).join('\n') + "\n\n... (terminalutdata trunkerad till de sista 25 raderna, full logg i LAST_ERROR.log)";
+    if (lines.length > 30) {
+       const head = lines.slice(0, 15);
+       const tail = lines.slice(-15);
+       logOutput = [...head, "\n... (terminalutdata trunkerad: visar de första 15 och sista 15 raderna)\n...", ...tail].join('\n');
        fs.writeFileSync(ERROR_LOG_PATH, combined, 'utf-8');
     }
     
