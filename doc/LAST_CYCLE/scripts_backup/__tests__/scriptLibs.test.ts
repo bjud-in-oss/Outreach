@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getRequiredFiles, buildRetryAnchor, getCompactTicketWindow, validateTicketScope, selectRelevantRetryFiles } from '../lib/ticketAndAnchor';
+import { getRequiredFiles, buildRetryAnchor, getCompactTicketWindow, validateTicketScope, selectRelevantRetryFiles, extractErrorSignature } from '../lib/ticketAndAnchor';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
@@ -35,6 +35,24 @@ describe('scriptLibs', () => {
       const ticketPrompt = '# TCK-TEST\n**Målfiler:** `f1.ts`';
       const result = validateTicketScope(ticketPrompt, false, 'test');
       expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('extractErrorSignature', () => {
+    it('should extract matching signatures from entire log and filter stack traces', () => {
+      const log = [
+        '✘ [ERROR] No matching export...',
+        'at ModuleJob.runMain (node:internal/modules/esm/worker_loader:112:12)',
+        'error TS2322: Type string is not assignable to type number.',
+        'at Object.<anonymous> (file:///app/scripts/__tests__/scriptLibs.test.ts:45:15)'
+      ].join('\n');
+      
+      const signature = extractErrorSignature(log, 5);
+      const lines = signature.split('\n');
+      
+      expect(lines.length).toBe(2);
+      expect(lines[0]).toBe('✘ [ERROR] No matching export...');
+      expect(lines[1]).toBe('error TS2322: Type string is not assignable to type number.');
     });
   });
 

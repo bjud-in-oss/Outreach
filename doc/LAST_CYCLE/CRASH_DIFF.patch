@@ -1,433 +1,138 @@
-diff --git a/scripts/lib/channelRunner.ts b/scripts/lib/channelRunner.ts
-index 9c59ae2..c559080 100644
---- a/scripts/lib/channelRunner.ts
-+++ b/scripts/lib/channelRunner.ts
-@@ -59,24 +59,78 @@ export const inspectionTools = [
- ];
- 
- export function executeInspection(name: string, args: any): string {
--  console.log(`[executeInspection] ${name}`, args);
--  return JSON.stringify({ error: 'Inspection tool not fully implemented in channelRunner.ts' });
-+  if (name === 'read_file') {
-+    const full = path.resolve(ROOT_DIR, args.file_path);
-+    if (!fs.existsSync(full)) return `Filen ${args.file_path} finns inte.`;
-+    return fs.readFileSync(full, 'utf-8');
-+  }
-+  if (name === 'list_files') {
-+    const rel = args.directory_path || '.';
-+    const full = path.resolve(ROOT_DIR, rel);
-+    if (!fs.existsSync(full)) return `Katalogen ${rel} finns inte.`;
-+    const entries = fs.readdirSync(full, { withFileTypes: true });
-+    return entries.map((e) => `${e.isDirectory() ? '[DIR]' : '[FIL]'} ${e.name}`).join('\n');
-+  }
-+  return 'Okänt verktyg';
- }
- 
--export function diagnostiseraRotOrsak(error: any): void {
--  console.log(`[Diagnostics] Analyserar fel...`);
-+export async function diagnostiseraRotOrsak(
-+  ai: any,
-+  modelName: string,
-+  contextTitle: string,
-+  errorLog: string,
-+  sourceContext: string,
-+  si: string
-+): Promise<string> {
-+  console.log(`[Diagnostics] Startar 2-sessioners rotorsaksanalys för ${contextTitle}...`);
-+  
-+  const startAnchor = `KONTEXT: ${contextTitle}\n\nFELLOGG:\n${errorLog}\n\nKÄLLKOD:\n${sourceContext}`;
-+  
-+  const vannaOmInstruction = `Analysera felloggen och svara på följande:\n1. Varför 1–3: Identifiera 3 ortogonala hypoteser till varför felet uppstår.\n2. Formulera en Epistemisk Falsifieringsfråga för att testa hypoteserna.`;
-+  
-+  const vannaOmResultat = await runMicroChannel(
-+    ai,
-+    modelName,
-+    'Att vända om',
-+    vannaOmInstruction,
-+    startAnchor,
-+    si,
-+    inspectionTools,
-+    executeInspection
-+  );
-+  
-+  let adrHeaders = '';
-   try {
-     const decisionsPath = path.join(process.cwd(), 'doc', 'DECISIONS.md');
-     if (fs.existsSync(decisionsPath)) {
-       const decisions = fs.readFileSync(decisionsPath, 'utf-8');
-       const adrMatches = decisions.match(/^## ADR-.*$/gm);
-       if (adrMatches) {
--        console.log(`[Diagnostics] Relevanta ADRs:`, adrMatches.join(', '));
-+        adrHeaders = adrMatches.join('\n');
-       }
-     }
-   } catch (fsError) {
-     console.warn(`[Diagnostics] Kunde inte läsa doc/DECISIONS.md`);
-   }
-+  
-+  const forlikasInstruction = `Utvärdera tidigare analysresultat och formulera:\n1. Varför 4–5+: Fördjupad analys och slutsats.\n2. Sammanställd rotorsak baserad på falsifiering.`;
-+  const forlikasAnchor = `${startAnchor}\n\nATT VÄNDA OM RESULTAT:\n${vannaOmResultat}\n\nRELEVANTA ADR:\n${adrHeaders}`;
-+  
-+  const forlikasResultat = await runMicroChannel(
-+    ai,
-+    modelName,
-+    'Att förlikas',
-+    forlikasInstruction,
-+    forlikasAnchor,
-+    si,
-+    inspectionTools,
-+    executeInspection
-+  );
-+  
-+  const logContent = `## Rotorsaksanalys: ${contextTitle}\n\n${vannaOmResultat}\n\n${forlikasResultat}`;
-+  appendCycleLog('ROTORSAKSANALYS', logContent);
-+  
-+  return logContent;
- }
- 
- interface ChannelOptions {
-diff --git a/scripts/lib/fas2Loop.ts b/scripts/lib/fas2Loop.ts
-index ec0e78c..ca0497f 100644
---- a/scripts/lib/fas2Loop.ts
-+++ b/scripts/lib/fas2Loop.ts
-@@ -3,6 +3,8 @@ import * as path from 'path';
- import { execSync } from 'child_process';
- import { runMicroChannel } from './fas1Sweep.js';
- import { execCaptured } from './shellAndBackup.js';
-+import { getRequiredFiles } from './ticketAndAnchor.js';
-+import { planContextBatches } from './contextBatcher.js';
- import { hanteraFas2TestFel, RecoveryState } from './fas2Recovery.js';
- 
- export async function korFas2Loop(
-@@ -74,9 +76,23 @@ ${startAnchor}`;
-   }
- 
-   console.log('\n⚡ Exekverar kodändringar via Bidi Live WebSocket...');
--  
--  // Vi kör loopen och låter agenten uppdatera
--  await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, startAnchor, systemInstruction, codegenTools, executeFas2Tools, {
+diff --git a/src/features/path/__tests__/tck-064.test.ts b/src/features/path/__tests__/tck-064.test.ts
+new file mode 100644
+index 0000000..19a77ba
+--- /dev/null
++++ b/src/features/path/__tests__/tck-064.test.ts
+@@ -0,0 +1,72 @@
++import { describe, it, expect } from 'vitest';
++import { 
++  PromptCompileInputSchema, 
++  CompiledPromptSchema, 
++  ProvningsportOptionsSchema, 
++  BidiLiveAdapterConfigSchema, 
++  OrchestratorConfigSchema 
++} from '../src/features/path/contracts/pathSchema';
++import type { StepNode, PortNode } from '../src/features/path/model/types';
++import { z } from 'zod';
 +
-+  const existingTargetFiles = getRequiredFiles(startAnchor, isMaint, targetDomain)
-+    .filter((f) => fs.existsSync(path.resolve(process.cwd(), f)));
-+  let prepackedTargets = '';
-+  if (existingTargetFiles.length > 0) {
-+    const batchPlan = planContextBatches(existingTargetFiles, '', 24000);
-+    const packedPass1 = batchPlan.pass1
-+      .map((entry) => `\n--- ${entry.path} (${entry.lineCount} rader) ---\n${entry.content}`)
-+      .join('\n');
-+    const pass2Notice = batchPlan.pass2.length > 0
-+      ? `\n\n⚠️ Följande målfiler rymdes inte i första 24K-fönstret och måste läsas med 'read_file' före 'apply_patch': ${batchPlan.pass2.map((e) => e.path).join(', ')}`
-+      : '';
-+    prepackedTargets = `\n\nBEFINTLIGA MÅLFILER (FÖRBEREDDA FÖR KIRURGISK apply_patch):\n${packedPass1}${pass2Notice}`;
-+  }
-+  const enrichedFas2Anchor = `${startAnchor}${prepackedTargets}`;
-+
-+  await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, enrichedFas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
-     requireMutation: true,
-     maxTurns: 8,
-     onMutationCheck: isFas2Complete,
-diff --git a/scripts/lib/ticketAndAnchor.ts b/scripts/lib/ticketAndAnchor.ts
-index 7f67712..f2bc7d1 100644
---- a/scripts/lib/ticketAndAnchor.ts
-+++ b/scripts/lib/ticketAndAnchor.ts
-@@ -24,6 +24,12 @@ export function getRequiredFiles(ticketPrompt: string, isMaint: boolean, targetD
-   return Array.from(new Set(promptFiles)).filter(f => !f.includes('__tests__') && !f.endsWith('index.ts'));
- }
- 
-+export function extractErrorSignature(log: string, maxLines = 15): string {
-+  const lines = log.split('\n');
-+  const signatureRegex = /Error|FAIL|Transform failed|SyntaxError|TypeError|AssertionError|error TS|RADGRÄNSBROTT|✘|\[ERROR\]|❌|File:/;
-+  return lines.filter(line => signatureRegex.test(line)).slice(0, maxLines).join('\n');
-+}
-+
- export function getCompactTicketWindow(ticketsMdContent: string, recentVerifiedLimit = 5): string {
-   const lines = ticketsMdContent.split('\n');
-   const verifiedLines = lines.filter(l => l.includes('(VERIFIED)'));
-@@ -44,6 +50,12 @@ export function validateTicketScope(ticketPrompt: string, isMaint: boolean, targ
-   if (required.length > 4) {
-     return { valid: false, reason: `För många målfiler angivna (${required.length}). Maximalt 4 målfiler tillåtna per biljett. Vänligen klyv biljetten.` };
-   }
-+  
-+  const existingFiles = required.filter(f => fs.existsSync(f));
-+  if (existingFiles.length > 2) {
-+    return { valid: false, reason: `För många existerande målfiler angivna (${existingFiles.length}). Maximalt 2 existerande målfiler tillåtna per biljett. Vänligen klyv biljetten.` };
-+  }
-+
-   return { valid: true };
- }
- 
-diff --git a/scripts/run-planera-live.ts b/scripts/run-planera-live.ts
-index 65f1c32..b5f5df2 100644
---- a/scripts/run-planera-live.ts
-+++ b/scripts/run-planera-live.ts
-@@ -2,21 +2,21 @@ import * as fs from 'fs';
- import * as path from 'path';
- import { execSync } from 'child_process';
- import { GoogleGenAI } from '@google/genai';
--import { BidiLiveSession } from './bidiLiveRunner.js';
--import { execCaptured, dumpCrashDiff, restoreScriptsBackup, createVerifiedScriptsBackup } from './lib/shellAndBackup.js';
--import { getFeatureIndexText, getInstalledDependencies, appendCycleLog } from './lib/channelRunner.js';
-+import { dumpCrashDiff, restoreScriptsBackup, createVerifiedScriptsBackup } from './lib/shellAndBackup.js';
-+import { getFeatureIndexText, appendCycleLog, runMicroChannel } from './lib/channelRunner.js';
- import { hanteraKonstruktivKritik } from './lib/critiqueTriage.js';
- import { exekveraFas1Sweep } from './lib/fas1Sweep.js';
- import { korFas2Loop } from './lib/fas2Loop.js';
- import { codegenTools, createFas2ToolExecutor, isFas2Complete, getFas2FollowupPrompt } from './lib/fas2Tooling.js';
- import { konsolideraTest, synkaDomanBarrel, uppdateraFeatureIndex, uppdateraBiljettstatus, hanteraTrepunktsbesiktning, genomforGitCommitPush, saneraSkordadLegacy } from './lib/fas3Consolidation.js';
-+import { getCompactTicketWindow, validateTicketScope } from './lib/ticketAndAnchor.js';
- 
- const ROOT_DIR = process.cwd();
- const CYCLE_LOG_DIR = path.join(ROOT_DIR, 'doc', 'LAST_CYCLE');
- const CYCLE_LOG_PATH = path.join(CYCLE_LOG_DIR, 'CYCLE_LOG.md');
--const CRASH_DUMP_PATH = path.join(CYCLE_LOG_DIR, 'CRASH_DUMP.json');
- const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
- const TICKETS_PATH = path.join(ROOT_DIR, 'doc', 'TICKETS.md');
-+const IMPROVEMENTS_PATH = path.join(ROOT_DIR, 'doc', 'PROCESS_IMPROVEMENTS.md');
- 
- const MODEL_NAME = process.env.LIVE_MODEL || process.env.GEMINI_MODEL || 'gemini-3.8-live';
- const API_KEY = process.env.GEMINI_API_KEY;
-@@ -27,62 +27,23 @@ if (!API_KEY) {
- }
- 
- const ai = new GoogleGenAI({ apiKey: API_KEY, apiVersion: 'v1alpha' });
--
- if (!fs.existsSync(CYCLE_LOG_DIR)) fs.mkdirSync(CYCLE_LOG_DIR, { recursive: true });
- 
--process.on("exit", (code) => {
-+process.on('exit', (code) => {
-   if (code !== 0) {
-     dumpCrashDiff();
-     restoreScriptsBackup();
-   }
- });
- 
--let systemInstruction = 'Du är motorn i Outreach Coordination Engine v10.5.';
--if (fs.existsSync(SI_PATH)) systemInstruction = fs.readFileSync(SI_PATH, 'utf-8');
--
--async function runMicroChannel(
--  kraft: 'Att följa' | 'Att vända om' | 'Att förlikas',
--  stepInstruction: string,
--  startAnchor: string,
--  si: string,
--  tools: any[] = [],
--  executeTool?: (name: string, args: any) => string,
--  options: any = {}
--): Promise<string> {
--  const runner = new BidiLiveSession({
--    ai,
--    model: MODEL_NAME,
--    systemInstruction: `${si}\n\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\n\n${getInstalledDependencies()}\n\nDu agerar som kraften: ${kraft}.\nUppgift: ${stepInstruction}`,
--    tools,
--    executeTool,
--  });
--
--  try {
--    let response = await runner.send(`STARTANKARE:\n${startAnchor}\n\nUPPDRAG:\n${stepInstruction}`);
--    const maxTurns = options.maxTurns || 3;
--    let turn = 1;
--
--    while (options.requireMutation && options.onMutationCheck && !options.onMutationCheck() && turn < maxTurns) {
--      turn++;
--      const followUp = options.getFollowupPrompt ? options.getFollowupPrompt() : `Du har genomfört inspektion. Slutför nu uppdraget omedelbart!`;
--      console.log(`\n   🔁 [ACTION LOOP]: Krav ej uppfyllt ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
--      response = await runner.send(followUp);
--    }
--
--    runner.close();
--    await new Promise((r) => setTimeout(r, 400));
--    return response;
--  } catch (err: any) {
--    runner.close();
--    await new Promise((r) => setTimeout(r, 400));
--    throw err;
--  }
--}
-+const systemInstruction = fs.existsSync(SI_PATH)
-+  ? fs.readFileSync(SI_PATH, 'utf-8')
-+  : 'Du är motorn i Outreach Coordination Engine v10.5.';
- 
- async function main() {
--  const isMaintRun = process.argv.some(a => a.toUpperCase().includes("MAINT"));
-+  const isMaintRun = process.argv.some((a) => a.toUpperCase().includes('MAINT'));
-   if (isMaintRun) {
--    try { createVerifiedScriptsBackup(); } catch (e: any) { process.exit(1); }
-+    try { createVerifiedScriptsBackup(); } catch { process.exit(1); }
-   }
- 
-   const ticketArg = process.argv[2];
-@@ -101,8 +62,10 @@ async function main() {
-   console.log(`\n🚀 OUTREACH COORDINATION ENGINE v10.5 – STARTAR BYGG: ${ticketId}`);
-   console.log(`📌 Aktiv Live-modell: ${MODEL_NAME}`);
- 
--  let ticketPath = path.join(ROOT_DIR, 'PROMPT.md');
--  if (ticketId !== 'PROMPT') ticketPath = path.join(ROOT_DIR, 'doc', '.TICKETS', `${ticketId}.md`);
-+  const ticketPath = ticketId === 'PROMPT'
-+    ? path.join(ROOT_DIR, 'PROMPT.md')
-+    : path.join(ROOT_DIR, 'doc', '.TICKETS', `${ticketId}.md`);
-+
-   if (!fs.existsSync(ticketPath)) {
-     console.error(`❌ Biljettfil saknas: ${ticketPath}`);
-     process.exit(1);
-@@ -112,86 +75,79 @@ async function main() {
-   let targetDomain = isMaint ? 'scripts' : 'telemetry';
-   const domainMatch = ticketPrompt.match(/src\/features\/([a-zA-Z0-9_-]+)/);
-   if (domainMatch && !isMaint) targetDomain = domainMatch[1];
--  
--  console.log(`🎯 Måldomän: ${isMaint ? 'scripts/ & doc/ (Underhåll)' : `src/features/${targetDomain}/`}\n`);
- 
--  try { execSync('node scripts/update-tickets.js', { cwd: ROOT_DIR }); } catch (err) { console.warn('⚠️ Kunde inte köra scripts/update-tickets.js:', err); }
-+  const scope = validateTicketScope(ticketPrompt, isMaint, targetDomain);
-+  if (!scope.valid) {
-+    console.error(`❌ [OMFÅNGSSPÄRR]: ${scope.reason}`);
-+    process.exit(1);
-+  }
-+
-+  console.log(`🎯 Måldomän: ${isMaint ? 'scripts/ & doc/ (Underhåll)' : `src/features/${targetDomain}/`}\n`);
-+  try { execSync('node scripts/update-tickets.js', { cwd: ROOT_DIR }); } catch {}
- 
-   fs.writeFileSync(CYCLE_LOG_PATH, `# BYGGCYKEL LOGG: ${ticketId}\n**Starttid:** ${new Date().toISOString()}\n**Modell:** ${MODEL_NAME}\n\n---\n### INITIAL PROMPT\n\`\`\`\n${ticketPrompt}\n\`\`\`\n`, 'utf-8');
- 
--  let testExt = 'ts';
-   const domainDir = path.join(ROOT_DIR, 'src', 'features', targetDomain);
--  const hasTsxExtensions = (dir: string): boolean => {
--    if (!fs.existsSync(dir)) return false;
--    const items = fs.readdirSync(dir, { withFileTypes: true });
--    for (const item of items) {
--      if (item.isDirectory() && item.name !== '__tests__') {
--        if (hasTsxExtensions(path.join(dir, item.name))) return true;
--      } else if (item.name.endsWith('.tsx')) {
--        return true;
--      }
--    }
--    return false;
--  };
--
--  if (targetDomain === 'a2ui' || ticketPrompt.includes('.tsx') || ticketPrompt.includes('React') || hasTsxExtensions(domainDir)) {
--    testExt = 'tsx';
--  }
--
-+  const testExt = (targetDomain === 'a2ui' || ticketPrompt.includes('.tsx') || ticketPrompt.includes('React')) ? 'tsx' : 'ts';
-   const transientTestFile = `src/__tests__/transient_${ticketId}.test.${testExt}`;
-   const transientTestFullPath = path.join(ROOT_DIR, transientTestFile);
- 
--  ['ts', 'tsx'].forEach(ext => {
--    const globPattern = path.join(ROOT_DIR, 'src', '__tests__', `transient_*.test.${ext}`);
--    const files = execSync(`ls ${globPattern} 2>/dev/null || true`, { encoding: 'utf-8' }).split('\n').filter(Boolean);
--    for (const f of files) {
--      if (fs.existsSync(f)) {
--        console.log(`🧹 [STARTSANERING]: Tar bort transient testfil: ${path.basename(f)}`);
--        fs.unlinkSync(f);
--      }
--    }
-+  ['ts', 'tsx'].forEach((ext) => {
-+    const files = execSync(`ls ${path.join(ROOT_DIR, 'src', '__tests__', `transient_*.test.${ext}`)} 2>/dev/null || true`, { encoding: 'utf-8' }).split('\n').filter(Boolean);
-+    files.forEach((f) => { if (fs.existsSync(f)) fs.unlinkSync(f); });
-   });
- 
--  try {
--    const gitStatus = execSync(`git status --porcelain src/`, { encoding: 'utf-8', cwd: ROOT_DIR });
--    const untracked = gitStatus.split('\n').filter(l => l.startsWith('?? ')).map(l => l.substring(3).trim());
--    for (const f of untracked) {
--      const full = path.resolve(ROOT_DIR, f);
--      if (fs.existsSync(full) && !fs.lstatSync(full).isDirectory()) {
--        console.log(`🧹 [STARTSANERING]: Tar bort ospårad fil i src/: ${f}`);
--        fs.unlinkSync(full);
-+  const syncDomainBarrel = () => {
-+    if (isMaint) return;
-+    const barrelPath = path.join(domainDir, 'index.ts');
-+    if (!fs.existsSync(barrelPath) || !fs.existsSync(domainDir)) return;
-+    let barrelContent = fs.readFileSync(barrelPath, 'utf-8');
-+    const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-+      const full = path.join(dir, e.name);
-+      if (e.isDirectory()) return e.name === '__tests__' ? [] : walk(full);
-+      if ((e.name.endsWith('.ts') || e.name.endsWith('.tsx')) && e.name !== 'index.ts' && !e.name.includes('.test.')) {
-+        return [path.relative(domainDir, full).replace(/\.(ts|tsx)$/, '').replace(/\\/g, '/')];
-       }
-+      return [];
++describe('TCK-064 Harmoniseringskontroll', () => {
++  it('ska validera uppdaterade Zod-scheman i pathSchema.ts', () => {
++    // 1. Kontrollera PromptCompileInputSchema (inga duplicerade nycklar, använder z.record)
++    const promptCompileInput = PromptCompileInputSchema.parse({
++      id: 'test-1',
++      metadata: { key: 'value' }
 +    });
-+    for (const mod of walk(domainDir)) {
-+      if (!barrelContent.includes(`./${mod}`)) barrelContent = barrelContent.trim() + `\nexport * from './${mod}';\n`;
-     }
--  } catch (err: any) {
--    console.warn(`⚠️ [STARTSANERING]: Kunde inte rensa ospårade filer: ${err?.message || err}`);
--  }
-+    fs.writeFileSync(barrelPath, barrelContent, 'utf-8');
-+  };
- 
--  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}`;
-+  const recentTickets = fs.existsSync(TICKETS_PATH) ? getCompactTicketWindow(fs.readFileSync(TICKETS_PATH, 'utf-8'), 5) : '';
-+  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\n${recentTickets}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}`;
- 
--  console.log('### FAS 0: PREMISSVALIDERING & DÖRRVAKT');
--  await exekveraFas1Sweep(ai, systemInstruction, ticketId, ticketPrompt, startAnchor, runMicroChannel);
-+  const planContract = await exekveraFas1Sweep(ai, MODEL_NAME, ticketPrompt, systemInstruction, startAnchor, isMaint, appendCycleLog);
- 
-   console.log('\n### FAS 2: KÄLLKODSEXEKVERING\n');
--  let codeSaved = { value: false };
-+  const codeSaved = { value: false };
-   const modifiedFiles: string[] = [];
-   const createdModules: string[] = [];
-   const executeFas2Tools = createFas2ToolExecutor(isMaint, targetDomain, modifiedFiles, createdModules, codeSaved, ticketPrompt, ticketPath);
--
--  process.argv.forEach((val, index) => {
--    if (val.startsWith('--omvandelse=')) {
--      const parts = val.split('=');
--      if (parts.length > 1) {
--        process.argv[index] = '--omvandelse=0';
--        console.log(`🔄 [OMVÄNDELSERÄKNARE]: Nollställer omvändelseregnaren före --kritik-iter=1`);
--      }
--    }
--  });
-+  const fas2Prompt = `Genomför samtliga källkodsändringar i kontraktet. Använd 'apply_patch' på befintliga filer och 'save_code' endast för nya filer.\nBYGGKONTRAKT:\n${planContract}`;
- 
-   await korFas2Loop(
--    ai, systemInstruction, ticketId, ticketPath, targetDomain, startAnchor, runMicroChannel, transientTestFile, transientTestFullPath, isMaint, codeSaved, modifiedFiles, createdModules, codegenTools, executeFas2Tools, isFas2Complete, getFas2FollowupPrompt
-+    ai,
-+    MODEL_NAME,
-+    isMaint,
-+    targetDomain,
-+    `BILJETTKONTRAKT:\n${ticketPrompt}\n\nBYGGKONTRAKT:\n${planContract}`,
-+    systemInstruction,
-+    codegenTools,
-+    executeFas2Tools,
-+    fas2Prompt,
-+    () => isFas2Complete(codeSaved, ticketPath, isMaint, targetDomain, modifiedFiles),
-+    () => getFas2FollowupPrompt(ticketPath, isMaint, targetDomain, modifiedFiles),
-+    transientTestFile,
-+    transientTestFullPath,
-+    syncDomainBarrel,
-+    modifiedFiles
-   );
- 
-   if (!isMaint) {
-+    execSync(`node scripts/drivers/ts.js --check-alibi --file ${transientTestFile}`, { stdio: 'inherit', cwd: ROOT_DIR });
-     konsolideraTest(targetDomain, ticketId, testExt, createdModules, transientTestFullPath);
-     synkaDomanBarrel(targetDomain, createdModules);
-     uppdateraFeatureIndex(targetDomain, createdModules);
-@@ -201,6 +157,15 @@ async function main() {
-   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
-   if (!isMaint) saneraSkordadLegacy(ticketPath);
- 
-+  if (!process.argv.includes('--kritik-iter')) {
-+    const cycleSummary = fs.existsSync(CYCLE_LOG_PATH) ? fs.readFileSync(CYCLE_LOG_PATH, 'utf-8').slice(-4000) : ticketId;
-+    const kritik = await hanteraKonstruktivKritik(ai, MODEL_NAME, ticketId, cycleSummary, systemInstruction, IMPROVEMENTS_PATH);
-+    if (kritik.harStorSkillnad) {
-+      execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --kritik-iter=1 --omvandelse=0`, { stdio: 'inherit', cwd: ROOT_DIR });
-+      process.exit(0);
-+    }
-+  }
++    expect(promptCompileInput.id).toBe('test-1');
++    
++    // Testa z.record struktur
++    const recordCheck = z.record(z.string(), z.unknown()).parse({ extra: 123 });
++    expect(recordCheck.extra).toBe(123);
 +
-   if (isMaint) {
-     await hanteraTrepunktsbesiktning(ticketId, ai, systemInstruction);
-   }
-@@ -208,8 +173,8 @@ async function main() {
-   genomforGitCommitPush(isMaint, ticketId, targetDomain);
++    // 2. Kontrollera CompiledPromptSchema med systemPrompt
++    const compiledPrompt = CompiledPromptSchema.parse({
++      template: 'tpl',
++      systemPrompt: 'sys-prompt'
++    });
++    expect(compiledPrompt.systemPrompt).toBe('sys-prompt');
++
++    // 3. Kontrollera ProvningsportOptionsSchema med testKod
++    const provningsportOptions = ProvningsportOptionsSchema.parse({
++      testKod: 'console.log("test");'
++    });
++    expect(provningsportOptions.testKod).toBe('console.log("test");');
++
++    // 4. Kontrollera BidiLiveAdapterConfigSchema med default maxReconnectAttempts = 6
++    const bidiConfig = BidiLiveAdapterConfigSchema.parse({});
++    expect(bidiConfig.maxReconnectAttempts).toBe(6);
++
++    // 5. Kontrollera OrchestratorConfigSchema med uppdragsTyp och maxYttreOmvandelseForsok
++    const orchestratorConfig = OrchestratorConfigSchema.parse({});
++    expect(orchestratorConfig.uppdragsTyp).toBe('TCK');
++    expect(orchestratorConfig.maxYttreOmvandelseForsok).toBe(4);
++  });
++
++  it('ska säkerställa valfri run? på StepNode och PortNode', () => {
++    // Om typerna tillåter valfri run?, kan vi skapa objekt utan run
++    const stepNode: StepNode = {
++      id: 'step-1',
++      type: 'simple'
++      // run är utelämnat, vilket ska vara OK
++    };
++    expect(stepNode.id).toBe('step-1');
++
++    const portNode: PortNode = {
++      id: 'port-1',
++      name: 'port-name'
++      // run är utelämnat, vilket ska vara OK
++    };
++    expect(portNode.id).toBe('port-1');
++
++    // Kan även ha run definierat
++    const stepNodeWithRun: StepNode = {
++      id: 'step-2',
++      type: 'simple',
++      run: async () => {}
++    };
++    expect(stepNodeWithRun.id).toBe('step-2');
++  });
++});
+diff --git a/src/features/path/contracts/pathSchema.ts b/src/features/path/contracts/pathSchema.ts
+index 13afd12..d16a504 100644
+--- a/src/features/path/contracts/pathSchema.ts
++++ b/src/features/path/contracts/pathSchema.ts
+@@ -83,17 +83,15 @@ export const PromptCompileInputSchema = z.object({
+     kalltidsStamplar: z.string().optional(),
+   })).optional(),
+   doman: z.string().optional(),
+-  malDoman: z.string().optional(),
+-  stegId: z.string().optional(),
+-  ticketId: z.string().optional(),
+ });
+ 
+ export const CompiledPromptSchema = z.object({
+   templateId: z.string().optional(),
+   instructions: z.string().optional(),
+   model: z.string().optional(),
+-  variables: z.record(z.any()).optional(),
++  variables: z.record(z.string(), z.unknown()).optional(),
+   renderedContent: z.string().optional(),
++  systemPrompt: z.string().optional(),
+   systemInstruction: z.string().optional(),
+   userPrompt: z.string().optional(),
+   beraknadeTokensUngefar: z.number().optional(),
+@@ -108,7 +106,7 @@ export const BidiLiveAdapterConfigSchema = z.object({
+   model: z.string().default('gemini-3.8-live'),
+   systemInstruction: z.string().optional(),
+   modality: z.enum(['AUDIO', 'TEXT']).default('AUDIO'),
+-  maxReconnectAttempts: z.number().default(5),
++  maxReconnectAttempts: z.number().default(6),
+   baseBackoffMs: z.number().default(1000),
+   maxJitterMs: z.number().default(1000),
+   eventBus: z.custom<any>().optional(),
+@@ -124,6 +122,8 @@ export const OrchestratorConfigSchema = z.object({
+   malDoman: z.string(),
+   uppdrag: z.string(),
+   kontextMinne: z.record(z.any()).optional(),
++  uppdragsTyp: z.enum(['TCK', 'MAINT']).default('TCK'),
++  maxYttreOmvandelseForsok: z.number().min(1).max(4).default(4),
+ });
+ 
+ export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;
+diff --git a/src/features/path/model/types.ts b/src/features/path/model/types.ts
+index afddfd4..ded7d64 100644
+--- a/src/features/path/model/types.ts
++++ b/src/features/path/model/types.ts
+@@ -28,11 +28,13 @@ export interface StepResult {
+ export interface StepNode extends BaseNode {
+   type: 'STEP';
+   execute: (kontext: PathContext) => Promise<StepResult>;
++  run?: (kontext: PathContext) => Promise<StepResult>;
  }
  
--main().catch(err => {
-+main().catch((err) => {
-   dumpCrashDiff();
--  console.error("\n💥 Byggfel:", err);
-+  console.error('\n💥 Byggfel:', err);
-   process.exit(1);
- });
+ export interface PortNode extends BaseNode {
+   type: 'PORT';
+   port: Port;
++  run?: (kontext: PathContext) => Promise<PortResult>;
+ }
+ 
+ export type PathNode = StepNode | PortNode;

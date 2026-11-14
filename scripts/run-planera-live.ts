@@ -153,8 +153,8 @@ async function main() {
     uppdateraFeatureIndex(targetDomain, createdModules);
   }
 
-  uppdateraBiljettstatus(ticketId);
   execSync('pnpm verify', { stdio: 'inherit', cwd: ROOT_DIR });
+  uppdateraBiljettstatus(ticketId);
   if (!isMaint) saneraSkordadLegacy(ticketPath);
 
   if (!process.argv.includes('--kritik-iter')) {

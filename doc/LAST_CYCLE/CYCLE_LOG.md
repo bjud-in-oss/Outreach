@@ -1,29 +1,32 @@
-# BYGGCYKEL LOGG: TCK-MAINT-081
-**Starttid:** 2026-11-14T23:02:56.813Z
+# BYGGCYKEL LOGG: TCK-MAINT-079
+**Starttid:** 2026-11-14T23:14:46.202Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-081: Samla samtliga matchande felrader ur hela loggen i extractErrorSignature och verifiera med enhetstest
+# TCK-MAINT-079: Koppla extractErrorSignature, asynkron diagnostiseraRotOrsak, ADR-019 Fail-First-generering & recovery-loopar i fas2Recovery.ts och fas2Loop.ts
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/lib/ticketAndAnchor.ts`, `scripts/__tests__/scriptLibs.test.ts`
-**Förutsättning:** `TCK-MAINT-079` måste vara `VERIFIED`.
+**Målfiler:** `scripts/lib/fas2Recovery.ts`, `scripts/lib/fas2Loop.ts`
+**Förutsättning:** `TCK-MAINT-078` måste vara `VERIFIED`.
 **Mekanisk Acceptans:**
-1. `scripts/lib/ticketAndAnchor.ts` (< 175 rader) uppdaterar `extractErrorSignature(log: string, maxLines = 15): string` till att filtrera **hela** loggen (`log.split('\n').filter(l => signatureRegex.test(l)).slice(0, maxLines).join('\n')`) så att felrader överst aldrig klipps bort av långa Node-stacktraces längst ned.
-2. `scripts/__tests__/scriptLibs.test.ts` (< 125 rader) lägger till ett enhetstest för `extractErrorSignature` som bevisar att både `✘ [ERROR] No matching export...` och `error TS2322` extraheras ur en 30-raders logg medan stacktrace-rader filtreras bort.
+1. `scripts/lib/fas2Recovery.ts` (< 215 rader) tar bort sin lokala stubb `diagnostiseraRotOrsak`, importerar i stället `extractErrorSignature` från `./ticketAndAnchor.js` och den asynkrona `diagnostiseraRotOrsak` från `./channelRunner.js`, läser automatiskt in eventuella externa felande filer som nämns i felloggen, anropar `planContextBatches(files, errorLog)` & `buildCrashDumpPayload(data)` från `./contextBatcher.js` med korrekta argumentsignaturer samt nollställer omvändelseräknaren till `0` vid lyckat bygge.
+2. `scripts/lib/fas2Loop.ts` (< 195 rader):
+   - När `!isMaint`: kör först en `Att följa`-mikrokanal med verktyg låsta till **enbart `transientTestFile`** (avvisar skrivning till `src/features/` enligt `ADR-019`) så att `transientTestFile` faktiskt existerar på disk med relativa importer `../features/${targetDomain}/...` **innan** Gate 3a (`ts.js --check-alibi`) och röd Fail-First (`npx vitest run ${transientTestFile}`) verifieras.
+   - Behåller `planContextBatches`-förpackningen av befintliga målfiler (max `24 000` tecken), `maxTurns: 8` och ovillkorlig `isFas2Complete()`-spärr.
+   - Kopplar in `korMaintValidering` (när `isMaint`) samt den 3-försöks Vitest + Gate 2c + `hanteraFas2TestFel`-återhämtningsloopen (när `!isMaint`) efter källkodsändringarna.
 3. `pnpm verify` passerar med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag förstår att vi behöver justera hur felmeddelanden fångas upp, så att inte viktiga felrader försvinner i långa stacktraces från Node. Det gör det mycket lättare att förstå vad som faktiskt gick fel. Är allt klart att börja med detta?
+Hej! Jag har förstått din avsikt med TCK-MAINT-079. Uppdraget handlar om att stärka systemets resiliens och felhantering genom att koppla samman rätt diagnostikverktyg och säkerställa att testerna genereras och körs enligt våra rutiner. Det i sin tur bygger en tryggare utvecklingsmiljö. Är du redo för att vi går vidare?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit slutförd. Uppdraget omfattar en enskild domän (`scripts`) utan några latenta beroenden. Alla mekaniska krav och filstorleksgränser är strikt validerade och godkända.
+Kontraktsaudit genomförd. Måldomänen scripts isoleras, och vi uppfyller kraven för destruktiv sanering.
 
 
 #### 0b Att förlikas: Vägval
@@ -35,26 +38,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa kontraktet TCK-MAINT-081 formulerar jag tre ortogonala alternativ:
+Vi har tre ortogonala alternativ för att lösa detta.
 
-Alternativ 1 innebär en ren array-baserad funktionell filtrering där hela loggen delas upp och filtreras sekventiellt med regex.
+Det första alternativet är direkt integration och procedurell återhämtning: vi integrerar feldiagnostiken direkt i modulerna och kör testgenereringen sekventiellt i loopen.
 
-Alternativ 2 fokuserar på en iterativ bearbetning för att undvika onödig minnesallokering om loggarna skulle växa sig extremt stora.
+Det andra alternativet fokuserar på delegerad diagnostik och fabriksbaserad testgenerering: vi flyttar analysen till externa tjänster och använder en specifik modul för att säkerställa att testfilen är korrekt etablerad innan testcykeln startar.
 
-Alternativ 3 bygger ut signaturinspektionen till att inte bara fånga felraden utan även bevara viss kontext kring var i koden felet uppstod.
+Det tredje alternativet är ett händelsestyrt system och isolerade återhämtningskrokar, där felaktiga tillstånd hanteras asynkront och orkestrerar cykelns respons.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Jag går in i rollen som Att vända om och utför resiliensgranskningen av alternativen.
-
-Alternativ 1 är det mest resilienta och direkt anpassat till byggkontraktet. Det använder en ren, funktionell metodik som håller källkoden extremt fokuserad och fri från latenta fel.
-
-Alternativ 2 och 3 innebär onödig komplexitet för den givna uppgiften, vilket bryter mot enkelhetsprincipen.
-
-Jag rekommenderar därför Alternativ 1 för att säkra stabila och deterministiska resultat. STATUS: GODKÄND att gå vidare med.
+Alternativen har olika riskprofiler för resiliens. Det första alternativet är för tätt kopplat och riskerar dominoeffekter. Det tredje alternativet är händelsestyrt, vilket är bra men kan komplicera loopen i onödan. Det andra alternativet erbjuder bäst isolering och direkt stöd för ADR-019, vilket stärker resiliensen mot latenta fel.
 
 
 #### 2d Att förlikas: Mättnad
-Jag bekräftar analysen från Att vända om. Genom att låta enkelhet och resiliens vägleda oss, står det klart att Alternativ 1 är det mest mogna valet för vårt byggkontrakt. Vi harmoniserar kraven och uppnår full balans i vår bedömning.
-
-MÄTTNAD: JA.
+Vi slår fast att det andra alternativet är det vinnande valet, då det ger bäst isolering och stödjer ADR-019 för starkare resiliens. MÄTTNAD: JA.
