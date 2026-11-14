@@ -59,24 +59,79 @@ export const inspectionTools = [
 ];
 
 export function executeInspection(name: string, args: any): string {
-  console.log(`[executeInspection] ${name}`, args);
-  return JSON.stringify({ error: 'Inspection tool not fully implemented in channelRunner.ts' });
+  if (name === 'read_file') {
+    const full = path.resolve(ROOT_DIR, args.file_path);
+    if (!fs.existsSync(full)) return `Filen ${args.file_path} finns inte.`;
+    return fs.readFileSync(full, 'utf-8');
+  }
+  if (name === 'list_files') {
+    const rel = args.directory_path || '.';
+    const full = path.resolve(ROOT_DIR, rel);
+    if (!fs.existsSync(full)) return `Katalogen ${rel} finns inte.`;
+    const entries = fs.readdirSync(full, { withFileTypes: true });
+    return entries.map((e) => `${e.isDirectory() ? '[DIR]' : '[FIL]'} ${e.name}`).join('\n');
+  }
+  return 'Okänt verktyg';
 }
 
-export function diagnostiseraRotOrsak(error: any): void {
-  console.log(`[Diagnostics] Analyserar fel...`);
+export async function diagnostiseraRotOrsak(
+  ai: any,
+  modelName: string,
+  contextTitle: string,
+  errorLog: string,
+  sourceContext: string,
+  si: string
+): Promise<string> {
+  console.log(`[Diagnostics] Startar 2-sessioners djupanalys för: ${contextTitle}`);
+  const decisionsPath = path.join(ROOT_DIR, 'doc', 'DECISIONS.md');
+  let adrHeaders = '';
   try {
-    const decisionsPath = path.join(process.cwd(), 'doc', 'DECISIONS.md');
     if (fs.existsSync(decisionsPath)) {
       const decisions = fs.readFileSync(decisionsPath, 'utf-8');
       const adrMatches = decisions.match(/^## ADR-.*$/gm);
       if (adrMatches) {
-        console.log(`[Diagnostics] Relevanta ADRs:`, adrMatches.join(', '));
+        adrHeaders = `Relevanta ADR-rubriker:\n${adrMatches.join('\n')}`;
       }
     }
   } catch (fsError) {
     console.warn(`[Diagnostics] Kunde inte läsa doc/DECISIONS.md`);
   }
+
+  const instruction1 = `Analysera felloggen och sök efter grundorsaken.\n1. Identifiera 3 ortogonala hypotetiska orsaker till problemet.\n2. Formulera en epistemisk falsifieringsfråga för att pröva hypoteserna.\nFokusera på Varför 1-3.`;
+  const startAnchor1 = `FELLOGG:\n${errorLog}\n\nKÄLLKONTEXT:\n${sourceContext}\n\n${adrHeaders}`;
+  
+  console.log(`\n🔍 [DIAGNOSTICS] Kanal 1: Att vända om (Hypoteser & Falsifiering)`);
+  const analysis1 = await runMicroChannel(
+    ai,
+    modelName,
+    'Att vända om',
+    instruction1,
+    startAnchor1,
+    si,
+    inspectionTools,
+    executeInspection
+  );
+
+  appendCycleLog(`Diagnostics - Vända om (Session 1) - ${contextTitle}`, analysis1);
+
+  const instruction2 = `Syntetisera analysen från session 1 och formulera slutsatserna.\n1. Presentera de 3 hypoteserna och falsifieringsresultatet.\n2. Fördjupa analysen med 'Varför 4-5+' för att förstå systemiska brister.\n3. Skapa en sammanfattning som kan föras in i CYCLE_LOG.`;
+  const startAnchor2 = `FELLOGG:\n${errorLog}\n\nANALYS FRÅN SESSION 1:\n${analysis1}\n\n${adrHeaders}`;
+  
+  console.log(`\n🤝 [DIAGNOSTICS] Kanal 2: Att förlikas (Syntes & Systemisk Slutsats)`);
+  const analysis2 = await runMicroChannel(
+    ai,
+    modelName,
+    'Att förlikas',
+    instruction2,
+    startAnchor2,
+    si,
+    inspectionTools,
+    executeInspection
+  );
+
+  appendCycleLog(`Diagnostics - Förlikas (Session 2) - ${contextTitle}`, analysis2);
+
+  return analysis2;
 }
 
 interface ChannelOptions {

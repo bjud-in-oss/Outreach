@@ -5,6 +5,8 @@ Detta dokument är motorns aktiva liggare för processlärdomar, identifierad fr
 ---
 
 ## 1. Aktiva Processregler & Erfarenhetsbank
+
+- **[2026-11-14] Max 2 befintliga målfiler vid kirurgisk apply_patch (max 4 totalt vid nya filer):** Biljetter som enbart patchar befintliga filer begränsas till högst 2 målfiler så att `planContextBatches` håller Fas 2-startankaret kompakt (< 12 000 tecken) och slutförs på 1–2 vändor.
 *Här listas regler som upptäckts under byggcykler och som laddas JIT under Fas 0 och Fas 1.*
 
 - **[2026-11-14] Två-prompters 5-Varför-tratt med 3 ortogonala hypoteser vid rotpunkten:** Vid självrättning i Fas 2 och yttre omvändelse delas 5-Varför-tratten vid förgreningspunkten över **två fristående efemära sessioner** (max 2 diagnos-sessioner): (1) `Att vända om` zoomar ut mot FSD-/kontraktsintegritet och Väg 2 (`modular-expansion`), spårar enbart de inledande mekaniska faktafrågorna (**normalt `Varför 1–3`**, eller `Varför 1–2` vid tidig tvetydighet), fäller ut **3 ortogonala felhypoteser** utan rangordning, ställer den **Epistemiska Falsifieringsfrågan** och bedömer hur många djupfrågor utöver de två sista (`minst 2`, dvs. `Varför 4–5+`) som återstår; (2) `Att förlikas` startar med blankt minne, väljer fritt egna prövningsfrågor för att testa hypoteserna och anpassning av befintliga repoidéer (`FEATURE_INDEX.json` / `DECISIONS.md`), slutför de återstående `Varför 4–5+`-leden på det vinnande spåret, loggar domen i `CYCLE_LOG.md` (`sparaMetaOmvandelse`) och injicerar `EGENTLIGT_FEL` i `buildRetryAnchor`.

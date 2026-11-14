@@ -3,6 +3,8 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import { runMicroChannel } from './fas1Sweep.js';
 import { execCaptured } from './shellAndBackup.js';
+import { getRequiredFiles } from './ticketAndAnchor.js';
+import { planContextBatches } from './contextBatcher.js';
 import { hanteraFas2TestFel, RecoveryState } from './fas2Recovery.js';
 
 export async function korFas2Loop(
@@ -74,9 +76,23 @@ ${startAnchor}`;
   }
 
   console.log('\n⚡ Exekverar kodändringar via Bidi Live WebSocket...');
-  
-  // Vi kör loopen och låter agenten uppdatera
-  await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, startAnchor, systemInstruction, codegenTools, executeFas2Tools, {
+
+  const existingTargetFiles = getRequiredFiles(startAnchor, isMaint, targetDomain)
+    .filter((f) => fs.existsSync(path.resolve(process.cwd(), f)));
+  let prepackedTargets = '';
+  if (existingTargetFiles.length > 0) {
+    const batchPlan = planContextBatches(existingTargetFiles, '', 24000);
+    const packedPass1 = batchPlan.pass1
+      .map((entry) => `\n--- ${entry.path} (${entry.lineCount} rader) ---\n${entry.content}`)
+      .join('\n');
+    const pass2Notice = batchPlan.pass2.length > 0
+      ? `\n\n⚠️ Följande målfiler rymdes inte i första 24K-fönstret och måste läsas med 'read_file' före 'apply_patch': ${batchPlan.pass2.map((e) => e.path).join(', ')}`
+      : '';
+    prepackedTargets = `\n\nBEFINTLIGA MÅLFILER (FÖRBEREDDA FÖR KIRURGISK apply_patch):\n${packedPass1}${pass2Notice}`;
+  }
+  const enrichedFas2Anchor = `${startAnchor}${prepackedTargets}`;
+
+  await runMicroChannel(ai, modelName, 'Att följa', fas2Prompt, enrichedFas2Anchor, systemInstruction, codegenTools, executeFas2Tools, {
     requireMutation: true,
     maxTurns: 8,
     onMutationCheck: isFas2Complete,

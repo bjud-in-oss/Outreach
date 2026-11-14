@@ -59,8 +59,19 @@ export const inspectionTools = [
 ];
 
 export function executeInspection(name: string, args: any): string {
-  console.log(`[executeInspection] ${name}`, args);
-  return JSON.stringify({ error: 'Inspection tool not fully implemented in channelRunner.ts' });
+  if (name === 'read_file') {
+    const full = path.resolve(ROOT_DIR, args.file_path);
+    if (!fs.existsSync(full)) return `Filen ${args.file_path} finns inte.`;
+    return fs.readFileSync(full, 'utf-8');
+  }
+  if (name === 'list_files') {
+    const rel = args.directory_path || '.';
+    const full = path.resolve(ROOT_DIR, rel);
+    if (!fs.existsSync(full)) return `Katalogen ${rel} finns inte.`;
+    const entries = fs.readdirSync(full, { withFileTypes: true });
+    return entries.map((e) => `${e.isDirectory() ? '[DIR]' : '[FIL]'} ${e.name}`).join('\n');
+  }
+  return 'Okänt verktyg';
 }
 
 export function diagnostiseraRotOrsak(error: any): void {
