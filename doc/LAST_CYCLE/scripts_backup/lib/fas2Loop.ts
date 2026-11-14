@@ -5,7 +5,7 @@ import { runMicroChannel } from './fas1Sweep.js';
 import { execCaptured } from './shellAndBackup.js';
 import { getRequiredFiles } from './ticketAndAnchor.js';
 import { planContextBatches } from './contextBatcher.js';
-import { hanteraFas2TestFel, RecoveryState } from './fas2Recovery.js';
+import { hanteraFas2TestFel, RecoveryState, korMaintValidering } from './fas2Recovery.js';
 
 export async function korFas2Loop(
   ai: any,

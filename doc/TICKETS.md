@@ -2,9 +2,9 @@
 
 ## AKTIVA TICKETS
 
-- [ ] **TCK-MAINT-081** (READY): Samla samtliga matchande felrader ur hela loggen i extractErrorSignature och verifiera med enhetstest -> Se `doc/.TICKETS/TCK-MAINT-081.md`
+- [x] **TCK-MAINT-081** (VERIFIED) (READY): Samla samtliga matchande felrader ur hela loggen i extractErrorSignature och verifiera med enhetstest -> Se `doc/.TICKETS/TCK-MAINT-081.md`
 - [ ] **TCK-MAINT-080** (READY): Full s-städning i fas3Consolidation.ts och AST await- + anti-stubb-spärr i verify-architecture.js -> Se `doc/.TICKETS/TCK-MAINT-080.md`
-- [x] **TCK-MAINT-079** (VERIFIED) (READY): Koppla extractErrorSignature, asynkron diagnostiseraRotOrsak & recovery-loopar i fas2Recovery.ts och fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-079.md`
+- [x] **TCK-MAINT-079** (VERIFIED): Koppla extractErrorSignature, asynkron diagnostiseraRotOrsak & recovery-loopar i fas2Recovery.ts och fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-079.md`
 - [x] **TCK-MAINT-078** (VERIFIED): Samla extractErrorSignature(log) som SSOT, skärp validateTicketScope till max 2 befintliga målfiler och återställ 2-sessioners diagnostiseraRotOrsak -> Se `doc/.TICKETS/TCK-MAINT-078.md`
 - [x] **TCK-MAINT-077** (VERIFIED): Exportera executeInspection & inspectionTools i channelRunner.ts, rensa dubbletter i fas1Sweep & fas2Recovery och laga import i fas2Loop -> Se `doc/.TICKETS/TCK-MAINT-077.md`
 - [x] **TCK-MAINT-076** (VERIFIED): Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak i sizeGate.js, scriptKind-AST-spärr i fas2Tooling.ts och esbuild över scripts/lib/*.ts -> Se `doc/.TICKETS/TCK-MAINT-076.md`

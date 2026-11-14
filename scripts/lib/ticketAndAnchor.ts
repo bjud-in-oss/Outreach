@@ -40,16 +40,13 @@ export function getCompactTicketWindow(ticketsMdContent: string, recentVerifiedL
 }
 
 export function extractErrorSignature(log: string, maxLines = 15): string {
-  const lines = log.split('\n');
-  const relevantLines = lines.slice(-maxLines);
   const signatureRegex = /Error|FAIL|Transform failed|SyntaxError|TypeError|AssertionError|error TS|RADGRÄNSBROTT|✘|\[ERROR\]|❌|File:/;
-  
-  for (const line of relevantLines) {
-    if (signatureRegex.test(line)) {
-      return line.trim();
-    }
-  }
-  return relevantLines.length > 0 ? relevantLines[relevantLines.length - 1].trim() : 'Unknown error signature';
+  return log
+    .split('\n')
+    .filter(l => signatureRegex.test(l))
+    .slice(0, maxLines)
+    .map(l => l.trim())
+    .join('\n');
 }
 
 export function validateTicketScope(ticketPrompt: string, isMaint: boolean, targetDomain: string): { valid: boolean; reason?: string } {
