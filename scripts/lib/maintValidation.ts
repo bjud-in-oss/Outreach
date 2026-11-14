@@ -56,7 +56,7 @@ async function main() {
   runCheck('pnpm test', 'full regressionssvit');
 
   // 4. Esbuild
-  runCheck('npx esbuild scripts/run-planera-live.ts scripts/run-path.ts --bundle --platform=node --packages=external --outdir=/tmp/outreach-script-check', 'esbuild-buntning');
+  runCheck('npx esbuild scripts/run-planera-live.ts scripts/run-path.ts scripts/lib/*.ts --bundle --platform=node --format=esm --packages=external --outdir=/tmp/outreach-script-check', 'esbuild-buntning');
 
   // 5. Typkontroll (tsc)
   runCheck('npx tsc -p scripts/tsconfig.json --noEmit 2>&1 | grep "^scripts/" && exit 1 || true', 'typkontroll för signaturfel');

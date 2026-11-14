@@ -1,30 +1,37 @@
-# BYGGCYKEL LOGG: TCK-MAINT-077
-**Starttid:** 2026-11-14T21:59:04.278Z
+# BYGGCYKEL LOGG: TCK-MAINT-076
+**Starttid:** 2026-11-14T22:21:30.371Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-077: Exportera executeInspection & inspectionTools i channelRunner.ts, rensa dubbletter i fas1Sweep & fas2Recovery och laga import i fas2Loop
+# TCK-MAINT-076: Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak i sizeGate.js, scriptKind-AST-spärr i fas2Tooling.ts och esbuild över scripts/lib/*.ts
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/lib/channelRunner.ts`, `scripts/lib/fas1Sweep.ts`, `scripts/lib/fas2Recovery.ts`, `scripts/lib/fas2Loop.ts`
+**Målfiler:** `scripts/run-planera-live.ts`, `scripts/lib/sizeGate.js`, `scripts/lib/fas2Tooling.ts`, `scripts/lib/maintValidation.ts`
+**Förutsättning:** `TCK-MAINT-077` måste vara `VERIFIED`.
 **Mekanisk Acceptans:**
-1. `scripts/lib/channelRunner.ts` (< 175 rader) exporterar `inspectionTools` (kompletta verktygsdeklarationsobjekt med `name`, `behavior: 'NON_BLOCKING'`, `description` och `parameters` för `read_file` och `list_files` — INTE en strängarray) samt `executeInspection(name, args)`.
-2. `scripts/lib/fas1Sweep.ts` (< 185 rader, skrivs om rent med `save_code` utan dubbletter) exporterar `export { runMicroChannel } from './channelRunner.js';` (utan lokal `runMicroChannel`-implementation) och utökar `exekveraFas1Sweep` med `getCompactTicketWindow`, `validateTicketScope` och (när `!isMaint`) Steg `3a` (transient test), `3b` (källkodsspecifikation) och `3c` (slutgiltigt byggkontrakt).
-3. `scripts/lib/fas2Recovery.ts` (< 195 rader, skrivs om rent med `save_code` utan dubbletter) tar bort de fyra lokala dubblettfunktionerna (`diagnostiseraRotOrsak`, `buildCrashDumpPayload`, `selectRelevantRetryFiles`, `planContextBatches`), importerar `readFileSync` & `existsSync` från `'fs'`, definierar `RecoveryState` lokalt, använder de importerade funktionerna från `./channelRunner.js`, `./ticketAndAnchor.js` och `./contextBatcher.js` (inklusive kompakta `## ADR-`-rubriker ur `doc/DECISIONS.md`, automatisk inläsning av eventuella externa felande filer som nämns i felloggen, samt loop-nollställning till `0` vid lyckat bygge).
-4. `scripts/lib/fas2Loop.ts` (< 105 rader) ändrar `import { execCaptured } from './ticketAndAnchor.js';` till `import { execCaptured } from './shellAndBackup.js';`.
+1. `scripts/run-planera-live.ts` (**strikt < 220 rader**, skrivs om rent med `save_code`) agerar tunn CLI-orkestrerare som importerar `exekveraFas1Sweep` (`./lib/fas1Sweep.js`), `korFas2Loop` (`./lib/fas2Loop.js`), `codegenTools` + `createFas2ToolExecutor` + `isFas2Complete` + `getFas2FollowupPrompt` (`./lib/fas2Tooling.js`), `konsolideraTest` + `synkaDomanBarrel` + `uppdateraFeatureIndex` + `uppdateraBiljettstatus` + `hanteraTrepunktsbesiktning` + `genomforGitCommitPush` + `saneraSkordadLegacy` (`./lib/fas3Consolidation.js`), `hanteraKonstruktivKritik` (`./lib/critiqueTriage.js`), `createVerifiedScriptsBackup` + `restoreScriptsBackup` + `dumpCrashDiff` (`./lib/shellAndBackup.js`), nollställer omvändelseräknaren (`--omvandelse=0`) före `--kritik-iter=1` och anropar `dumpCrashDiff()` i `main().catch`.
+2. `scripts/lib/sizeGate.js` (< 95 rader, **100 % ren JavaScript utan TypeScript-typer som `: string` eller `: number`**) ändrar `LEGACY_SCRIPT_CAPS` till `{ 'bidiLiveRunner.ts': 345 }` (tar enbart bort `'run-planera-live.ts': 1000` så att **250 rader** gäller för `run-planera-live.ts` och alla nya moduler, medan `bidiLiveRunner.ts` på 341 rader fortsätter passera), och hoppar över `__tests__` och `.legacy.` i `validateCodebaseLineLimits(rootDir)`.
+3. `scripts/lib/fas2Tooling.ts` (< 245 rader) exporterar `export interface CrashDumpPayload { [key: string]: any; }`, avvisar `save_code` om målfilen redan existerar på disk (`if (fs.existsSync(full)) throw new Error(...)`), aktiverar `reportDiagnostics: true, allowJs: true` samt `scriptKind: rel.endsWith('.js') ? ts.ScriptKind.JS : rel.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS` i `ts.transpileModule` (så att TypeScript-syntax i `.js`-filer stoppas före skrivning) samt avvisar **duplicerade exporter** i samma fil via TypeScript AST (`ts.createSourceFile`) före skrivning.
+4. `scripts/lib/maintValidation.ts` (< 80 rader) uppdaterar `esbuild`-kommandot till `npx esbuild scripts/run-planera-live.ts scripts/run-path.ts scripts/lib/*.ts --bundle --platform=node --format=esm --packages=external --outdir=/tmp/outreach-script-check`.
 5. `pnpm verify` passerar med exit 0.
+
+---
+
+## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
+1. **Ren JavaScript i `sizeGate.js` & rör ALDRIG `scripts/bidiLiveRunner.ts`:**
+   - `scripts/lib/sizeGate.js` körs direkt av `node` utan `tsx` och får aldrig innehålla `: string` eller `: number`. Behåll `'bidiLiveRunner.ts': 345` i `LEGACY_SCRIPT_CAPS`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Hej! Jag har tagit emot uppdraget för TCK-MAINT-077. Det ser ut som att du vill städa upp och förbättra strukturen i våra skript för inspektioner, särskilt genom att exportera verktyg på rätt sätt och rensa dubbletter i våra körningssteg. Vad är det främsta målet med den här städningen, och finns det några risker vi behöver vara extra vaksamma på?
+Det här låter verkligen som ett viktigt steg för ordning och reda i våra skript! Intentionen med TCK-MAINT-076 verkar vara att stärka systemets resiliens genom striktare radbegränsningar, förbättrad filkontroll och mer robust validering av koden innan den sparas. Är det helt korrekt uppfattat hur du ser på den mänskliga nyttan här?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit genomförd. Uppdraget rör sig strikt inom domänen scripts utan att fysiskt röra någon FSD-domän. Mekaniska acceptanskrav är tydliga med strikta radgränser och korrekta importvägar. Vi kan vända oss mot förlikning.
+Det är helt korrekt uppfattat. Genom att sanera och strikt begränsa radantalet i våra orkestreringsskript minimerar vi risken för komplexa monoliter och stärker den mekaniska tillförlitligheten i varje körcykel. Kontraktet är granskat och redo för fas 1.
 
 
 #### 0b Att förlikas: Vägval
@@ -36,22 +43,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-För att lösa kontraktet TCK-MAINT-077 formulerar jag tre ortogonala alternativ.
+För att slutföra Strangler Fig-migreringen och uppfylla kraven i TCK-MAINT-076 formulerar jag tre ortogonala alternativ:
 
-Alternativ ett innebär en direkt och strikt synkron fasuppdatering där varje fil migreras isolerat enligt fasta ansvarsgränser. Det innebär exakta export- och importändringar fil för fil.
+Alternativ 1 fokuserar på minimalistisk inkrementell refaktorisering, där vi strikt uppdaterar varje fil för sig med standard AST-kontroller och direkt existerandekontroller.
 
-Alternativ två bygger på en sammanslagen hantering där gränssnitten för inspektion och recovery centraliseras till delade interna hjälpfunktioner för maximal återanvändbarhet inom domänen.
+Alternativ 2 bygger på modulär orkestrering med ett mer robust AST-skelett som använder en dedikerad besökare för att identifiera dubbla exportdeklarationer heltäckande.
 
-Alternativ tre fokuserar primärt på robust felhantering och kontraktssäkerhet, där vi först bygger och validerar transientskikten innan logik och flödesreperationer exekveras.
+Alternativ 3 prioriterar valideringskontrakt, där AST-grinden och resursgränserna verifieras strikt innan huvudlogiken i run-planera-live.ts slutförs.
 
 
 #### 2c Att vända om: Resiliensgranskning
-Alternativ tre ger högst motståndskraft mot latenta haverier då validering av transientskiktet och tydlig felpropagering sker före kontrollen återtas. Det minskar risken för korrupt tillståndshantering vid nätverkskrascher eller oväntade avbrott i körningsmotorn.
+Alternativ 2 och 3 uppvisar bäst motståndskraft mot latenta haverier och brutna kontrakt, eftersom de använder mer robusta AST-kontroller. Alternativ 3 är dock det starkaste gällande systemiska invarianter, då det prioriterar valideringskontrakt och fail-fast-principen innan huvudlogiken exekveras.
 
 
 #### 2d Att förlikas: Mättnad
-Alternativ tre har valts som det vinnande alternativet då det ger högst motståndskraft mot latenta haverier och minskar risken för korrupt tillståndshantering. MÄTTNAD: JA.
-
-
-#### ROTORSAKSDIAGNOS: TCK-MAINT-077
-Varför 4: Varför tillåter byggmotorn att lokala korrigeringar kringgås av barrel-audit-kontrakt vid modulär expansion? Varför 5: Varför saknas en mekanisk spärr för oexporterade funktioner i AST-grinden förrän vid buntning? EGENTLIGT_FEL: Bristande mekanisk synkronisering mellan FSD-domänens internt anropade moduler och dess explicita publika exportkontrakt.
+Jag slår fast att Alternativ 3 är det vinnande kontraktet. Genom att prioritera valideringskontrakt och fail-fast-principen säkerställer vi systemiska invarianter och maximal resiliens från start. Jag deklarerar härmed mättnad: JA.

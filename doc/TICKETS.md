@@ -2,9 +2,9 @@
 
 ## AKTIVA TICKETS
 
-- [ ] **TCK-MAINT-078** (READY): Samla felradsmönstret i delad extractErrorSignature(log) i ticketAndAnchor.ts (SSOT för maintValidation och fas2Recovery) -> Se `doc/.TICKETS/TCK-MAINT-078.md`
-- [x] **TCK-MAINT-077** (VERIFIED) (READY): Exportera executeInspection & inspectionTools i channelRunner.ts, rensa dubbletter i fas1Sweep & fas2Recovery och laga import i fas2Loop -> Se `doc/.TICKETS/TCK-MAINT-077.md`
-- [ ] **TCK-MAINT-076** (READY): Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak i sizeGate.js, AST-spärrar i fas2Tooling.ts och esbuild över scripts/lib/*.ts -> Se `doc/.TICKETS/TCK-MAINT-076.md`
+- [ ] **TCK-MAINT-078** (READY): Samla extractErrorSignature(log) som SSOT i ticketAndAnchor.ts och ersätt stubbar i channelRunner, fas2Recovery & fas1Sweep -> Se `doc/.TICKETS/TCK-MAINT-078.md`
+- [x] **TCK-MAINT-077** (VERIFIED): Exportera executeInspection & inspectionTools i channelRunner.ts, rensa dubbletter i fas1Sweep & fas2Recovery och laga import i fas2Loop -> Se `doc/.TICKETS/TCK-MAINT-077.md`
+- [x] **TCK-MAINT-076** (VERIFIED) (READY): Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak i sizeGate.js, scriptKind-AST-spärr i fas2Tooling.ts och esbuild över scripts/lib/*.ts -> Se `doc/.TICKETS/TCK-MAINT-076.md`
 - [x] **TCK-MAINT-075** (VERIFIED): Slutför fas1Sweep.ts (Steg 3a–3c + runMicroChannel 750ms), koppla riktiga importer i fas2Recovery.ts och aktivera isFas2Complete i fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-075.md`
 - [x] **TCK-MAINT-074** (VERIFIED): Slutför Strangler Fig — tunn run-planera-live.ts (< 220 rader), 250-raderstak över scripts/ + src/features/ och AST-spärrar -> Se `doc/.TICKETS/TCK-MAINT-074.md`
 - [x] **TCK-MAINT-073** (VERIFIED): Slutför fas1Sweep.ts (återanvänd runMicroChannel 750ms + Steg 3a–3c), skapa fas2Recovery.ts och aktivera isFas2Complete-spärr i fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-073.md`

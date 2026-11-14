@@ -25,7 +25,7 @@ export async function korMaintValidering(ticketId: string): Promise<boolean> {
       console.log(`[Validation] Lyckades vid försök ${attempts}`);
       return true;
     } catch (error: any) {
-      console.error(`[Validation] Misslyckades vid försök ${attempts}:', error.message);
+      console.error(`[Validation] Misslyckades vid försök ${attempts}:`, error.message);
       diagnostiseraRotOrsak(error);
 
       if (attempts >= 4) {

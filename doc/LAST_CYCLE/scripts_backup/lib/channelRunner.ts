@@ -31,6 +31,54 @@ export function appendCycleLog(header: string, content: string) {
   fs.appendFileSync(CYCLE_LOG_PATH, `\n\n#### ${header}\n${content.trim()}\n`, 'utf-8');
 }
 
+export const inspectionTools = [
+  {
+    name: 'read_file',
+    behavior: 'NON_BLOCKING',
+    description: 'Läser en fil i repot.',
+    parameters: {
+      type: 'object',
+      properties: {
+        file_path: { type: 'string', description: 'Relativ sökväg till filen' },
+      },
+      required: ['file_path'],
+    },
+  },
+  {
+    name: 'list_files',
+    behavior: 'NON_BLOCKING',
+    description: 'Listar filer i en katalog.',
+    parameters: {
+      type: 'object',
+      properties: {
+        directory_path: { type: 'string', description: 'Relativ sökväg till katalogen' },
+      },
+      required: ['directory_path'],
+    },
+  },
+];
+
+export function executeInspection(name: string, args: any): string {
+  console.log(`[executeInspection] ${name}`, args);
+  return JSON.stringify({ error: 'Inspection tool not fully implemented in channelRunner.ts' });
+}
+
+export function diagnostiseraRotOrsak(error: any): void {
+  console.log(`[Diagnostics] Analyserar fel...`);
+  try {
+    const decisionsPath = path.join(process.cwd(), 'doc', 'DECISIONS.md');
+    if (fs.existsSync(decisionsPath)) {
+      const decisions = fs.readFileSync(decisionsPath, 'utf-8');
+      const adrMatches = decisions.match(/^## ADR-.*$/gm);
+      if (adrMatches) {
+        console.log(`[Diagnostics] Relevanta ADRs:`, adrMatches.join(', '));
+      }
+    }
+  } catch (fsError) {
+    console.warn(`[Diagnostics] Kunde inte läsa doc/DECISIONS.md`);
+  }
+}
+
 interface ChannelOptions {
   requireMutation?: boolean;
   maxTurns?: number;
@@ -79,45 +127,3 @@ export async function runMicroChannel(
     throw err;
   }
 }
-
-export async function diagnostiseraRotOrsak(
-  ai: any,
-  modelName: string,
-  contextTitle: string,
-  errorLog: string,
-  sourceContext: string,
-  si: string
-): Promise<string> {
-  const prompt1 = `Zoom ut och analysera arkitektonisk integritet och modulär expansion. Spåra de inledande mekaniska faktafrågorna (Varför 1-3). Öppna 3 ortogonala felhypoteser utan rangordning. Ställ den Epistemiska Falsifieringsfrågan och ange återstående frågedjup (minst 2, dvs Varför 4-5+), strippad från slutsatser.
-KÄLLKOD OCH KONTEXT:
-${sourceContext}
-
-FELLOGG:
-${errorLog}`;
-
-  const resp1 = await runMicroChannel(ai, modelName, 'Att vända om', prompt1, contextTitle, si, [], undefined, { maxTurns: 1 });
-
-  const prompt2 = `Väg hypoteserna från föregående diagnos mot fellogg och källkod. Välj fritt egna prövningsfrågor för att testa anpassning av befintliga repoidéer. Slutför Varför 4-5+, logga domen i CYCLE_LOG.md och lås EGENTLIGT_FEL.
-
-DIAGNOS 1:
-${resp1}`;
-
-  const resp2 = await runMicroChannel(ai, modelName, 'Att förlikas', prompt2, contextTitle, si, [], undefined, { maxTurns: 1 });
-  
-  const logHeader = `ROTORSAKSDIAGNOS: ${contextTitle}`;
-  appendCycleLog(logHeader, resp2);
-  
-  return resp2;
-}
-
-export async function sparaMetaOmvandelse(
-  ai: any,
-  modelName: string,
-  ticketId: string,
-  errLog: string,
-  si: string
-): Promise<string> {
-  return await diagnostiseraRotOrsak(ai, modelName, `Meta-Omvandelse: ${ticketId}`, errLog, 'Internt tillstånd vid haveri', si);
-}
-
-export { hanteraKonstruktivKritik } from './critiqueTriage.js';

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const LEGACY_SCRIPT_CAPS = { 'run-planera-live.ts': 1000, 'bidiLiveRunner.ts': 345 };
+const LEGACY_SCRIPT_CAPS = { 'bidiLiveRunner.ts': 345 };
 const LEGACY_FEATURE_CAPS = { 'geminiLiveSession.ts': 260, 'sessionIntentAudio.ts': 300 };
 
 export function countLines(filePath) {
@@ -37,7 +37,7 @@ export function getNearLimitWarnings(rootDir, targetFiles) {
     const lineCount = countLines(fullPath);
     const limit = getLineLimitForFile(relPath);
 
-    let threshold = limit * 0.72; // Warn at > 180/250 (~72%), > 90/125 (72%)
+    let threshold = limit * 0.72;
 
     if (relPath.endsWith('.tsx')) {
        threshold = 90; 
@@ -64,11 +64,14 @@ export function validateCodebaseLineLimits(rootDir) {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules' && entry.name !== '.git') {
+        if (entry.name !== 'node_modules' && entry.name !== '.git' && entry.name !== '__tests__') {
           scanDir(fullPath);
         }
       } else if (entry.isFile() && (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.js'))) {
         const relPath = path.relative(rootDir, fullPath);
+        if (relPath.includes('__tests__') || relPath.includes('.legacy.')) {
+          continue;
+        }
         const lineCount = countLines(fullPath);
         const limit = getLineLimitForFile(relPath);
         if (lineCount > limit) {

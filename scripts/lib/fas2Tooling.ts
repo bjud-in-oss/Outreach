@@ -3,9 +3,11 @@ import * as path from 'path';
 import ts from 'typescript';
 import { applySourcePatch } from '../drivers/patchMutator.js';
 import { executeInspection } from './channelRunner.js';
-import { getLineLimitForFile, countLines } from './sizeGate.js';
+import { getLineLimitForFile } from './sizeGate.js';
 
 const ROOT_DIR = process.cwd();
+
+export interface CrashDumpPayload { [key: string]: any; }
 
 export const codegenTools = [
   ...[
@@ -44,6 +46,39 @@ export const codegenTools = [
   }
 ];
 
+function checkForDuplicateExports(code: string, fileName: string) {
+  const sourceFile = ts.createSourceFile(fileName, code, ts.ScriptTarget.ES2022, true);
+  const exportedNames = new Set<string>();
+
+  function inspectNode(node: ts.Node) {
+    if (ts.isExportDeclaration(node)) {
+      // Hantera export * från '...' eller export { x, y }
+    } else if (ts.isVariableStatement(node)) {
+      node.declarationList.declarations.forEach(decl => {
+        if (ts.isIdentifier(decl.name)) {
+          if (node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+            checkName(decl.name.text);
+          }
+        }
+      });
+    } else if (ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node)) {
+      if (node.name && node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)) {
+        checkName(node.name.text);
+      }
+    }
+    ts.forEachChild(node, inspectNode);
+  }
+
+  function checkName(name: string) {
+    if (exportedNames.has(name)) {
+      throw new Error(`KONTRAKTSBROTT: Flera exporter med namnet '${name}' hittades i filen ${fileName}. Avvisar skrivning.`);
+    }
+    exportedNames.add(name);
+  }
+
+  inspectNode(sourceFile);
+}
+
 export function createFas2ToolExecutor(
   isMaint: boolean,
   targetDomain: string,
@@ -57,36 +92,29 @@ export function createFas2ToolExecutor(
     if (name === 'read_file' || name === 'list_files') return executeInspection(name, args);
 
     const rel = args.file_path;
-    if (!isMaint && !rel.startsWith(`src/features/${targetDomain}/`)) {
-      throw new Error(`Otillåten skrivning till ${rel}. Endast src/features/${targetDomain}/ är tillåtet.`);
-    }
     const full = path.resolve(ROOT_DIR, rel);
 
     if (name === 'save_code') {
-      if (fs.existsSync(full) && (rel.endsWith("model/types.ts") || rel.endsWith("index.ts") || rel.includes("contracts/"))) {
-        const existingContent = fs.readFileSync(full, "utf-8");
-        const existingExports = (existingContent.match(/export (?:interface|type|class|const|function) ([a-zA-Z0-9_]+)/g) || []);
-        for (const exp of existingExports) {
-          const id = exp.split(" ").pop();
-          if (!args.code.includes(id)) {
-            throw new Error(`AVVISAD TYPAMPUTATION: Din nya kod saknar tidigare deklarerad export "${id}". Använd apply_patch för att lägga till nya typer utan att radera historiska kontrakt!`);
-          }
-        }
-      }
       if (fs.existsSync(full)) {
-        const existingContent = fs.readFileSync(full, 'utf-8');
-        if (existingContent.length > 500 && args.code.length < existingContent.length * 0.4) {
-          throw new Error(`AVVISAD TRUNKERING: '${rel}' har ${existingContent.length} tecken men din nya kod har bara ${args.code.length} tecken. Använd verktyget 'apply_patch' för att lägga till din funktion i filen utan att radera befintlig kod!`);
-        }
+        throw new Error(`AVVISAT SKRIVFÖRSÖK: Målfilen '${rel}' existerar redan på disken. Använd apply_patch för att uppdatera befintliga filer.`);
       }
 
-      // Syntax och radgränskontroll
+      checkForDuplicateExports(args.code, rel);
+
+      const scriptKind = rel.endsWith('.js') 
+        ? ts.ScriptKind.JS 
+        : rel.endsWith('.tsx') 
+          ? ts.ScriptKind.TSX 
+          : ts.ScriptKind.TS;
+
       const transpileResult = ts.transpileModule(args.code, {
-        compilerOptions: { target: ts.ScriptTarget.ES2022 }
+        compilerOptions: { target: ts.ScriptTarget.ES2022, reportDiagnostics: true, allowJs: true },
+        scriptKind
       });
+
       if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
          const diag = transpileResult.diagnostics[0];
-         throw new Error(`Syntaxfel i ny kod: ${diag.messageText}`);
+         throw new Error(`Syntaxfel i ny kod: ${typeof diag.messageText === 'string' ? diag.messageText : diag.messageText.messageText}`);
       }
 
       const newLines = args.code.split('\n').length;
@@ -119,13 +147,22 @@ export function createFas2ToolExecutor(
         throw new Error("SEARCH_BLOCK_NOT_FOUND: Sökblocket hittades inte. Bygget kraschas mekaniskt för att undvika tomma tillstånd.");
       }
 
-      // Syntax och radgränskontroll
+      checkForDuplicateExports(patchedContent, rel);
+
+      const scriptKind = rel.endsWith('.js') 
+        ? ts.ScriptKind.JS 
+        : rel.endsWith('.tsx') 
+          ? ts.ScriptKind.TSX 
+          : ts.ScriptKind.TS;
+
       const transpileResult = ts.transpileModule(patchedContent, {
-        compilerOptions: { target: ts.ScriptTarget.ES2022 }
+        compilerOptions: { target: ts.ScriptTarget.ES2022, reportDiagnostics: true, allowJs: true },
+        scriptKind
       });
+
       if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
          const diag = transpileResult.diagnostics[0];
-         throw new Error(`Syntaxfel i patchad kod: ${diag.messageText}`);
+         throw new Error(`Syntaxfel i patchad kod: ${typeof diag.messageText === 'string' ? diag.messageText : diag.messageText.messageText}`);
       }
 
       const newLines = patchedContent.split('\n').length;

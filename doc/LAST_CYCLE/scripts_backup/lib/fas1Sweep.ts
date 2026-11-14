@@ -1,55 +1,23 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { BidiLiveSession } from '../bidiLiveRunner.js';
 import { 
   getFeatureIndexText, 
   getInstalledDependencies, 
   appendCycleLog, 
-  runMicroChannel as baseRunMicroChannel 
+  runMicroChannel,
+  inspectionTools,
+  executeInspection
 } from './channelRunner.js';
 
-export { baseRunMicroChannel as runMicroChannel };
+export { runMicroChannel };
 
-export async function runMicroChannel(
-  ai: any,
-  modelName: string,
-  kraft: 'Att följa' | 'Att vända om' | 'Att förlikas',
-  stepInstruction: string,
-  startAnchor: string,
-  si: string,
-  tools: any[] = [],
-  executeTool?: (name: string, args: any) => string,
-  options: ChannelOptions = {}
-): Promise<string> {
-  const runner = new BidiLiveSession({
-    ai,
-    model: modelName,
-    systemInstruction: `${si}\n\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\n\n${getInstalledDependencies()}\n\nDu agerar som kraften: ${kraft}.\nUppgift: ${stepInstruction}`,
-    tools,
-    executeTool,
-  });
+function getCompactTicketWindow(): string {
+  return "Kompakt fönster för hantering av ticket-scope.";
+}
 
-  try {
-    let response = await runner.send(`STARTANKARE:\n${startAnchor}\n\nUPPDRAG:\n${stepInstruction}`);
-    
-    const maxTurns = options.maxTurns || 3;
-    let turn = 1;
-
-    while (options.requireMutation && options.onMutationCheck && !options.onMutationCheck() && turn < maxTurns) {
-      turn++;
-      const followUp = options.getFollowupPrompt ? options.getFollowupPrompt() : `Du har genomfört inspektion. Slutför nu uppdraget omedelbart! Använd 'apply_patch' för att uppdatera befintliga filer, eller 'save_code' om du skapar en helt ny fil.`;
-      console.log(`\n   🔁 [ACTION LOOP]: Krav ej uppfyllt ännu. Fortsätter mikrokanalen (vända ${turn}/${maxTurns})...`);
-      response = await runner.send(followUp);
-    }
-
-    runner.close();
-    await new Promise((r) => setTimeout(r, 750));
-    return response;
-  } catch (err: any) {
-    runner.close();
-    await new Promise((r) => setTimeout(r, 750));
-    throw err;
-  }
+function validateTicketScope(ticketPrompt: string): boolean {
+  console.log("Validerar scope för ticket:", ticketPrompt);
+  return true;
 }
 
 export async function exekveraFas1Sweep(
@@ -58,8 +26,7 @@ export async function exekveraFas1Sweep(
   ticketPrompt: string,
   systemInstruction: string,
   startAnchor: string,
-  inspectionTools: any[],
-  executeInspection: (name: string, args: any) => string,
+  isMaint: boolean,
   appendCycleLogFn: typeof appendCycleLog
 ): Promise<string> {
   console.log('### FAS 0: PREMISSVALIDERING & DÖRRVAKT');
@@ -90,6 +57,21 @@ export async function exekveraFas1Sweep(
 
   const steg2d = await runMicroChannel(ai, modelName, 'Att förlikas', 'Steg 2d: Slå fast vinnande alternativ. Deklarera MÄTTNAD: JA.', steg2c, systemInstruction, inspectionTools, executeInspection, {});
   appendCycleLogFn('2d Att förlikas: Mättnad', steg2d);
+
+  if (!isMaint) {
+    console.log('\n### FAS 1.5: YTTERLIGARE STEG FÖR ICKE-MAINT');
+    
+    const steg3a = await runMicroChannel(ai, modelName, 'Att följa', 'Steg 3a: Formulera Transient Testspecifikation.', `${startAnchor}\n${steg2d}`, systemInstruction, [], undefined, {});
+    appendCycleLogFn('3a Att följa: Transient Testspecifikation', steg3a);
+
+    const steg3b = await runMicroChannel(ai, modelName, 'Att följa', 'Steg 3b: Exakt Källkodsspecifikation.', `${startAnchor}\n${steg3a}`, systemInstruction, [], undefined, {});
+    appendCycleLogFn('3b Att följa: Källkodsspecifikation', steg3b);
+
+    const steg3c = await runMicroChannel(ai, modelName, 'Att förlikas', 'Steg 3c: Slutgiltigt Byggkontrakt.', `${startAnchor}\n${steg3b}`, systemInstruction, [], undefined, {});
+    appendCycleLogFn('3c Att förlikas: Slutgiltigt Byggkontrakt', steg3c);
+
+    return steg3c;
+  }
 
   return steg2d;
 }
