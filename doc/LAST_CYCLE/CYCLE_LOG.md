@@ -1,42 +1,31 @@
-# BYGGCYKEL LOGG: TCK-MAINT-069
-**Starttid:** 2026-11-14T20:39:19.241Z
+# BYGGCYKEL LOGG: TCK-MAINT-071
+**Starttid:** 2026-11-14T20:48:53.973Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-MAINT-069: Vite/Oxc-säker re-export av contextBatcher.ts, felextraktion i maintValidation.ts, enhetstester och strikt isFas2Complete-spärr
+# TCK-MAINT-071: Bryt ut fas1Sweep.ts, fas2Loop.ts & fas2Recovery.ts och koppla in contextBatcher.ts + diagnostiseraRotOrsak
 
 **Måldomän:** `scripts`
-**Målfiler:** `scripts/lib/maintValidation.ts`, `scripts/lib/ticketAndAnchor.ts`, `scripts/__tests__/scriptLibs.test.ts`, `scripts/run-planera-live.ts`
+**Målfiler:** `scripts/lib/fas1Sweep.ts`, `scripts/lib/fas2Loop.ts`, `scripts/lib/fas2Recovery.ts`, `scripts/run-planera-live.ts`
+**Förutsättning:** `TCK-MAINT-066`–`069` måste vara `VERIFIED`.
 **Mekanisk Acceptans:**
-1. `scripts/lib/maintValidation.ts` (< 65 rader) kör `stdio: 'pipe'` i `runCheck`. Vid fel extraherar den först rader som matchar `/Error|FAIL|Transform failed|SyntaxError|TypeError|AssertionError|error TS|RADGRÄNSBROTT|✘|File:/` (med `±3` kontekstrader, max 25 rader) och skriver ut dem **allra överst** till `process.stderr` följt av hela originalutskriften, före `process.exit(1)`.
-2. `scripts/lib/ticketAndAnchor.ts` (< 140 rader, måste **skrivas över helt med `save_code`** för att rensa dödkod, men bevara exakt logik för `getRequiredFiles`):
-   - Innehåller Vite 8 / `isolatedModules`-kompatibel re-export högst upp: `export type { SourceManifestEntry, BatchPlan } from './contextBatcher.js';` och `export { buildSourceManifest, planContextBatches, buildCrashDumpPayload } from './contextBatcher.js';`, och raderar de gamla lokala deklarationerna av dessa 5 symboler.
-   - Bevarar `getRequiredFiles` (med `.replace(/`/g, '')`).
-   - Implementerar verklig logik (inga `"TODO"`-stubbar) för `getCompactTicketWindow(ticketsMdContent, recentVerifiedLimit = 5)`, `validateTicketScope(ticketPrompt, isMaint, targetDomain)` (returnerar `{ valid: false, reason }` vid > 4 målfiler) och `selectRelevantRetryFiles(candidateFiles, errorLog)`.
-   - Uppgraderar `buildRetryAnchor` till att matcha **repospecifika fil+radnummer** (`/(?:scripts|src)\/[^\s:()]+:(\d+)/`, ignorerar `node:child_process`) samt packa importhuvud (**rad 1–40**) + `±80` rader kring felraderna upp till **85 % av `maxChars`** (annars `KLYV_BILJETT`).
-3. `scripts/__tests__/scriptLibs.test.ts` (< 140 rader) lägger till enhetstester för `getCompactTicketWindow`, `validateTicketScope` (> 4 filer -> `valid: false`), `selectRelevantRetryFiles` och `buildRetryAnchor` (ignorerar `node:child_process:978` och bevarar rad 1–40). **Använd vanliga citattecken (`'...'`) i teststrängar med backticks (aldrig nästlade template literals) så att `vite:oxc` aldrig får parse-fel.**
-4. `scripts/run-planera-live.ts` (< 920 rader):
-   - Höjer Fas 2:s `maxTurns` från `5` till `8` och ersätter `if (!codeSaved && !isMaint)` med ovillkorlig `if (!isFas2Complete()) { console.error('❌ FAS 2 MISSLYCKADES: Samtliga målfiler i kontraktet uppdaterades inte.'); process.exit(1); }` (gäller både `TCK` och `MAINT`, samt efter självrättning).
-   - Utökar `relevantLines`-filtret i `currentSig` med `Transform failed`, `SyntaxError`, `TypeError`, `AssertionError` och `✘`, samt ersätter `sparaMetaOmvandelse` i `MAINT`-självrättningen med `await diagnostiseraRotOrsak(ai, MODEL_NAME, ticketId, errLog, currentMaintSource, systemInstruction)` och injicerar diagnosen i `maintRetryPrompt`.
+1. Ny modul `scripts/lib/fas1Sweep.ts` (< 230 rader) tar över `runMicroChannel`, Fas 0 (`1a`, `0a`, `0b`) och Fas 1 (`1b`–`3c`) från `run-planera-live.ts`, och använder `getCompactTicketWindow` + `validateTicketScope` vid startankaret.
+2. Ny modul `scripts/lib/fas2Recovery.ts` (< 220 rader) tar över `MAINT`-valideringsloopen (`maintValidation.ts`) samt Fas 2-självrättningen och den yttre omvändelseloopen (upp till 4 varv), och kopplar in `diagnostiseraRotOrsak` (`./channelRunner.js`), `selectRelevantRetryFiles` (`./ticketAndAnchor.js`) samt `planContextBatches` (`pass1`/`pass2` vid > 24 000 tecken) och `buildCrashDumpPayload` (`./contextBatcher.js`).
+3. Ny modul `scripts/lib/fas2Loop.ts` (< 220 rader) tar över Gate 3a / Fail-First och Fas 2-kodgenereringen, återanvänder befintliga `codegenTools` och `createFas2ToolExecutor` ur `./fas2Tooling.js` (tar bort den 155-raders duplicerade koden i `run-planera-live.ts`) kör med `maxTurns: 8` samt ovillkorlig `if (!isFas2Complete())`-spärr efter Fas 2 och självrättning (för både `TCK` och `MAINT`), och delegerar felhantering till `fas2Recovery.ts` (som nollställer omvändelseräknaren till `0` när ett bygge lyckats, inklusive före `--kritik-iter=1`).
+4. `scripts/run-planera-live.ts` importerar `synkaDomanBarrel` från `./lib/fas3Consolidation.js` (lagar `ReferenceError` på rad 846) och `hanteraKonstruktivKritik` från `./lib/critiqueTriage.js`, anropar `dumpCrashDiff()` i `main().catch` och delegerar Fas 0–2 till `fas1Sweep.ts` och `fas2Loop.ts`.
 5. `pnpm verify` passerar med exit 0.
-
----
-
-## Misstagsäkring & Systemiska Invarianter (Stoppklossar)
-1. **Oxc-säkra teststrängar & total omskrivning av `ticketAndAnchor.ts`:**
-   - Skriv över `scripts/lib/ticketAndAnchor.ts` med `save_code` utan dubblettexporter, och använd aldrig oescapade backticks inuti `` `...` `` i `scripts/__tests__/scriptLibs.test.ts`.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Jag förstår intentionen med TCK-MAINT-069. Vi kommer att säkra upp skriptinfrastrukturen genom Vite- och Oxc-kompatibla re-exporter, förbättra felhantering och utöka testtäckningen för att säkerställa stabilitet i våra underhållsprocesser. Är du redo att påbörja planeringssvepet för att realisera detta?
+Jag förstår intentionen med TCK-MAINT-071. Vi bryter ut mer komplex logik från den stora filen till isolerade moduler. Mänsklig nytta blir att systemet blir mer stabilt och lättare att underhålla för utvecklarna. På vilket sätt vill du att vi prioriterar just felhanteringen i detta skede?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Kontraktsaudit för TCK-MAINT-069 är nu genomförd och godkänd. Alla parametrar och systemiska invarianter är validerade för uppdraget i mål-domänen `scripts`. Vi är redo att gå vidare.
+Kontraktsauditen för TCK-MAINT-071 är nu genomförd och godkänd. Uppdelningen i tre distinkta moduler respekterar FSD-gränser och säkerställer att komplexitet hålls isolerad enligt våra radbegränsningar för modulär expansion. Vi är redo att initiera planeringssvepet.
 
 
 #### 0b Att förlikas: Vägval
@@ -48,16 +37,18 @@ STATUS: GODKÄND
 
 
 #### 2b Att följa: 3 Alternativ
-Alternativ ett innebär att vi skriver över `ticketAndAnchor.ts` helt med `save_code` för att rensa dödkod och införa den nya exportstrukturen, följt av att vi implementerar den verkliga logiken i en enskild patch.
+För att lösa TCK-MAINT-071 och strukturera om orkestreringslogiken i `scripts`, formulerar jag följande tre ortogonala alternativ:
 
-Alternativ två fokuserar på felhantering genom att först uppgradera `maintValidation.ts` och sedan anpassa orchestratorns gränser för en mer robust feldiagnos.
+Alternativ 1 fokuserar på direkt, funktionell extraktion där vi flyttar dagens proceduriska kod till de nya modulerna `fas1Sweep.ts`, `fas2Loop.ts` och `fas2Recovery.ts` och behåller en tydlig delegering.
 
-Det tredje alternativet är testdrivet, där vi utvecklar logiken och enhetstesterna parallellt för att garantera att Oxc-kompatibiliteten hålls intakt, innan vi driftsätter källkoden.
+Alternativ 2 bygger på en tillståndsdriven modell där kontrollen skickas mellan modulerna genom att explicit paketera kontext och statusövergångar utan att behålla ett delat tillstånd.
+
+Alternativ 3 behandlar faserna som middleware-block, vilket innebär att de monteras som en kedjebaserad pipeline där varje exekveringssteg injiceras med nödvändiga verktyg och dataförsörjning.
 
 
 #### 2c Att vända om: Resiliensgranskning
-För en robust lösning bör vi kombinera alternativen och prioritera att skriva över `ticketAndAnchor.ts` helt med `save_code` direkt. Det säkerställer Vite-kompatibilitet för re-exporten. Därefter genomför vi den modulära expansionen för felhantering och tester enligt strikt TDD.
+Alternativ 1 har bäst resiliens och felhantering. Det separerar ansvarsområden tydligt, minskar risken för felaktigt tillstånd, och säkerställer att fel propageras korrekt till nästa modul utan att förlora kontext.
 
 
 #### 2d Att förlikas: Mättnad
-Jag fastställer det vinnande kontraktet: vi skriver över `ticketAndAnchor.ts` helt med `save_code` för att garantera Vite-kompatibilitet. Därefter genomför vi den modulära expansionen för felhantering och tester enligt strikt TDD. MÄTTNAD: JA.
+Jag bekräftar att Alternativ 1 är vårt vinnande kontrakt. Det ger den bästa balansen av resiliens och tydlig ansvarsfördelning. MÄTTNAD: JA.

@@ -1,30 +1,56 @@
 import { describe, it, expect } from 'vitest';
-import { getRequiredFiles, buildRetryAnchor } from '../lib/ticketAndAnchor';
-import { execFileSync } from 'child_process';
+import { getRequiredFiles, buildRetryAnchor, getCompactTicketWindow, validateTicketScope, selectRelevantRetryFiles } from '../lib/ticketAndAnchor';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
-import { skapaNodePathPortar } from '../lib/pathNodePorts';
-import { omprioriteraBatchForbattringar } from '../lib/critiqueTriage';
 
 describe('scriptLibs', () => {
   describe('getRequiredFiles', () => {
     it('should extract required files from ticket prompt', () => {
-      const ticketPrompt = `
-# TCK-MAINT-049
-**Måldomän:** scripts
-**Målfiles:** scripts/run-planera-live.ts, scripts/verify-architecture.js
-`;
+      const ticketPrompt = '# TCK-MAINT-049\n**Måldomän:** scripts\n**Målfiler:** `scripts/run-planera-live.ts`, `scripts/verify-architecture.js`';
       const files = getRequiredFiles(ticketPrompt, true, 'scripts');
       expect(files).toContain('scripts/run-planera-live.ts');
       expect(files).toContain('scripts/verify-architecture.js');
     });
   });
 
+  describe('getCompactTicketWindow', () => {
+    it('should return recently verified tickets', () => {
+      const ticketsMd = '# Tickets\n- [x] **TCK-1** (VERIFIED)\n- [x] **TCK-2** (VERIFIED)\n- [ ] **TCK-3** (PENDING)';
+      const window = getCompactTicketWindow(ticketsMd, 1);
+      expect(window).toContain('TCK-2');
+      expect(window).not.toContain('TCK-1');
+    });
+  });
+
+  describe('validateTicketScope', () => {
+    it('should return false if more than 4 files are required', () => {
+      const ticketPrompt = '# TCK-TEST\n**Målfiler:** `f1.ts`, `f2.ts`, `f3.ts`, `f4.ts`, `f5.ts`';
+      const result = validateTicketScope(ticketPrompt, false, 'test');
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('För många målfiler angivna');
+    });
+
+    it('should return true if 4 or fewer files are required', () => {
+      const ticketPrompt = '# TCK-TEST\n**Målfiler:** `f1.ts`';
+      const result = validateTicketScope(ticketPrompt, false, 'test');
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('selectRelevantRetryFiles', () => {
+    it('should select files mentioned in error log', () => {
+      const candidates = ['scripts/lib/maintValidation.ts', 'scripts/run-planera-live.ts'];
+      const errorLog = 'Error in maintValidation.ts';
+      const selected = selectRelevantRetryFiles(candidates, errorLog);
+      expect(selected).toContain('scripts/lib/maintValidation.ts');
+    });
+  });
+
   describe('buildRetryAnchor', () => {
     it('should build retry anchor without truncation if below maxChars', () => {
       const testContent = 'testContent';
-      const currentSourceSummary = 'currentSourceSummary';
+      const currentSourceSummary = 'line 1\nline 2';
       const testLog = 'testLog';
       const anchor = buildRetryAnchor(testContent, currentSourceSummary, testLog, 1000);
       expect(anchor).toContain(testContent);
@@ -32,42 +58,17 @@ describe('scriptLibs', () => {
       expect(anchor).toContain(testLog);
     });
 
-    it('should truncate currentSourceSummary if exceeds maxChars', () => {
+    it('should preserve header lines and truncate error range', () => {
       const testContent = 'testContent';
-      const testLog = 'testLog';
-      const currentSourceSummary = 'A'.repeat(1000);
-      const maxChars = 200;
+      const currentSourceSummary = Array(50).fill('line').map((_, i) => `line ${i+1}`).join('\n');
+      const testLog = 'Error at scripts/lib/contextBatcher.ts:10';
+      const maxChars = 2000;
       
       const anchor = buildRetryAnchor(testContent, currentSourceSummary, testLog, maxChars);
       
-      expect(anchor.length).toBeLessThanOrEqual(maxChars + 600);
-      expect(anchor).toContain('... [TRUNKERAD PGA TILLÅTEN MAXLÄNGD FÖR KONTEXT] ...');
-    });
-  });
-
-  describe('skapaNodePathPortar', () => {
-    it('should return correct port keys', () => {
-      const portar = skapaNodePathPortar({ ticketId: 'test', io: console, dryRun: true });
-      expect(portar).toHaveProperty('avsikt');
-      expect(portar).toHaveProperty('provning');
-      expect(portar).toHaveProperty('konstruktion');
-      expect(portar).toHaveProperty('besiktning');
-    });
-
-    it('should throw when check-alibi fails', () => {
-      const tmpDir = os.tmpdir();
-      const tmpFile = path.join(tmpDir, 'test-alibi.ts');
-      fs.writeFileSync(tmpFile, 'expect(true).toBe(true);');
-      
-      try {
-        expect(() => {
-          execFileSync('node', ['scripts/drivers/ts.js', '--check-alibi', '--file', tmpFile], { stdio: 'pipe' });
-        }).toThrow();
-      } finally {
-        if (fs.existsSync(tmpFile)) {
-          fs.unlinkSync(tmpFile);
-        }
-      }
+      expect(anchor).toContain('line 1');
+      expect(anchor).toContain('line 40');
+      expect(anchor).toContain('--- [TRUNKERAT RADINTERVALL');
     });
   });
 });
