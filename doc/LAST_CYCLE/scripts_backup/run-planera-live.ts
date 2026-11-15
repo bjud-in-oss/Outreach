@@ -117,7 +117,7 @@ async function main() {
   };
 
   const recentTickets = fs.existsSync(TICKETS_PATH) ? getCompactTicketWindow(fs.readFileSync(TICKETS_PATH, 'utf-8'), 5) : '';
-  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\n${recentTickets}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}`;
+  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\n${recentTickets}\nKONTRAKT:\n${ticketPrompt}`;
 
   const planContract = await exekveraFas1Sweep(ai, MODEL_NAME, ticketPrompt, systemInstruction, startAnchor, isMaint, appendCycleLog);
 
@@ -159,9 +159,10 @@ async function main() {
 
   if (!process.argv.includes('--kritik-iter')) {
     const cycleSummary = fs.existsSync(CYCLE_LOG_PATH) ? fs.readFileSync(CYCLE_LOG_PATH, 'utf-8').slice(-4000) : ticketId;
-    const kritikText = await runMicroChannel(ai, MODEL_NAME, 'Att vända om', 'Granska byggcykeln och formulera eventuell konstruktiv kritik (eller svara INGEN).', cycleSummary, systemInstruction);
-    if (kritikText && !kritikText.includes('INGEN')) {
-      hanteraKonstruktivKritik(kritikText, IMPROVEMENTS_PATH);
+    const kritik: any = await hanteraKonstruktivKritik(ai, MODEL_NAME, ticketId, cycleSummary, systemInstruction);
+    if (kritik?.harStorSkillnad) {
+      execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --kritik-iter=1 --omvandelse=0`, { stdio: 'inherit', cwd: ROOT_DIR });
+      process.exit(0);
     }
   }
 

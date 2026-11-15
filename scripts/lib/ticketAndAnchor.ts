@@ -59,6 +59,18 @@ export function validateTicketScope(ticketPrompt: string, isMaint: boolean, targ
     return { valid: false, reason: `För många befintliga målfiler på disk (${existingFiles.length}). Maximalt 2 befintliga målfiler får ändras per biljett. Vänligen klyv biljetten.` };
   }
   
+  const prereqMatch = ticketPrompt.match(/\*\*Förutsättning:\*\*\s*(.+)/);
+  const ticketsMdPath = path.resolve(process.cwd(), 'doc', 'TICKETS.md');
+  if (prereqMatch && fs.existsSync(ticketsMdPath)) {
+    const ticketsMd = fs.readFileSync(ticketsMdPath, 'utf-8');
+    const prereqIds = prereqMatch[1].match(/TCK-(?:MAINT-)?\d+/g) || [];
+    for (const reqId of prereqIds) {
+      if (!ticketsMd.includes(`[x] **${reqId}** (VERIFIED)`)) {
+        return { valid: false, reason: `Förutsättning ej uppfylld: ${reqId} saknar (VERIFIED) i doc/TICKETS.md.` };
+      }
+    }
+  }
+
   return { valid: true };
 }
 

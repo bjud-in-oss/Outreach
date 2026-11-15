@@ -84,13 +84,13 @@
 - [ ] **TCK-MAINT-003** (READY): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [ ] **TCK-MAINT-002** (READY): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [ ] **TCK-TEST-001** (READY): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
-- [x] **TCK-068** (VERIFIED) (READY): Uppgradera z.record till två argument (Zod v4-kompatibilitet) i a2uiSchema.ts -> Se `doc/.TICKETS/TCK-068.md`
+- [x] **TCK-068** (VERIFIED): Uppgradera z.record till två argument (Zod v4-kompatibilitet) i a2uiSchema.ts -> Se `doc/.TICKETS/TCK-068.md`
 - [ ] **TCK-067** (READY): Delad 2-prompts 5-Varför-tratt i outerReconciliation.ts och MAINT-besiktning i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-067.md`
 - [ ] **TCK-066** (READY): Koppla 1-stegs kritikiteration och avvisade-historik i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-066.md`
 - [x] **TCK-065** (VERIFIED): Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-065.md`
 - [x] **TCK-064** (VERIFIED): Harmonisera Zod-scheman och re-exporterade typer i src/features/path/ (Del 1/2) -> Se `doc/.TICKETS/TCK-064.md`
 - [ ] **TCK-063** (READY): 6:e WS-retry (60s) i bidiLiveAdapter.ts och AST/omfångs-spärrar i konstruktionsport.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-063.md`
-- [ ] **TCK-062** (READY): Enhetlig Wayfinder-kritik och 3-vägs triagering med papperskorg i metaReflection.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-062.md`
+- [x] **TCK-062** (VERIFIED) (READY): Enhetlig Wayfinder-kritik och 3-vägs triagering med papperskorg i metaReflection.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-062.md`
 - [ ] **TCK-061** (READY): Stöd för verktygsanrop (toolCall / sendToolResponse) i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-061.md`
 - [ ] **TCK-060** (READY): In-memory Gate 3a-tautologispärr och omvändelserollback i Vägmotorn (src/features/path/) -> Se `doc/.TICKETS/TCK-060.md`
 - [ ] **TCK-059** (READY): Exponentiell backoff och slumpad jitter i Vägmotorns BidiLiveAdapter -> Se `doc/.TICKETS/TCK-059.md`

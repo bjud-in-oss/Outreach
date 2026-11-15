@@ -36,6 +36,7 @@ export async function korMaintValidering(
       return;
     } catch (err: any) {
       const errLog = [err?.stdout, err?.stderr].filter(Boolean).join('\n').trim() || err?.message || String(err);
+      console.error(errLog.slice(0, 3000));
       const currentSig = extractErrorSignature(errLog);
 
       if (attempts > 1 && currentSig && currentSig === prevSig) {

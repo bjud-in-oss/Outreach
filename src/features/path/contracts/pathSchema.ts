@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const PathContextSchema = z.object({
   biljettDatum: z.string().datetime().optional(),
   aktuellFas: z.string().optional(),
-  minne: z.record(z.unknown()).optional(),
+  minne: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const PortResultSchema = z.object({
@@ -83,7 +83,7 @@ export const CompiledPromptSchema = z.object({
   templateId: z.string().optional(),
   instructions: z.string().optional(),
   model: z.string().optional(),
-  variables: z.record(z.any()).optional(),
+  variables: z.record(z.string(), z.any()).optional(),
   renderedContent: z.string().optional(),
   systemInstruction: z.string().optional(),
   userPrompt: z.string().optional(),
@@ -122,7 +122,7 @@ export const OrchestratorConfigSchema = z.object({
 
 export type OrchestratorConfig = z.infer<typeof OrchestratorConfigSchema>;
 
-export const MetaKritikBedomningSchema = z.enum(['STOR_SKILLNAD', 'LITEM_BATCH', 'AVVISAD_FELAKTIG']);
+export const MetaKritikBedomningSchema = z.enum(['STOR_SKILLNAD', 'LITEM_BATCH', 'AVVISAD_FELAKTIG', 'MAKULERAD_INAKTUELL']);
 export type MetaKritikBedomning = z.infer<typeof MetaKritikBedomningSchema>;
 
 export const MetaKritikResultatSchema = z.object({
@@ -130,6 +130,7 @@ export const MetaKritikResultatSchema = z.object({
   kritikText: z.string(),
   motivering: z.string(),
   forbattringAtgard: z.string().optional(),
+  prioritet: z.enum(['HOG', 'MEDEL', 'LAG']).default('MEDEL'),
 });
 
 export type MetaKritikResultat = z.infer<typeof MetaKritikResultatSchema>;

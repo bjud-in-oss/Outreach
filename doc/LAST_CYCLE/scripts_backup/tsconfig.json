@@ -1,16 +1,21 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "noEmit": true,
-    "skipLibCheck": true,
+    "target": "ES2022",
+    "module": "ESNext",
     "moduleResolution": "bundler",
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022"
+    ],
+    "skipLibCheck": true,
+    "allowJs": true,
     "esModuleInterop": true,
-    "allowJs": true
+    "noEmit": true
   },
   "include": [
-    "./**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
+    "./**/*.ts",
+    "./**/*.js"
   ]
 }

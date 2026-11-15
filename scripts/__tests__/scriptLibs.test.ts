@@ -36,6 +36,13 @@ describe('scriptLibs', () => {
       const result = validateTicketScope(ticketPrompt, false, 'test');
       expect(result.valid).toBe(true);
     });
+
+    it('should return false if a declared prerequisite ticket is not VERIFIED', () => {
+      const ticketPrompt = '# TCK-TEST\n**Målfiler:** `f1.ts`\n**Förutsättning:** `TCK-99999` måste vara `VERIFIED`.';
+      const result = validateTicketScope(ticketPrompt, false, 'test');
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain('Förutsättning ej uppfylld: TCK-99999');
+    });
   });
 
   describe('extractErrorSignature', () => {

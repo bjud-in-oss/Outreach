@@ -9,9 +9,20 @@ const SI_PATH = path.join(ROOT_DIR, 'doc', 'SI_v10.5.md');
 const FEATURE_INDEX_PATH = path.join(ROOT_DIR, 'doc', 'FEATURE_INDEX.json');
 const PKG_PATH = path.join(ROOT_DIR, 'package.json');
 
-export function getFeatureIndexText(): string {
-  if (fs.existsSync(FEATURE_INDEX_PATH)) return fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8');
-  return '';
+export function getFeatureIndexText(activeDomain?: string): string {
+  if (!fs.existsSync(FEATURE_INDEX_PATH)) return '';
+  try {
+    const data = JSON.parse(fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8'));
+    const compact: Record<string, any> = {};
+    for (const [dom, info] of Object.entries<any>(data.features || {})) {
+      compact[dom] = (!activeDomain || dom === activeDomain || dom === 'shared')
+        ? info
+        : { filesCount: (info.files || []).length };
+    }
+    return JSON.stringify(compact);
+  } catch {
+    return fs.readFileSync(FEATURE_INDEX_PATH, 'utf-8').slice(0, 4000);
+  }
 }
 
 export function getInstalledDependencies(): string {
@@ -155,7 +166,7 @@ export async function runMicroChannel(
   const runner = new BidiLiveSession({
     ai,
     model: modelName,
-    systemInstruction: `${si}\n\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\n\n${getInstalledDependencies()}\n\nDu agerar som kraften: ${kraft}.\nUppgift: ${stepInstruction}`,
+    systemInstruction: `${si}\n\nREPOTOPOGRAFI:\n${getFeatureIndexText(startAnchor.match(/DOMÄN:\s*([a-zA-Z0-9_-]+)/)?.[1])}\n\n${getInstalledDependencies()}\n\nDu agerar som kraften: ${kraft}.\nUppgift: ${stepInstruction}`,
     tools,
     executeTool,
   });
@@ -174,11 +185,11 @@ export async function runMicroChannel(
     }
 
     runner.close();
-    await new Promise((r) => setTimeout(r, 750));
+    await new Promise((r) => setTimeout(r, 1500));
     return response;
   } catch (err: any) {
     runner.close();
-    await new Promise((r) => setTimeout(r, 750));
+    await new Promise((r) => setTimeout(r, 1500));
     throw err;
   }
 }

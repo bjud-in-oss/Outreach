@@ -1,28 +1,29 @@
-# BYGGCYKEL LOGG: TCK-068
-**Starttid:** 2026-11-15T17:47:14.607Z
+# BYGGCYKEL LOGG: TCK-062
+**Starttid:** 2026-11-15T20:59:09.576Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-068: Uppgradera z.record till två argument (Zod v4-kompatibilitet) i a2uiSchema.ts
+# TCK-062: Enhetlig Wayfinder-kritik och 3-vägs triagering med papperskorg i metaReflection.ts (Del 1/2)
 
-**Måldomän:** `a2ui` (`src/features/a2ui/`)
-**Målfiler:** `src/features/a2ui/contracts/a2uiSchema.ts`
-**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (utan `vi.fn()`/`vi.spyOn()`) bevisar att:
-1. `src/features/a2ui/contracts/a2uiSchema.ts` (< 20 rader) uppgraderar `dataModel: z.record(z.any())` till `dataModel: z.record(z.string(), z.any())` så att både `A2UIPayloadSchema.parse({ componentId: 'card-1', dataModel: { count: 1 } })` fungerar och `expect(A2UIPayloadSchema.shape.dataModel.keyType).toBeDefined()` (som är `undefined` i Zod v4 när nyckelschema utelämnas) passerar.
-2. `pnpm lint` (`tsc -b --noEmit`) passerar grönt över hela repot.
-3. `pnpm verify` passerar med exit 0.
+**Måldomän:** `path` (`src/features/path/`)
+**Målfiler:** `src/features/path/contracts/pathSchema.ts`, `src/features/path/engine/metaReflection.ts`
+**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (utan `vi.fn()`/`vi.spyOn()`, ingen Node `fs`) bevisar att:
+1. `src/features/path/contracts/pathSchema.ts` (< 215 rader) utökar `MetaKritikBedomningSchema` med `'MAKULERAD_INAKTUELL'`, lägger till `prioritet: z.enum(['HOG', 'MEDEL', 'LAG']).default('MEDEL')` i `MetaKritikResultatSchema` samt uppgraderar kvarvarande `z.record(z.unknown())` / `z.record(z.any())` (i `PathContextSchema` och `CompiledPromptSchema`) till två argument (`z.record(z.string(), z.unknown())` / `z.record(z.string(), z.any())`).
+2. `genereraKonstruktivKritik(adapter, kontext)` i `src/features/path/engine/metaReflection.ts` (< 115 rader) returnerar ett Zod-validerat `MetaKritikResultat` i Wayfinder-format (`STOR_SKILLNAD | LITEM_BATCH | AVVISAD_FELAKTIG | MAKULERAD_INAKTUELL`, `prioritet: HOG | MEDEL | LAG`) och behåller bakåtkompatibel export av `rensaGenomfordaBatchPoster`.
+3. `omprioriteraBatchQueue(queue, papperskorg, inaktuellaIds?)` **tömmer `papperskorg` allra först**, flyttar inaktuella poster dit och sorterar aktiva poster (`HOG` > `MEDEL` > `LAG`).
+4. `pnpm verify` passerar med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Det här uppdraget handlar om att framtidssäkra vårt system för Zod v4-kompatibilitet. Genom att uppgradera `z.record` till att explicit innehålla både nyckel- och värdestyper, förhindrar vi potentiella problem och säkerställer att våra datamodeller förblir robusta och stabila i framtiden.
+Det här låter som en viktig uppdatering för att hålla ordning på feedbacken och processen. Hur ser behoven ut för hur inaktuella och makulerade poster ska hanteras i er verksamhet för att flödet ska bli så smidigt som möjligt?
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har granskat kontraktet och intentionen för TCK-068. Uppdraget omfattar endast en domän (`a2ui`) och kräver inga destruktiva ändringar eller komplex sanering. Vi är redo att sätta upp byggkontraktet och verifiera Zod v4-kompatibiliteten mekaniskt.
+Kontraktsauditen för TCK-062 är genomförd. Omfånget är begränsat till domänen `path`, och kraven på z-schemaändringar samt `prioritet` är väl definierade. Vi är redo att gå vidare mot vägvägning för ett smidigt och resilient flöde.
 
 
 #### 0b Att förlikas: Vägval
@@ -42,23 +43,20 @@ STATUS: GODKÄND
 
 
 #### 2d Att förlikas: Mättnad
-Genom att väga de tre ortogonala alternativen mot varandra ser vi att det semantiska deltat minimeras genom att konsolidera resiliensen tidigt. Vinnande kontrakt är låst. MÄTTNAD: JA.
+
 
 
 #### 3a Att följa: Transient Testspecifikation
-För att säkerställa att Zod-schemat i a2uiSchema.ts uppgraderas korrekt för Zod v4-kompatibilitet skapar vi ett transient test i filen src/features/a2ui/contracts/a2uiSchema.test.ts.
-
-Testet kommer att direkt validera att en payload med en giltig dataModel av typen record parsas utan fel, samt att nyckeltypen i schemat är korrekt definierad som en string. Vi kör detta helt i minnet helt utan syntetiska spioner eller mockar.
+För TCK-062 formulerar jag nu en transient testspecifikation i `src/features/path/engine/metaReflection.test.ts`. Testet kommer att validera att `MetaKritikResultatSchema` har den nya prioritetsstyrningen, samt att `genereraKonstruktivKritik` spottar ur sig korrekt `prioritet`, och slutligen att `omprioriteraBatchQueue` korrekt tömmer och sorterar kön enligt vår förlikade triad. Inga spioner eller filsystemsanrop används.
 
 
 #### 3b Att följa: Källkodsspecifikation
-För att uppgradera Zod-schemat till Zod v4-kompatibilitet uppdaterar vi `a2uiSchema.ts` genom att ange både nyckel- och värdeschema i `z.record`.
+För att uppfylla villkoren i TCK-062 uppdaterar jag nu `pathSchema.ts` och `metaReflection.ts`.
 
-Här är den exakta källkodsspecifikationen för både schemat och det transienta testet.
+I `contracts/pathSchema.ts` utökar vi `MetaKritikBedomningSchema` med `'MAKULERAD_INAKTUELL'` och lägger till `prioritet` i `MetaKritikResultatSchema`. Vi uppgraderar även `z.record` till att ta två argument där det behövs.
+
+I `engine/metaReflection.ts` implementerar vi `omprioriteraBatchQueue` som rensar papperskorgen, flyttar inaktuella poster och sorterar aktiva poster efter prioritet.
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Byggkontraktet för TCK-068 är nu spikat. Vi uppgraderar schemat i `a2uiSchema.ts` till `z.record(z.string(), z.any())` för att säkra Zod v4-kompatibilitet.
-
-Processen går därmed vidare till källkodsexekvering och testning.
-STATUS: GODKÄND, ingen mänsklig interaktion krävs för detta mekaniska steg.
+Byggkontraktet för TCK-062 är nu spikat och redo för exekvering. Fas 2 initieras, och jag förbereder källkodsuppdateringar för både pathSchema.ts och metaReflection.ts enligt överenskommen strategi.
