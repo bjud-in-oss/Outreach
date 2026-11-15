@@ -21,6 +21,7 @@ export class BidiLiveSession {
   private accumulatedText = '';
   private pendingText: string | null = null;
   private reconnectTimer: any = null;
+  private idleTimer: any = null;
 
   constructor(private config: BidiRunnerConfig) {}
 
@@ -109,11 +110,11 @@ export class BidiLiveSession {
                 }
               }
 
-              if (delta) {
-                this.accumulatedText += delta;
-                process.stdout.write(delta);
-              } else if (msg.serverContent?.modelTurn?.parts?.some((p: any) => p.inlineData)) {
-                process.stdout.write('~');
+              if (delta) { this.accumulatedText += delta; process.stdout.write(delta); }
+              else if (msg.serverContent?.modelTurn?.parts?.some((p: any) => p.inlineData)) { process.stdout.write('~'); }
+              if (this.accumulatedText.trim().length > 0 && this.currentResolver) {
+                clearTimeout(this.idleTimer);
+                this.idleTimer = setTimeout(() => { if (this.currentResolver) { console.log('\n   🏁 [VÄNDA SLUTFÖRD VIA STRÖMTYSTNAD]'); const r = this.currentResolver, o = this.accumulatedText.trim(); this.currentResolver = null; this.currentRejecter = null; this.pendingText = null; this.accumulatedText = ''; r(o); } }, 12000);
               }
 
               this.reconnectAttempts = 0;
@@ -267,7 +268,7 @@ export class BidiLiveSession {
     }
   }
 
-  async send(text: string, timeoutMs = 120000): Promise<string> {
+  async send(text: string, timeoutMs = 45000): Promise<string> {
     this.pendingText = text;
     this.accumulatedText = '';
 
@@ -284,12 +285,12 @@ export class BidiLiveSession {
       }, timeoutMs);
 
       this.currentResolver = (val: string) => {
-        clearTimeout(timer);
+        clearTimeout(timer); clearTimeout(this.idleTimer);
         this.pendingText = null;
         resolve(val);
       };
       this.currentRejecter = (err: any) => {
-        clearTimeout(timer);
+        clearTimeout(timer); clearTimeout(this.idleTimer);
         this.pendingText = null;
         reject(err);
       };
@@ -322,7 +323,7 @@ export class BidiLiveSession {
 
   close(): void {
     this.isIntentionalClose = true;
-    if (this.reconnectTimer) {
+    clearTimeout(this.idleTimer); if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }

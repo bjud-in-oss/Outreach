@@ -1,29 +1,28 @@
-# BYGGCYKEL LOGG: TCK-065
-**Starttid:** 2026-11-14T23:53:49.602Z
+# BYGGCYKEL LOGG: TCK-068
+**Starttid:** 2026-11-15T17:47:14.607Z
 **Modell:** gemini-3.8-live
 
 ---
 ### INITIAL PROMPT
 ```
-# TCK-065: Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2)
+# TCK-068: Uppgradera z.record till två argument (Zod v4-kompatibilitet) i a2uiSchema.ts
 
-**Måldomän:** `path` (`src/features/path/`)
-**Målfiler:** `src/features/path/recipes/classicRecipe.ts`, `src/features/path/index.ts`
-**Förutsättning:** `TCK-064` måste vara `VERIFIED`.
-**Mekanisk Acceptans:** Ett hermetiskt Vitest-test och `pnpm lint` (`tsc --noEmit`) bevisar att:
-1. `src/features/path/recipes/classicRecipe.ts` (< 100 rader) uppfyller det uppdaterade `StepNode`/`PortNode`-kontraktet utan typfel.
-2. `src/features/path/index.ts` (< 25 rader) exporterar utan dubblettkonflikter (`BesiktningsportOptions` och `knackaPaPorten`).
-3. `pnpm lint` (`tsc --noEmit`) och `pnpm verify` passerar båda med exit 0.
+**Måldomän:** `a2ui` (`src/features/a2ui/`)
+**Målfiler:** `src/features/a2ui/contracts/a2uiSchema.ts`
+**Mekanisk Acceptans:** Ett hermetiskt Vitest-test (utan `vi.fn()`/`vi.spyOn()`) bevisar att:
+1. `src/features/a2ui/contracts/a2uiSchema.ts` (< 20 rader) uppgraderar `dataModel: z.record(z.any())` till `dataModel: z.record(z.string(), z.any())` så att både `A2UIPayloadSchema.parse({ componentId: 'card-1', dataModel: { count: 1 } })` fungerar och `expect(A2UIPayloadSchema.shape.dataModel.keyType).toBeDefined()` (som är `undefined` i Zod v4 när nyckelschema utelämnas) passerar.
+2. `pnpm lint` (`tsc -b --noEmit`) passerar grönt över hela repot.
+3. `pnpm verify` passerar med exit 0.
 
 ```
 
 
 #### 1a Att följa: Intention & Nytta
-Det här uppdraget handlar om att skapa en stabilare grund för hur våra recept körs. Genom att harmonisera `classicRecipe` och rensa i index-filen ser vi till att systemet flyter smidigt och fritt från typfel. Det gör koden mer pålitlig och lättare att underhålla. Det är precis den sortens ordning som bygger en tryggare miljö.
+Det här uppdraget handlar om att framtidssäkra vårt system för Zod v4-kompatibilitet. Genom att uppgradera `z.record` till att explicit innehålla både nyckel- och värdestyper, förhindrar vi potentiella problem och säkerställer att våra datamodeller förblir robusta och stabila i framtiden.
 
 
 #### 0a Att vända om: Kontraktsaudit
-Jag har inte tillgång till det verktyg som krävs för att läsa filerna just nu. För att kunna utföra kontraktsauditen för TCK-065 behöver jag inspektera de aktuella kontrakten. Vänligen ge instruktioner eller tillgång till verktygen så att vi kan gå vidare.
+Jag har granskat kontraktet och intentionen för TCK-068. Uppdraget omfattar endast en domän (`a2ui`) och kräver inga destruktiva ändringar eller komplex sanering. Vi är redo att sätta upp byggkontraktet och verifiera Zod v4-kompatibiliteten mekaniskt.
 
 
 #### 0b Att förlikas: Vägval
@@ -43,20 +42,23 @@ STATUS: GODKÄND
 
 
 #### 2d Att förlikas: Mättnad
-Som kraften Att förlikas har jag vägt alternativen, mätt det semantiska deltat och säkerställt resiliens. Det vinnande kontraktet är låst. MÄTTNAD: JA.
+Genom att väga de tre ortogonala alternativen mot varandra ser vi att det semantiska deltat minimeras genom att konsolidera resiliensen tidigt. Vinnande kontrakt är låst. MÄTTNAD: JA.
 
 
 #### 3a Att följa: Transient Testspecifikation
-För att verifiera harmoniseringen i TCK-065 kommer vi att skapa ett isolerat Vitest-test som importerar `classicRecipe` och repots `index.ts`. Testet verifierar att kontrakten följs utan typfel och att inga dubblettexporter finns, kompletterat med en statisk typkontroll i byggsteget.
+För att säkerställa att Zod-schemat i a2uiSchema.ts uppgraderas korrekt för Zod v4-kompatibilitet skapar vi ett transient test i filen src/features/a2ui/contracts/a2uiSchema.test.ts.
+
+Testet kommer att direkt validera att en payload med en giltig dataModel av typen record parsas utan fel, samt att nyckeltypen i schemat är korrekt definierad som en string. Vi kör detta helt i minnet helt utan syntetiska spioner eller mockar.
 
 
 #### 3b Att följa: Källkodsspecifikation
-För att harmonisera `classicRecipe.ts` och säkerställa en dubblettfri barrel-export i `src/features/path/index.ts`, kommer jag nu att läsa in de nuvarande versionerna av dessa filer för att göra de nödvändiga justeringarna.För att uppfylla KONTRAKTET i TCK-065 krävs följande exakta källkodsspecifikation.
+För att uppgradera Zod-schemat till Zod v4-kompatibilitet uppdaterar vi `a2uiSchema.ts` genom att ange både nyckel- och värdeschema i `z.record`.
 
-I filen src/features/path/recipes/classicRecipe.ts säkerställer vi att klassiskt recept uppfyller StepNode och PortNode-kontraktet utan typfel, samtidigt som radgränsen hålls strikt under 100 rader.
-
-I filen src/features/path/index.ts rensar vi upp exporten för att endast exportera unika och godkända typer och funktioner, särskilt BesiktningsportOptions och knackaPaPorten, för att bibehålla en dubblettfri barrel-export som är strikt under 25 rader.
+Här är den exakta källkodsspecifikationen för både schemat och det transienta testet.
 
 
 #### 3c Att förlikas: Slutgiltigt Byggkontrakt
-Vi har förlikats om vägen framåt och fastställt byggkontraktet för TCK-065. Vi ser till attclassicRecipe uppfyller kontrakten utan typfel och att barrel-exporten i index.ts blir helt ren och dubblettfri.
+Byggkontraktet för TCK-068 är nu spikat. Vi uppgraderar schemat i `a2uiSchema.ts` till `z.record(z.string(), z.any())` för att säkra Zod v4-kompatibilitet.
+
+Processen går därmed vidare till källkodsexekvering och testning.
+STATUS: GODKÄND, ingen mänsklig interaktion krävs för detta mekaniska steg.

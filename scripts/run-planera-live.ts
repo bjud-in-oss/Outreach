@@ -117,7 +117,7 @@ async function main() {
   };
 
   const recentTickets = fs.existsSync(TICKETS_PATH) ? getCompactTicketWindow(fs.readFileSync(TICKETS_PATH, 'utf-8'), 5) : '';
-  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\n${recentTickets}\nREPOTOPOGRAFI:\n${getFeatureIndexText()}\nKONTRAKT:\n${ticketPrompt}`;
+  const startAnchor = `BILJETT: ${ticketId}\nDOMÄN: ${targetDomain}\n${recentTickets}\nKONTRAKT:\n${ticketPrompt}`;
 
   const planContract = await exekveraFas1Sweep(ai, MODEL_NAME, ticketPrompt, systemInstruction, startAnchor, isMaint, appendCycleLog);
 

@@ -13,7 +13,7 @@
 - [x] **TCK-MAINT-073** (VERIFIED): Slutför fas1Sweep.ts (återanvänd runMicroChannel 750ms + Steg 3a–3c), skapa fas2Recovery.ts och aktivera isFas2Complete-spärr i fas2Loop.ts -> Se `doc/.TICKETS/TCK-MAINT-073.md`
 - [x] **TCK-MAINT-072** (VERIFIED): Slutför Strangler Fig — banta run-planera-live.ts under 250 rader, full scripts/ + src/features/ skanning i sizeGate.js och negativt beteendetest -> Se `doc/.TICKETS/TCK-MAINT-072.md`
 - [x] **TCK-MAINT-071** (VERIFIED): Bryt ut fas1Sweep.ts, fas2Loop.ts & fas2Recovery.ts och koppla in contextBatcher.ts + diagnostiseraRotOrsak -> Se `doc/.TICKETS/TCK-MAINT-071.md`
-- [ ] **TCK-MAINT-070** (READY): Aktivera ofiltrerad tsc-kontroll (efter TCK-065) och synka critiqueTriage-rubriker + Papperskorg -> Se `doc/.TICKETS/TCK-MAINT-070.md`
+- [ ] **TCK-MAINT-070** (READY): Aktivera global pnpm lint och synka critiqueTriage-rubriker + Papperskorg -> Se `doc/.TICKETS/TCK-MAINT-070.md`
 - [x] **TCK-MAINT-069** (VERIFIED): Vite/Oxc-säker re-export av contextBatcher.ts, felextraktion i maintValidation.ts, enhetstester och strikt isFas2Complete-spärr -> Se `doc/.TICKETS/TCK-MAINT-069.md`
 - [x] **TCK-MAINT-068** (VERIFIED): Modulär critiqueTriage.ts med auto-initierad Papperskorg, fullständig s-städning och återställd radgränsvakt i sizeGate.js -> Se `doc/.TICKETS/TCK-MAINT-068.md`
 - [x] **TCK-MAINT-067** (VERIFIED): 6:e WS-retry (60s inom 345 rader), 750ms sessionspaus och pre-write syntax-/radspärr -> Se `doc/.TICKETS/TCK-MAINT-067.md`
@@ -84,9 +84,10 @@
 - [ ] **TCK-MAINT-003** (READY): Infrastrukturhärdning, Domänisolerad Typbesiktning och Kontraktsspeglare -> Se `doc/.TICKETS/TCK-MAINT-003.md`
 - [ ] **TCK-MAINT-002** (READY): Tillfredsställ Gate 2c i bidiLiveRunner.ts -> Se `doc/.TICKETS/TCK-MAINT-002.md`
 - [ ] **TCK-TEST-001** (READY): Verifiera v10.4 Livscykeln -> Se `doc/.TICKETS/TCK-TEST-001.md`
+- [x] **TCK-068** (VERIFIED) (READY): Uppgradera z.record till två argument (Zod v4-kompatibilitet) i a2uiSchema.ts -> Se `doc/.TICKETS/TCK-068.md`
 - [ ] **TCK-067** (READY): Delad 2-prompts 5-Varför-tratt i outerReconciliation.ts och MAINT-besiktning i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-067.md`
 - [ ] **TCK-066** (READY): Koppla 1-stegs kritikiteration och avvisade-historik i pathOrchestrator.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-066.md`
-- [x] **TCK-065** (VERIFIED) (READY): Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-065.md`
+- [x] **TCK-065** (VERIFIED): Harmonisera classicRecipe.ts och dubblettfri barrel-export i src/features/path/index.ts (Del 2/2) -> Se `doc/.TICKETS/TCK-065.md`
 - [x] **TCK-064** (VERIFIED): Harmonisera Zod-scheman och re-exporterade typer i src/features/path/ (Del 1/2) -> Se `doc/.TICKETS/TCK-064.md`
 - [ ] **TCK-063** (READY): 6:e WS-retry (60s) i bidiLiveAdapter.ts och AST/omfångs-spärrar i konstruktionsport.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-063.md`
 - [ ] **TCK-062** (READY): Enhetlig Wayfinder-kritik och 3-vägs triagering med papperskorg i metaReflection.ts (Del 1/2) -> Se `doc/.TICKETS/TCK-062.md`

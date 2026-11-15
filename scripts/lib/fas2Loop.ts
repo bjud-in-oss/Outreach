@@ -117,7 +117,7 @@ export async function korFas2Loop(
   }
 
   if (isMaint) {
-    const idMatch = startAnchor.match(/BILJETT:\s*(TCK-[A-Z0-9-]+)/);
+    const idMatch = startAnchor.match(/#?\s*(TCK-[A-Z0-9-]+)/);
     const tckPath = idMatch ? path.join(process.cwd(), 'doc', '.TICKETS', `${idMatch[1]}.md`) : '';
     await korMaintValidering(ai, modelName, tckPath, systemInstruction, codegenTools, executeFas2Tools, isFas2Complete);
   } else {

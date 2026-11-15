@@ -101,15 +101,9 @@ export function createFas2ToolExecutor(
 
       checkForDuplicateExports(args.code, rel);
 
-      const scriptKind = rel.endsWith('.js') 
-        ? ts.ScriptKind.JS 
-        : rel.endsWith('.tsx') 
-          ? ts.ScriptKind.TSX 
-          : ts.ScriptKind.TS;
-
       const transpileResult = ts.transpileModule(args.code, {
-        compilerOptions: { target: ts.ScriptTarget.ES2022, reportDiagnostics: true, allowJs: true },
-        scriptKind
+        fileName: rel,
+        compilerOptions: { target: ts.ScriptTarget.ES2022, reportDiagnostics: true, allowJs: true }
       });
 
       if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {
@@ -149,15 +143,9 @@ export function createFas2ToolExecutor(
 
       checkForDuplicateExports(patchedContent, rel);
 
-      const scriptKind = rel.endsWith('.js') 
-        ? ts.ScriptKind.JS 
-        : rel.endsWith('.tsx') 
-          ? ts.ScriptKind.TSX 
-          : ts.ScriptKind.TS;
-
       const transpileResult = ts.transpileModule(patchedContent, {
-        compilerOptions: { target: ts.ScriptTarget.ES2022, reportDiagnostics: true, allowJs: true },
-        scriptKind
+        fileName: rel,
+        compilerOptions: { target: ts.ScriptTarget.ES2022, reportDiagnostics: true, allowJs: true }
       });
 
       if (transpileResult.diagnostics && transpileResult.diagnostics.length > 0) {

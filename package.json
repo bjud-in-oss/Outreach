@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
+    "lint": "tsc -b --noEmit",
     "planera": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm planera är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
     "genomfor": "echo '❌ [AVVECKLAT KRYPHÅL] pnpm genomfor är spärrat. Använd pnpm bygg [TCK-XXX] istället.' && exit 1",
     "bygg": "tsx --env-file=.env scripts/run-planera-live.ts",

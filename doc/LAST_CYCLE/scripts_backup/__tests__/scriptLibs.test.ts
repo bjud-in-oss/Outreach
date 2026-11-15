@@ -39,12 +39,13 @@ describe('scriptLibs', () => {
   });
 
   describe('extractErrorSignature', () => {
-    it('should extract matching signatures from entire log and filter stack traces', () => {
+    it('should extract matching signatures from a 30-line log and filter stack traces', () => {
       const log = [
         '✘ [ERROR] No matching export...',
         'at ModuleJob.runMain (node:internal/modules/esm/worker_loader:112:12)',
         'error TS2322: Type string is not assignable to type number.',
-        'at Object.<anonymous> (file:///app/scripts/__tests__/scriptLibs.test.ts:45:15)'
+        'at Object.<anonymous> (file:///app/scripts/__tests__/scriptLibs.test.ts:45:15)',
+        ...Array(26).fill('some stack trace line')
       ].join('\n');
       
       const signature = extractErrorSignature(log, 5);

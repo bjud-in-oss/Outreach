@@ -36,6 +36,7 @@ export async function korMaintValidering(
       return;
     } catch (err: any) {
       const errLog = [err?.stdout, err?.stderr].filter(Boolean).join('\n').trim() || err?.message || String(err);
+      console.error(errLog.slice(0, 3000));
       const currentSig = extractErrorSignature(errLog);
 
       if (attempts > 1 && currentSig && currentSig === prevSig) {
@@ -61,10 +62,17 @@ export async function korMaintValidering(
       const diag = await diagnostiseraRotOrsak(ai, modelName, ticketId, errLog, sourceContext, systemInstruction);
       const repairPrompt = `Självrättning (Försök ${attempts}/4) för ${ticketId}. Använd 'apply_patch' för att laga felen.\n\nFELUTDRAG:\n${currentSig}\n\nROTORSAKSDIAGNOS:\n${diag}\n\nKÄLLKOD:\n${sourceContext.slice(0, 18000)}`;
 
-      await runMicroChannel(ai, modelName, 'Att vända om', repairPrompt, currentSig, systemInstruction, codegenTools, executeFas2Tools, {
+      let repaired = false;
+      const trackedRepairTools = (name: string, args: any): string => {
+        const res = executeFas2Tools(name, args);
+        if (name === 'apply_patch' || name === 'save_code') repaired = true;
+        return res;
+      };
+      await runMicroChannel(ai, modelName, 'Att vända om', repairPrompt, currentSig, systemInstruction, codegenTools, trackedRepairTools, {
         requireMutation: true,
         maxTurns: 6,
-        onMutationCheck: isFas2Complete,
+        onMutationCheck: () => repaired,
+        getFollowupPrompt: () => 'Du har inspekterat filen. Applicera nu lagningen med apply_patch omedelbart!'
       });
     }
   }

@@ -45,7 +45,6 @@ export function extractErrorSignature(log: string, maxLines = 15): string {
     .split('\n')
     .filter(l => signatureRegex.test(l))
     .slice(0, maxLines)
-    .map(l => l.trim())
     .join('\n');
 }
 

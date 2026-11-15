@@ -159,10 +159,9 @@ async function main() {
 
   if (!process.argv.includes('--kritik-iter')) {
     const cycleSummary = fs.existsSync(CYCLE_LOG_PATH) ? fs.readFileSync(CYCLE_LOG_PATH, 'utf-8').slice(-4000) : ticketId;
-    const kritik: any = await hanteraKonstruktivKritik(ai, MODEL_NAME, ticketId, cycleSummary, systemInstruction);
-    if (kritik?.harStorSkillnad) {
-      execSync(`npx tsx scripts/run-planera-live.ts ${ticketId} --kritik-iter=1 --omvandelse=0`, { stdio: 'inherit', cwd: ROOT_DIR });
-      process.exit(0);
+    const kritikText = await runMicroChannel(ai, MODEL_NAME, 'Att vända om', 'Granska byggcykeln och formulera eventuell konstruktiv kritik (eller svara INGEN).', cycleSummary, systemInstruction);
+    if (kritikText && !kritikText.includes('INGEN')) {
+      hanteraKonstruktivKritik(kritikText, IMPROVEMENTS_PATH);
     }
   }
 

@@ -117,7 +117,7 @@ export async function korFas2Loop(
   }
 
   if (isMaint) {
-    const idMatch = startAnchor.match(/BILJETT:\s*(TCK-[A-Z0-9-]+)/);
+    const idMatch = startAnchor.match(/#?\s*(TCK-[A-Z0-9-]+)/);
     const tckPath = idMatch ? path.join(process.cwd(), 'doc', '.TICKETS', `${idMatch[1]}.md`) : '';
     await korMaintValidering(ai, modelName, tckPath, systemInstruction, codegenTools, executeFas2Tools, isFas2Complete);
   } else {
@@ -128,6 +128,7 @@ export async function korFas2Loop(
         syncDomainBarrel();
         execCaptured(`node scripts/drivers/ts.js --check-catch-blocks --domain ${targetDomain}`);
         execCaptured(`npx vitest run ${transientTestFile}`);
+        execCaptured(`npx vitest run src/features/${targetDomain}/__tests__/`);
         state.reversals = 0;
         green = true;
       } catch (err: any) {
